@@ -368,4 +368,49 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get viewerReviewError => 'Este clip no se puede reproducir aquí.';
+
+  @override
+  String get cameraPairingTitle => 'Conectar un visor';
+
+  @override
+  String get cameraPairingCode => 'Código de emparejamiento';
+
+  @override
+  String get cameraPairingScanHint =>
+      'Escanea el código QR o abre esta dirección en un navegador en la misma Wi-Fi:';
+
+  @override
+  String get cameraPairingNoNetwork =>
+      'No hay Wi-Fi ni punto de acceso. Activa el punto de acceso o conéctate a una red Wi-Fi.';
+
+  @override
+  String cameraViewersConnected(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count visores conectados',
+      one: '1 visor conectado',
+      zero: 'Ningún visor conectado',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String cameraOperatingViewers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count visores',
+      one: '1 visor',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get serverStarting => 'Iniciando el servidor para visores…';
+
+  @override
+  String serverStartFailed(String error) {
+    return 'No se pudo iniciar el servidor para visores: $error';
+  }
 }

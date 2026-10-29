@@ -685,6 +685,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This clip cannot be played here.'**
   String get viewerReviewError;
+
+  /// No description provided for @cameraPairingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect a viewer'**
+  String get cameraPairingTitle;
+
+  /// No description provided for @cameraPairingCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Pairing code'**
+  String get cameraPairingCode;
+
+  /// No description provided for @cameraPairingScanHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan the QR code, or open this address in a browser on the same Wi-Fi:'**
+  String get cameraPairingScanHint;
+
+  /// No description provided for @cameraPairingNoNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'No Wi-Fi or hotspot found. Turn on the hotspot or join a Wi-Fi network.'**
+  String get cameraPairingNoNetwork;
+
+  /// No description provided for @cameraViewersConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No viewers connected} =1{1 viewer connected} other{{count} viewers connected}}'**
+  String cameraViewersConnected(int count);
+
+  /// No description provided for @cameraOperatingViewers.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 viewer} other{{count} viewers}}'**
+  String cameraOperatingViewers(int count);
+
+  /// No description provided for @serverStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting the viewer server…'**
+  String get serverStarting;
+
+  /// No description provided for @serverStartFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The viewer server could not start: {error}'**
+  String serverStartFailed(String error);
 }
 
 class _AppLocalizationsDelegate
