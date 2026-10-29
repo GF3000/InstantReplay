@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Cancel an in-progress run when a newer commit lands on the same ref.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: 3.44.1
+
+jobs:
+  # Static analysis of the whole workspace plus the Dart/Flutter unit tests.
+  analyze-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Get dependencies (workspace root)
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test replay_protocol
+        working-directory: packages/replay_protocol
+        run: dart test
+
+      - name: Test app (if it has tests)
+        working-directory: app
+        run: |
+          if [ -d test ] && find test -name '*_test.dart' | grep -q .; then
+            flutter test
+          else
+            echo "No app tests yet; skipping."
+          fi
+
+  # Debug APK build plus the capture plugin's Kotlin JVM unit tests.
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Get dependencies (workspace root)
+        run: flutter pub get
+
+      # Also generates app/android/local.properties, which Gradle needs below.
+      - name: Build debug APK
+        working-directory: app
+        run: flutter build apk --debug
+
+      - name: Kotlin unit tests (replay_capture_android)
+        working-directory: app/android
+        run: ./gradlew :replay_capture_android:testDebugUnitTest
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: instant-replay-debug-apk
+          path: app/build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+
+  # Release web build of the viewer, published as an artifact.
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Get dependencies (workspace root)
+        run: flutter pub get
+
+      - name: Build web
+        working-directory: app
+        run: flutter build web --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-viewer
+          path: app/build/web
+          if-no-files-found: error

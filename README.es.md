@@ -1,5 +1,7 @@
 # InstantReplay
 
+[![CI](https://github.com/GF3000/InstantReplay/actions/workflows/ci.yml/badge.svg)](https://github.com/GF3000/InstantReplay/actions/workflows/ci.yml)
+
 *[Read in English](README.md)*
 
 Repeticiones instantáneas para deportes de equipo, sin conexión a Internet. Un móvil Android en un trípode graba de forma continua y guarda el último minuto en un búfer circular. Desde el móvil o la tablet del entrenador se ve el directo y, con un toque, se recuperan los últimos 10–60 segundos para revisarlos a cámara lenta, etiquetarlos y compartirlos. Todo funciona en una red Wi-Fi local (hotspot de un móvil o router de viaje).

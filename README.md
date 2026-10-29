@@ -1,5 +1,7 @@
 # InstantReplay
 
+[![CI](https://github.com/GF3000/InstantReplay/actions/workflows/ci.yml/badge.svg)](https://github.com/GF3000/InstantReplay/actions/workflows/ci.yml)
+
 *[Leer en español](README.es.md)*
 
 Offline instant replay for team sports. One Android phone on a tripod films continuously and keeps the last minute in a rolling buffer; the coach's phone or tablet watches the live feed and, with one tap, pulls the last 10–60 seconds to review in slow motion, tag and share. No Internet connection needed: everything runs over a local Wi-Fi network (a phone hotspot or a travel router).
