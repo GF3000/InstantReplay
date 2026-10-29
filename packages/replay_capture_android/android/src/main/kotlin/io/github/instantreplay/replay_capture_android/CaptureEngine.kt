@@ -28,6 +28,7 @@ import io.github.instantreplay.replay_capture_android.buffer.RingBuffer
 import io.github.instantreplay.replay_capture_android.buffer.Segmenter
 import io.github.instantreplay.replay_capture_android.gl.EglCore
 import io.github.instantreplay.replay_capture_android.gl.FrameHandoff
+import io.github.instantreplay.replay_capture_android.gl.TexTransform
 import io.github.instantreplay.replay_capture_android.gl.TextureRenderer
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executor
@@ -81,6 +82,7 @@ internal class CaptureEngine(
     private var cameraSurface: Surface? = null
     private var encoderEglSurface: EGLSurface? = null
     private val texMatrix = FloatArray(16)
+    private var uprightRotation = 0
     @Volatile private var renderedFrames = 0L
 
     // Used by both GL threads; created and released on the GL thread.
@@ -239,6 +241,7 @@ internal class CaptureEngine(
         } ?: error("No back camera")
         val chars = cameraManager.getCameraCharacteristics(id)
         sensorOrientation = chars.get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 0
+        uprightRotation = TexTransform.uprightRotation(sensorOrientation, CAMERA_UI_ROTATION_DEG)
 
         val sizes = chars.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)!!
             .getOutputSizes(SurfaceTexture::class.java)
@@ -339,6 +342,7 @@ internal class CaptureEngine(
         core.makeCurrent(encSurface)
         st.updateTexImage()
         st.getTransformMatrix(texMatrix)
+        TexTransform.normalize(texMatrix, uprightRotation, texMatrix)
         val ts = st.timestamp
         if (lastGlNs != 0L && ts - lastGlNs > frameIntervalNs * 3 / 2) glGaps++
         lastGlNs = ts
@@ -451,5 +455,7 @@ internal class CaptureEngine(
         const val STATS_INTERVAL_MS = 1000L
         // Preview and live view are at most 720p; the handoff copy needs no more.
         const val OUT_MAX_WIDTH = 1280
+        // The Camera role UI is locked to landscapeLeft (Surface.ROTATION_90).
+        const val CAMERA_UI_ROTATION_DEG = 90
     }
 }

@@ -47,8 +47,7 @@ Sizes: **S** ≈ one sitting · **M** ≈ a few sittings · **L** ≈ a week of 
 | 2.7 | Thermal policy (SPEC §3.6) as events | S | Simulated status via debug hook |
 | 2.8 | Live start bitrate (skip the 480p ramp-up) via `setBitrate` | S | First seconds already ≥ 960×540 |
 
-**Decision point (in 2.5):** keep clips as fMP4 + `sidx`, or remux to progressive MP4 on the Camera.
-Test: save an fMP4 clip to the gallery with `gal` and share it to WhatsApp. If both work, keep fMP4 everywhere; otherwise remux on the Camera at assembly time.
+**Decision (2026-10-29): keep fMP4 + `sidx` everywhere.** A 13 s clip copied to the gallery of the reference phone plays and seeks in the Xiaomi gallery and sends and plays in WhatsApp. No remux step on the Camera.
 
 ### M3 — Protocol and Camera server (M)
 | # | Task | Size | Done when |
