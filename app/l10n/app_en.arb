@@ -102,5 +102,116 @@
   "thermalSevere": "Severe",
   "thermalCritical": "Critical",
   "thermalEmergency": "Emergency",
-  "thermalShutdown": "Shutdown"
+  "thermalShutdown": "Shutdown",
+  "viewerConnectTitle": "Connect to the camera",
+  "viewerAddressLabel": "Camera address",
+  "viewerAddressInvalid": "Enter an address like http://192.168.1.20:8080",
+  "viewerAddressSubmit": "Continue",
+  "viewerCodeTitle": "Enter the code shown on the camera",
+  "viewerCameraAt": "Camera at {address}",
+  "@viewerCameraAt": {
+    "placeholders": {
+      "address": {"type": "String"}
+    }
+  },
+  "viewerCodeLabel": "6-digit code",
+  "viewerCodeSubmit": "Connect",
+  "viewerCodeWrong": "Wrong code. Check the camera screen and try again.",
+  "viewerCodeTooManyAttempts": "Too many attempts. Wait a minute and try again.",
+  "viewerCameraUnreachable": "Cannot reach the camera. Check that both devices are on the same Wi-Fi.",
+  "viewerSessionExpired": "The camera started a new session. Enter its new code.",
+  "viewerChangeCamera": "Change camera",
+  "viewerLinkConnecting": "Connecting…",
+  "viewerLinkReconnecting": "Reconnecting…",
+  "viewerLinkIncompatible": "This camera runs another version of InstantReplay. Update both devices.",
+  "viewerLiveStarting": "Starting live view…",
+  "viewerLiveInterrupted": "Live view interrupted. Restarting…",
+  "viewerLiveRestart": "Restart live view",
+  "viewerStatusRec": "REC",
+  "viewerStatusIdle": "Not recording",
+  "viewerStatusFps": "{fps} fps",
+  "@viewerStatusFps": {
+    "placeholders": {
+      "fps": {"type": "int"}
+    }
+  },
+  "viewerStatusBuffer": "buffer {seconds} s",
+  "@viewerStatusBuffer": {
+    "placeholders": {
+      "seconds": {"type": "int"}
+    }
+  },
+  "viewerStatusOutbox": "outbox {clips}",
+  "@viewerStatusOutbox": {
+    "placeholders": {
+      "clips": {"type": "int"}
+    }
+  },
+  "viewerStatusTemperature": "{celsius} °C",
+  "@viewerStatusTemperature": {
+    "placeholders": {
+      "celsius": {"type": "String"}
+    }
+  },
+  "viewerStatusBattery": "{percent}%{charging}",
+  "@viewerStatusBattery": {
+    "placeholders": {
+      "percent": {"type": "int"},
+      "charging": {"type": "String"}
+    }
+  },
+  "viewerSave": "SAVE {seconds} s",
+  "@viewerSave": {
+    "placeholders": {
+      "seconds": {"type": "int"}
+    }
+  },
+  "viewerSaveQuick": "{seconds} s",
+  "@viewerSaveQuick": {
+    "placeholders": {
+      "seconds": {"type": "int"}
+    }
+  },
+  "viewerSaveHint": "Saves the last seconds plus {seconds} s after the tap.",
+  "@viewerSaveHint": {
+    "placeholders": {
+      "seconds": {"type": "int"}
+    }
+  },
+  "viewerSessionOnlyNotice": "Clips stay in this browser tab only. Download the ones you want to keep.",
+  "viewerClipsEmpty": "Saved clips appear here.",
+  "viewerClipTitle": "Clip {number} · {seconds} s",
+  "@viewerClipTitle": {
+    "placeholders": {
+      "number": {"type": "int"},
+      "seconds": {"type": "int"}
+    }
+  },
+  "viewerClipRequesting": "Requesting…",
+  "viewerClipRecording": "Recording…",
+  "viewerClipDownloadingStarted": "Downloading…",
+  "viewerClipDownloading": "Downloading… {percent}%",
+  "@viewerClipDownloading": {
+    "placeholders": {
+      "percent": {"type": "int"}
+    }
+  },
+  "viewerClipReady": "Ready",
+  "viewerClipFailedRequest": "The camera did not answer",
+  "viewerClipFailedDownload": "Download failed",
+  "viewerClipFailedChecksum": "The download was corrupted",
+  "viewerClipExpired": "Expired on the camera",
+  "viewerClipRetry": "Retry",
+  "viewerClipDownload": "Download",
+  "viewerReviewPrevFrame": "Previous frame",
+  "viewerReviewNextFrame": "Next frame",
+  "viewerReviewPlay": "Play",
+  "viewerReviewPause": "Pause",
+  "viewerReviewSpeed": "{speed}×",
+  "@viewerReviewSpeed": {
+    "placeholders": {
+      "speed": {"type": "double", "format": "decimalPattern"}
+    }
+  },
+  "viewerReviewError": "This clip cannot be played here."
 }
