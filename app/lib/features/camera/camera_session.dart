@@ -100,7 +100,7 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
     _capture = ref.watch(captureLayerProvider);
     final subs = <StreamSubscription<Object>>[
       _capture.stats.listen((s) => state = state.copyWith(stats: () => s, thermalStatus: s.thermalStatus)),
-      _capture.thermal.listen((t) => state = state.copyWith(thermalStatus: t.status)),
+      _capture.thermal.listen(_onThermal),
       _capture.cameraState.listen((s) => state = state.copyWith(cameraState: s)),
       _capture.errors.listen(_addError),
     ];
@@ -198,6 +198,34 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
     } catch (e) {
       _addError(_describe(e));
     }
+  }
+
+  /// The plugin already turned the preview off, capped or stopped the live view; lowering fps or
+  /// resolution needs a restart with another profile (SPEC §3.6).
+  void _onThermal(ThermalEvent event) {
+    state = state.copyWith(thermalStatus: event.status);
+    if (event.action.index >= ThermalAction.previewOff.index && !state.operating) {
+      state = state.copyWith(operating: true);
+    }
+    final current = state.profile;
+    final fallback = current == null ? null : thermalFallback(state.profiles, current, event.action);
+    if (fallback != null && state.phase == CameraPhase.running) unawaited(selectProfile(fallback.id));
+  }
+
+  /// A cooler profile for [action], or null if [current] already satisfies it.
+  @visibleForTesting
+  static CaptureProfile? thermalFallback(List<CaptureProfile> profiles, CaptureProfile current, ThermalAction action) {
+    final candidates = switch (action) {
+      ThermalAction.reduceFps => profiles.where((p) => p.fps <= 30 && p.width == current.width),
+      ThermalAction.reduceResolution || ThermalAction.stopLive => profiles.where((p) => p.fps <= 30),
+      _ => const <CaptureProfile>[],
+    };
+    final cooler = candidates.where((p) => p.width * p.height * p.fps < current.width * current.height * current.fps);
+    if (cooler.isEmpty) return null;
+    // The best of the cooler options (profiles are ordered best first).
+    return action == ThermalAction.reduceFps
+        ? cooler.first
+        : cooler.reduce((a, b) => a.width * a.height <= b.width * b.height ? a : b);
   }
 
   void dismissErrors() => state = state.copyWith(errors: const []);
