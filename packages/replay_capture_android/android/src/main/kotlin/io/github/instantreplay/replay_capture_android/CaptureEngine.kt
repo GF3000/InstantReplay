@@ -81,7 +81,8 @@ internal class CaptureEngine(
     private var cameraTexture = 0
     private var surfaceTexture: SurfaceTexture? = null
     private var cameraSurface: Surface? = null
-    private var encoderEglSurface: EGLSurface? = null
+    private var encoderEglSurface: EGLSurface? = null // GL fallback path only
+    private var glIdle: EGLSurface? = null
     private val texMatrix = FloatArray(16)
     private var uprightRotation = 0
     @Volatile private var renderedFrames = 0L
@@ -108,6 +109,14 @@ internal class CaptureEngine(
 
     var sensorOrientation = 0
         private set
+
+    /**
+     * Whether the camera feeds the HQ encoder directly (no GL on the recording path). With the
+     * screen off the phone lowers clocks and a GL hop can't keep 30 fps (measured: ~6 lost
+     * frames/s). Falls back to rendering into the encoder when the camera rejects two outputs.
+     */
+    @Volatile var hqDirect = false
+        private set
     val encoderName: String get() = encoder?.codecName ?: ""
     val highProfile: Boolean get() = encoder?.usesHighProfile ?: false
 
@@ -122,22 +131,25 @@ internal class CaptureEngine(
         val captureEgl = onGl {
             val enc = HqEncoder(
                 config, encoderHandler,
-                onTrack = { ring.track = it },
+                // Direct frames keep the sensor orientation; the MP4 matrix turns them upright.
+                onTrack = { ring.track = if (hqDirect) it.copy(rotationDeg = uprightRotation) else it },
                 onFrame = segmenter::onFrame,
                 onError = { emitError(it) },
             )
             encoder = enc
             val core = EglCore()
             egl = core
-            val encSurface = core.createWindowSurface(enc.inputSurface)
-            encoderEglSurface = encSurface
-            core.makeCurrent(encSurface)
+            // No EGL surface on the encoder input yet: the camera may connect to it directly.
+            val idle = core.createPbufferSurface(1, 1)
+            glIdle = idle
+            core.makeCurrent(idle)
             renderer = TextureRenderer(external = true)
             cameraTexture = TextureRenderer.createExternalTexture()
             val outWidth = minOf(config.width, OUT_MAX_WIDTH)
             handoff = FrameHandoff(outWidth, outWidth * config.height / config.width, useFences = core.glVersion >= 3)
             val st = SurfaceTexture(cameraTexture).apply {
-                setDefaultBufferSize(config.width, config.height)
+                // Preview/live only need 720p; the GL fallback raises this to the full size.
+                setDefaultBufferSize(handoff!!.width, handoff!!.height)
                 setOnFrameAvailableListener({ drawFrame() }, glHandler)
             }
             surfaceTexture = st
@@ -216,11 +228,13 @@ internal class CaptureEngine(
             glHandler.removeCallbacksAndMessages(null)
             val core = egl
             if (core != null) {
-                encoderEglSurface?.let(core::makeCurrent)
+                (encoderEglSurface ?: glIdle)?.let(core::makeCurrent)
                 handoff?.release()
                 renderer?.release()
                 GLES20.glDeleteTextures(1, intArrayOf(cameraTexture), 0)
+                // Destroying the current surface is deferred by EGL until release() unbinds it.
                 encoderEglSurface?.let { core.releaseSurface(it) }
+                glIdle?.let { core.releaseSurface(it) }
                 core.release()
             }
             handoff = null
@@ -277,31 +291,62 @@ internal class CaptureEngine(
         }, cameraHandler)
     }
 
-    private fun createSession(device: CameraDevice, fpsRange: Range<Int>) {
-        val target = cameraSurface ?: return
+    /** Tries camera → encoder + camera → texture first; falls back to GL feeding the encoder. */
+    private fun createSession(device: CameraDevice, fpsRange: Range<Int>, direct: Boolean = true) {
+        val texture = cameraSurface ?: return
+        val encoderInput = encoder?.inputSurface ?: return
+        val targets = if (direct) listOf(encoderInput, texture) else listOf(texture)
         val callback = object : CameraCaptureSession.StateCallback() {
             override fun onConfigured(s: CameraCaptureSession) {
                 if (released) return s.close()
                 session = s
                 val request = device.createCaptureRequest(CameraDevice.TEMPLATE_RECORD).apply {
-                    addTarget(target)
+                    targets.forEach(::addTarget)
                     set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, fpsRange)
                     set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_VIDEO)
                 }.build()
                 s.setRepeatingRequest(request, captureCounter, cameraHandler)
-                emit(mapOf("type" to "camera", "state" to "streaming", "fpsRange" to fpsRange.toString()))
+                emit(
+                    mapOf(
+                        "type" to "camera",
+                        "state" to "streaming",
+                        "fpsRange" to fpsRange.toString(),
+                        "hqPath" to if (direct) "direct" else "gl",
+                    ),
+                )
             }
 
-            override fun onConfigureFailed(s: CameraCaptureSession) = emitError("Camera session configuration failed")
+            override fun onConfigureFailed(s: CameraCaptureSession) {
+                if (direct && !released) useGlPath { createSession(device, fpsRange, direct = false) }
+                else emitError("Camera session configuration failed")
+            }
         }
-        device.createCaptureSession(
-            SessionConfiguration(
-                SessionConfiguration.SESSION_REGULAR,
-                listOf(OutputConfiguration(target)),
-                Executor { cameraHandler.post(it) },
-                callback,
-            ),
+        val configuration = SessionConfiguration(
+            SessionConfiguration.SESSION_REGULAR,
+            targets.map(::OutputConfiguration),
+            Executor { cameraHandler.post(it) },
+            callback,
         )
+        val supported = try {
+            device.isSessionConfigurationSupported(configuration)
+        } catch (e: UnsupportedOperationException) {
+            true // The HAL can't tell in advance; onConfigureFailed covers a refusal.
+        }
+        if (direct && !supported) return useGlPath { createSession(device, fpsRange, direct = false) }
+        hqDirect = direct
+        device.createCaptureSession(configuration)
+    }
+
+    /** Switches to rendering into the encoder: full-size camera texture plus an EGL encoder surface. */
+    private fun useGlPath(then: () -> Unit) {
+        hqDirect = false
+        onGl {
+            val core = egl ?: return@onGl
+            val enc = encoder ?: return@onGl
+            surfaceTexture?.setDefaultBufferSize(config.width, config.height)
+            encoderEglSurface = core.createWindowSurface(enc.inputSurface)
+        }
+        then()
     }
 
     // Gap diagnostics: a gap is an interval > 1.5× nominal at that stage. Comparing camera gaps
@@ -336,20 +381,22 @@ internal class CaptureEngine(
         val core = egl ?: return
         val st = surfaceTexture ?: return
         val gl = renderer ?: return
-        val encSurface = encoderEglSurface ?: return
         val frames = handoff ?: return
+        val encSurface = encoderEglSurface // null on the direct path: the camera feeds the encoder
         val started = System.nanoTime()
 
-        core.makeCurrent(encSurface)
+        core.makeCurrent(encSurface ?: glIdle ?: return)
         st.updateTexImage()
         st.getTransformMatrix(texMatrix)
         TexTransform.normalize(texMatrix, uprightRotation, texMatrix)
         val ts = st.timestamp
         if (lastGlNs != 0L && ts - lastGlNs > frameIntervalNs * 3 / 2) glGaps++
         lastGlNs = ts
-        gl.draw(cameraTexture, config.width, config.height, texMatrix)
-        core.setPresentationTime(encSurface, ts)
-        core.swapBuffers(encSurface)
+        if (encSurface != null) {
+            gl.draw(cameraTexture, config.width, config.height, texMatrix)
+            core.setPresentationTime(encSurface, ts)
+            core.swapBuffers(encSurface)
+        }
         renderedFrames++
 
         // Preview and live view at most 30 fps. Only a cheap copy happens here; the output thread

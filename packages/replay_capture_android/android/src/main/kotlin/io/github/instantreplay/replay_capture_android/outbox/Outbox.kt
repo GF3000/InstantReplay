@@ -198,8 +198,9 @@ internal class Outbox(
             waiters.remove(recording.id).orEmpty()
         }
         result.getOrNull()?.let(onChange)
-        callbacks.forEach { it(result) }
+        // Before the callbacks, so callers already see the outbox within its cap.
         expireSafely()
+        callbacks.forEach { it(result) }
     }
 
     private fun expireSafely() {
