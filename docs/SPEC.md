@@ -20,7 +20,7 @@
 | D9 | Multi-viewer | A clip goes only to the viewer that requested it; other viewers get a notification and may fetch it while it is still in the outbox. |
 | D10 | Organization | Session (match/training) → Clips. Sessions live on the Viewer. |
 | D11 | Save button | Default duration (20 s) + presets (10/30/60 s) + configurable post-roll (0–5 s). |
-| D12 | Video | Configurable: **1080p30 default**, 720p30 or 1080p60 optional. H.264 only. |
+| D12 | Video | Configurable: **1080p30 default**, 720p30 or 1080p60 optional; a profile is offered only if the camera supports it in a regular session. H.264 only. |
 | D13 | Analysis | Speed (0.25/0.5/1x), frame stepping, **non-destructive trim**, **telestrator burned into exported video as freeze-frame + drawing for N s**. |
 | D14 | Export | Single clip: save to gallery + system share (native). Download (web). |
 | D15 | Web | Live view + save + review of **current session only** (IndexedDB, volatile) + download MP4. No gallery/share/trim/telestrator. |
@@ -347,7 +347,8 @@ Why 400 ms for N1/N2: the live view is used to decide *when* to press Save, not 
 | Library coexistence | Plugin and `flutter_webrtc` share `io.github.webrtc-sdk:android`; no duplicate classes. Requires `ACCESS_NETWORK_STATE`, otherwise libwebrtc aborts natively |
 | Thermal, 10 min | Status `none`, battery 40.5 → 41.8 °C, fps unaffected |
 | Frame gaps | Was ~0.3 %, mostly in the GL thread. With non-blocking secondary outputs and stats off the GL thread, HQ gaps equal camera gaps (2, at startup). Cost: preview/live skip ~16 % of frames (live ~22 fps). v0.1: render secondary outputs on their own thread with a shared EGL context |
-| Pending | 1080p60, 30-min run without gaps |
+| 1080p60 | Not available: regular sessions top out at 30 fps (`aeAvailableTargetFpsRanges` max [30,30]); 60 fps only exists inside constrained high-speed sessions at 120 fps. Decision: offer each profile only when the device's regular session supports it |
+| Pending | 30-min run without gaps |
 
 ### v0.1 — MVP
 Roles, pairing (QR, code, NSD), ring buffer + outbox + API v1, transfer with ACK/resume, sessions/clips/templates, player (speed, frame step), live view (native + web), web viewer (session-only), export plain clip to gallery/share, thermal policy, operating mode, es/en, dark theme, CI building APK + web, GitHub Release.
