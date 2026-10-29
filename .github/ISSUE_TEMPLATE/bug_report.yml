@@ -1,0 +1,76 @@
+name: Bug report
+description: Something does not work as expected.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for reporting! Please fill in as much as you can; device details matter a lot for capture and network bugs.
+  - type: input
+    id: device
+    attributes:
+      label: Device model
+      placeholder: e.g. Redmi Note 12 Pro 5G
+    validations:
+      required: true
+  - type: input
+    id: android
+    attributes:
+      label: Android version / OS skin
+      placeholder: e.g. Android 14 / HyperOS 2
+    validations:
+      required: true
+  - type: dropdown
+    id: role
+    attributes:
+      label: Role
+      options:
+        - Camera
+        - Viewer (Android app)
+        - Web viewer
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser (web viewer only)
+      placeholder: e.g. Chrome 130 on Android, Safari 18 on iPad
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: From the Releases page or the app settings, or the commit hash if you built it yourself.
+    validations:
+      required: true
+  - type: input
+    id: network
+    attributes:
+      label: Network setup
+      placeholder: e.g. phone hotspot, travel router, PC hotspot
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Start the Camera role at 1080p30
+        2. Connect a Viewer
+        3. Tap Save (20 s)
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant `adb logcat` output (see docs/dev-setup.md), browser console output, or screenshots.
+      render: text
