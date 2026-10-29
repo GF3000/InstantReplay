@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="replay_capture_notification_channel">Recording</string>
+    <string name="replay_capture_notification_title">InstantReplay is recording</string>
+    <string name="replay_capture_notification_text">The replay buffer keeps running. Tap to open the camera.</string>
+</resources>
