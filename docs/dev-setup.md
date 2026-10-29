@@ -56,7 +56,7 @@ Filtering by pid keeps the output readable; re-run it after the app restarts (th
 
 ## 6. The Lab harness (spike)
 
-The Phase 0 spike (branch `spike/phase-0`) runs a small HTTP server on the phone, port **8080**:
+The Phase 0 spike lives in `app/lib/features/lab/`. In debug builds on Android, open it from the role screen ("Lab"). It runs a small HTTP server on the phone, port **8080**:
 
 - `http://PHONE_IP:8080/` - save buttons, clip list and live stats; clips are served under `/clips/`.
 - `http://PHONE_IP:8080/live` - WebRTC live view with an on-screen millisecond clock. Point the camera at this page: the clock next to its own image in the video gives the glass-to-glass latency in one screenshot.
