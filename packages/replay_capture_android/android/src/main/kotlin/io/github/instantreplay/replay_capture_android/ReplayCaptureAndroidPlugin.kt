@@ -2,8 +2,10 @@ package io.github.instantreplay.replay_capture_android
 
 import android.Manifest
 import android.app.Activity
+import android.app.Application
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
@@ -39,6 +41,31 @@ class ReplayCaptureAndroidPlugin :
     private var live: LiveStreamer? = null
     private var preview: TextureRegistry.SurfaceProducer? = null
     private var previewEnabled = true
+
+    /**
+     * With the screen off or the app in the background Flutter stops consuming preview frames, and
+     * drawing into them stalls the GL pipeline until the HQ recording drops frames. Measured on the
+     * reference phone: ~5 lost frames per second after screen-off. So the preview is detached then.
+     */
+    private var appVisible = true
+    private var liveAttached = false
+    private val showPreview get() = previewEnabled && appVisible
+
+    private val lifecycle = object : Application.ActivityLifecycleCallbacks {
+        override fun onActivityStarted(a: Activity) = onVisibility(a, true)
+        override fun onActivityStopped(a: Activity) = onVisibility(a, false)
+        override fun onActivityCreated(a: Activity, state: Bundle?) = Unit
+        override fun onActivityResumed(a: Activity) = Unit
+        override fun onActivityPaused(a: Activity) = Unit
+        override fun onActivitySaveInstanceState(a: Activity, state: Bundle) = Unit
+        override fun onActivityDestroyed(a: Activity) = Unit
+    }
+
+    private fun onVisibility(a: Activity, visible: Boolean) {
+        if (a !== activity || appVisible == visible) return
+        appVisible = visible
+        applyPreview()
+    }
     private var ring: RingBuffer? = null
     private var ringWindowSeconds = 0
     private val thermalPolicy = ThermalPolicy()
@@ -91,9 +118,8 @@ class ReplayCaptureAndroidPlugin :
 
         try {
             capture.start()
-            if (previewEnabled) capture.setPreviewSurface(producer.surface, PREVIEW_WIDTH, PREVIEW_HEIGHT)
+            if (showPreview) capture.setPreviewSurface(producer.surface, PREVIEW_WIDTH, PREVIEW_HEIGHT)
             streamer = LiveStreamer(context, ::emit)
-            capture.setLiveSurface(streamer.surface, LiveStreamer.WIDTH, LiveStreamer.HEIGHT)
         } catch (e: Exception) {
             capture.release()
             streamer?.release()
@@ -102,7 +128,7 @@ class ReplayCaptureAndroidPlugin :
         }
         producer.setCallback(object : TextureRegistry.SurfaceProducer.Callback {
             override fun onSurfaceAvailable() {
-                if (previewEnabled) engine?.setPreviewSurface(producer.surface, PREVIEW_WIDTH, PREVIEW_HEIGHT)
+                if (showPreview) engine?.setPreviewSurface(producer.surface, PREVIEW_WIDTH, PREVIEW_HEIGHT)
             }
 
             override fun onSurfaceCleanup() {
@@ -132,8 +158,12 @@ class ReplayCaptureAndroidPlugin :
 
     override fun setPreviewEnabled(enabled: Boolean) {
         previewEnabled = enabled
+        applyPreview()
+    }
+
+    private fun applyPreview() {
         val producer = preview ?: return
-        engine?.setPreviewSurface(if (enabled) producer.surface else null, PREVIEW_WIDTH, PREVIEW_HEIGHT)
+        engine?.setPreviewSurface(if (showPreview) producer.surface else null, PREVIEW_WIDTH, PREVIEW_HEIGHT)
     }
 
     override fun saveClip(request: SaveRequest, callback: (Result<ClipInfo>) -> Unit) {
@@ -148,6 +178,7 @@ class ReplayCaptureAndroidPlugin :
 
     override fun liveOffer(viewerId: String, codec: String, callback: (Result<String>) -> Unit) {
         val streamer = live ?: return callback(Result.failure(FlutterError("not_running", "Capture is not running")))
+        updateLiveOutput(attach = true)
         streamer.createOffer(viewerId, codec) { r ->
             mainHandler.post { callback(r.recoverCatching { throw FlutterError("offer_failed", it.message) }) }
         }
@@ -162,6 +193,16 @@ class ReplayCaptureAndroidPlugin :
 
     override fun liveClose(viewerId: String) {
         live?.close(viewerId)
+        updateLiveOutput(attach = false)
+    }
+
+    /** The live surface is only fed while someone watches: the copy costs GPU time the HQ path needs. */
+    private fun updateLiveOutput(attach: Boolean) {
+        val streamer = live ?: return
+        val want = attach || streamer.viewerCount > 0
+        if (want == liveAttached) return
+        liveAttached = want
+        engine?.setLiveSurface(if (want) streamer.surface else null, LiveStreamer.WIDTH, LiveStreamer.HEIGHT)
     }
 
     override fun liveStats(callback: (Result<List<LiveViewerStats>>) -> Unit) {
@@ -195,6 +236,7 @@ class ReplayCaptureAndroidPlugin :
         engine = null
         live?.release()
         live = null
+        liveAttached = false
         preview?.release()
         preview = null
         outbox.attach(null)
@@ -222,7 +264,10 @@ class ReplayCaptureAndroidPlugin :
         val action = thermalPolicy.onStatus(status) ?: return
         if (action.ordinal >= ThermalAction.PREVIEW_OFF.ordinal) setPreviewEnabled(false)
         if (action.ordinal >= ThermalAction.REDUCE_LIVE_BITRATE.ordinal) live?.setMaxBitrate(THERMAL_LIVE_BITRATE)
-        if (action == ThermalAction.STOP_LIVE) live?.closeAll()
+        if (action == ThermalAction.STOP_LIVE) {
+            live?.closeAll()
+            updateLiveOutput(attach = false)
+        }
         events.onThermal(ThermalEvent(status = status.toLong(), action = action)) {}
     }
 
@@ -272,6 +317,7 @@ class ReplayCaptureAndroidPlugin :
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
         activityBinding = binding
         binding.addRequestPermissionsResultListener(this)
+        binding.activity.application.registerActivityLifecycleCallbacks(lifecycle)
     }
 
     override fun onDetachedFromActivityForConfigChanges() = onDetachedFromActivity()
@@ -279,7 +325,10 @@ class ReplayCaptureAndroidPlugin :
     override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) = onAttachedToActivity(binding)
 
     override fun onDetachedFromActivity() {
-        activityBinding?.removeRequestPermissionsResultListener(this)
+        activityBinding?.let {
+            it.removeRequestPermissionsResultListener(this)
+            it.activity.application.unregisterActivityLifecycleCallbacks(lifecycle)
+        }
         activityBinding = null
     }
 

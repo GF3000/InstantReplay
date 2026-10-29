@@ -130,6 +130,8 @@ internal class LiveStreamer(context: Context, private val emit: (Map<String, Any
         peers.remove(viewerId)?.dispose()
     }
 
+    val viewerCount: Int get() = peers.size
+
     fun closeAll() {
         peers.keys.toList().forEach(::close)
     }

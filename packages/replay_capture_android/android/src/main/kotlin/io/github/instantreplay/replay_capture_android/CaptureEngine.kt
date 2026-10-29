@@ -22,6 +22,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.PowerManager
+import android.os.Process
 import android.util.Range
 import android.view.Surface
 import io.github.instantreplay.replay_capture_android.buffer.RingBuffer
@@ -62,13 +63,13 @@ internal class CaptureEngine(
     private val batteryManager = context.getSystemService(BatteryManager::class.java)
     private val appContext = context.applicationContext
 
-    private val glThread = HandlerThread("ir-gl").apply { start() }
+    private val glThread = HandlerThread("ir-gl", Process.THREAD_PRIORITY_URGENT_DISPLAY).apply { start() }
     private val glHandler = Handler(glThread.looper)
-    private val outThread = HandlerThread("ir-gl-out").apply { start() }
+    private val outThread = HandlerThread("ir-gl-out", Process.THREAD_PRIORITY_DISPLAY).apply { start() }
     private val outHandler = Handler(outThread.looper)
-    private val cameraThread = HandlerThread("ir-camera").apply { start() }
+    private val cameraThread = HandlerThread("ir-camera", Process.THREAD_PRIORITY_URGENT_DISPLAY).apply { start() }
     private val cameraHandler = Handler(cameraThread.looper)
-    private val encoderThread = HandlerThread("ir-encoder").apply { start() }
+    private val encoderThread = HandlerThread("ir-encoder", Process.THREAD_PRIORITY_URGENT_DISPLAY).apply { start() }
     private val encoderHandler = Handler(encoderThread.looper)
     // Stats involve binder calls (battery, thermal headroom); keep them off the GL thread.
     private val statsThread = HandlerThread("ir-stats").apply { start() }
