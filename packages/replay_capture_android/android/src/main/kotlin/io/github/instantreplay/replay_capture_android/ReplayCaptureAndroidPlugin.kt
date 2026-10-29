@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
 import android.view.WindowManager
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
@@ -38,6 +39,9 @@ class ReplayCaptureAndroidPlugin :
     private var live: LiveStreamer? = null
     private var preview: TextureRegistry.SurfaceProducer? = null
     private var previewEnabled = true
+    private var ring: RingBuffer? = null
+    private var ringWindowSeconds = 0
+    private val thermalPolicy = ThermalPolicy()
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         context = binding.applicationContext
@@ -80,7 +84,7 @@ class ReplayCaptureAndroidPlugin :
             bitrate = profile.bitrate.toInt(),
             windowSeconds = request.windowSeconds.toInt(),
         )
-        val ring = RingBuffer(File(context.cacheDir, "ring"), config.windowSeconds * 1_000_000L)
+        val ring = ringFor(config.windowSeconds)
         val producer = textures.createSurfaceProducer().apply { setSize(PREVIEW_WIDTH, PREVIEW_HEIGHT) }
         val capture = CaptureEngine(context, config, ring, ::emit)
         var streamer: LiveStreamer? = null
@@ -112,6 +116,9 @@ class ReplayCaptureAndroidPlugin :
         outbox.attach(ring)
         CaptureService.start(context)
         activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        // The engine only reports changes; a phone that is already hot must degrade from the start.
+        thermalPolicy.reset()
+        applyThermal(context.getSystemService(PowerManager::class.java).currentThermalStatus)
 
         return StartResult(
             textureId = producer.id(),
@@ -164,7 +171,25 @@ class ReplayCaptureAndroidPlugin :
 
     // endregion
 
+    /**
+     * One ring per window size, kept across starts so a clip still waiting for its post-roll keeps
+     * its fragments; each start is a new epoch instead.
+     */
+    private fun ringFor(windowSeconds: Int): RingBuffer {
+        val existing = ring
+        if (existing != null && ringWindowSeconds == windowSeconds) {
+            existing.newEpoch()
+            return existing
+        }
+        return RingBuffer(File(context.cacheDir, "ring"), windowSeconds * 1_000_000L).also {
+            ring = it
+            ringWindowSeconds = windowSeconds
+        }
+    }
+
     private fun stopCapture() {
+        // Ends the epoch so saves waiting for a post-roll that will never come stop waiting now.
+        ring?.newEpoch()
         // Engine first: it stops drawing into the live surface before the streamer is released.
         engine?.release()
         engine = null
@@ -182,13 +207,23 @@ class ReplayCaptureAndroidPlugin :
         mainHandler.post {
             when (event["type"]) {
                 "stats" -> events.onStats(toStats(event)) {}
-                "thermal" -> events.onThermal(
-                    ThermalEvent(status = (event["status"] as Int).toLong(), action = ThermalAction.NONE),
-                ) {}
+                "thermal" -> applyThermal(event["status"] as Int)
                 "camera" -> events.onCameraState(event["state"] as String) {}
                 "error" -> events.onError(event["message"] as String) {}
             }
         }
+    }
+
+    /**
+     * Applies in-process effects up to the escalated action (SPEC §3.6). Lowering fps or resolution
+     * needs a capture restart with another profile, which the Dart side does on the event.
+     */
+    private fun applyThermal(status: Int) {
+        val action = thermalPolicy.onStatus(status) ?: return
+        if (action.ordinal >= ThermalAction.PREVIEW_OFF.ordinal) setPreviewEnabled(false)
+        if (action.ordinal >= ThermalAction.REDUCE_LIVE_BITRATE.ordinal) live?.setMaxBitrate(THERMAL_LIVE_BITRATE)
+        if (action == ThermalAction.STOP_LIVE) live?.closeAll()
+        events.onThermal(ThermalEvent(status = status.toLong(), action = action)) {}
     }
 
     private fun toStats(e: Map<String, Any?>): CaptureStats {
@@ -254,5 +289,6 @@ class ReplayCaptureAndroidPlugin :
         const val PERMISSION_REQUEST = 4207
         const val PREVIEW_WIDTH = 1280
         const val PREVIEW_HEIGHT = 720
+        const val THERMAL_LIVE_BITRATE = 1_500_000
     }
 }
