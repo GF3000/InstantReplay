@@ -10,7 +10,6 @@
   "labEntry": "Lab (Phase 0 harness)",
   "labUnavailable": "The lab is only available on Android.",
   "switchRole": "Switch role",
-  "viewerComingSoon": "The Viewer screen arrives in M4.",
   "cameraStarting": "Starting the camera…",
   "cameraPermissionDenied": "InstantReplay needs camera permission to record.",
   "cameraNoProfiles": "This device has no supported recording quality.",

@@ -41,9 +41,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get switchRole => 'Switch role';
 
   @override
-  String get viewerComingSoon => 'The Viewer screen arrives in M4.';
-
-  @override
   String get cameraStarting => 'Starting the camera…';
 
   @override

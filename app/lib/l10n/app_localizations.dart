@@ -158,12 +158,6 @@ abstract class AppLocalizations {
   /// **'Switch role'**
   String get switchRole;
 
-  /// No description provided for @viewerComingSoon.
-  ///
-  /// In en, this message translates to:
-  /// **'The Viewer screen arrives in M4.'**
-  String get viewerComingSoon;
-
   /// No description provided for @cameraStarting.
   ///
   /// In en, this message translates to:

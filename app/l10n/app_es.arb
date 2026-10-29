@@ -10,7 +10,6 @@
   "labEntry": "Laboratorio (banco de pruebas Fase 0)",
   "labUnavailable": "El laboratorio solo está disponible en Android.",
   "switchRole": "Cambiar de rol",
-  "viewerComingSoon": "La pantalla de Visor llega en M4.",
   "cameraStarting": "Iniciando la cámara…",
   "cameraPermissionDenied": "InstantReplay necesita permiso de cámara para grabar.",
   "cameraNoProfiles": "Este dispositivo no tiene ninguna calidad de grabación compatible.",

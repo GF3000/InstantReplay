@@ -6,13 +6,15 @@
 
 Offline instant replay for team sports. One Android phone on a tripod films continuously and keeps the last minute in a rolling buffer; the coach's phone or tablet watches the live feed and, with one tap, pulls the last 10–60 seconds to review in slow motion, tag and share. No Internet connection needed: everything runs over a local Wi-Fi network (a phone hotspot or a travel router).
 
-> **Status:** design phase. The architecture and requirements are in [docs/SPEC.md](docs/SPEC.md). Phase 0 (native capture spike) is in progress.
+> **Status:** early, working end to end: the Camera records, serves a live view and clips; any browser on the same Wi-Fi is the Viewer (live, save, tag, review). Field testing is next. Design: [docs/SPEC.md](docs/SPEC.md) · UX: [docs/UX.md](docs/UX.md) · Plan: [docs/PLAN-v0.1.md](docs/PLAN-v0.1.md).
+>
+> **Try it:** install the APK on an Android phone (10+), follow the [setup guide](docs/setup-guide.md) (Spanish: [guía de montaje](docs/guia-de-montaje.md)).
 
 ## How it works
 
 - **Camera role** (Android): records 1080p H.264 into a ~80 s ring buffer of 1-second fMP4 fragments, streams a low-latency live view over WebRTC and serves clips over HTTP. Clips are built by concatenating fragments, with no re-encoding and no FFmpeg.
-- **Viewer role** (Android): live view, a big *Save* button with presets, a review player (0.25×/0.5×/1×, frame stepping), sessions, one-tap tags, export to the gallery and the system share sheet.
-- **Web viewer** (any browser, served by the Camera): live view, save, review and download for the current session.
+- **Web Viewer** (any browser on the same Wi-Fi, served by the Camera; scan its QR): live view, a big *Save* button (20 s, or 10/30/60), one-tap tags right after saving, a clip list with thumbnails and tag filters, and a review player (loop, 0.25×/0.5×/1×, frame stepping, download). Clips live in the browser tab for the current session.
+- **Native Viewer** (Android, planned): the same plus a persistent library, gallery export and the system share sheet.
 
 ## Contributing
 
