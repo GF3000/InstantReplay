@@ -1,0 +1,15 @@
+{
+  "@@locale": "en",
+  "appTitle": "InstantReplay",
+  "roleGateTitle": "Choose a role",
+  "roleGateSubtitle": "This device will remember it. You can switch later.",
+  "roleCamera": "Camera",
+  "roleCameraDescription": "Records the game and keeps the replay buffer.",
+  "roleViewer": "Viewer",
+  "roleViewerDescription": "Watches live and saves the plays.",
+  "labEntry": "Lab (Phase 0 harness)",
+  "labUnavailable": "The lab is only available on Android.",
+  "switchRole": "Switch role",
+  "cameraComingSoon": "The Camera screen arrives in M3.",
+  "viewerComingSoon": "The Viewer screen arrives in M4."
+}

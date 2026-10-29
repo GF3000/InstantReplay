@@ -1,23 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import 'spike/spike_page.dart';
+import 'app/app.dart';
+import 'core/preferences.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setPreferredOrientations([DeviceOrientation.landscapeLeft]);
-  runApp(const InstantReplayApp());
-}
-
-class InstantReplayApp extends StatelessWidget {
-  const InstantReplayApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'InstantReplay',
-      theme: ThemeData(colorSchemeSeed: Colors.amber, brightness: Brightness.dark),
-      home: const SpikePage(),
-    );
-  }
+  final prefs = await SharedPreferences.getInstance();
+  runApp(ProviderScope(
+    overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+    child: const InstantReplayApp(),
+  ));
 }
