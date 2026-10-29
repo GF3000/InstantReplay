@@ -3,5 +3,17 @@
     <!-- libwebrtc's NetworkMonitor enumerates interfaces; without these it aborts natively. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <!-- Capture keeps running with the screen off or the app in the background (SPEC §3.5). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
+    <!-- Android 13+: the recording notification. Capture works without it. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
+
+    <application>
+        <service
+            android:name="io.github.instantreplay.replay_capture_android.CaptureService"
+            android:exported="false"
+            android:foregroundServiceType="camera" />
+    </application>
 </manifest>

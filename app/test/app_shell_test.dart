@@ -4,7 +4,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:instant_replay/app/app.dart';
 import 'package:instant_replay/core/capabilities.dart';
 import 'package:instant_replay/core/preferences.dart';
+import 'package:instant_replay/features/camera/capture_layer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'camera/fake_capture_layer.dart';
 
 Future<SharedPreferences> _pumpApp(
   WidgetTester tester, {
@@ -17,6 +20,7 @@ Future<SharedPreferences> _pumpApp(
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
       capabilitiesProvider.overrideWithValue(caps),
+      captureLayerProvider.overrideWithValue(FakeCaptureLayer()),
     ],
     child: const InstantReplayApp(),
   ));
@@ -67,7 +71,7 @@ void main() {
 
   testWidgets('a saved role redirects on launch and can be switched', (tester) async {
     final prefs = await _pumpApp(tester, saved: {'role': 'camera'});
-    expect(find.text('The Camera screen arrives in M3.'), findsOneWidget);
+    expect(find.text('Start operating'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Switch role'));
     await tester.pumpAndSettle();

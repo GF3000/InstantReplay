@@ -158,17 +158,239 @@ abstract class AppLocalizations {
   /// **'Switch role'**
   String get switchRole;
 
-  /// No description provided for @cameraComingSoon.
-  ///
-  /// In en, this message translates to:
-  /// **'The Camera screen arrives in M3.'**
-  String get cameraComingSoon;
-
   /// No description provided for @viewerComingSoon.
   ///
   /// In en, this message translates to:
   /// **'The Viewer screen arrives in M4.'**
   String get viewerComingSoon;
+
+  /// No description provided for @cameraStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting the camera…'**
+  String get cameraStarting;
+
+  /// No description provided for @cameraPermissionDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'InstantReplay needs camera permission to record.'**
+  String get cameraPermissionDenied;
+
+  /// No description provided for @cameraNoProfiles.
+  ///
+  /// In en, this message translates to:
+  /// **'This device has no supported recording quality.'**
+  String get cameraNoProfiles;
+
+  /// No description provided for @cameraStartFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The camera could not start: {error}'**
+  String cameraStartFailed(String error);
+
+  /// No description provided for @cameraRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get cameraRetry;
+
+  /// No description provided for @cameraProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Quality'**
+  String get cameraProfile;
+
+  /// No description provided for @cameraStartOperating.
+  ///
+  /// In en, this message translates to:
+  /// **'Start operating'**
+  String get cameraStartOperating;
+
+  /// No description provided for @cameraOperatingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap anywhere to return to setup'**
+  String get cameraOperatingHint;
+
+  /// No description provided for @cameraOperatingStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'REC · buffer {seconds} s · outbox {clips} · {temperature}'**
+  String cameraOperatingStatus(int seconds, int clips, String temperature);
+
+  /// No description provided for @cameraWaitingForStats.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for statistics…'**
+  String get cameraWaitingForStats;
+
+  /// No description provided for @cameraStatCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera'**
+  String get cameraStatCamera;
+
+  /// No description provided for @cameraStatFps.
+  ///
+  /// In en, this message translates to:
+  /// **'Frame rate'**
+  String get cameraStatFps;
+
+  /// No description provided for @cameraFpsValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{fps} fps'**
+  String cameraFpsValue(String fps);
+
+  /// No description provided for @cameraStatGaps.
+  ///
+  /// In en, this message translates to:
+  /// **'Frame gaps'**
+  String get cameraStatGaps;
+
+  /// No description provided for @cameraGapsValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{total} (camera {camera}, GL {gl})'**
+  String cameraGapsValue(int total, int camera, int gl);
+
+  /// No description provided for @cameraStatBuffer.
+  ///
+  /// In en, this message translates to:
+  /// **'Buffer'**
+  String get cameraStatBuffer;
+
+  /// No description provided for @cameraBufferValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds} s · {megabytes} MB'**
+  String cameraBufferValue(int seconds, String megabytes);
+
+  /// No description provided for @cameraStatOutbox.
+  ///
+  /// In en, this message translates to:
+  /// **'Outbox'**
+  String get cameraStatOutbox;
+
+  /// No description provided for @cameraOutboxValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{clips, plural, =1{1 clip} other{{clips} clips}} · {megabytes} MB'**
+  String cameraOutboxValue(int clips, String megabytes);
+
+  /// No description provided for @cameraStatThermal.
+  ///
+  /// In en, this message translates to:
+  /// **'Thermal status'**
+  String get cameraStatThermal;
+
+  /// No description provided for @cameraStatBattery.
+  ///
+  /// In en, this message translates to:
+  /// **'Battery'**
+  String get cameraStatBattery;
+
+  /// No description provided for @cameraBatteryValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{temperature} · {percent} · {power}'**
+  String cameraBatteryValue(String temperature, String percent, String power);
+
+  /// No description provided for @cameraCharging.
+  ///
+  /// In en, this message translates to:
+  /// **'charging'**
+  String get cameraCharging;
+
+  /// No description provided for @cameraNotCharging.
+  ///
+  /// In en, this message translates to:
+  /// **'not charging'**
+  String get cameraNotCharging;
+
+  /// No description provided for @cameraNotChargingWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Not charging. Connect power for long sessions.'**
+  String get cameraNotChargingWarning;
+
+  /// No description provided for @cameraNotificationsDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications are off, so Android will not show the recording notice. Recording still works.'**
+  String get cameraNotificationsDenied;
+
+  /// No description provided for @cameraErrorsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera errors'**
+  String get cameraErrorsTitle;
+
+  /// No description provided for @cameraDismissErrors.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get cameraDismissErrors;
+
+  /// No description provided for @cameraSaveTestClip.
+  ///
+  /// In en, this message translates to:
+  /// **'Save test clip (last 20 s)'**
+  String get cameraSaveTestClip;
+
+  /// No description provided for @cameraTestClipSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Test clip saved: {seconds} s, {megabytes} MB'**
+  String cameraTestClipSaved(String seconds, String megabytes);
+
+  /// No description provided for @cameraTestClipFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Test clip failed: {error}'**
+  String cameraTestClipFailed(String error);
+
+  /// No description provided for @thermalNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Normal'**
+  String get thermalNone;
+
+  /// No description provided for @thermalLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get thermalLight;
+
+  /// No description provided for @thermalModerate.
+  ///
+  /// In en, this message translates to:
+  /// **'Moderate'**
+  String get thermalModerate;
+
+  /// No description provided for @thermalSevere.
+  ///
+  /// In en, this message translates to:
+  /// **'Severe'**
+  String get thermalSevere;
+
+  /// No description provided for @thermalCritical.
+  ///
+  /// In en, this message translates to:
+  /// **'Critical'**
+  String get thermalCritical;
+
+  /// No description provided for @thermalEmergency.
+  ///
+  /// In en, this message translates to:
+  /// **'Emergency'**
+  String get thermalEmergency;
+
+  /// No description provided for @thermalShutdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Shutdown'**
+  String get thermalShutdown;
 }
 
 class _AppLocalizationsDelegate
