@@ -20,6 +20,8 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (_, state) {
       final caps = ref.read(capabilitiesProvider);
       return switch (state.matchedLocation) {
+        // Without capture (web) the Viewer is the only role: skip the gate, e.g. after a QR scan.
+        '/' when !caps.canCapture => '/viewer',
         '/' => switch (ref.read(roleProvider)) {
             null => null,
             final role => '/${role.name}',

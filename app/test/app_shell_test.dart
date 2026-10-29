@@ -40,11 +40,11 @@ void main() {
     expect(find.text('Lab (Phase 0 harness)'), findsOneWidget);
   });
 
-  testWidgets('role gate offers only Viewer on web', (tester) async {
+  testWidgets('web skips the role gate: the Viewer is the only role', (tester) async {
     await _pumpApp(tester, caps: Capabilities.web);
-    expect(find.text('Camera'), findsNothing);
-    expect(find.text('Viewer'), findsOneWidget);
+    expect(find.text('Choose a role'), findsNothing);
     expect(find.text('Lab (Phase 0 harness)'), findsNothing);
+    expect(find.text('Connect to the camera'), findsWidgets);
   });
 
   testWidgets('renders Spanish strings under the es locale', (tester) async {
@@ -81,6 +81,7 @@ void main() {
 
   testWidgets('a saved Camera role is ignored where capture is unavailable', (tester) async {
     await _pumpApp(tester, caps: Capabilities.web, saved: {'role': 'camera'});
-    expect(find.text('Choose a role'), findsOneWidget);
+    expect(find.text('Choose a role'), findsNothing);
+    expect(find.text('Connect to the camera'), findsWidgets);
   });
 }
