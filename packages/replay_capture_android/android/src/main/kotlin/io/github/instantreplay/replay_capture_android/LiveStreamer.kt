@@ -3,6 +3,7 @@ package io.github.instantreplay.replay_capture_android
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.Surface
 import org.webrtc.DataChannel
 import org.webrtc.DefaultVideoDecoderFactory
@@ -103,6 +104,9 @@ internal class LiveStreamer(context: Context, private val emit: (Map<String, Any
         )
         val codecs = factory.getRtpSenderCapabilities(MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO).codecs
         transceiver.setCodecPreferences(codecs.sortedByDescending { it.name.equals(preferredCodec, ignoreCase = true) })
+        // The bandwidth estimate otherwise starts at ~300 kbps, so the encoder opens at 480×270
+        // and takes ~15 s to ramp up to 720p. LAN viewers can take the target rate right away.
+        if (!pc.setBitrate(MIN_BITRATE, START_BITRATE, MAX_BITRATE)) Log.w(TAG, "setBitrate rejected")
 
         pc.createOffer(object : SdpAdapter() {
             override fun onCreateSuccess(desc: SessionDescription) = pc.setLocalDescription(SdpAdapter(), desc)
@@ -187,6 +191,9 @@ internal class LiveStreamer(context: Context, private val emit: (Map<String, Any
         const val WIDTH = 1280
         const val HEIGHT = 720
         private const val FPS = 30
+        private const val TAG = "LiveStreamer"
+        private const val MIN_BITRATE = 500_000
+        private const val START_BITRATE = 2_000_000
         private const val MAX_BITRATE = 2_500_000
         private const val GATHER_TIMEOUT_MS = 2_000L
     }

@@ -16,6 +16,7 @@ import android.hardware.camera2.TotalCaptureResult
 import android.hardware.camera2.params.OutputConfiguration
 import android.hardware.camera2.params.SessionConfiguration
 import android.opengl.EGLSurface
+import android.opengl.GLES20
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Handler
@@ -26,7 +27,8 @@ import android.view.Surface
 import io.github.instantreplay.replay_capture_android.buffer.RingBuffer
 import io.github.instantreplay.replay_capture_android.buffer.Segmenter
 import io.github.instantreplay.replay_capture_android.gl.EglCore
-import io.github.instantreplay.replay_capture_android.gl.OesRenderer
+import io.github.instantreplay.replay_capture_android.gl.FrameHandoff
+import io.github.instantreplay.replay_capture_android.gl.TextureRenderer
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executor
 import java.util.concurrent.FutureTask
@@ -43,8 +45,10 @@ data class CaptureConfig(
  * Single owner of the camera. Frames land in one OES texture and are fanned out by GL to the
  * HQ encoder surface and the optional preview and live-view (WebRTC) surfaces.
  *
- * Threads: `ir-gl` (EGL, SurfaceTexture, stats), `ir-camera` (Camera2 callbacks),
- * `ir-encoder` (encoder output, segmenting, ring writes).
+ * Threads: `ir-gl` (capture EGL context, SurfaceTexture, HQ encoder input), `ir-gl-out` (shared
+ * EGL context drawing preview and live view from a [FrameHandoff] copy, so their slow swaps never
+ * delay the HQ path), `ir-camera` (Camera2 callbacks), `ir-encoder` (encoder output, segmenting,
+ * ring writes), `ir-stats`.
  */
 internal class CaptureEngine(
     context: Context,
@@ -59,6 +63,8 @@ internal class CaptureEngine(
 
     private val glThread = HandlerThread("ir-gl").apply { start() }
     private val glHandler = Handler(glThread.looper)
+    private val outThread = HandlerThread("ir-gl-out").apply { start() }
+    private val outHandler = Handler(outThread.looper)
     private val cameraThread = HandlerThread("ir-camera").apply { start() }
     private val cameraHandler = Handler(cameraThread.looper)
     private val encoderThread = HandlerThread("ir-encoder").apply { start() }
@@ -69,15 +75,24 @@ internal class CaptureEngine(
 
     // GL-thread state.
     private var egl: EglCore? = null
-    private var renderer: OesRenderer? = null
+    private var renderer: TextureRenderer? = null
+    private var cameraTexture = 0
     private var surfaceTexture: SurfaceTexture? = null
     private var cameraSurface: Surface? = null
     private var encoderEglSurface: EGLSurface? = null
-    private var preview: Output? = null
-    private var live: Output? = null
     private val texMatrix = FloatArray(16)
     @Volatile private var renderedFrames = 0L
-    private var lastDrawNs = 0L
+
+    // Used by both GL threads; created and released on the GL thread.
+    @Volatile private var handoff: FrameHandoff? = null
+
+    // Output-thread state.
+    private var outEgl: EglCore? = null
+    private var outIdle: EGLSurface? = null
+    private var outRenderer: TextureRenderer? = null
+    private var preview: Output? = null
+    private var live: Output? = null
+    @Volatile private var hasOutputs = false
 
     private var encoder: HqEncoder? = null
     private val segmenter = Segmenter(ring, 1_000_000L / config.fps)
@@ -101,7 +116,7 @@ internal class CaptureEngine(
     /** Sets up encoder and GL synchronously, then opens the camera asynchronously. */
     fun start() {
         val (cameraId, fpsRange) = selectCamera()
-        onGl {
+        val captureEgl = onGl {
             val enc = HqEncoder(
                 config, encoderHandler,
                 onTrack = { ring.track = it },
@@ -114,14 +129,25 @@ internal class CaptureEngine(
             val encSurface = core.createWindowSurface(enc.inputSurface)
             encoderEglSurface = encSurface
             core.makeCurrent(encSurface)
-            val gl = OesRenderer()
-            renderer = gl
-            val st = SurfaceTexture(gl.textureId).apply {
+            renderer = TextureRenderer(external = true)
+            cameraTexture = TextureRenderer.createExternalTexture()
+            val outWidth = minOf(config.width, OUT_MAX_WIDTH)
+            handoff = FrameHandoff(outWidth, outWidth * config.height / config.width, useFences = core.glVersion >= 3)
+            val st = SurfaceTexture(cameraTexture).apply {
                 setDefaultBufferSize(config.width, config.height)
                 setOnFrameAvailableListener({ drawFrame() }, glHandler)
             }
             surfaceTexture = st
             cameraSurface = Surface(st)
+            core
+        }
+        onOut {
+            val core = EglCore(shared = captureEgl)
+            outEgl = core
+            val idle = core.createPbufferSurface(1, 1)
+            outIdle = idle
+            core.makeCurrent(idle)
+            outRenderer = TextureRenderer(external = false)
         }
         powerManager.addThermalStatusListener(Executor { statsHandler.post(it) }, thermalListener)
         thermalStatus = powerManager.currentThermalStatus
@@ -130,18 +156,24 @@ internal class CaptureEngine(
     }
 
     /** Replaces the preview target; pass null to stop drawing it. Blocks until applied. */
-    fun setPreviewSurface(surface: Surface?, width: Int, height: Int) = onGl {
+    fun setPreviewSurface(surface: Surface?, width: Int, height: Int) = onOut {
         preview = replaceOutput(preview, surface, width, height)
+        hasOutputs = preview != null || live != null
     }
 
     /** Replaces the live-view (WebRTC) target; pass null to stop drawing it. Blocks until applied. */
-    fun setLiveSurface(surface: Surface?, width: Int, height: Int) = onGl {
+    fun setLiveSurface(surface: Surface?, width: Int, height: Int) = onOut {
         live = replaceOutput(live, surface, width, height)
+        hasOutputs = preview != null || live != null
     }
 
+    // Output thread.
     private fun replaceOutput(current: Output?, surface: Surface?, width: Int, height: Int): Output? {
-        val core = egl ?: return null
-        current?.let { core.releaseSurface(it.surface) }
+        val core = outEgl ?: return null
+        current?.let {
+            outIdle?.let(core::makeCurrent)
+            core.releaseSurface(it.surface)
+        }
         return surface?.let {
             val egl = core.createWindowSurface(it)
             core.setSwapInterval(egl, 0)
@@ -157,22 +189,45 @@ internal class CaptureEngine(
         statsThread.quitSafely()
         session?.close()
         camera?.close()
+        // The output context goes first: it uses the capture context's display, which the capture
+        // context terminates. Frames handed off meanwhile find outEgl null and are ignored.
+        onOut {
+            hasOutputs = false
+            outHandler.removeCallbacksAndMessages(null)
+            val core = outEgl
+            val idle = outIdle
+            if (core != null && idle != null) {
+                core.makeCurrent(idle)
+                outRenderer?.release()
+                listOfNotNull(preview, live).forEach { core.releaseSurface(it.surface) }
+                core.release()
+                core.releaseSurface(idle)
+            }
+            outEgl = null
+            preview = null
+            live = null
+        }
+        outThread.quitSafely()
+        outThread.join()
         onGl {
             glHandler.removeCallbacksAndMessages(null)
             val core = egl
             if (core != null) {
-                preview?.let { core.releaseSurface(it.surface) }
-                live?.let { core.releaseSurface(it.surface) }
-                encoderEglSurface?.let { core.releaseSurface(it) }
+                encoderEglSurface?.let(core::makeCurrent)
+                handoff?.release()
                 renderer?.release()
+                GLES20.glDeleteTextures(1, intArrayOf(cameraTexture), 0)
+                encoderEglSurface?.let { core.releaseSurface(it) }
                 core.release()
             }
+            handoff = null
             surfaceTexture?.release()
             cameraSurface?.release()
             egl = null
         }
         encoder?.release()
         glThread.quitSafely()
+        glThread.join()
         cameraThread.quitSafely()
         encoderThread.quitSafely()
     }
@@ -257,7 +312,8 @@ internal class CaptureEngine(
     private var lastGlNs = 0L
     @Volatile private var slowDraws = 0L
     @Volatile private var maxDrawMs = 0.0
-    @Volatile private var skippedSecondary = 0L
+    @Volatile private var secondaryFrames = 0L
+    @Volatile private var maxSecondaryMs = 0.0
 
     private val captureCounter = object : CameraCaptureSession.CaptureCallback() {
         override fun onCaptureCompleted(s: CameraCaptureSession, request: CaptureRequest, result: TotalCaptureResult) {
@@ -277,6 +333,7 @@ internal class CaptureEngine(
         val st = surfaceTexture ?: return
         val gl = renderer ?: return
         val encSurface = encoderEglSurface ?: return
+        val frames = handoff ?: return
         val started = System.nanoTime()
 
         core.makeCurrent(encSurface)
@@ -285,27 +342,42 @@ internal class CaptureEngine(
         val ts = st.timestamp
         if (lastGlNs != 0L && ts - lastGlNs > frameIntervalNs * 3 / 2) glGaps++
         lastGlNs = ts
-        gl.draw(texMatrix, config.width, config.height)
+        gl.draw(cameraTexture, config.width, config.height, texMatrix)
         core.setPresentationTime(encSurface, ts)
         core.swapBuffers(encSurface)
         renderedFrames++
 
-        // Preview and live view at most 30 fps. The HQ encoder must get every frame, so if the
-        // previous frame ran long, skip the secondary outputs once to catch up.
-        val behind = lastDrawNs > frameIntervalNs * 6 / 10
-        if (behind) skippedSecondary++
-        if (!behind && (config.fps <= 30 || renderedFrames % 2 == 0L)) {
-            for (output in listOfNotNull(preview, live)) {
-                core.makeCurrent(output.surface)
-                gl.draw(texMatrix, output.width, output.height)
-                core.swapBuffers(output.surface)
-            }
+        // Preview and live view at most 30 fps. Only a cheap copy happens here; the output thread
+        // draws and swaps them, so a slow consumer can never delay the next HQ frame.
+        if (hasOutputs && (config.fps <= 30 || renderedFrames % 2 == 0L)) {
+            val wake = frames.publish { gl.draw(cameraTexture, frames.width, frames.height, texMatrix) }
+            if (wake) outHandler.post(::drawOutputs)
         }
 
-        lastDrawNs = System.nanoTime() - started
-        val drawMs = lastDrawNs / 1e6
+        val drawMs = (System.nanoTime() - started) / 1e6
         if (drawMs > frameIntervalNs / 1e6) slowDraws++
         if (drawMs > maxDrawMs) maxDrawMs = drawMs
+    }
+
+    // Output thread: draws the latest handed-off frame; older ones were dropped by publish().
+    private fun drawOutputs() {
+        val core = outEgl ?: return
+        val idle = outIdle ?: return
+        val gl = outRenderer ?: return
+        val frames = handoff ?: return
+        val started = System.nanoTime()
+        val outputs = listOfNotNull(preview, live)
+        core.makeCurrent(outputs.firstOrNull()?.surface ?: idle)
+        frames.consume { texture ->
+            for (output in outputs) {
+                core.makeCurrent(output.surface)
+                gl.draw(texture, output.width, output.height)
+                core.swapBuffers(output.surface)
+            }
+            secondaryFrames++
+        }
+        val ms = (System.nanoTime() - started) / 1e6
+        if (ms > maxSecondaryMs) maxSecondaryMs = ms
     }
 
     private class Output(val surface: EGLSurface, val width: Int, val height: Int)
@@ -331,13 +403,16 @@ internal class CaptureEngine(
                 "glGaps" to glGaps,
                 "slowDraws" to slowDraws,
                 "maxDrawMs" to maxDrawMs,
-                "skippedSecondary" to skippedSecondary,
+                "secondaryFrames" to secondaryFrames,
+                "secondaryDropped" to (handoff?.dropped ?: 0L),
+                "maxSecondaryMs" to maxSecondaryMs,
                 "thermalStatus" to thermalStatus,
                 "thermalHeadroom" to headroom,
             ) + ring.stats() + batteryStats(),
         )
         lastStatsFrames = frames
         maxDrawMs = 0.0 // per stats interval
+        maxSecondaryMs = 0.0
         statsHandler.postDelayed(::emitStats, STATS_INTERVAL_MS)
     }
 
@@ -358,9 +433,13 @@ internal class CaptureEngine(
 
     private fun emitError(message: String) = emit(mapOf("type" to "error", "message" to message))
 
-    private fun <T> onGl(block: () -> T): T {
+    private fun <T> onGl(block: () -> T): T = runOn(glHandler, block)
+
+    private fun <T> onOut(block: () -> T): T = runOn(outHandler, block)
+
+    private fun <T> runOn(handler: Handler, block: () -> T): T {
         val task = FutureTask(block)
-        glHandler.post(task)
+        handler.post(task)
         return try {
             task.get()
         } catch (e: ExecutionException) {
@@ -370,5 +449,7 @@ internal class CaptureEngine(
 
     private companion object {
         const val STATS_INTERVAL_MS = 1000L
+        // Preview and live view are at most 720p; the handoff copy needs no more.
+        const val OUT_MAX_WIDTH = 1280
     }
 }
