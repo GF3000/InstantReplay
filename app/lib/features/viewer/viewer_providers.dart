@@ -87,7 +87,9 @@ class ViewerSetupNotifier extends Notifier<ViewerSetup> {
     final prefs = ref.watch(sharedPreferencesProvider);
     final page = ref.watch(pageUriProvider);
     if (page != null) {
-      final base = normalizeCameraAddress(page.origin);
+      // `?camera=http://ip:8080` points a Viewer served from elsewhere (e.g. `flutter run -d chrome`)
+      // at a Camera; normally the Camera serves the page, so its origin is the Camera.
+      final base = normalizeCameraAddress(page.queryParameters['camera'] ?? page.origin);
       if (base == null) return const ViewerSetup(addressFixed: true);
       // The Camera's QR opens `http://ip:port/?k=<token>`: take the token and hide it.
       final fromQr = page.queryParameters[Api.tokenParam];
