@@ -45,7 +45,7 @@ jobs:
             echo "No app tests yet; skipping."
           fi
 
-  # Debug APK build plus the capture plugin's Kotlin JVM unit tests.
+  # Debug APK (with the offline web Viewer bundle inside) plus the capture plugin's Kotlin JVM unit tests.
   android:
     runs-on: ubuntu-latest
     steps:
@@ -66,10 +66,11 @@ jobs:
       - name: Get dependencies (workspace root)
         run: flutter pub get
 
+      # Web build (local CanvasKit) + external-host check + copy into Android assets + APK,
+      # so the APK artifact carries the web Viewer bundle (SPEC §6).
       # Also generates app/android/local.properties, which Gradle needs below.
-      - name: Build debug APK
-        working-directory: app
-        run: flutter build apk --debug
+      - name: Build debug APK with the web bundle
+        run: bash tool/build_apk.sh --debug
 
       - name: Kotlin unit tests (replay_capture_android)
         working-directory: app/android
@@ -81,7 +82,7 @@ jobs:
           path: app/build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
 
-  # Release web build of the viewer, published as an artifact.
+  # Release web build of the viewer (same offline flags as the APK bundle), published as an artifact.
   web:
     runs-on: ubuntu-latest
     steps:
@@ -98,7 +99,7 @@ jobs:
 
       - name: Build web
         working-directory: app
-        run: flutter build web --release
+        run: flutter build web --release --no-web-resources-cdn
 
       - uses: actions/upload-artifact@v4
         with:
