@@ -9,6 +9,8 @@ data class TrackInfo(
     val height: Int,
     val sps: ByteArray,
     val pps: ByteArray,
+    /** Clockwise display rotation written to the track matrix: 0 or 180 (landscape only). */
+    val rotationDeg: Int = 0,
 )
 
 /** One encoded access unit in AVCC (length-prefixed) form. */
@@ -54,7 +56,7 @@ object Fmp4 {
                 fullBox("tkhd", 0, 0x000003) {
                     u32(0); u32(0); u32(TRACK_ID); u32(0); u32(durationTicks.toInt())
                     u32(0); u32(0); u16(0); u16(0); u16(0); u16(0)
-                    UNITY_MATRIX.forEach { u32(it) }
+                    trackMatrix(track).forEach { u32(it) }
                     u32(track.width shl 16); u32(track.height shl 16)
                 }
                 box("mdia") {
@@ -87,6 +89,13 @@ object Fmp4 {
             }
         }
     }.toByteArray()
+
+    /** ISO/IEC 14496-12 display matrix (16.16 fixed point, w in 2.30). */
+    internal fun trackMatrix(track: TrackInfo): IntArray = when (track.rotationDeg) {
+        0 -> UNITY_MATRIX
+        180 -> intArrayOf(-0x10000, 0, 0, 0, -0x10000, 0, track.width shl 16, track.height shl 16, 0x40000000)
+        else -> error("Unsupported track rotation ${track.rotationDeg}")
+    }
 
     private fun BoxWriter.avc1(track: TrackInfo) = box("avc1") {
         zeros(6); u16(1)                    // reserved, data_reference_index

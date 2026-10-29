@@ -346,9 +346,11 @@ Why 400 ms for N1/N2: the live view is used to decide *when* to press Save, not 
 | Live view (N2) | 720p30 H.264 (hardware encoder) to Chrome over a Windows hotspot; 333–350 ms glass-to-glass, 0 packets lost |
 | Library coexistence | Plugin and `flutter_webrtc` share `io.github.webrtc-sdk:android`; no duplicate classes. Requires `ACCESS_NETWORK_STATE`, otherwise libwebrtc aborts natively |
 | Thermal, 10 min | Status `none`, battery 40.5 → 41.8 °C, fps unaffected |
-| Frame gaps | Was ~0.3 %, mostly in the GL thread. With non-blocking secondary outputs and stats off the GL thread, HQ gaps equal camera gaps (2, at startup). Cost: preview/live skip ~16 % of frames (live ~22 fps). v0.1: render secondary outputs on their own thread with a shared EGL context |
+| Frame gaps (M2) | The camera feeds the HQ encoder directly (two Camera2 outputs: 1080p encoder + 720p texture), so GL can't drop recorded frames. Preview/live render on their own GL thread at 30 fps. Screen on: 0 gaps. Screen off: the GL path lost ~6 frames/s; the direct path loses none, but the camera itself skips frames for ~1 min after screen-off (181 in one test), then holds 30 fps. Recommended setup: operating mode (screen on, black) |
 | 1080p60 | Not available: regular sessions top out at 30 fps (`aeAvailableTargetFpsRanges` max [30,30]); 60 fps only exists inside constrained high-speed sessions at 120 fps. Decision: offer each profile only when the device's regular session supports it |
-| Pending | 30-min run without gaps |
+| Image orientation | Camera2 tags SurfaceTexture outputs with a portrait-preview rotation; stripped in GL. The encoder stream keeps the sensor's landscape frame (180° sensors via the MP4 track matrix) |
+| Clip format | fMP4 + `sidx` plays and seeks in the Xiaomi gallery and in WhatsApp: no remux |
+| Pending | 30-min soak on the final build; first live connection can fail (offer without ICE candidates → trickle ICE in M3) |
 
 ### v0.1 — MVP
 Roles, pairing (QR, code, NSD), ring buffer + outbox + API v1, transfer with ACK/resume, sessions/clips/templates, player (speed, frame step), live view (native + web), web viewer (session-only), export plain clip to gallery/share, thermal policy, operating mode, es/en, dark theme, CI building APK + web, GitHub Release.

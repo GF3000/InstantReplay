@@ -11,32 +11,48 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 /// Phase 0 test server: trigger saves and inspect clips from a laptop browser on the same Wi-Fi.
 class SpikeServer {
-  SpikeServer({required this.clipsDir, required this.stats, required this.save});
+  SpikeServer({required this.stats, required this.save});
 
-  final String clipsDir;
-  final Map<Object?, Object?> Function() stats;
-  final Future<SavedClip> Function(double pre, double post) save;
+  final CaptureStats? Function() stats;
+  final Future<ClipInfo> Function(double pre, double post) save;
 
+  final _capture = ReplayCapture.instance;
   HttpServer? _server;
 
   Future<int> start({int port = 8080}) async {
     final router = Router()
       ..get('/', (Request _) => Response.ok(_page, headers: {'content-type': 'text/html; charset=utf-8'}))
-      ..get('/api/stats', (Request _) => _json(stats().map((k, v) => MapEntry('$k', v))))
-      ..get('/api/clips', (Request _) => _json(_listClips()))
+      ..get('/api/stats', (Request _) => _json(_statsJson(stats())))
+      ..get('/api/clips', (Request _) async => _json([for (final c in await _readyClips()) _clipJson(c)]))
       ..post('/api/save', (Request req) async {
         final pre = double.tryParse(req.url.queryParameters['pre'] ?? '') ?? 20;
         final post = double.tryParse(req.url.queryParameters['post'] ?? '') ?? 2;
         try {
-          return _json((await save(pre, post)).toJson());
+          return _json(_clipJson(await save(pre, post)));
         } catch (e) {
           return Response.internalServerError(body: '$e');
         }
       })
       ..get('/live', (Request _) => Response.ok(_livePage, headers: {'content-type': 'text/html; charset=utf-8'}))
-      ..get('/api/live-stats', (Request _) async => _json(await ReplayCapture.liveStats()))
+      ..get('/api/live-stats', (Request _) async => _json([
+            for (final s in await _capture.liveStats())
+              {
+                'viewer': s.viewerId,
+                'codec': s.codec,
+                'encoderImplementation': s.encoderImplementation,
+                'framesPerSecond': s.framesPerSecond,
+                'frameWidth': s.frameWidth,
+                'frameHeight': s.frameHeight,
+                'qualityLimitationReason': s.qualityLimitationReason,
+              },
+          ]))
       ..get('/ws', webSocketHandler(_onViewer))
-      ..mount('/clips/', createStaticHandler(clipsDir));
+      ..get('/clips/<file>', (Request req, String file) async {
+        final clip = await _capture.getClip(file.replaceAll('.mp4', ''));
+        final path = clip?.path;
+        if (path == null) return Response.notFound('No such clip');
+        return createFileHandler(path, url: req.url.path, contentType: 'video/mp4')(req);
+      });
 
     _server = await io.serve(router.call, InternetAddress.anyIPv4, port);
     return _server!.port;
@@ -53,26 +69,53 @@ class SpikeServer {
         try {
           switch (msg['type']) {
             case 'hello':
-              final sdp = await ReplayCapture.liveOffer(viewerId, codec: (msg['codec'] as String?) ?? 'H264');
+              final sdp = await _capture.liveOffer(viewerId, codec: (msg['codec'] as String?) ?? 'H264');
               ws.sink.add(jsonEncode({'type': 'offer', 'sdp': sdp}));
             case 'answer':
-              await ReplayCapture.liveAnswer(viewerId, msg['sdp']! as String);
+              await _capture.liveAnswer(viewerId, msg['sdp']! as String);
           }
         } catch (e) {
           ws.sink.add(jsonEncode({'type': 'error', 'message': '$e'}));
         }
       },
-      onDone: () => ReplayCapture.liveClose(viewerId),
+      onDone: () => _capture.liveClose(viewerId),
     );
   }
 
-  List<Map<String, Object>> _listClips() {
-    final files = Directory(clipsDir).listSync().whereType<File>().where((f) => f.path.endsWith('.mp4')).toList()
-      ..sort((a, b) => b.path.compareTo(a.path));
-    return [
-      for (final f in files) {'name': f.uri.pathSegments.last, 'bytes': f.lengthSync()},
-    ];
-  }
+  Future<List<ClipInfo>> _readyClips() async => [
+        for (final c in await _capture.listClips())
+          if (c.state == ClipState.ready) c,
+      ]..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
+
+  // `name` is what the page links to under /clips/.
+  Map<String, Object?> _clipJson(ClipInfo c) => {
+        'name': '${c.id}.mp4',
+        'bytes': c.bytes,
+        'durationMs': c.durationMs,
+        'fragments': c.fragments,
+        'assemblyMs': c.assemblyMs,
+        'extraPreRollMs': c.extraPreRollMs,
+        'sha256': c.sha256,
+      };
+
+  Map<String, Object?> _statsJson(CaptureStats? s) => s == null
+      ? const {}
+      : {
+          'fps': s.fps,
+          'encodedFrames': s.encodedFrames,
+          'gaps': s.gaps,
+          'cameraGaps': s.cameraGaps,
+          'glGaps': s.glGaps,
+          'bufferMs': s.bufferMs,
+          'bufferBytes': s.bufferBytes,
+          'outboxClips': s.outboxClips,
+          'outboxBytes': s.outboxBytes,
+          'thermalStatus': s.thermalStatus,
+          'thermalHeadroom': s.thermalHeadroom,
+          'batteryTempC': s.batteryTempC,
+          'batteryPercent': s.batteryPercent,
+          'plugged': s.plugged,
+        };
 
   Response _json(Object body) =>
       Response.ok(jsonEncode(body), headers: {'content-type': 'application/json'});

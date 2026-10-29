@@ -1,123 +1,85 @@
-import 'package:flutter/services.dart';
+import 'dart:async';
 
-/// Encoder/camera profile for the Camera role.
-class CaptureProfile {
-  const CaptureProfile({
-    required this.label,
-    required this.width,
-    required this.height,
-    required this.fps,
-    required this.bitrate,
-  });
+import 'src/capture_api.g.dart';
 
-  final String label;
-  final int width;
-  final int height;
-  final int fps;
-  final int bitrate;
+export 'src/capture_api.g.dart'
+    show
+        CaptureProfile,
+        CaptureStats,
+        ClipInfo,
+        ClipState,
+        LiveViewerStats,
+        SaveRequest,
+        StartRequest,
+        StartResult,
+        ThermalAction,
+        ThermalEvent;
 
-  static const low = CaptureProfile(label: '720p30', width: 1280, height: 720, fps: 30, bitrate: 5000000);
-  static const standard =
-      CaptureProfile(label: '1080p30', width: 1920, height: 1080, fps: 30, bitrate: 12000000);
-  static const high = CaptureProfile(label: '1080p60', width: 1920, height: 1080, fps: 60, bitrate: 20000000);
-
-  static const all = [low, standard, high];
-}
-
-class CaptureSession {
-  const CaptureSession({
-    required this.textureId,
-    required this.clipsDir,
-    required this.encoder,
-    required this.highProfile,
-    required this.sensorOrientation,
-  });
-
-  final int textureId;
-  final String clipsDir;
-  final String encoder;
-  final bool highProfile;
-  final int sensorOrientation;
-}
-
-class SavedClip {
-  SavedClip.fromMap(Map<Object?, Object?> m)
-      : path = m['path']! as String,
-        name = m['name']! as String,
-        bytes = m['bytes']! as int,
-        durationMs = m['durationMs']! as int,
-        fragments = m['fragments']! as int,
-        assemblyMs = m['assemblyMs']! as int,
-        extraPreRollMs = m['extraPreRollMs']! as int;
-
-  final String path;
-  final String name;
-  final int bytes;
-  final int durationMs;
-  final int fragments;
-  final int assemblyMs;
-  final int extraPreRollMs;
-
-  Map<String, Object> toJson() => {
-        'name': name,
-        'bytes': bytes,
-        'durationMs': durationMs,
-        'fragments': fragments,
-        'assemblyMs': assemblyMs,
-        'extraPreRollMs': extraPreRollMs,
-      };
-}
-
-/// Dart facade over the native capture pipeline (camera → GL → H.264 → fMP4 ring buffer).
-class ReplayCapture {
-  static const _methods = MethodChannel('instant_replay/capture');
-  static const _events = EventChannel('instant_replay/capture/events');
-
-  /// Native events as maps with a `type` key: `stats`, `thermal`, `camera`, `error`.
-  static final Stream<Map<Object?, Object?>> events =
-      _events.receiveBroadcastStream().map((e) => e as Map<Object?, Object?>);
-
-  static Future<bool> requestPermission() async =>
-      await _methods.invokeMethod<bool>('requestPermission') ?? false;
-
-  static Future<CaptureSession> start(CaptureProfile profile, {int windowSeconds = 80}) async {
-    final r = (await _methods.invokeMapMethod<String, Object?>('start', {
-      'width': profile.width,
-      'height': profile.height,
-      'fps': profile.fps,
-      'bitrate': profile.bitrate,
-      'windowSeconds': windowSeconds,
-    }))!;
-    return CaptureSession(
-      textureId: r['textureId']! as int,
-      clipsDir: r['clipsDir']! as String,
-      encoder: r['encoder']! as String,
-      highProfile: r['highProfile']! as bool,
-      sensorOrientation: r['sensorOrientation']! as int,
-    );
+/// Dart facade over the native capture pipeline (camera → GL → H.264 → fMP4 ring buffer → outbox).
+class ReplayCapture implements CaptureEventsApi {
+  ReplayCapture._() {
+    CaptureEventsApi.setUp(this);
   }
 
-  static Future<void> stop() => _methods.invokeMethod('stop');
+  static final instance = ReplayCapture._();
 
-  /// Waits for [postSeconds] of post-roll, then writes the clip. Resolves when the file is ready.
-  static Future<SavedClip> saveClip({required double preSeconds, double postSeconds = 0}) async {
-    final r = await _methods.invokeMapMethod<Object?, Object?>('saveClip', {
-      'preSeconds': preSeconds,
-      'postSeconds': postSeconds,
-    });
-    return SavedClip.fromMap(r!);
-  }
+  final _host = CaptureHostApi();
+  final _stats = StreamController<CaptureStats>.broadcast();
+  final _thermal = StreamController<ThermalEvent>.broadcast();
+  final _cameraState = StreamController<String>.broadcast();
+  final _errors = StreamController<String>.broadcast();
+  final _clips = StreamController<ClipInfo>.broadcast();
 
-  /// Creates a send-only WebRTC connection for [viewerId]; returns the complete offer SDP
-  /// (non-trickle). [codec] is the preferred video codec name, e.g. `H264` or `VP8`.
-  static Future<String> liveOffer(String viewerId, {String codec = 'H264'}) async =>
-      (await _methods.invokeMethod<String>('liveOffer', {'viewerId': viewerId, 'codec': codec}))!;
+  /// About once per second while capturing.
+  Stream<CaptureStats> get stats => _stats.stream;
+  Stream<ThermalEvent> get thermal => _thermal.stream;
+  Stream<String> get cameraState => _cameraState.stream;
+  Stream<String> get errors => _errors.stream;
 
-  static Future<void> liveAnswer(String viewerId, String sdp) =>
-      _methods.invokeMethod('liveAnswer', {'viewerId': viewerId, 'sdp': sdp});
+  /// Every outbox state change (recording, ready, acked, expired).
+  Stream<ClipInfo> get clipChanges => _clips.stream;
 
-  static Future<void> liveClose(String viewerId) => _methods.invokeMethod('liveClose', {'viewerId': viewerId});
+  Future<bool> requestPermission() => _host.requestPermission();
 
-  /// Outbound video stats per viewer (codec, encoder implementation, fps, resolution).
-  static Future<List<Object?>> liveStats() async => await _methods.invokeListMethod<Object?>('liveStats') ?? [];
+  Future<List<CaptureProfile>> supportedProfiles() => _host.supportedProfiles();
+
+  Future<StartResult> start(String profileId, {int windowSeconds = 80}) =>
+      _host.start(StartRequest(profileId: profileId, windowSeconds: windowSeconds));
+
+  Future<void> stop() => _host.stop();
+
+  Future<void> setPreviewEnabled(bool enabled) => _host.setPreviewEnabled(enabled);
+
+  /// Completes when the clip is ready, after [postSeconds] of post-roll.
+  Future<ClipInfo> saveClip({required String requestId, required double preSeconds, double postSeconds = 0}) =>
+      _host.saveClip(SaveRequest(requestId: requestId, preSeconds: preSeconds, postSeconds: postSeconds));
+
+  Future<List<ClipInfo>> listClips() => _host.listClips();
+
+  Future<ClipInfo?> getClip(String id) => _host.getClip(id);
+
+  Future<bool> ackClip(String id, String sha256) => _host.ackClip(id, sha256);
+
+  Future<String> liveOffer(String viewerId, {String codec = 'H264'}) => _host.liveOffer(viewerId, codec);
+
+  Future<void> liveAnswer(String viewerId, String sdp) => _host.liveAnswer(viewerId, sdp);
+
+  Future<void> liveClose(String viewerId) => _host.liveClose(viewerId);
+
+  Future<List<LiveViewerStats>> liveStats() => _host.liveStats();
+
+  @override
+  void onStats(CaptureStats stats) => _stats.add(stats);
+
+  @override
+  void onThermal(ThermalEvent event) => _thermal.add(event);
+
+  @override
+  void onCameraState(String state) => _cameraState.add(state);
+
+  @override
+  void onError(String message) => _errors.add(message);
+
+  @override
+  void onClipChanged(ClipInfo clip) => _clips.add(clip);
 }

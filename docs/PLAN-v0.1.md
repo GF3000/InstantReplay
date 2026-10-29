@@ -47,8 +47,7 @@ Sizes: **S** ≈ one sitting · **M** ≈ a few sittings · **L** ≈ a week of 
 | 2.7 | Thermal policy (SPEC §3.6) as events | S | Simulated status via debug hook |
 | 2.8 | Live start bitrate (skip the 480p ramp-up) via `setBitrate` | S | First seconds already ≥ 960×540 |
 
-**Decision point (in 2.5):** keep clips as fMP4 + `sidx`, or remux to progressive MP4 on the Camera.
-Test: save an fMP4 clip to the gallery with `gal` and share it to WhatsApp. If both work, keep fMP4 everywhere; otherwise remux on the Camera at assembly time.
+**Decision (2026-10-29): keep fMP4 + `sidx` everywhere.** A 13 s clip copied to the gallery of the reference phone plays and seeks in the Xiaomi gallery and sends and plays in WhatsApp. No remux step on the Camera.
 
 ### M3 — Protocol and Camera server (M)
 | # | Task | Size | Done when |
@@ -89,6 +88,18 @@ Test: save an fMP4 clip to the gallery with `gal` and share it to WhatsApp. If b
 | 6.4 | Setup guides (hotspot / travel router / tripod), README update in en + es | S | — |
 
 ---
+
+## Revised order (2026-10-29): vertical slice first
+
+Only one Android device is available for now, and the Viewer can run in a PC browser. So instead of
+finishing M3 and then M4, the next step is a thin end-to-end slice:
+
+1. **Slice S1, Camera side:** 3.1 protocol, 3.2 API v1 (pair, save, download, ack), 3.3 WS hub with
+   **trickle ICE**, QR + code on the Camera screen (part of 3.4/3.5), and the Camera serving the web bundle.
+2. **Slice S1, Viewer side (web first):** connect with code, live view, Save with presets, download, review
+   loop with speeds (4.2, 4.3, a minimal 4.7, 5.1, 5.2). The Dart code is shared with the native Viewer.
+3. Then, once a second Android device is available: native Viewer extras (4.1 NSD/QR scan, 4.4–4.9).
+4. The rest of M3 (NSD announce, full Camera UI), M5 polish, and M6.
 
 ## Order and dependencies
 

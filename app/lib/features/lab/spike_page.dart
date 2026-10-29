@@ -6,8 +6,8 @@ import 'package:replay_capture_android/replay_capture_android.dart';
 
 import 'spike_server.dart';
 
-/// Phase 0 harness: runs the capture pipeline, saves clips, serves them on the LAN and
-/// logs a soak-test CSV (every 10 s) next to the clips.
+/// Phase 0 harness: runs the capture pipeline, saves clips and serves them on the LAN.
+/// Soak tests poll `/api/stats` from a PC (see docs/dev-setup.md).
 class SpikePage extends StatefulWidget {
   const SpikePage({super.key});
 
@@ -18,70 +18,66 @@ class SpikePage extends StatefulWidget {
 class _SpikePageState extends State<SpikePage> {
   static const _thermalNames = ['none', 'light', 'moderate', 'severe', 'critical', 'emergency', 'shutdown'];
 
-  CaptureProfile _profile = CaptureProfile.standard;
-  CaptureSession? _session;
+  final _capture = ReplayCapture.instance;
+  List<CaptureProfile> _profiles = const [];
+  String? _profileId;
+  StartResult? _session;
   SpikeServer? _server;
   String? _serverUrl;
-  Map<Object?, Object?> _stats = const {};
+  CaptureStats? _stats;
   final List<String> _log = [];
-  StreamSubscription<Map<Object?, Object?>>? _events;
-  IOSink? _soakCsv;
-  DateTime? _startedAt;
-  int _statsCount = 0;
+  final List<StreamSubscription<Object>> _subs = [];
   bool _saving = false;
 
   @override
   void initState() {
     super.initState();
-    _events = ReplayCapture.events.listen(_onEvent);
+    _subs
+      ..add(_capture.stats.listen((s) => setState(() => _stats = s)))
+      ..add(_capture.errors.listen((m) => _addLog('ERROR $m')))
+      ..add(_capture.cameraState.listen((s) => _addLog('camera: $s')))
+      ..add(_capture.thermal.listen((t) => _addLog('thermal: ${t.status} → ${t.action.name}')));
+    _capture.supportedProfiles().then((p) => setState(() {
+          _profiles = p;
+          _profileId = p.any((x) => x.id == '1080p30') ? '1080p30' : p.firstOrNull?.id;
+        }));
   }
 
   @override
   void dispose() {
-    _events?.cancel();
+    for (final s in _subs) {
+      s.cancel();
+    }
     _stop();
     super.dispose();
   }
 
-  void _onEvent(Map<Object?, Object?> e) {
-    switch (e['type']) {
-      case 'stats':
-        setState(() => _stats = e);
-        if (++_statsCount % 10 == 0) _writeSoakRow(e);
-      case 'error':
-        _addLog('ERROR ${e['message']}');
-      default:
-        _addLog('$e');
-    }
+  void _addLog(String line) {
+    if (!mounted) return;
+    setState(() {
+      _log.insert(0, '${TimeOfDay.now().format(context)}  $line');
+      if (_log.length > 50) _log.removeLast();
+    });
   }
 
-  void _addLog(String line) => setState(() {
-        _log.insert(0, '${TimeOfDay.now().format(context)}  $line');
-        if (_log.length > 50) _log.removeLast();
-      });
-
   Future<void> _start() async {
-    if (!await ReplayCapture.requestPermission()) {
+    final profileId = _profileId;
+    if (profileId == null) return;
+    if (!await _capture.requestPermission()) {
       _addLog('Camera permission denied');
       return;
     }
     try {
-      final session = await ReplayCapture.start(_profile);
-      final server = SpikeServer(clipsDir: session.clipsDir, stats: () => _stats, save: _save);
+      final session = await _capture.start(profileId);
+      final server = SpikeServer(stats: () => _stats, save: _save);
       final port = await server.start();
       final ip = await _localIp();
-      final stamp = DateTime.now().toIso8601String().replaceAll(':', '-').split('.').first;
-      _soakCsv = File('${session.clipsDir}/soak_${_profile.label}_$stamp.csv').openWrite()
-        ..writeln('elapsed_s,fps,encoded_frames,gaps,thermal_status,thermal_headroom,buffer_ms,buffer_bytes,'
-            'battery_temp_c,battery_pct,plugged,battery_current_ma');
       setState(() {
         _session = session;
         _server = server;
         _serverUrl = 'http://$ip:$port';
-        _startedAt = DateTime.now();
-        _statsCount = 0;
       });
-      _addLog('Started ${_profile.label} · ${session.encoder} · High=${session.highProfile} · '
+      _addLog('Started $profileId · ${session.encoder} · High=${session.highProfile} · '
           'sensor ${session.sensorOrientation}°');
     } catch (e) {
       _addLog('Start failed: $e');
@@ -90,9 +86,7 @@ class _SpikePageState extends State<SpikePage> {
 
   Future<void> _stop() async {
     await _server?.stop();
-    await _soakCsv?.close();
-    _soakCsv = null;
-    if (_session != null) await ReplayCapture.stop();
+    if (_session != null) await _capture.stop();
     if (!mounted) return;
     setState(() {
       _session = null;
@@ -101,13 +95,17 @@ class _SpikePageState extends State<SpikePage> {
     });
   }
 
-  Future<SavedClip> _save(double pre, double post) async {
+  Future<ClipInfo> _save(double pre, double post) async {
     setState(() => _saving = true);
     final watch = Stopwatch()..start();
     try {
-      final clip = await ReplayCapture.saveClip(preSeconds: pre, postSeconds: post);
-      _addLog('Saved ${clip.name}: ${(clip.durationMs / 1000).toStringAsFixed(1)} s, '
-          '${(clip.bytes / 1e6).toStringAsFixed(1)} MB, assembly ${clip.assemblyMs} ms, '
+      final clip = await _capture.saveClip(
+        requestId: 'lab-${DateTime.now().microsecondsSinceEpoch}',
+        preSeconds: pre,
+        postSeconds: post,
+      );
+      _addLog('Saved ${clip.id.substring(0, 8)}: ${((clip.durationMs ?? 0) / 1000).toStringAsFixed(1)} s, '
+          '${((clip.bytes ?? 0) / 1e6).toStringAsFixed(1)} MB, assembly ${clip.assemblyMs} ms, '
           'total ${watch.elapsedMilliseconds} ms');
       return clip;
     } catch (e) {
@@ -116,24 +114,6 @@ class _SpikePageState extends State<SpikePage> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
-  }
-
-  void _writeSoakRow(Map<Object?, Object?> s) {
-    final elapsed = DateTime.now().difference(_startedAt!).inSeconds;
-    _soakCsv?.writeln([
-      elapsed,
-      (s['fps'] as num).toStringAsFixed(1),
-      s['encodedFrames'],
-      s['gaps'],
-      s['thermalStatus'],
-      s['thermalHeadroom'] ?? '',
-      s['bufferMs'],
-      s['bufferBytes'],
-      s['batteryTempC'] ?? '',
-      s['batteryPercent'] ?? '',
-      s['plugged'] ?? '',
-      s['batteryCurrentMa'] ?? '',
-    ].join(','));
   }
 
   Future<String> _localIp() async {
@@ -172,18 +152,16 @@ class _SpikePageState extends State<SpikePage> {
     );
   }
 
-  Widget _panel(CaptureSession? session) {
+  Widget _panel(StartResult? session) {
     final s = _stats;
-    final mb = ((s['bufferBytes'] as int?) ?? 0) / 1e6;
-    final thermal = (s['thermalStatus'] as int?) ?? 0;
     return ListView(
       padding: const EdgeInsets.all(12),
       children: [
         Row(children: [
-          DropdownButton<CaptureProfile>(
-            value: _profile,
-            items: [for (final p in CaptureProfile.all) DropdownMenuItem(value: p, child: Text(p.label))],
-            onChanged: session == null ? (p) => setState(() => _profile = p!) : null,
+          DropdownButton<String>(
+            value: _profileId,
+            items: [for (final p in _profiles) DropdownMenuItem(value: p.id, child: Text(p.id))],
+            onChanged: session == null ? (id) => setState(() => _profileId = id) : null,
           ),
           const Spacer(),
           FilledButton(onPressed: session == null ? _start : _stop, child: Text(session == null ? 'Start' : 'Stop')),
@@ -198,15 +176,16 @@ class _SpikePageState extends State<SpikePage> {
             ),
         ]),
         const Divider(),
-        _stat('fps', (s['fps'] as num?)?.toStringAsFixed(1)),
-        _stat('encoded frames', s['encodedFrames']),
-        _stat('gaps', s['gaps']),
-        _stat('dropped before key', s['droppedBeforeKeyframe']),
-        _stat('buffer', '${((s['bufferMs'] as int?) ?? 0) ~/ 1000} s · ${mb.toStringAsFixed(0)} MB · '
-            '${s['fragments'] ?? 0} frags'),
-        _stat('thermal', '${_thermalNames[thermal.clamp(0, 6)]} · headroom ${s['thermalHeadroom'] ?? '–'}'),
-        _stat('battery', '${s['batteryTempC'] ?? '–'} °C · ${s['batteryPercent'] ?? '–'} % · '
-            '${s['plugged'] == true ? 'plugged' : 'unplugged'} · ${s['batteryCurrentMa'] ?? '–'} mA'),
+        if (s != null) ...[
+          _stat('fps', s.fps.toStringAsFixed(1)),
+          _stat('encoded frames', s.encodedFrames),
+          _stat('gaps', '${s.gaps} (camera ${s.cameraGaps}, GL ${s.glGaps})'),
+          _stat('buffer', '${s.bufferMs ~/ 1000} s · ${(s.bufferBytes / 1e6).toStringAsFixed(0)} MB'),
+          _stat('outbox', '${s.outboxClips} clips · ${(s.outboxBytes / 1e6).toStringAsFixed(0)} MB'),
+          _stat('thermal', '${_thermalNames[s.thermalStatus.clamp(0, 6)]} · headroom ${s.thermalHeadroom ?? '–'}'),
+          _stat('battery', '${s.batteryTempC ?? '–'} °C · ${s.batteryPercent ?? '–'} % · '
+              '${s.plugged ? 'plugged' : 'unplugged'}'),
+        ],
         const Divider(),
         for (final line in _log) Text(line, style: const TextStyle(fontSize: 11, color: Colors.white70)),
       ],

@@ -10,6 +10,97 @@
   "labEntry": "Lab (Phase 0 harness)",
   "labUnavailable": "The lab is only available on Android.",
   "switchRole": "Switch role",
-  "cameraComingSoon": "The Camera screen arrives in M3.",
-  "viewerComingSoon": "The Viewer screen arrives in M4."
+  "viewerComingSoon": "The Viewer screen arrives in M4.",
+  "cameraStarting": "Starting the camera…",
+  "cameraPermissionDenied": "InstantReplay needs camera permission to record.",
+  "cameraNoProfiles": "This device has no supported recording quality.",
+  "cameraStartFailed": "The camera could not start: {error}",
+  "@cameraStartFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "cameraRetry": "Try again",
+  "cameraProfile": "Quality",
+  "cameraStartOperating": "Start operating",
+  "cameraOperatingHint": "Tap anywhere to return to setup",
+  "cameraOperatingStatus": "REC · buffer {seconds} s · outbox {clips} · {temperature}",
+  "@cameraOperatingStatus": {
+    "placeholders": {
+      "seconds": {"type": "int"},
+      "clips": {"type": "int"},
+      "temperature": {"type": "String"}
+    }
+  },
+  "cameraWaitingForStats": "Waiting for statistics…",
+  "cameraStatCamera": "Camera",
+  "cameraStatFps": "Frame rate",
+  "cameraFpsValue": "{fps} fps",
+  "@cameraFpsValue": {
+    "placeholders": {
+      "fps": {"type": "String"}
+    }
+  },
+  "cameraStatGaps": "Frame gaps",
+  "cameraGapsValue": "{total} (camera {camera}, GL {gl})",
+  "@cameraGapsValue": {
+    "placeholders": {
+      "total": {"type": "int"},
+      "camera": {"type": "int"},
+      "gl": {"type": "int"}
+    }
+  },
+  "cameraStatBuffer": "Buffer",
+  "cameraBufferValue": "{seconds} s · {megabytes} MB",
+  "@cameraBufferValue": {
+    "placeholders": {
+      "seconds": {"type": "int"},
+      "megabytes": {"type": "String"}
+    }
+  },
+  "cameraStatOutbox": "Outbox",
+  "cameraOutboxValue": "{clips, plural, =1{1 clip} other{{clips} clips}} · {megabytes} MB",
+  "@cameraOutboxValue": {
+    "placeholders": {
+      "clips": {"type": "int"},
+      "megabytes": {"type": "String"}
+    }
+  },
+  "cameraStatThermal": "Thermal status",
+  "cameraStatBattery": "Battery",
+  "cameraBatteryValue": "{temperature} · {percent} · {power}",
+  "@cameraBatteryValue": {
+    "placeholders": {
+      "temperature": {"type": "String"},
+      "percent": {"type": "String"},
+      "power": {"type": "String"}
+    }
+  },
+  "cameraCharging": "charging",
+  "cameraNotCharging": "not charging",
+  "cameraNotChargingWarning": "Not charging. Connect power for long sessions.",
+  "cameraNotificationsDenied": "Notifications are off, so Android will not show the recording notice. Recording still works.",
+  "cameraErrorsTitle": "Camera errors",
+  "cameraDismissErrors": "Dismiss",
+  "cameraSaveTestClip": "Save test clip (last 20 s)",
+  "cameraTestClipSaved": "Test clip saved: {seconds} s, {megabytes} MB",
+  "@cameraTestClipSaved": {
+    "placeholders": {
+      "seconds": {"type": "String"},
+      "megabytes": {"type": "String"}
+    }
+  },
+  "cameraTestClipFailed": "Test clip failed: {error}",
+  "@cameraTestClipFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "thermalNone": "Normal",
+  "thermalLight": "Light",
+  "thermalModerate": "Moderate",
+  "thermalSevere": "Severe",
+  "thermalCritical": "Critical",
+  "thermalEmergency": "Emergency",
+  "thermalShutdown": "Shutdown"
 }

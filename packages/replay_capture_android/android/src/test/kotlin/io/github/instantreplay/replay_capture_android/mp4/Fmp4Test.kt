@@ -59,6 +59,16 @@ class Fmp4Test {
     }
 
     @Test
+    fun rotationIsWrittenToTheTrackMatrix() {
+        assertContentEquals(intArrayOf(0x10000, 0, 0, 0, 0x10000, 0, 0, 0, 0x40000000), Fmp4.trackMatrix(track))
+        val upsideDown = Fmp4.trackMatrix(track.copy(rotationDeg = 180))
+        assertEquals(-0x10000, upsideDown[0])
+        assertEquals(-0x10000, upsideDown[4])
+        assertEquals(1920 shl 16, upsideDown[6])
+        assertEquals(1080 shl 16, upsideDown[7])
+    }
+
+    @Test
     fun sidxHasOneReferencePerFragment() {
         val sidx = Fmp4.sidx(listOf(1000 to 90_000L, 2000 to 90_000L))
         assertEquals("sidx", type(sidx, 4))
