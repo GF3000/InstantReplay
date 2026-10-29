@@ -65,7 +65,7 @@ void main() {
     final prefs = await _pumpApp(tester);
     await tester.tap(find.text('Viewer'));
     await tester.pumpAndSettle();
-    expect(find.text('The Viewer screen arrives in M4.'), findsOneWidget);
+    expect(find.text('Connect to the camera'), findsOneWidget);
     expect(prefs.getString('role'), 'viewer');
   });
 

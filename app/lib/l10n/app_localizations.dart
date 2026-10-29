@@ -391,6 +391,300 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Shutdown'**
   String get thermalShutdown;
+
+  /// No description provided for @viewerConnectTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to the camera'**
+  String get viewerConnectTitle;
+
+  /// No description provided for @viewerAddressLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera address'**
+  String get viewerAddressLabel;
+
+  /// No description provided for @viewerAddressInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an address like http://192.168.1.20:8080'**
+  String get viewerAddressInvalid;
+
+  /// No description provided for @viewerAddressSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get viewerAddressSubmit;
+
+  /// No description provided for @viewerCodeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the code shown on the camera'**
+  String get viewerCodeTitle;
+
+  /// No description provided for @viewerCameraAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera at {address}'**
+  String viewerCameraAt(String address);
+
+  /// No description provided for @viewerCodeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'6-digit code'**
+  String get viewerCodeLabel;
+
+  /// No description provided for @viewerCodeSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect'**
+  String get viewerCodeSubmit;
+
+  /// No description provided for @viewerCodeWrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong code. Check the camera screen and try again.'**
+  String get viewerCodeWrong;
+
+  /// No description provided for @viewerCodeTooManyAttempts.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts. Wait a minute and try again.'**
+  String get viewerCodeTooManyAttempts;
+
+  /// No description provided for @viewerCameraUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot reach the camera. Check that both devices are on the same Wi-Fi.'**
+  String get viewerCameraUnreachable;
+
+  /// No description provided for @viewerSessionExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'The camera started a new session. Enter its new code.'**
+  String get viewerSessionExpired;
+
+  /// No description provided for @viewerChangeCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Change camera'**
+  String get viewerChangeCamera;
+
+  /// No description provided for @viewerLinkConnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting…'**
+  String get viewerLinkConnecting;
+
+  /// No description provided for @viewerLinkReconnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnecting…'**
+  String get viewerLinkReconnecting;
+
+  /// No description provided for @viewerLinkIncompatible.
+  ///
+  /// In en, this message translates to:
+  /// **'This camera runs another version of InstantReplay. Update both devices.'**
+  String get viewerLinkIncompatible;
+
+  /// No description provided for @viewerLiveStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting live view…'**
+  String get viewerLiveStarting;
+
+  /// No description provided for @viewerLiveInterrupted.
+  ///
+  /// In en, this message translates to:
+  /// **'Live view interrupted. Restarting…'**
+  String get viewerLiveInterrupted;
+
+  /// No description provided for @viewerLiveRestart.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart live view'**
+  String get viewerLiveRestart;
+
+  /// No description provided for @viewerStatusRec.
+  ///
+  /// In en, this message translates to:
+  /// **'REC'**
+  String get viewerStatusRec;
+
+  /// No description provided for @viewerStatusIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Not recording'**
+  String get viewerStatusIdle;
+
+  /// No description provided for @viewerStatusFps.
+  ///
+  /// In en, this message translates to:
+  /// **'{fps} fps'**
+  String viewerStatusFps(int fps);
+
+  /// No description provided for @viewerStatusBuffer.
+  ///
+  /// In en, this message translates to:
+  /// **'buffer {seconds} s'**
+  String viewerStatusBuffer(int seconds);
+
+  /// No description provided for @viewerStatusOutbox.
+  ///
+  /// In en, this message translates to:
+  /// **'outbox {clips}'**
+  String viewerStatusOutbox(int clips);
+
+  /// No description provided for @viewerStatusTemperature.
+  ///
+  /// In en, this message translates to:
+  /// **'{celsius} °C'**
+  String viewerStatusTemperature(String celsius);
+
+  /// No description provided for @viewerStatusBattery.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}%{charging}'**
+  String viewerStatusBattery(int percent, String charging);
+
+  /// No description provided for @viewerSave.
+  ///
+  /// In en, this message translates to:
+  /// **'SAVE {seconds} s'**
+  String viewerSave(int seconds);
+
+  /// No description provided for @viewerSaveQuick.
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds} s'**
+  String viewerSaveQuick(int seconds);
+
+  /// No description provided for @viewerSaveHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Saves the last seconds plus {seconds} s after the tap.'**
+  String viewerSaveHint(int seconds);
+
+  /// No description provided for @viewerSessionOnlyNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Clips stay in this browser tab only. Download the ones you want to keep.'**
+  String get viewerSessionOnlyNotice;
+
+  /// No description provided for @viewerClipsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved clips appear here.'**
+  String get viewerClipsEmpty;
+
+  /// No description provided for @viewerClipTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clip {number} · {seconds} s'**
+  String viewerClipTitle(int number, int seconds);
+
+  /// No description provided for @viewerClipRequesting.
+  ///
+  /// In en, this message translates to:
+  /// **'Requesting…'**
+  String get viewerClipRequesting;
+
+  /// No description provided for @viewerClipRecording.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording…'**
+  String get viewerClipRecording;
+
+  /// No description provided for @viewerClipDownloadingStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading…'**
+  String get viewerClipDownloadingStarted;
+
+  /// No description provided for @viewerClipDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading… {percent}%'**
+  String viewerClipDownloading(int percent);
+
+  /// No description provided for @viewerClipReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get viewerClipReady;
+
+  /// No description provided for @viewerClipFailedRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'The camera did not answer'**
+  String get viewerClipFailedRequest;
+
+  /// No description provided for @viewerClipFailedDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Download failed'**
+  String get viewerClipFailedDownload;
+
+  /// No description provided for @viewerClipFailedChecksum.
+  ///
+  /// In en, this message translates to:
+  /// **'The download was corrupted'**
+  String get viewerClipFailedChecksum;
+
+  /// No description provided for @viewerClipExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired on the camera'**
+  String get viewerClipExpired;
+
+  /// No description provided for @viewerClipRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get viewerClipRetry;
+
+  /// No description provided for @viewerClipDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Download'**
+  String get viewerClipDownload;
+
+  /// No description provided for @viewerReviewPrevFrame.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous frame'**
+  String get viewerReviewPrevFrame;
+
+  /// No description provided for @viewerReviewNextFrame.
+  ///
+  /// In en, this message translates to:
+  /// **'Next frame'**
+  String get viewerReviewNextFrame;
+
+  /// No description provided for @viewerReviewPlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Play'**
+  String get viewerReviewPlay;
+
+  /// No description provided for @viewerReviewPause.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get viewerReviewPause;
+
+  /// No description provided for @viewerReviewSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'{speed}×'**
+  String viewerReviewSpeed(double speed);
+
+  /// No description provided for @viewerReviewError.
+  ///
+  /// In en, this message translates to:
+  /// **'This clip cannot be played here.'**
+  String get viewerReviewError;
 }
 
 class _AppLocalizationsDelegate

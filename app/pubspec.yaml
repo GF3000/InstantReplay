@@ -30,6 +30,7 @@ resolution: workspace
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
+  crypto: ^3.0.8
   flutter:
     sdk: flutter
 
@@ -38,7 +39,9 @@ dependencies:
   flutter_riverpod: ^3.4.3
   flutter_webrtc: ^1.6.3
   go_router: ^18.1.1
+  http: ^1.6.0
   intl: ^0.20.2
+  path_provider: ^2.1.6
   permission_handler: ^11.4.0
   replay_capture_android:
     path: ../packages/replay_capture_android
@@ -49,6 +52,9 @@ dependencies:
   shelf_router: ^1.1.5
   shelf_static: ^1.2.0
   shelf_web_socket: ^3.0.0
+  uuid: ^4.6.0
+  video_player: ^2.14.1
+  web: ^1.1.1
   web_socket_channel: ^3.0.3
 
 dev_dependencies:
