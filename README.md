@@ -12,6 +12,10 @@ Offline instant replay for team sports. One Android phone on a tripod films cont
 - **Viewer role** (Android): live view, a big *Save* button with presets, a review player (0.25×/0.5×/1×, frame stepping), sessions, one-tap tags, export to the gallery and the system share sheet.
 - **Web viewer** (any browser, served by the Camera): live view, save, review and download for the current session.
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the toolchain, build and test commands and the PR workflow, and [docs/dev-setup.md](docs/dev-setup.md) for the wireless device loop.
+
 ## License
 
 [Apache-2.0](LICENSE)

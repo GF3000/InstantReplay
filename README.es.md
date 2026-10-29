@@ -12,6 +12,10 @@ Repeticiones instantáneas para deportes de equipo, sin conexión a Internet. Un
 - **Rol Visor** (Android): directo, un botón grande de *Guardar* con duraciones predefinidas, reproductor de análisis (0,25×/0,5×/1× y fotograma a fotograma), sesiones, etiquetas de un toque, exportación a la galería y botón de compartir del sistema.
 - **Visor web** (cualquier navegador, servido por la Cámara): directo, guardar, revisar y descargar los clips de la sesión en curso.
 
+## Contribuir
+
+Consulta [CONTRIBUTING.md](CONTRIBUTING.md) (en inglés) para las herramientas, los comandos de compilación y pruebas y el flujo de PR, y [docs/dev-setup.md](docs/dev-setup.md) para depurar en el móvil por Wi-Fi.
+
 ## Licencia
 
 [Apache-2.0](LICENSE)
