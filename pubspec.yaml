@@ -1,0 +1,10 @@
+name: instant_replay_workspace
+publish_to: none
+
+environment:
+  sdk: ^3.12.1
+
+workspace:
+  - app
+  - packages/replay_capture_android
+  - packages/replay_protocol
