@@ -37,12 +37,18 @@ The connect port changes whenever wireless debugging restarts (reboot, toggling 
 
 ## 4. Build and install
 
-```sh
-cd app && flutter build apk --debug
-adb install -r app/build/app/outputs/flutter-apk/app-debug.apk   # from the repo root
+From the repo root:
+
+```powershell
+pwsh tool/build_apk.ps1                                          # Windows (-Release for release)
+adb install -r app/build/app/outputs/flutter-apk/app-debug.apk
 ```
 
-`flutter run` also works over the wireless connection and gives hot reload.
+On Linux/macOS use `tool/build_apk.sh` (`--release` for release).
+
+The script builds the Flutter web Viewer first (`flutter build web --release --no-web-resources-cdn`, so CanvasKit is local instead of loaded from Google's CDN), checks it references no external host, copies it into the Android assets (`app/android/app/src/main/assets/web_viewer/`, git-ignored) and then builds the APK. The Camera has no Internet, so it serves this bundle to browsers on the LAN (SPEC §6). On first launch after each install, the app copies the bundle to its files directory (`<filesDir>/web_viewer/`).
+
+`flutter run` also works over the wireless connection and gives hot reload. It does not rebuild the web bundle: whatever was last copied into the assets folder is packaged (run the script again after changing Viewer code that the browser should see).
 
 ## 5. Logs
 

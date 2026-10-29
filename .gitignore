@@ -5,3 +5,5 @@ build/
 .DS_Store
 # Claude Code agent worktrees
 .claude/
+# Web Viewer bundle copied into the APK by tool/build_apk.* (generated)
+app/android/app/src/main/assets/web_viewer/

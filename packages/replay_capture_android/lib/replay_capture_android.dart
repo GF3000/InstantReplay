@@ -29,6 +29,8 @@ class ReplayCapture implements CaptureEventsApi {
   final _cameraState = StreamController<String>.broadcast();
   final _errors = StreamController<String>.broadcast();
   final _clips = StreamController<ClipInfo>.broadcast();
+  final _liveIce = StreamController<LiveIceCandidate>.broadcast();
+  final _liveState = StreamController<({String viewerId, String state})>.broadcast();
 
   /// About once per second while capturing.
   Stream<CaptureStats> get stats => _stats.stream;
@@ -38,6 +40,12 @@ class ReplayCapture implements CaptureEventsApi {
 
   /// Every outbox state change (recording, ready, acked, expired).
   Stream<ClipInfo> get clipChanges => _clips.stream;
+
+  /// Local ICE candidates to forward to each viewer (trickle ICE).
+  Stream<LiveIceCandidate> get liveIceCandidates => _liveIce.stream;
+
+  /// PeerConnection state per viewer.
+  Stream<({String viewerId, String state})> get liveStates => _liveState.stream;
 
   Future<bool> requestPermission() => _host.requestPermission();
 
@@ -60,9 +68,13 @@ class ReplayCapture implements CaptureEventsApi {
 
   Future<bool> ackClip(String id, String sha256) => _host.ackClip(id, sha256);
 
+  /// The offer comes back right away; candidates follow on [liveIceCandidates].
   Future<String> liveOffer(String viewerId, {String codec = 'H264'}) => _host.liveOffer(viewerId, codec);
 
   Future<void> liveAnswer(String viewerId, String sdp) => _host.liveAnswer(viewerId, sdp);
+
+  Future<void> liveAddIceCandidate(String viewerId, String candidate, {String? sdpMid, int? sdpMLineIndex}) =>
+      _host.liveAddIceCandidate(viewerId, candidate, sdpMid, sdpMLineIndex);
 
   Future<void> liveClose(String viewerId) => _host.liveClose(viewerId);
 
@@ -82,4 +94,13 @@ class ReplayCapture implements CaptureEventsApi {
 
   @override
   void onClipChanged(ClipInfo clip) => _clips.add(clip);
+
+  @override
+  void onLiveIceCandidate(String viewerId, String candidate, String? sdpMid, int? sdpMLineIndex) => _liveIce
+      .add((viewerId: viewerId, candidate: candidate, sdpMid: sdpMid, sdpMLineIndex: sdpMLineIndex));
+
+  @override
+  void onLiveState(String viewerId, String state) => _liveState.add((viewerId: viewerId, state: state));
 }
+
+typedef LiveIceCandidate = ({String viewerId, String candidate, String? sdpMid, int? sdpMLineIndex});

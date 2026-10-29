@@ -25,7 +25,6 @@ import org.webrtc.SurfaceTextureHelper
 import org.webrtc.VideoSource
 import org.webrtc.VideoTrack
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Live view sender. Exposes a [surface] that the capture engine draws into (GL fan-out), so
@@ -52,6 +51,17 @@ internal class LiveStreamer(context: Context, private val emit: (Map<String, Any
         // Without native logging, RTC_CHECK failures abort with no message in logcat.
         Logging.enableLogToDebugOutput(Logging.Severity.LS_ERROR)
         factory = PeerConnectionFactory.builder()
+            .setOptions(
+                PeerConnectionFactory.Options().apply {
+                    // The network monitor only knows networks Android hands out (Wi-Fi client,
+                    // mobile data). When this phone *is* the hotspot, viewers sit on the tethering
+                    // interface, which it never reports: no reachable candidate, no live view.
+                    // Without it, every interface is enumerated.
+                    disableNetworkMonitor = true
+                    // Mobile data never reaches a LAN viewer.
+                    networkIgnoreMask = PeerConnectionFactory.Options.ADAPTER_TYPE_CELLULAR
+                },
+            )
             .setVideoEncoderFactory(DefaultVideoEncoderFactory(eglBase.eglBaseContext, true, true))
             .setVideoDecoderFactory(DefaultVideoDecoderFactory(eglBase.eglBaseContext))
             .createPeerConnectionFactory()
@@ -65,19 +75,20 @@ internal class LiveStreamer(context: Context, private val emit: (Map<String, Any
         surface = Surface(helper.surfaceTexture)
     }
 
-    /** Creates a PeerConnection for [viewerId] and returns its complete offer SDP. */
+    /**
+     * Creates a PeerConnection for [viewerId] and returns its offer as soon as it is set locally.
+     * Local candidates follow as `live_ice` events (trickle ICE); ones found before the offer was
+     * delivered are held back so a viewer never gets a candidate before the offer.
+     */
     fun createOffer(viewerId: String, preferredCodec: String, onResult: (Result<String>) -> Unit) {
         close(viewerId)
-        val delivered = AtomicBoolean(false)
         lateinit var pc: PeerConnection
+        val held = ArrayList<IceCandidate>()
+        var offerSent = false
 
-        // Called from the signaling thread (gathering complete) or main thread (timeout).
-        fun deliver() {
-            if (!delivered.compareAndSet(false, true)) return
-            if (peers[viewerId] !== pc) return // closed meanwhile; pc may be disposed
-            val sdp = pc.localDescription?.description
-            onResult(if (sdp != null) Result.success(sdp) else Result.failure(IllegalStateException("No local SDP")))
-        }
+        fun sendCandidate(c: IceCandidate) = emit(
+            mapOf("type" to "live_ice", "viewer" to viewerId, "candidate" to c.sdp, "sdpMid" to c.sdpMid, "sdpMLineIndex" to c.sdpMLineIndex),
+        )
 
         val config = PeerConnection.RTCConfiguration(emptyList()).apply {
             sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
@@ -85,12 +96,13 @@ internal class LiveStreamer(context: Context, private val emit: (Map<String, Any
             continualGatheringPolicy = PeerConnection.ContinualGatheringPolicy.GATHER_ONCE
         }
         pc = factory.createPeerConnection(config, object : PeerObserver() {
-            override fun onIceGatheringChange(state: PeerConnection.IceGatheringState) {
-                if (state == PeerConnection.IceGatheringState.COMPLETE) deliver()
+            override fun onIceCandidate(candidate: IceCandidate) {
+                val now = synchronized(held) { if (offerSent) true else false.also { held += candidate } }
+                if (now) sendCandidate(candidate)
             }
 
             override fun onConnectionChange(state: PeerConnection.PeerConnectionState) {
-                emit(mapOf("type" to "live", "viewer" to viewerId, "state" to state.name))
+                emit(mapOf("type" to "live", "viewer" to viewerId, "state" to state.name.lowercase()))
             }
         }) ?: return onResult(Result.failure(IllegalStateException("createPeerConnection failed")))
         peers[viewerId] = pc
@@ -110,12 +122,27 @@ internal class LiveStreamer(context: Context, private val emit: (Map<String, Any
         if (!pc.setBitrate(MIN_BITRATE, minOf(START_BITRATE, maxBitrate), maxBitrate)) Log.w(TAG, "setBitrate rejected")
 
         pc.createOffer(object : SdpAdapter() {
-            override fun onCreateSuccess(desc: SessionDescription) = pc.setLocalDescription(SdpAdapter(), desc)
+            override fun onCreateSuccess(desc: SessionDescription) = pc.setLocalDescription(object : SdpAdapter() {
+                override fun onSetSuccess() {
+                    if (peers[viewerId] !== pc) return // closed meanwhile; pc may be disposed
+                    onResult(Result.success(desc.description))
+                    val pending = synchronized(held) { offerSent = true; held.toList().also { held.clear() } }
+                    // Posted so they reach Dart after the offer result.
+                    main.post { pending.forEach(::sendCandidate) }
+                }
+
+                override fun onSetFailure(error: String) = onResult(Result.failure(IllegalStateException(error)))
+            }, desc)
+
             override fun onCreateFailure(error: String) = onResult(Result.failure(IllegalStateException(error)))
         }, MediaConstraints())
+    }
 
-        // Host-only gathering on a LAN finishes quickly; don't wait forever if it stalls.
-        main.postDelayed(::deliver, GATHER_TIMEOUT_MS)
+    fun addIceCandidate(viewerId: String, candidate: String, sdpMid: String?, sdpMLineIndex: Int?) {
+        val pc = peers[viewerId] ?: return
+        // Browsers hide host IPs behind mDNS names libwebrtc can't resolve here; those candidates
+        // are skipped and the connection forms from the peer-reflexive candidate instead.
+        pc.addIceCandidate(IceCandidate(sdpMid ?: "0", sdpMLineIndex ?: 0, candidate))
     }
 
     fun setAnswer(viewerId: String, sdp: String, onResult: (Result<Unit>) -> Unit) {
@@ -215,6 +242,5 @@ internal class LiveStreamer(context: Context, private val emit: (Map<String, Any
         private const val MIN_BITRATE = 500_000
         private const val START_BITRATE = 2_000_000
         private const val MAX_BITRATE = 2_500_000
-        private const val GATHER_TIMEOUT_MS = 2_000L
     }
 }

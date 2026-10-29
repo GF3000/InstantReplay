@@ -25,7 +25,33 @@ abstract interface class CaptureLayer {
 
   Future<void> setPreviewEnabled(bool enabled);
 
-  Future<ClipInfo> saveClip({required String requestId, required double preSeconds});
+  /// Completes when the clip is ready, after [postSeconds] of post-roll. A repeated [requestId]
+  /// returns the existing clip instead of cutting a new one.
+  Future<ClipInfo> saveClip({required String requestId, required double preSeconds, double postSeconds = 0});
+
+  /// Every outbox state change (recording, ready, acked, expired).
+  Stream<ClipInfo> get clipChanges;
+
+  /// Clips currently in the outbox (recording or ready).
+  Future<List<ClipInfo>> listClips();
+
+  Future<ClipInfo?> getClip(String id);
+
+  /// Releases a clip after the Viewer verified it; false if the hash does not match.
+  Future<bool> ackClip(String id, String sha256);
+
+  /// Local ICE candidates to forward to each viewer (trickle ICE).
+  Stream<LiveIceCandidate> get liveIceCandidates;
+
+  /// Send-only WebRTC offer for [viewerId], returned right away; candidates follow on
+  /// [liveIceCandidates].
+  Future<String> liveOffer(String viewerId, {String codec = 'H264'});
+
+  Future<void> liveAnswer(String viewerId, String sdp);
+
+  Future<void> liveAddIceCandidate(String viewerId, String candidate, {String? sdpMid, int? sdpMLineIndex});
+
+  Future<void> liveClose(String viewerId);
 }
 
 /// The real plugin. Only constructed on Android: the /camera route is unreachable elsewhere.
@@ -70,8 +96,36 @@ class PluginCaptureLayer implements CaptureLayer {
   Future<void> setPreviewEnabled(bool enabled) => _capture.setPreviewEnabled(enabled);
 
   @override
-  Future<ClipInfo> saveClip({required String requestId, required double preSeconds}) =>
-      _capture.saveClip(requestId: requestId, preSeconds: preSeconds);
+  Future<ClipInfo> saveClip({required String requestId, required double preSeconds, double postSeconds = 0}) =>
+      _capture.saveClip(requestId: requestId, preSeconds: preSeconds, postSeconds: postSeconds);
+
+  @override
+  Stream<ClipInfo> get clipChanges => _capture.clipChanges;
+
+  @override
+  Future<List<ClipInfo>> listClips() => _capture.listClips();
+
+  @override
+  Future<ClipInfo?> getClip(String id) => _capture.getClip(id);
+
+  @override
+  Future<bool> ackClip(String id, String sha256) => _capture.ackClip(id, sha256);
+
+  @override
+  Stream<LiveIceCandidate> get liveIceCandidates => _capture.liveIceCandidates;
+
+  @override
+  Future<String> liveOffer(String viewerId, {String codec = 'H264'}) => _capture.liveOffer(viewerId, codec: codec);
+
+  @override
+  Future<void> liveAnswer(String viewerId, String sdp) => _capture.liveAnswer(viewerId, sdp);
+
+  @override
+  Future<void> liveAddIceCandidate(String viewerId, String candidate, {String? sdpMid, int? sdpMLineIndex}) =>
+      _capture.liveAddIceCandidate(viewerId, candidate, sdpMid: sdpMid, sdpMLineIndex: sdpMLineIndex);
+
+  @override
+  Future<void> liveClose(String viewerId) => _capture.liveClose(viewerId);
 }
 
 final captureLayerProvider = Provider<CaptureLayer>((ref) => PluginCaptureLayer());

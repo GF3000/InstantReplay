@@ -191,6 +191,10 @@ class ReplayCaptureAndroidPlugin :
         }
     }
 
+    override fun liveAddIceCandidate(viewerId: String, candidate: String, sdpMid: String?, sdpMLineIndex: Long?) {
+        live?.addIceCandidate(viewerId, candidate, sdpMid, sdpMLineIndex?.toInt())
+    }
+
     override fun liveClose(viewerId: String) {
         live?.close(viewerId)
         updateLiveOutput(attach = false)
@@ -252,6 +256,13 @@ class ReplayCaptureAndroidPlugin :
                 "thermal" -> applyThermal(event["status"] as Int)
                 "camera" -> events.onCameraState(event["state"] as String) {}
                 "error" -> events.onError(event["message"] as String) {}
+                "live" -> events.onLiveState(event["viewer"] as String, event["state"] as String) {}
+                "live_ice" -> events.onLiveIceCandidate(
+                    event["viewer"] as String,
+                    event["candidate"] as String,
+                    event["sdpMid"] as String?,
+                    (event["sdpMLineIndex"] as Int?)?.toLong(),
+                ) {}
             }
         }
     }

@@ -186,4 +186,231 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get thermalShutdown => 'Apagado';
+
+  @override
+  String get viewerConnectTitle => 'Conectar con la cámara';
+
+  @override
+  String get viewerAddressLabel => 'Dirección de la cámara';
+
+  @override
+  String get viewerAddressInvalid =>
+      'Escribe una dirección como http://192.168.1.20:8080';
+
+  @override
+  String get viewerAddressSubmit => 'Continuar';
+
+  @override
+  String get viewerCodeTitle => 'Escribe el código que muestra la cámara';
+
+  @override
+  String viewerCameraAt(String address) {
+    return 'Cámara en $address';
+  }
+
+  @override
+  String get viewerCodeLabel => 'Código de 6 dígitos';
+
+  @override
+  String get viewerCodeSubmit => 'Conectar';
+
+  @override
+  String get viewerCodeWrong =>
+      'Código incorrecto. Revisa la pantalla de la cámara e inténtalo de nuevo.';
+
+  @override
+  String get viewerCodeTooManyAttempts =>
+      'Demasiados intentos. Espera un minuto e inténtalo de nuevo.';
+
+  @override
+  String get viewerCameraUnreachable =>
+      'No se puede conectar con la cámara. Comprueba que ambos dispositivos están en la misma Wi-Fi.';
+
+  @override
+  String get viewerSessionExpired =>
+      'La cámara inició una sesión nueva. Escribe su nuevo código.';
+
+  @override
+  String get viewerChangeCamera => 'Cambiar de cámara';
+
+  @override
+  String get viewerLinkConnecting => 'Conectando…';
+
+  @override
+  String get viewerLinkReconnecting => 'Reconectando…';
+
+  @override
+  String get viewerLinkIncompatible =>
+      'Esta cámara usa otra versión de InstantReplay. Actualiza ambos dispositivos.';
+
+  @override
+  String get viewerLiveStarting => 'Iniciando el directo…';
+
+  @override
+  String get viewerLiveInterrupted => 'Directo interrumpido. Reiniciando…';
+
+  @override
+  String get viewerLiveRestart => 'Reiniciar el directo';
+
+  @override
+  String get viewerStatusRec => 'REC';
+
+  @override
+  String get viewerStatusIdle => 'Sin grabar';
+
+  @override
+  String viewerStatusFps(int fps) {
+    return '$fps fps';
+  }
+
+  @override
+  String viewerStatusBuffer(int seconds) {
+    return 'búfer $seconds s';
+  }
+
+  @override
+  String viewerStatusOutbox(int clips) {
+    return 'pendientes $clips';
+  }
+
+  @override
+  String viewerStatusTemperature(String celsius) {
+    return '$celsius °C';
+  }
+
+  @override
+  String viewerStatusBattery(int percent, String charging) {
+    return '$percent%$charging';
+  }
+
+  @override
+  String viewerSave(int seconds) {
+    return 'GUARDAR $seconds s';
+  }
+
+  @override
+  String viewerSaveQuick(int seconds) {
+    return '$seconds s';
+  }
+
+  @override
+  String viewerSaveHint(int seconds) {
+    return 'Guarda los últimos segundos más $seconds s tras pulsar.';
+  }
+
+  @override
+  String get viewerSessionOnlyNotice =>
+      'Los clips solo se guardan en esta pestaña. Descarga los que quieras conservar.';
+
+  @override
+  String get viewerClipsEmpty => 'Los clips guardados aparecen aquí.';
+
+  @override
+  String viewerClipTitle(int number, int seconds) {
+    return 'Clip $number · $seconds s';
+  }
+
+  @override
+  String get viewerClipRequesting => 'Solicitando…';
+
+  @override
+  String get viewerClipRecording => 'Grabando…';
+
+  @override
+  String get viewerClipDownloadingStarted => 'Descargando…';
+
+  @override
+  String viewerClipDownloading(int percent) {
+    return 'Descargando… $percent%';
+  }
+
+  @override
+  String get viewerClipReady => 'Listo';
+
+  @override
+  String get viewerClipFailedRequest => 'La cámara no respondió';
+
+  @override
+  String get viewerClipFailedDownload => 'Falló la descarga';
+
+  @override
+  String get viewerClipFailedChecksum => 'La descarga llegó dañada';
+
+  @override
+  String get viewerClipExpired => 'Caducó en la cámara';
+
+  @override
+  String get viewerClipRetry => 'Reintentar';
+
+  @override
+  String get viewerClipDownload => 'Descargar';
+
+  @override
+  String get viewerReviewPrevFrame => 'Fotograma anterior';
+
+  @override
+  String get viewerReviewNextFrame => 'Fotograma siguiente';
+
+  @override
+  String get viewerReviewPlay => 'Reproducir';
+
+  @override
+  String get viewerReviewPause => 'Pausa';
+
+  @override
+  String viewerReviewSpeed(double speed) {
+    final intl.NumberFormat speedNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String speedString = speedNumberFormat.format(speed);
+
+    return '$speedString×';
+  }
+
+  @override
+  String get viewerReviewError => 'Este clip no se puede reproducir aquí.';
+
+  @override
+  String get cameraPairingTitle => 'Conectar un visor';
+
+  @override
+  String get cameraPairingCode => 'Código de emparejamiento';
+
+  @override
+  String get cameraPairingScanHint =>
+      'Escanea el código QR o abre esta dirección en un navegador en la misma Wi-Fi:';
+
+  @override
+  String get cameraPairingNoNetwork =>
+      'No hay Wi-Fi ni punto de acceso. Activa el punto de acceso o conéctate a una red Wi-Fi.';
+
+  @override
+  String cameraViewersConnected(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count visores conectados',
+      one: '1 visor conectado',
+      zero: 'Ningún visor conectado',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String cameraOperatingViewers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count visores',
+      one: '1 visor',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get serverStarting => 'Iniciando el servidor para visores…';
+
+  @override
+  String serverStartFailed(String error) {
+    return 'No se pudo iniciar el servidor para visores: $error';
+  }
 }

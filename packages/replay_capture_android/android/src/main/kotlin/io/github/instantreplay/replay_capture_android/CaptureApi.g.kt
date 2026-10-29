@@ -811,9 +811,14 @@ interface CaptureHostApi {
   fun getClip(id: String): ClipInfo?
   /** Releases a clip after the Viewer verified it. Returns false if the hash does not match. */
   fun ackClip(id: String, sha256: String): Boolean
-  /** Send-only WebRTC offer for [viewerId], complete (non-trickle) SDP. */
+  /**
+   * Send-only WebRTC offer for [viewerId]. Returned as soon as it is created; ICE candidates
+   * follow through [CaptureEventsApi.onLiveIceCandidate] (trickle ICE).
+   */
   fun liveOffer(viewerId: String, codec: String, callback: (Result<String>) -> Unit)
   fun liveAnswer(viewerId: String, sdp: String, callback: (Result<Unit>) -> Unit)
+  /** A candidate trickled by the viewer. */
+  fun liveAddIceCandidate(viewerId: String, candidate: String, sdpMid: String?, sdpMLineIndex: Long?)
   fun liveClose(viewerId: String)
   fun liveStats(callback: (Result<List<LiveViewerStats>>) -> Unit)
 
@@ -1022,6 +1027,27 @@ interface CaptureHostApi {
         }
       }
       run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.replay_capture_android.CaptureHostApi.liveAddIceCandidate$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val viewerIdArg = args[0] as String
+            val candidateArg = args[1] as String
+            val sdpMidArg = args[2] as String?
+            val sdpMLineIndexArg = args[3] as Long?
+            val wrapped: List<Any?> = try {
+              api.liveAddIceCandidate(viewerIdArg, candidateArg, sdpMidArg, sdpMLineIndexArg)
+              listOf(null)
+            } catch (exception: Throwable) {
+              CaptureApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.replay_capture_android.CaptureHostApi.liveClose$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { message, reply ->
@@ -1143,6 +1169,42 @@ class CaptureEventsApi(private val binaryMessenger: BinaryMessenger, private val
     val channelName = "dev.flutter.pigeon.replay_capture_android.CaptureEventsApi.onClipChanged$separatedMessageChannelSuffix"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(listOf(clipArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else {
+          callback(Result.success(Unit))
+        }
+      } else {
+        callback(Result.failure(CaptureApiPigeonUtils.createConnectionError(channelName)))
+      } 
+    }
+  }
+  /** A local ICE candidate for [viewerId]'s connection, to forward to that viewer. */
+  fun onLiveIceCandidate(viewerIdArg: String, candidateArg: String, sdpMidArg: String?, sdpMLineIndexArg: Long?, callback: (Result<Unit>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.replay_capture_android.CaptureEventsApi.onLiveIceCandidate$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(viewerIdArg, candidateArg, sdpMidArg, sdpMLineIndexArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else {
+          callback(Result.success(Unit))
+        }
+      } else {
+        callback(Result.failure(CaptureApiPigeonUtils.createConnectionError(channelName)))
+      } 
+    }
+  }
+  /** PeerConnection state for [viewerId]: `new`, `connecting`, `connected`, `disconnected`, `failed`, `closed`. */
+  fun onLiveState(viewerIdArg: String, stateArg: String, callback: (Result<Unit>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.replay_capture_android.CaptureEventsApi.onLiveState$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(viewerIdArg, stateArg)) {
       if (it is List<*>) {
         if (it.size > 1) {
           callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))

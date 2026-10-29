@@ -10,6 +10,7 @@ abstract final class AppTheme {
     final scheme = ColorScheme.fromSeed(seedColor: Colors.amber, brightness: brightness, contrastLevel: 1);
     const primarySize = Size(64, 56);
     return ThemeData(
+      fontFamily: 'Roboto', // bundled (app/fonts): the web build must not fetch fonts.gstatic.com
       colorScheme: scheme,
       scaffoldBackgroundColor: isDark ? Colors.black : scheme.surface,
       materialTapTargetSize: MaterialTapTargetSize.padded,
