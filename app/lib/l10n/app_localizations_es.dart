@@ -413,4 +413,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String serverStartFailed(String error) {
     return 'No se pudo iniciar el servidor para visores: $error';
   }
+
+  @override
+  String get cameraAdvanced => 'Avanzado';
+
+  @override
+  String cameraHotWarning(String level) {
+    return 'El teléfono está caliente ($level). Ponlo a la sombra o baja la calidad.';
+  }
 }

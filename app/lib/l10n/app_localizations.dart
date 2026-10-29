@@ -733,6 +733,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The viewer server could not start: {error}'**
   String serverStartFailed(String error);
+
+  /// No description provided for @cameraAdvanced.
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced'**
+  String get cameraAdvanced;
+
+  /// No description provided for @cameraHotWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'The phone is hot ({level}). Shade it or lower the quality.'**
+  String cameraHotWarning(String level);
 }
 
 class _AppLocalizationsDelegate

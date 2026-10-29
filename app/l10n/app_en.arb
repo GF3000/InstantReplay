@@ -307,5 +307,14 @@
         "type": "String"
       }
     }
+  },
+  "cameraAdvanced": "Advanced",
+  "cameraHotWarning": "The phone is hot ({level}). Shade it or lower the quality.",
+  "@cameraHotWarning": {
+    "placeholders": {
+      "level": {
+        "type": "String"
+      }
+    }
   }
 }

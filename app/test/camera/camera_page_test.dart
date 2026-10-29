@@ -7,6 +7,7 @@ import 'package:instant_replay/core/preferences.dart';
 import 'package:instant_replay/features/camera/capture_layer.dart';
 import 'package:instant_replay/features/server/api_server.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:replay_capture_android/replay_capture_android.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'fake_capture_layer.dart';
@@ -16,10 +17,11 @@ Future<SharedPreferences> _pumpCamera(
   WidgetTester tester,
   FakeCaptureLayer fake, {
   double height = 1080,
+  double width = 2400,
   FakeServerPlatform? server,
 }) async {
   // A landscape phone; tests that read the whole status panel use a taller view.
-  tester.view.physicalSize = Size(2400, height);
+  tester.view.physicalSize = Size(width, height);
   tester.view.devicePixelRatio = 2.5;
   addTearDown(tester.view.reset);
   SharedPreferences.setMockInitialValues({'role': 'camera'});
@@ -37,6 +39,21 @@ Future<SharedPreferences> _pumpCamera(
   return prefs;
 }
 
+/// Opens the collapsed "Advanced" section (profile, statistics, diagnostics).
+Future<void> _openAdvanced(WidgetTester tester) => _tapVisible(tester, find.text('Advanced'));
+
+/// Scrolls the setup panel to [finder] first: on a landscape phone it may be below the fold.
+Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
+  // The panel is a lazy ListView: on a small screen the target may not be built yet.
+  final panel = find.descendant(of: find.byType(ListView), matching: find.byType(Scrollable)).first;
+  await tester.scrollUntilVisible(finder, 100, scrollable: panel);
+  await tester.pumpAndSettle();
+  await tester.tap(finder);
+  await tester.pumpAndSettle();
+}
+
+bool _operating(WidgetTester tester) => find.byKey(const Key('camera-operating')).evaluate().isNotEmpty;
+
 void main() {
   setUp(() => TestWidgetsFlutterBinding.ensureInitialized().platformDispatcher.localesTestValue = const [Locale('en')]);
   tearDown(() => TestWidgetsFlutterBinding.instance.platformDispatcher.clearLocalesTestValue());
@@ -48,7 +65,6 @@ void main() {
     expect(fake.calls.take(2), ['cameraPermission', 'notificationPermission']);
     expect(fake.starts, ['1080p30']);
     expect(find.byType(Texture), findsOneWidget);
-    expect(find.text('1080p30 · 20 Mbps'), findsOneWidget);
   });
 
   testWidgets('falls back to the first profile without 1080p30', (tester) async {
@@ -79,9 +95,9 @@ void main() {
   testWidgets('changing the profile restarts capture', (tester) async {
     final fake = FakeCaptureLayer();
     await _pumpCamera(tester, fake);
+    await _openAdvanced(tester);
 
-    await tester.tap(find.byKey(const Key('camera-profile')));
-    await tester.pumpAndSettle();
+    await _tapVisible(tester, find.byKey(const Key('camera-profile')));
     await tester.tap(find.text('1080p60 · 20 Mbps').last);
     await tester.pumpAndSettle();
 
@@ -94,6 +110,7 @@ void main() {
 
     fake.statsController.add(stats(plugged: false));
     await tester.pumpAndSettle();
+    await _openAdvanced(tester);
     expect(find.text('30.0 fps'), findsOneWidget);
     expect(find.text('42 s · 100 MB'), findsOneWidget);
     expect(find.text('3 clips · 30 MB'), findsOneWidget);
@@ -130,8 +147,7 @@ void main() {
     expect(find.text('Camera errors'), findsOneWidget);
     expect(find.text('Camera device disconnected'), findsOneWidget);
 
-    await tester.tap(find.text('Dismiss'));
-    await tester.pumpAndSettle();
+    await _tapVisible(tester, find.text('Dismiss'));
     expect(find.text('Camera device disconnected'), findsNothing);
   });
 
@@ -158,6 +174,97 @@ void main() {
     expect(prefs.getString('role'), isNull);
   });
 
+  testWidgets('the Advanced section is collapsed and holds the profile selector', (tester) async {
+    await _pumpCamera(tester, FakeCaptureLayer());
+    expect(find.text('Advanced'), findsOneWidget);
+    expect(find.byKey(const Key('camera-profile')), findsNothing);
+    expect(find.text('Frame rate'), findsNothing);
+
+    await _openAdvanced(tester);
+    expect(find.byKey(const Key('camera-profile')), findsOneWidget);
+    expect(find.text('1080p30 · 20 Mbps'), findsOneWidget);
+    expect(find.text('Save test clip (last 20 s)'), findsOneWidget);
+  });
+
+  testWidgets('warnings stay visible with Advanced collapsed', (tester) async {
+    final fake = FakeCaptureLayer(notificationsGranted: false);
+    await _pumpCamera(tester, fake, height: 2400);
+    fake.statsController.add(stats(plugged: false));
+    fake.thermalController.add(ThermalEvent(status: 2, action: ThermalAction.none));
+    fake.errorsController.add('Camera device disconnected');
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('camera-profile')), findsNothing);
+    expect(find.text('Not charging. Connect power for long sessions.'), findsOneWidget);
+    expect(find.text('The phone is hot (Moderate). Shade it or lower the quality.'), findsOneWidget);
+    expect(find.textContaining('Notifications are off'), findsOneWidget);
+    expect(find.text('Camera device disconnected'), findsOneWidget);
+  });
+
+  testWidgets('fits a small landscape phone (640x360) in both modes', (tester) async {
+    final server = FakeServerPlatform();
+    final fake = FakeCaptureLayer(notificationsGranted: false);
+    // 1600x900 physical at 2.5 = 640x360 logical.
+    await _pumpCamera(tester, fake, width: 1600, height: 900, server: server);
+    fake.statsController.add(stats(plugged: false));
+    fake.thermalController.add(ThermalEvent(status: 3, action: ThermalAction.none));
+    fake.errorsController.add('Camera device disconnected');
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('camera-pairing-code')), findsOneWidget);
+    await _openAdvanced(tester);
+    expect(tester.takeException(), isNull);
+
+    server.last!.viewers.add(3);
+    await tester.pumpAndSettle();
+    expect(_operating(tester), isTrue);
+    expect(find.text('Severe'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  group('automatic operating mode', () {
+    testWidgets('the first viewer turns the screen black', (tester) async {
+      final server = FakeServerPlatform();
+      final fake = FakeCaptureLayer();
+      await _pumpCamera(tester, fake, server: server);
+      expect(_operating(tester), isFalse);
+
+      server.last!.viewers.add(1);
+      await tester.pumpAndSettle();
+      expect(_operating(tester), isTrue);
+      expect(fake.calls.last, 'preview:false');
+      expect(find.byType(Texture), findsNothing);
+    });
+
+    testWidgets('is not forced again while viewers stay connected', (tester) async {
+      final server = FakeServerPlatform();
+      final fake = FakeCaptureLayer();
+      await _pumpCamera(tester, fake, server: server);
+      final api = server.last!;
+      api.viewers.add(1);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('camera-operating')));
+      await tester.pumpAndSettle();
+      expect(_operating(tester), isFalse);
+
+      // More viewers join, or one leaves: the coach stays in setup.
+      api.viewers.add(2);
+      await tester.pumpAndSettle();
+      api.viewers.add(1);
+      await tester.pumpAndSettle();
+      expect(_operating(tester), isFalse);
+      expect(fake.calls.last, 'preview:true');
+
+      // Everyone left and someone connects again: operating mode once more.
+      api.viewers.add(0);
+      await tester.pumpAndSettle();
+      expect(_operating(tester), isFalse);
+      api.viewers.add(1);
+      await tester.pumpAndSettle();
+      expect(_operating(tester), isTrue);
+    });
+  });
+
   group('pairing', () {
     testWidgets('shows the QR, the code, the URL and the viewer count once capture runs', (tester) async {
       final server = FakeServerPlatform();
@@ -176,6 +283,9 @@ void main() {
       expect(find.text('No viewers connected'), findsOneWidget);
 
       api.viewers.add(2);
+      await tester.pumpAndSettle();
+      // The first viewers switch to operating mode; a tap wakes the setup screen again.
+      await tester.tap(find.byKey(const Key('camera-operating')));
       await tester.pumpAndSettle();
       expect(find.text('2 viewers connected'), findsOneWidget);
     });
@@ -202,9 +312,9 @@ void main() {
       final server = FakeServerPlatform();
       final fake = FakeCaptureLayer();
       await _pumpCamera(tester, fake, server: server);
+      await _openAdvanced(tester);
 
-      await tester.tap(find.byKey(const Key('camera-profile')));
-      await tester.pumpAndSettle();
+      await _tapVisible(tester, find.byKey(const Key('camera-profile')));
       await tester.tap(find.text('1080p60 · 20 Mbps').last);
       await tester.pumpAndSettle();
 
@@ -221,9 +331,8 @@ void main() {
       final fake = FakeCaptureLayer();
       await _pumpCamera(tester, fake, server: server);
       server.last!.viewers.add(1);
-      await tester.tap(find.text('Start operating'));
       await tester.pumpAndSettle();
-      expect(find.text(' · 1 viewer'), findsOneWidget);
+      expect(find.text('1 viewer'), findsOneWidget);
     });
 
     testWidgets('leaving the Camera role stops the server', (tester) async {
