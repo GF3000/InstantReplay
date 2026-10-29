@@ -134,6 +134,33 @@ void main() {
     expect(sent(ch).whereType<LiveStop>().length, 1);
   });
 
+  test('a second welcome (capture restarted on the Camera) renegotiates the live view', () async {
+    final c = await container();
+    await until(() => channels.isNotEmpty);
+    final ch = channels.single;
+    ch.push(const Welcome(camera: camera).encode());
+    await until(() => sent(ch).any((m) => m is LiveStart));
+    ch.push(const RtcOffer(sdp: 'OFFER').encode());
+    await until(() => sent(ch).any((m) => m is RtcAnswer));
+    peers.single.onState(LivePeerState.connected);
+    expect(c.read(liveViewProvider).phase, LivePhase.playing);
+
+    ch.push(const Welcome(camera: camera).encode());
+    await until(() => peers.length == 2);
+    expect(peers.first.disposed, isTrue);
+    expect(sent(ch).whereType<LiveStart>().length, 2);
+  });
+
+  test('a live_failed error from the Camera schedules a retry', () async {
+    final c = await container();
+    await until(() => channels.isNotEmpty);
+    final ch = channels.single;
+    ch.push(const Welcome(camera: camera).encode());
+    await until(() => sent(ch).any((m) => m is LiveStart));
+    ch.push(const ErrorMessage(code: 'live_failed', message: 'Capture is not running').encode());
+    await until(() => c.read(liveViewProvider).phase == LivePhase.interrupted);
+  });
+
   test('save through the providers ends with a stored, acked clip', () async {
     final c = await container();
     await until(() => channels.isNotEmpty);

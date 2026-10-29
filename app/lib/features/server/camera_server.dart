@@ -434,6 +434,16 @@ compilación que incluya el visor web.</p>
     pending == null ? s.send(message) : pending.add(message);
   }
 
+  @override
+  void captureRestarted() {
+    // The plugin released its PeerConnections with the old capture session.
+    for (final s in _liveOwners.values) {
+      s.pendingIce = null;
+    }
+    _liveOwners.clear();
+    _broadcast(Welcome(camera: cameraInfo()));
+  }
+
   void _onClipChanged(cap.ClipInfo c) => _broadcast(ClipChanged(clip: _dto(c)));
 
   void _onStats(cap.CaptureStats stats) {

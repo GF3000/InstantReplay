@@ -333,6 +333,12 @@ class LiveViewNotifier extends Notifier<LiveViewState> {
         if (_peer != null) unawaited(guarded(() => _signaling.onOffer(sdp)));
       case RtcIce():
         unawaited(guarded(() => _signaling.onRemoteCandidate(msg)));
+      // A Welcome on a live link means the Camera restarted capture (e.g. new resolution) and
+      // dropped every call: negotiate again now instead of waiting for ours to time out.
+      case Welcome() when _linkPhase == LinkPhase.connected && _peer != null:
+        restart();
+      case ErrorMessage(code: 'live_failed'):
+        _scheduleRestart(gen);
       default:
     }
   }

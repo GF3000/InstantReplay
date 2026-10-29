@@ -15,6 +15,10 @@ abstract interface class ApiServer {
 
   /// Number of viewers connected over WebSocket, on every change.
   Stream<int> get viewerCountChanges;
+
+  /// Capture restarted (e.g. a profile change): the old live calls are gone. Viewers get a fresh
+  /// `welcome` with the new profile and renegotiate their live view.
+  void captureRestarted();
 }
 
 class ApiServerConfig {
@@ -60,4 +64,7 @@ class _InertApiServer implements ApiServer {
 
   @override
   Stream<int> get viewerCountChanges => const Stream.empty();
+
+  @override
+  void captureRestarted() {}
 }

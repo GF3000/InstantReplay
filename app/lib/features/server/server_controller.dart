@@ -67,9 +67,14 @@ class CameraServerNotifier extends Notifier<CameraServerState> {
   @override
   CameraServerState build() {
     final secrets = PairingSecrets.generate();
-    ref.listen(cameraSessionProvider, (_, session) {
+    ref.listen(cameraSessionProvider, (previous, session) {
       _profileId = session.phase == CameraPhase.running ? session.profileId : null;
-      if (session.phase == CameraPhase.running) unawaited(_start(secrets));
+      if (session.phase != CameraPhase.running) return;
+      unawaited(_start(secrets));
+      // A new capture session while the server runs (profile change, retry): live calls restart.
+      final restarted = previous?.session != null && !identical(previous!.session, session.session);
+      final wasStopped = previous != null && previous.phase != CameraPhase.running;
+      if (restarted || wasStopped) _server?.captureRestarted();
     }, fireImmediately: true);
     ref.onDispose(() {
       _addressTimer?.cancel();

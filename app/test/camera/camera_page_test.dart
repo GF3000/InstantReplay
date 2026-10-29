@@ -212,6 +212,8 @@ void main() {
       expect(server.servers, hasLength(1));
       expect(server.last!.closed, isFalse);
       expect(server.last!.config.cameraInfo().profileId, '1080p60');
+      // Viewers are told to renegotiate their live view.
+      expect(server.last!.restarts, 1);
     });
 
     testWidgets('the operating line shows the viewer count', (tester) async {

@@ -51,6 +51,17 @@ internal class LiveStreamer(context: Context, private val emit: (Map<String, Any
         // Without native logging, RTC_CHECK failures abort with no message in logcat.
         Logging.enableLogToDebugOutput(Logging.Severity.LS_ERROR)
         factory = PeerConnectionFactory.builder()
+            .setOptions(
+                PeerConnectionFactory.Options().apply {
+                    // The network monitor only knows networks Android hands out (Wi-Fi client,
+                    // mobile data). When this phone *is* the hotspot, viewers sit on the tethering
+                    // interface, which it never reports: no reachable candidate, no live view.
+                    // Without it, every interface is enumerated.
+                    disableNetworkMonitor = true
+                    // Mobile data never reaches a LAN viewer.
+                    networkIgnoreMask = PeerConnectionFactory.Options.ADAPTER_TYPE_CELLULAR
+                },
+            )
             .setVideoEncoderFactory(DefaultVideoEncoderFactory(eglBase.eglBaseContext, true, true))
             .setVideoDecoderFactory(DefaultVideoDecoderFactory(eglBase.eglBaseContext))
             .createPeerConnectionFactory()

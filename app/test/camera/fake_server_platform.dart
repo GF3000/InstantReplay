@@ -22,6 +22,11 @@ class FakeApiServer implements ApiServer {
 
   @override
   Stream<int> get viewerCountChanges => viewers.stream;
+
+  int restarts = 0;
+
+  @override
+  void captureRestarted() => restarts++;
 }
 
 class FakeServerPlatform {
