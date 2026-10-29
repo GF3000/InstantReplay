@@ -524,29 +524,11 @@ abstract class AppLocalizations {
   /// **'{fps} fps'**
   String viewerStatusFps(int fps);
 
-  /// No description provided for @viewerStatusBuffer.
-  ///
-  /// In en, this message translates to:
-  /// **'buffer {seconds} s'**
-  String viewerStatusBuffer(int seconds);
-
-  /// No description provided for @viewerStatusOutbox.
-  ///
-  /// In en, this message translates to:
-  /// **'outbox {clips}'**
-  String viewerStatusOutbox(int clips);
-
   /// No description provided for @viewerStatusTemperature.
   ///
   /// In en, this message translates to:
   /// **'{celsius} °C'**
   String viewerStatusTemperature(String celsius);
-
-  /// No description provided for @viewerStatusBattery.
-  ///
-  /// In en, this message translates to:
-  /// **'{percent}%{charging}'**
-  String viewerStatusBattery(int percent, String charging);
 
   /// No description provided for @viewerSave.
   ///
@@ -577,12 +559,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Saved clips appear here.'**
   String get viewerClipsEmpty;
-
-  /// No description provided for @viewerClipTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Clip {number} · {seconds} s'**
-  String viewerClipTitle(int number, int seconds);
 
   /// No description provided for @viewerClipRequesting.
   ///
@@ -733,6 +709,204 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The viewer server could not start: {error}'**
   String serverStartFailed(String error);
+
+  /// No description provided for @viewerStatusTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera status'**
+  String get viewerStatusTitle;
+
+  /// No description provided for @viewerStatusRecording.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording'**
+  String get viewerStatusRecording;
+
+  /// No description provided for @viewerStatusFpsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Frame rate'**
+  String get viewerStatusFpsLabel;
+
+  /// No description provided for @viewerStatusBufferLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Replay buffer'**
+  String get viewerStatusBufferLabel;
+
+  /// No description provided for @viewerStatusSeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds} s'**
+  String viewerStatusSeconds(int seconds);
+
+  /// No description provided for @viewerStatusPendingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Clips pending on the camera'**
+  String get viewerStatusPendingLabel;
+
+  /// No description provided for @viewerStatusTemperatureLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Temperature'**
+  String get viewerStatusTemperatureLabel;
+
+  /// No description provided for @viewerStatusBatteryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Battery'**
+  String get viewerStatusBatteryLabel;
+
+  /// No description provided for @viewerStatusBatteryPercent.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}%'**
+  String viewerStatusBatteryPercent(int percent);
+
+  /// No description provided for @viewerStatusCharging.
+  ///
+  /// In en, this message translates to:
+  /// **'charging'**
+  String get viewerStatusCharging;
+
+  /// No description provided for @viewerStatusNotCharging.
+  ///
+  /// In en, this message translates to:
+  /// **'not charging'**
+  String get viewerStatusNotCharging;
+
+  /// No description provided for @viewerProblemDisconnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnected'**
+  String get viewerProblemDisconnected;
+
+  /// No description provided for @viewerProblemHot.
+  ///
+  /// In en, this message translates to:
+  /// **'Overheating'**
+  String get viewerProblemHot;
+
+  /// No description provided for @viewerProblemBatteryLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Battery {percent}%'**
+  String viewerProblemBatteryLow(int percent);
+
+  /// No description provided for @viewerClipName.
+  ///
+  /// In en, this message translates to:
+  /// **'{tag} · {time}'**
+  String viewerClipName(String tag, String time);
+
+  /// No description provided for @viewerClipUntagged.
+  ///
+  /// In en, this message translates to:
+  /// **'Clip · {time}'**
+  String viewerClipUntagged(String time);
+
+  /// No description provided for @viewerClipDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds} s'**
+  String viewerClipDuration(int seconds);
+
+  /// No description provided for @viewerClipChangeTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Tag'**
+  String get viewerClipChangeTag;
+
+  /// No description provided for @viewerClipNoTag.
+  ///
+  /// In en, this message translates to:
+  /// **'No tag'**
+  String get viewerClipNoTag;
+
+  /// No description provided for @viewerFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get viewerFilterAll;
+
+  /// No description provided for @viewerTagDefaultGood.
+  ///
+  /// In en, this message translates to:
+  /// **'Good'**
+  String get viewerTagDefaultGood;
+
+  /// No description provided for @viewerTagDefaultBad.
+  ///
+  /// In en, this message translates to:
+  /// **'Bad'**
+  String get viewerTagDefaultBad;
+
+  /// No description provided for @viewerTagDefaultOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get viewerTagDefaultOther;
+
+  /// No description provided for @viewerTagsEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit tags'**
+  String get viewerTagsEdit;
+
+  /// No description provided for @viewerTagsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags'**
+  String get viewerTagsTitle;
+
+  /// No description provided for @viewerTagsAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add tag'**
+  String get viewerTagsAdd;
+
+  /// No description provided for @viewerTagsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No tags. Add one to label your clips.'**
+  String get viewerTagsEmpty;
+
+  /// No description provided for @viewerTagEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit tag'**
+  String get viewerTagEdit;
+
+  /// No description provided for @viewerTagName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get viewerTagName;
+
+  /// No description provided for @viewerTagColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Colour'**
+  String get viewerTagColor;
+
+  /// No description provided for @viewerTagDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete tag'**
+  String get viewerTagDelete;
+
+  /// No description provided for @viewerTagCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get viewerTagCancel;
+
+  /// No description provided for @viewerTagOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get viewerTagOk;
 
   /// No description provided for @cameraAdvanced.
   ///

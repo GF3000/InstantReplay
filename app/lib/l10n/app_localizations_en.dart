@@ -262,23 +262,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String viewerStatusBuffer(int seconds) {
-    return 'buffer $seconds s';
-  }
-
-  @override
-  String viewerStatusOutbox(int clips) {
-    return 'outbox $clips';
-  }
-
-  @override
   String viewerStatusTemperature(String celsius) {
     return '$celsius °C';
-  }
-
-  @override
-  String viewerStatusBattery(int percent, String charging) {
-    return '$percent%$charging';
   }
 
   @override
@@ -302,11 +287,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get viewerClipsEmpty => 'Saved clips appear here.';
-
-  @override
-  String viewerClipTitle(int number, int seconds) {
-    return 'Clip $number · $seconds s';
-  }
 
   @override
   String get viewerClipRequesting => 'Requesting…';
@@ -411,6 +391,117 @@ class AppLocalizationsEn extends AppLocalizations {
   String serverStartFailed(String error) {
     return 'The viewer server could not start: $error';
   }
+
+  @override
+  String get viewerStatusTitle => 'Camera status';
+
+  @override
+  String get viewerStatusRecording => 'Recording';
+
+  @override
+  String get viewerStatusFpsLabel => 'Frame rate';
+
+  @override
+  String get viewerStatusBufferLabel => 'Replay buffer';
+
+  @override
+  String viewerStatusSeconds(int seconds) {
+    return '$seconds s';
+  }
+
+  @override
+  String get viewerStatusPendingLabel => 'Clips pending on the camera';
+
+  @override
+  String get viewerStatusTemperatureLabel => 'Temperature';
+
+  @override
+  String get viewerStatusBatteryLabel => 'Battery';
+
+  @override
+  String viewerStatusBatteryPercent(int percent) {
+    return '$percent%';
+  }
+
+  @override
+  String get viewerStatusCharging => 'charging';
+
+  @override
+  String get viewerStatusNotCharging => 'not charging';
+
+  @override
+  String get viewerProblemDisconnected => 'Disconnected';
+
+  @override
+  String get viewerProblemHot => 'Overheating';
+
+  @override
+  String viewerProblemBatteryLow(int percent) {
+    return 'Battery $percent%';
+  }
+
+  @override
+  String viewerClipName(String tag, String time) {
+    return '$tag · $time';
+  }
+
+  @override
+  String viewerClipUntagged(String time) {
+    return 'Clip · $time';
+  }
+
+  @override
+  String viewerClipDuration(int seconds) {
+    return '$seconds s';
+  }
+
+  @override
+  String get viewerClipChangeTag => 'Tag';
+
+  @override
+  String get viewerClipNoTag => 'No tag';
+
+  @override
+  String get viewerFilterAll => 'All';
+
+  @override
+  String get viewerTagDefaultGood => 'Good';
+
+  @override
+  String get viewerTagDefaultBad => 'Bad';
+
+  @override
+  String get viewerTagDefaultOther => 'Other';
+
+  @override
+  String get viewerTagsEdit => 'Edit tags';
+
+  @override
+  String get viewerTagsTitle => 'Tags';
+
+  @override
+  String get viewerTagsAdd => 'Add tag';
+
+  @override
+  String get viewerTagsEmpty => 'No tags. Add one to label your clips.';
+
+  @override
+  String get viewerTagEdit => 'Edit tag';
+
+  @override
+  String get viewerTagName => 'Name';
+
+  @override
+  String get viewerTagColor => 'Colour';
+
+  @override
+  String get viewerTagDelete => 'Delete tag';
+
+  @override
+  String get viewerTagCancel => 'Cancel';
+
+  @override
+  String get viewerTagOk => 'Save';
 
   @override
   String get cameraAdvanced => 'Advanced';

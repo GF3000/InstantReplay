@@ -121,11 +121,12 @@ class ClipTransfers {
   /// Newest first.
   List<SessionClip> get clips => _clips.values.toList().reversed.toList(growable: false);
 
-  /// Asks the Camera for a clip of [seconds] pre-roll (default preset when null).
-  Future<void> save({int? seconds}) async {
+  /// Asks the Camera for a clip of [seconds] pre-roll (default preset when null). The caller may
+  /// choose the [requestId] to refer to the clip before the Camera answers (e.g. to tag it).
+  Future<void> save({int? seconds, String? requestId}) async {
     final api = this.api;
     if (api == null) return;
-    final request = presets.request(requestId: _newRequestId(), viewerId: viewerId, seconds: seconds);
+    final request = presets.request(requestId: requestId ?? _newRequestId(), viewerId: viewerId, seconds: seconds);
     _put(SessionClip(
       requestId: request.requestId,
       seconds: request.preSeconds,

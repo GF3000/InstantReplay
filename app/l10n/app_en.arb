@@ -175,37 +175,10 @@
       }
     }
   },
-  "viewerStatusBuffer": "buffer {seconds} s",
-  "@viewerStatusBuffer": {
-    "placeholders": {
-      "seconds": {
-        "type": "int"
-      }
-    }
-  },
-  "viewerStatusOutbox": "outbox {clips}",
-  "@viewerStatusOutbox": {
-    "placeholders": {
-      "clips": {
-        "type": "int"
-      }
-    }
-  },
   "viewerStatusTemperature": "{celsius} °C",
   "@viewerStatusTemperature": {
     "placeholders": {
       "celsius": {
-        "type": "String"
-      }
-    }
-  },
-  "viewerStatusBattery": "{percent}%{charging}",
-  "@viewerStatusBattery": {
-    "placeholders": {
-      "percent": {
-        "type": "int"
-      },
-      "charging": {
         "type": "String"
       }
     }
@@ -236,17 +209,6 @@
   },
   "viewerSessionOnlyNotice": "Clips stay in this browser tab only. Download the ones you want to keep.",
   "viewerClipsEmpty": "Saved clips appear here.",
-  "viewerClipTitle": "Clip {number} · {seconds} s",
-  "@viewerClipTitle": {
-    "placeholders": {
-      "number": {
-        "type": "int"
-      },
-      "seconds": {
-        "type": "int"
-      }
-    }
-  },
   "viewerClipRequesting": "Requesting…",
   "viewerClipRecording": "Recording…",
   "viewerClipDownloadingStarted": "Downloading…",
@@ -308,6 +270,84 @@
       }
     }
   },
+  "viewerStatusTitle": "Camera status",
+  "viewerStatusRecording": "Recording",
+  "viewerStatusFpsLabel": "Frame rate",
+  "viewerStatusBufferLabel": "Replay buffer",
+  "viewerStatusSeconds": "{seconds} s",
+  "@viewerStatusSeconds": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "viewerStatusPendingLabel": "Clips pending on the camera",
+  "viewerStatusTemperatureLabel": "Temperature",
+  "viewerStatusBatteryLabel": "Battery",
+  "viewerStatusBatteryPercent": "{percent}%",
+  "@viewerStatusBatteryPercent": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "viewerStatusCharging": "charging",
+  "viewerStatusNotCharging": "not charging",
+  "viewerProblemDisconnected": "Disconnected",
+  "viewerProblemHot": "Overheating",
+  "viewerProblemBatteryLow": "Battery {percent}%",
+  "@viewerProblemBatteryLow": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "viewerClipName": "{tag} · {time}",
+  "@viewerClipName": {
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "viewerClipUntagged": "Clip · {time}",
+  "@viewerClipUntagged": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "viewerClipDuration": "{seconds} s",
+  "@viewerClipDuration": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "viewerClipChangeTag": "Tag",
+  "viewerClipNoTag": "No tag",
+  "viewerFilterAll": "All",
+  "viewerTagDefaultGood": "Good",
+  "viewerTagDefaultBad": "Bad",
+  "viewerTagDefaultOther": "Other",
+  "viewerTagsEdit": "Edit tags",
+  "viewerTagsTitle": "Tags",
+  "viewerTagsAdd": "Add tag",
+  "viewerTagsEmpty": "No tags. Add one to label your clips.",
+  "viewerTagEdit": "Edit tag",
+  "viewerTagName": "Name",
+  "viewerTagColor": "Colour",
+  "viewerTagDelete": "Delete tag",
+  "viewerTagCancel": "Cancel",
+  "viewerTagOk": "Save",
   "cameraAdvanced": "Advanced",
   "cameraHotWarning": "The phone is hot ({level}). Shade it or lower the quality.",
   "@cameraHotWarning": {

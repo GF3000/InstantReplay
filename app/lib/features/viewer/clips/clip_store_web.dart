@@ -1,4 +1,5 @@
 import 'dart:js_interop';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:video_player/video_player.dart';
@@ -41,6 +42,41 @@ class _BlobClip implements StoredClip {
     web.document.body?.append(a);
     a.click();
     a.remove();
+  }
+
+  /// Loads the blob into an offscreen video element, seeks to ~1 s and draws that frame to a canvas.
+  @override
+  Future<Uint8List?> thumbnail() async {
+    const width = 192;
+    const timeout = Duration(seconds: 10);
+    final video = web.HTMLVideoElement()
+      ..muted = true
+      ..playsInline = true
+      ..preload = 'auto';
+    final loaded = web.EventStreamProviders.loadedDataEvent.forTarget(video).first;
+    video.src = url;
+    try {
+      await loaded.timeout(timeout);
+      final d = video.duration;
+      final at = d.isFinite && d > 0 ? math.min(1.0, d / 2) : 0.0;
+      if (at > 0) {
+        final seeked = web.EventStreamProviders.seekedEvent.forTarget(video).first;
+        video.currentTime = at;
+        await seeked.timeout(timeout);
+      }
+      final (w, h) = (video.videoWidth, video.videoHeight);
+      if (w == 0 || h == 0) return null;
+      final canvas = web.HTMLCanvasElement()
+        ..width = width
+        ..height = (width * h / w).round();
+      (canvas.getContext('2d')! as web.CanvasRenderingContext2D).drawImage(video, 0, 0, canvas.width, canvas.height);
+      return UriData.parse(canvas.toDataURL('image/jpeg', 0.75.toJS)).contentAsBytes();
+    } catch (_) {
+      return null;
+    } finally {
+      video.removeAttribute('src');
+      video.load();
+    }
   }
 
   @override

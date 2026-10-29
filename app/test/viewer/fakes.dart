@@ -34,6 +34,9 @@ class MemoryClip implements StoredClip {
   Future<void> download(String fileName) async {}
 
   @override
+  Future<Uint8List?> thumbnail() async => null;
+
+  @override
   Future<void> release() async => released = true;
 }
 

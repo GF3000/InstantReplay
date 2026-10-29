@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:instant_replay/core/preferences.dart';
 import 'package:instant_replay/features/viewer/clips/clip_transfers.dart';
 import 'package:instant_replay/features/viewer/data/session_link.dart';
+import 'package:instant_replay/features/viewer/tags/tags.dart';
 import 'package:instant_replay/features/viewer/ui/live_control_view.dart';
 import 'package:instant_replay/features/viewer/viewer_page.dart';
 import 'package:instant_replay/features/viewer/viewer_providers.dart';
@@ -21,15 +22,29 @@ class _ConnectedLink extends LinkStateNotifier {
 }
 
 class _RecordingClips extends ViewerClipsNotifier {
-  _RecordingClips(this.saved);
+  _RecordingClips(this.saved, [this.clips = const []]);
 
   final List<int?> saved;
+  final List<SessionClip> clips;
 
   @override
-  List<SessionClip> build() => const [];
+  List<SessionClip> build() => clips;
 
   @override
-  void save({int? seconds}) => saved.add(seconds);
+  String? save({int? seconds}) {
+    saved.add(seconds);
+    return 'r${saved.length}';
+  }
+}
+
+class _PlayingLive extends LiveViewNotifier {
+  @override
+  LiveViewState build() => const LiveViewState(phase: LivePhase.playing);
+}
+
+Future<SharedPreferences> _prefs() async {
+  SharedPreferences.setMockInitialValues({});
+  return SharedPreferences.getInstance();
 }
 
 Widget _app(Widget child, List<dynamic> overrides) => ProviderScope(
@@ -42,10 +57,17 @@ Widget _app(Widget child, List<dynamic> overrides) => ProviderScope(
       ),
     );
 
+/// Lets AnimatedSwitcher start and finish its 300 ms fade.
+Future<void> _settle(WidgetTester tester) async {
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 400));
+}
+
 void main() {
   testWidgets('big button saves the default preset; chips save their own duration', (tester) async {
     final saved = <int?>[];
     await tester.pumpWidget(_app(const SaveControls(), [
+      sharedPreferencesProvider.overrideWithValue(await _prefs()),
       linkStateProvider.overrideWith(_ConnectedLink.new),
       viewerClipsProvider.overrideWith(() => _RecordingClips(saved)),
     ]));
@@ -60,11 +82,82 @@ void main() {
     await tester.tap(find.text('10 s'));
     await tester.tap(find.byKey(const ValueKey('viewer-save')));
     expect(saved, [null, 30, 10, null]);
+    await tester.pump(PostSaveTagBarNotifier.visibleFor);
   });
+
+  testWidgets('after a save the tag bar tags that clip, and a new save replaces the bar', (tester) async {
+    final saved = <int?>[];
+    late WidgetRef ref;
+    await tester.pumpWidget(_app(Consumer(builder: (context, r, _) {
+      ref = r;
+      return const SaveControls();
+    }), [
+      sharedPreferencesProvider.overrideWithValue(await _prefs()),
+      linkStateProvider.overrideWith(_ConnectedLink.new),
+      viewerClipsProvider.overrideWith(() => _RecordingClips(saved)),
+    ]));
+    final bar = find.byKey(const ValueKey('viewer-tag-bar'));
+    expect(bar, findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('viewer-save'))); // r1
+    await _settle(tester);
+    expect(bar, findsOneWidget);
+    // The chips stay usable while the bar is up.
+    await tester.tap(find.text('30 s')); // r2
+    await _settle(tester);
+    await tester.tap(find.byKey(const ValueKey('tag-${TagsNotifier.bad}')));
+    await _settle(tester);
+    expect(ref.read(clipTagsProvider), {'r2': TagsNotifier.bad});
+    expect(bar, findsNothing);
+
+    // Untouched, the bar fades after ~6 s.
+    await tester.tap(find.byKey(const ValueKey('viewer-save'))); // r3
+    await _settle(tester);
+    expect(bar, findsOneWidget);
+    await tester.pump(PostSaveTagBarNotifier.visibleFor);
+    await _settle(tester);
+    expect(bar, findsNothing);
+    expect(ref.read(clipTagsProvider), {'r2': TagsNotifier.bad});
+  });
+
+  for (final size in const [Size(360, 640), Size(640, 360), Size(768, 1024), Size(1280, 800)]) {
+    testWidgets('live screen fits ${size.width.toInt()}x${size.height.toInt()} without overflow', (tester) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final clips = [
+        for (var i = 0; i < 12; i++)
+          SessionClip(
+            requestId: 'r$i',
+            seconds: 20,
+            requestedAt: DateTime(2026, 10, 29, 12, i),
+            phase: SessionClipPhase.values[i % SessionClipPhase.values.length],
+          ),
+      ];
+      // Leave room for the 48 px app bar of the paired Viewer.
+      await tester.pumpWidget(_app(const Column(children: [SizedBox(height: 48), Expanded(child: LiveControlView())]), [
+        sharedPreferencesProvider.overrideWithValue(await _prefs()),
+        linkStateProvider.overrideWith(_ConnectedLink.new),
+        liveViewProvider.overrideWith(_PlayingLive.new),
+        viewerClipsProvider.overrideWith(() => _RecordingClips([], clips)),
+      ]));
+      await tester.tap(find.byKey(const ValueKey('viewer-save')));
+      await _settle(tester);
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const ValueKey('viewer-tag-bar')), findsOneWidget);
+      final save = tester.getRect(find.byKey(const ValueKey('viewer-save')));
+      expect(save.height, greaterThanOrEqualTo(56));
+      expect(save.bottom, lessThanOrEqualTo(size.height));
+      expect(find.text('Clip · 12:00'), findsOneWidget);
+      await tester.pump(PostSaveTagBarNotifier.visibleFor);
+      await _settle(tester);
+    });
+  }
 
   testWidgets('save is disabled while not connected', (tester) async {
     final saved = <int?>[];
     await tester.pumpWidget(_app(const SaveControls(), [
+      sharedPreferencesProvider.overrideWithValue(await _prefs()),
       linkStateProvider.overrideWith(() => _NullLink()),
       viewerClipsProvider.overrideWith(() => _RecordingClips(saved)),
     ]));
