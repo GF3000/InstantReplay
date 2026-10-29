@@ -1,0 +1,15 @@
+{
+  "@@locale": "es",
+  "appTitle": "InstantReplay",
+  "roleGateTitle": "Elige un rol",
+  "roleGateSubtitle": "Este dispositivo lo recordará. Puedes cambiarlo después.",
+  "roleCamera": "Cámara",
+  "roleCameraDescription": "Graba el partido y mantiene el búfer de repetición.",
+  "roleViewer": "Visor",
+  "roleViewerDescription": "Ve en directo y guarda las jugadas.",
+  "labEntry": "Laboratorio (banco de pruebas Fase 0)",
+  "labUnavailable": "El laboratorio solo está disponible en Android.",
+  "switchRole": "Cambiar de rol",
+  "cameraComingSoon": "La pantalla de Cámara llega en M3.",
+  "viewerComingSoon": "La pantalla de Visor llega en M4."
+}

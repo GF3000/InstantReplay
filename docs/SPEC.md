@@ -20,7 +20,7 @@
 | D9 | Multi-viewer | A clip goes only to the viewer that requested it; other viewers get a notification and may fetch it while it is still in the outbox. |
 | D10 | Organization | Session (match/training) → Clips. Sessions live on the Viewer. |
 | D11 | Save button | Default duration (20 s) + presets (10/30/60 s) + configurable post-roll (0–5 s). |
-| D12 | Video | Configurable: **1080p30 default**, 720p30 or 1080p60 optional. H.264 only. |
+| D12 | Video | Configurable: **1080p30 default**, 720p30 or 1080p60 optional; a profile is offered only if the camera supports it in a regular session. H.264 only. |
 | D13 | Analysis | Speed (0.25/0.5/1x), frame stepping, **non-destructive trim**, **telestrator burned into exported video as freeze-frame + drawing for N s**. |
 | D14 | Export | Single clip: save to gallery + system share (native). Download (web). |
 | D15 | Web | Live view + save + review of **current session only** (IndexedDB, volatile) + download MP4. No gallery/share/trim/telestrator. |
@@ -313,7 +313,7 @@ H.264 note: encoding and decoding use the device's licensed hardware codecs; the
 
 | ID | Requirement | Target | How measured |
 |---|---|---|---|
-| N1 | Live latency glass-to-glass (native) | < 300 ms p95 | Film a ms stopwatch shown next to the Viewer screen |
+| N1 | Live latency glass-to-glass (native) | < 400 ms p95 | Film a ms stopwatch shown next to the Viewer screen |
 | N2 | Live latency (web, Chrome) | < 400 ms p95 | Same |
 | N3 | Save → clip playing on Viewer (20 s clip, default profile) | < post-roll + 3 s | Timestamps in debug overlay |
 | N4 | Clip assembly on A | < 300 ms | Native log |
@@ -324,6 +324,8 @@ H.264 note: encoding and decoding use the device's licensed hardware codecs; the
 | N9 | Fully offline | No outbound request ever | CI with egress blocked + manual airplane-mode test |
 | N10 | Accessibility | Touch targets ≥ 56 dp for primary actions, contrast ≥ 7:1 on main screen | Review checklist |
 
+Why 400 ms for N1/N2: the live view is used to decide *when* to press Save, not for analysis. The cut is made on the Camera's clock when the request arrives, so live latency only shifts the clip by that amount, which the pre-roll and the post-roll absorb.
+
 ---
 
 ## 9. Roadmap
@@ -333,6 +335,20 @@ H.264 note: encoding and decoding use the device's licensed hardware codecs; the
 - Custom WebRTC capturer streaming to a browser page on the LAN; confirm no class conflict with `flutter_webrtc`.
 - 30-min thermal run on the reference phone at 1080p30 and 1080p60.
 - **Exit criteria:** N1, N4 met; 30 min without HQ gaps.
+
+**Results so far** (Redmi Note 12 Pro 5G, Dimensity 1080, Android 14 / HyperOS 2, 2026-10-29):
+
+| Check | Result |
+|---|---|
+| HQ capture 1080p30 | 30 fps steady, H.264 High via `c2.mtk.avc.encoder` |
+| Ring buffer | 80 s window ≈ 119 MB, FIFO rotation OK |
+| Clip assembly (N4) | 98 ms for a 13 s clip; plays and seeks in ffmpeg and Chrome |
+| Live view (N2) | 720p30 H.264 (hardware encoder) to Chrome over a Windows hotspot; 333–350 ms glass-to-glass, 0 packets lost |
+| Library coexistence | Plugin and `flutter_webrtc` share `io.github.webrtc-sdk:android`; no duplicate classes. Requires `ACCESS_NETWORK_STATE`, otherwise libwebrtc aborts natively |
+| Thermal, 10 min | Status `none`, battery 40.5 → 41.8 °C, fps unaffected |
+| Frame gaps | Was ~0.3 %, mostly in the GL thread. With non-blocking secondary outputs and stats off the GL thread, HQ gaps equal camera gaps (2, at startup). Cost: preview/live skip ~16 % of frames (live ~22 fps). v0.1: render secondary outputs on their own thread with a shared EGL context |
+| 1080p60 | Not available: regular sessions top out at 30 fps (`aeAvailableTargetFpsRanges` max [30,30]); 60 fps only exists inside constrained high-speed sessions at 120 fps. Decision: offer each profile only when the device's regular session supports it |
+| Pending | 30-min run without gaps |
 
 ### v0.1 — MVP
 Roles, pairing (QR, code, NSD), ring buffer + outbox + API v1, transfer with ACK/resume, sessions/clips/templates, player (speed, frame step), live view (native + web), web viewer (session-only), export plain clip to gallery/share, thermal policy, operating mode, es/en, dark theme, CI building APK + web, GitHub Release.
