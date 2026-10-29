@@ -12,6 +12,7 @@ internal class Segmenter(private val ring: RingBuffer, private val frameInterval
     private class Pending(val ptsUs: Long, val isSync: Boolean, val data: ByteArray)
 
     private val pending = ArrayList<Pending>()
+    private var epoch = -1
     private var epochStartUs = -1L
     private var sequence = 0
 
@@ -25,6 +26,13 @@ internal class Segmenter(private val ring: RingBuffer, private val frameInterval
 
     fun onFrame(ptsUs: Long, isKeyframe: Boolean, avcc: ByteArray) {
         if (ring.track == null) return
+        if (epoch != ring.epoch) {
+            // New encoder session: its timestamps restart, so start a fresh fragment sequence.
+            epoch = ring.epoch
+            epochStartUs = -1
+            sequence = 0
+            pending.clear()
+        }
         if (epochStartUs < 0) {
             if (!isKeyframe) {
                 droppedBeforeKeyframe++
@@ -39,7 +47,7 @@ internal class Segmenter(private val ring: RingBuffer, private val frameInterval
         if (isKeyframe && pending.isNotEmpty()) flush(endUs = ptsUs)
         pending += Pending(ptsUs, isKeyframe, avcc)
         frames++
-        ring.noteFrame(ptsUs)
+        ring.noteFrame(ptsUs, epoch)
     }
 
     private fun flush(endUs: Long) {
@@ -58,6 +66,7 @@ internal class Segmenter(private val ring: RingBuffer, private val frameInterval
             baseTicks = baseTicks,
             durationTicks = ticks(endUs) - baseTicks,
             data = Fmp4.fragment(sequence, baseTicks, samples),
+            epoch = epoch,
         )
         pending.clear()
     }
