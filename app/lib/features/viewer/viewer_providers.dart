@@ -413,12 +413,22 @@ class ViewerClipsNotifier extends Notifier<List<SessionClip>> {
     return const [];
   }
 
-  /// Never waits for earlier saves or downloads.
-  void save({int? seconds}) => unawaited(_transfers?.save(seconds: seconds));
+  /// Never waits for earlier saves or downloads. Returns the requestId of the new clip, or null when
+  /// not paired.
+  String? save({int? seconds}) {
+    final transfers = _transfers;
+    if (transfers?.api == null) return null;
+    final requestId = const Uuid().v4();
+    unawaited(transfers!.save(seconds: seconds, requestId: requestId));
+    return requestId;
+  }
 
   void retry(String requestId) => _transfers?.retry(requestId);
 }
 
 final viewerClipsProvider = NotifierProvider.autoDispose<ViewerClipsNotifier, List<SessionClip>>(ViewerClipsNotifier.new);
+
+/// Thumbnail of a stored clip, grabbed once per clip (web); null where unsupported.
+final clipThumbnailProvider = FutureProvider.family<Uint8List?, StoredClip>((ref, clip) => clip.thumbnail());
 
 // endregion

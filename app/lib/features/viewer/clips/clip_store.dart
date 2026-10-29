@@ -29,6 +29,10 @@ abstract class StoredClip {
   /// Saves the file through the browser (web only).
   Future<void> download(String fileName);
 
+  /// A small JPEG of a frame about 1 s in, for the clip list; null where frames cannot be grabbed
+  /// (Android until the native library lands).
+  Future<Uint8List?> thumbnail();
+
   /// Frees the object URL or deletes the temp file.
   Future<void> release();
 }

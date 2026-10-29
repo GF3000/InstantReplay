@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../l10n/app_localizations.dart';
 import '../role/role.dart';
 import 'data/session_link.dart';
+import 'tags/tag_editor_page.dart';
+import 'ui/camera_status.dart';
 import 'ui/connect_view.dart';
 import 'ui/live_control_view.dart';
 import 'viewer_providers.dart';
@@ -21,21 +23,41 @@ class ViewerPage extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: setup.paired ? 48 : null,
-        title: Text(camera == null ? l10n.roleViewer : _cameraTitle(camera.name, camera.profileId)),
+        title: Text(
+          camera == null ? l10n.roleViewer : _cameraTitle(camera.name, camera.profileId),
+          overflow: TextOverflow.ellipsis,
+        ),
         actions: [
-          if (setup.paired && !setup.addressFixed)
-            IconButton(
-              icon: const Icon(Icons.link_off),
-              tooltip: l10n.viewerChangeCamera,
-              onPressed: () => ref.read(viewerSetupProvider.notifier).changeCamera(),
-            ),
-          IconButton(
-            icon: const Icon(Icons.swap_horiz),
-            tooltip: l10n.switchRole,
-            onPressed: () async {
-              await ref.read(roleProvider.notifier).clear();
-              if (context.mounted) context.go('/');
+          if (setup.paired) const CameraStatusIndicator(),
+          PopupMenuButton<_MenuItem>(
+            key: const ValueKey('viewer-menu'),
+            icon: const Icon(Icons.more_vert),
+            onSelected: (item) async {
+              switch (item) {
+                case _MenuItem.tags:
+                  await Navigator.of(context).push(TagEditorPage.route());
+                case _MenuItem.changeCamera:
+                  await ref.read(viewerSetupProvider.notifier).changeCamera();
+                case _MenuItem.switchRole:
+                  await ref.read(roleProvider.notifier).clear();
+                  if (context.mounted) context.go('/');
+              }
             },
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: _MenuItem.tags,
+                child: ListTile(leading: const Icon(Icons.sell_outlined), title: Text(l10n.viewerTagsEdit)),
+              ),
+              if (setup.paired && !setup.addressFixed)
+                PopupMenuItem(
+                  value: _MenuItem.changeCamera,
+                  child: ListTile(leading: const Icon(Icons.link_off), title: Text(l10n.viewerChangeCamera)),
+                ),
+              PopupMenuItem(
+                value: _MenuItem.switchRole,
+                child: ListTile(leading: const Icon(Icons.swap_horiz), title: Text(l10n.switchRole)),
+              ),
+            ],
           ),
         ],
       ),
@@ -51,6 +73,8 @@ class ViewerPage extends ConsumerWidget {
 
   static String _cameraTitle(String name, String? profile) => profile == null ? name : '$name · $profile';
 }
+
+enum _MenuItem { tags, changeCamera, switchRole }
 
 class _Session extends ConsumerWidget {
   const _Session();

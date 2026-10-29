@@ -264,23 +264,8 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String viewerStatusBuffer(int seconds) {
-    return 'búfer $seconds s';
-  }
-
-  @override
-  String viewerStatusOutbox(int clips) {
-    return 'pendientes $clips';
-  }
-
-  @override
   String viewerStatusTemperature(String celsius) {
     return '$celsius °C';
-  }
-
-  @override
-  String viewerStatusBattery(int percent, String charging) {
-    return '$percent%$charging';
   }
 
   @override
@@ -304,11 +289,6 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get viewerClipsEmpty => 'Los clips guardados aparecen aquí.';
-
-  @override
-  String viewerClipTitle(int number, int seconds) {
-    return 'Clip $number · $seconds s';
-  }
 
   @override
   String get viewerClipRequesting => 'Solicitando…';
@@ -413,4 +393,116 @@ class AppLocalizationsEs extends AppLocalizations {
   String serverStartFailed(String error) {
     return 'No se pudo iniciar el servidor para visores: $error';
   }
+
+  @override
+  String get viewerStatusTitle => 'Estado de la cámara';
+
+  @override
+  String get viewerStatusRecording => 'Grabación';
+
+  @override
+  String get viewerStatusFpsLabel => 'Fotogramas por segundo';
+
+  @override
+  String get viewerStatusBufferLabel => 'Búfer de repetición';
+
+  @override
+  String viewerStatusSeconds(int seconds) {
+    return '$seconds s';
+  }
+
+  @override
+  String get viewerStatusPendingLabel => 'Clips pendientes en la cámara';
+
+  @override
+  String get viewerStatusTemperatureLabel => 'Temperatura';
+
+  @override
+  String get viewerStatusBatteryLabel => 'Batería';
+
+  @override
+  String viewerStatusBatteryPercent(int percent) {
+    return '$percent%';
+  }
+
+  @override
+  String get viewerStatusCharging => 'cargando';
+
+  @override
+  String get viewerStatusNotCharging => 'sin cargar';
+
+  @override
+  String get viewerProblemDisconnected => 'Desconectada';
+
+  @override
+  String get viewerProblemHot => 'Sobrecalentada';
+
+  @override
+  String viewerProblemBatteryLow(int percent) {
+    return 'Batería $percent%';
+  }
+
+  @override
+  String viewerClipName(String tag, String time) {
+    return '$tag · $time';
+  }
+
+  @override
+  String viewerClipUntagged(String time) {
+    return 'Clip · $time';
+  }
+
+  @override
+  String viewerClipDuration(int seconds) {
+    return '$seconds s';
+  }
+
+  @override
+  String get viewerClipChangeTag => 'Etiqueta';
+
+  @override
+  String get viewerClipNoTag => 'Sin etiqueta';
+
+  @override
+  String get viewerFilterAll => 'Todos';
+
+  @override
+  String get viewerTagDefaultGood => 'Bien';
+
+  @override
+  String get viewerTagDefaultBad => 'Mal';
+
+  @override
+  String get viewerTagDefaultOther => 'Otros';
+
+  @override
+  String get viewerTagsEdit => 'Editar etiquetas';
+
+  @override
+  String get viewerTagsTitle => 'Etiquetas';
+
+  @override
+  String get viewerTagsAdd => 'Añadir etiqueta';
+
+  @override
+  String get viewerTagsEmpty =>
+      'No hay etiquetas. Añade una para marcar tus clips.';
+
+  @override
+  String get viewerTagEdit => 'Editar etiqueta';
+
+  @override
+  String get viewerTagName => 'Nombre';
+
+  @override
+  String get viewerTagColor => 'Color';
+
+  @override
+  String get viewerTagDelete => 'Borrar etiqueta';
+
+  @override
+  String get viewerTagCancel => 'Cancelar';
+
+  @override
+  String get viewerTagOk => 'Guardar';
 }
