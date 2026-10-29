@@ -191,12 +191,16 @@ abstract class CaptureHostApi {
   /// Releases a clip after the Viewer verified it. Returns false if the hash does not match.
   bool ackClip(String id, String sha256);
 
-  /// Send-only WebRTC offer for [viewerId], complete (non-trickle) SDP.
+  /// Send-only WebRTC offer for [viewerId]. Returned as soon as it is created; ICE candidates
+  /// follow through [CaptureEventsApi.onLiveIceCandidate] (trickle ICE).
   @async
   String liveOffer(String viewerId, String codec);
 
   @async
   void liveAnswer(String viewerId, String sdp);
+
+  /// A candidate trickled by the viewer.
+  void liveAddIceCandidate(String viewerId, String candidate, String? sdpMid, int? sdpMLineIndex);
 
   void liveClose(String viewerId);
 
@@ -216,4 +220,10 @@ abstract class CaptureEventsApi {
   void onError(String message);
 
   void onClipChanged(ClipInfo clip);
+
+  /// A local ICE candidate for [viewerId]'s connection, to forward to that viewer.
+  void onLiveIceCandidate(String viewerId, String candidate, String? sdpMid, int? sdpMLineIndex);
+
+  /// PeerConnection state for [viewerId]: `new`, `connecting`, `connected`, `disconnected`, `failed`, `closed`.
+  void onLiveState(String viewerId, String state);
 }

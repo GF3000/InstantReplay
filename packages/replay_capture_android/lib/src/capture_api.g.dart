@@ -954,7 +954,8 @@ class CaptureHostApi {
     return pigeonVar_replyValue! as bool;
   }
 
-  /// Send-only WebRTC offer for [viewerId], complete (non-trickle) SDP.
+  /// Send-only WebRTC offer for [viewerId]. Returned as soon as it is created; ICE candidates
+  /// follow through [CaptureEventsApi.onLiveIceCandidate] (trickle ICE).
   Future<String> liveOffer(String viewerId, String codec) async {
     final pigeonVar_channelName = 'dev.flutter.pigeon.replay_capture_android.CaptureHostApi.liveOffer$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
@@ -982,6 +983,25 @@ class CaptureHostApi {
       binaryMessenger: pigeonVar_binaryMessenger,
     );
     final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[viewerId, sdp]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+  }
+
+  /// A candidate trickled by the viewer.
+  Future<void> liveAddIceCandidate(String viewerId, String candidate, String? sdpMid, int? sdpMLineIndex) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.replay_capture_android.CaptureHostApi.liveAddIceCandidate$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[viewerId, candidate, sdpMid, sdpMLineIndex]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
@@ -1043,6 +1063,12 @@ abstract class CaptureEventsApi {
   void onError(String message);
 
   void onClipChanged(ClipInfo clip);
+
+  /// A local ICE candidate for [viewerId]'s connection, to forward to that viewer.
+  void onLiveIceCandidate(String viewerId, String candidate, String? sdpMid, int? sdpMLineIndex);
+
+  /// PeerConnection state for [viewerId]: `new`, `connecting`, `connected`, `disconnected`, `failed`, `closed`.
+  void onLiveState(String viewerId, String state);
 
   static void setUp(CaptureEventsApi? api, {BinaryMessenger? binaryMessenger, String messageChannelSuffix = '',}) {
     messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
@@ -1142,6 +1168,52 @@ abstract class CaptureEventsApi {
           final ClipInfo arg_clip = args[0]! as ClipInfo;
           try {
             api.onClipChanged(arg_clip);
+            return wrapResponse(empty: true);
+          } on PlatformException catch (e) {
+            return wrapResponse(error: e);
+          }          catch (e) {
+            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
+          }
+        });
+      }
+    }
+    {
+      final pigeonVar_channel = BasicMessageChannel<Object?>(
+          'dev.flutter.pigeon.replay_capture_android.CaptureEventsApi.onLiveIceCandidate$messageChannelSuffix', pigeonChannelCodec,
+          binaryMessenger: binaryMessenger);
+      if (api == null) {
+        pigeonVar_channel.setMessageHandler(null);
+      } else {
+        pigeonVar_channel.setMessageHandler((Object? message) async {
+          final List<Object?> args = message! as List<Object?>;
+          final String arg_viewerId = args[0]! as String;
+          final String arg_candidate = args[1]! as String;
+          final String? arg_sdpMid = args[2] as String?;
+          final int? arg_sdpMLineIndex = args[3] as int?;
+          try {
+            api.onLiveIceCandidate(arg_viewerId, arg_candidate, arg_sdpMid, arg_sdpMLineIndex);
+            return wrapResponse(empty: true);
+          } on PlatformException catch (e) {
+            return wrapResponse(error: e);
+          }          catch (e) {
+            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
+          }
+        });
+      }
+    }
+    {
+      final pigeonVar_channel = BasicMessageChannel<Object?>(
+          'dev.flutter.pigeon.replay_capture_android.CaptureEventsApi.onLiveState$messageChannelSuffix', pigeonChannelCodec,
+          binaryMessenger: binaryMessenger);
+      if (api == null) {
+        pigeonVar_channel.setMessageHandler(null);
+      } else {
+        pigeonVar_channel.setMessageHandler((Object? message) async {
+          final List<Object?> args = message! as List<Object?>;
+          final String arg_viewerId = args[0]! as String;
+          final String arg_state = args[1]! as String;
+          try {
+            api.onLiveState(arg_viewerId, arg_state);
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
