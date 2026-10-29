@@ -8,7 +8,9 @@ import 'package:replay_capture_android/replay_capture_android.dart';
 import '../../core/orientation_lock.dart';
 import '../../l10n/app_localizations.dart';
 import '../role/role.dart';
+import '../server/server_controller.dart';
 import 'camera_session.dart';
+import 'pairing_card.dart';
 
 /// Camera role (SPEC §3.5, D17): setup mode with preview and status, and a black operating mode.
 /// Capture starts on entry and stops when this screen goes away.
@@ -18,6 +20,8 @@ class CameraPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final operating = ref.watch(cameraSessionProvider.select((s) => s.operating));
+    // Keeps the API server alive across the setup/operating switch; it stops with this screen.
+    ref.listen(cameraServerProvider, (_, _) {});
     return OrientationLock(child: operating ? const _OperatingView() : const _SetupView());
   }
 }
@@ -175,6 +179,8 @@ class _Panel extends ConsumerWidget {
           ),
           if (stats != null && !stats.plugged) _Warning(l10n.cameraNotChargingWarning),
           if (state.notificationsDenied) _Warning(l10n.cameraNotificationsDenied),
+          const SizedBox(height: 12),
+          const PairingCard(),
           const Divider(height: 24),
           if (state.cameraState != null) _StatRow(l10n.cameraStatCamera, state.cameraState!),
           if (stats == null)
@@ -352,6 +358,7 @@ class _OperatingViewState extends ConsumerState<_OperatingView> {
     final stats = state.stats;
     final running = state.phase == CameraPhase.running;
     final hot = (state.thermalStatus ?? 0) >= _thermalModerate;
+    final viewers = ref.watch(cameraServerProvider.select((s) => s.viewers));
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -378,6 +385,7 @@ class _OperatingViewState extends ConsumerState<_OperatingView> {
                     ),
                     style: const TextStyle(color: _dim, fontSize: 14),
                   ),
+                  Text(' · ${l10n.cameraOperatingViewers(viewers)}', style: const TextStyle(color: _dim, fontSize: 14)),
                   if (hot) ...[
                     const SizedBox(width: 8),
                     Text(thermalName(l10n, state.thermalStatus!), style: const TextStyle(color: _dimRed, fontSize: 14)),

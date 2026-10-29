@@ -184,4 +184,49 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get thermalShutdown => 'Shutdown';
+
+  @override
+  String get cameraPairingTitle => 'Connect a viewer';
+
+  @override
+  String get cameraPairingCode => 'Pairing code';
+
+  @override
+  String get cameraPairingScanHint =>
+      'Scan the QR code, or open this address in a browser on the same Wi-Fi:';
+
+  @override
+  String get cameraPairingNoNetwork =>
+      'No Wi-Fi or hotspot found. Turn on the hotspot or join a Wi-Fi network.';
+
+  @override
+  String cameraViewersConnected(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count viewers connected',
+      one: '1 viewer connected',
+      zero: 'No viewers connected',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String cameraOperatingViewers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count viewers',
+      one: '1 viewer',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get serverStarting => 'Starting the viewer server…';
+
+  @override
+  String serverStartFailed(String error) {
+    return 'The viewer server could not start: $error';
+  }
 }

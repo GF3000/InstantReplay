@@ -48,5 +48,13 @@
   "thermalSevere": "Grave",
   "thermalCritical": "Crítico",
   "thermalEmergency": "Emergencia",
-  "thermalShutdown": "Apagado"
+  "thermalShutdown": "Apagado",
+  "cameraPairingTitle": "Conectar un visor",
+  "cameraPairingCode": "Código de emparejamiento",
+  "cameraPairingScanHint": "Escanea el código QR o abre esta dirección en un navegador en la misma Wi-Fi:",
+  "cameraPairingNoNetwork": "No hay Wi-Fi ni punto de acceso. Activa el punto de acceso o conéctate a una red Wi-Fi.",
+  "cameraViewersConnected": "{count, plural, =0{Ningún visor conectado} =1{1 visor conectado} other{{count} visores conectados}}",
+  "cameraOperatingViewers": "{count, plural, =1{1 visor} other{{count} visores}}",
+  "serverStarting": "Iniciando el servidor para visores…",
+  "serverStartFailed": "No se pudo iniciar el servidor para visores: {error}"
 }

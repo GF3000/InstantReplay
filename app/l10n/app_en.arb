@@ -102,5 +102,28 @@
   "thermalSevere": "Severe",
   "thermalCritical": "Critical",
   "thermalEmergency": "Emergency",
-  "thermalShutdown": "Shutdown"
+  "thermalShutdown": "Shutdown",
+  "cameraPairingTitle": "Connect a viewer",
+  "cameraPairingCode": "Pairing code",
+  "cameraPairingScanHint": "Scan the QR code, or open this address in a browser on the same Wi-Fi:",
+  "cameraPairingNoNetwork": "No Wi-Fi or hotspot found. Turn on the hotspot or join a Wi-Fi network.",
+  "cameraViewersConnected": "{count, plural, =0{No viewers connected} =1{1 viewer connected} other{{count} viewers connected}}",
+  "@cameraViewersConnected": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "cameraOperatingViewers": "{count, plural, =1{1 viewer} other{{count} viewers}}",
+  "@cameraOperatingViewers": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "serverStarting": "Starting the viewer server…",
+  "serverStartFailed": "The viewer server could not start: {error}",
+  "@serverStartFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  }
 }
