@@ -152,6 +152,10 @@ class AckRequest {
   Json toJson() => {'sha256': sha256};
 }
 
+/// From this `PowerManager.THERMAL_STATUS_*` (MODERATE) the Camera degrades capture, and both roles
+/// warn that the phone is hot.
+const int hotThermalStatus = 2;
+
 /// Camera status pushed to viewers about once per second.
 class CameraStatus {
   const CameraStatus({

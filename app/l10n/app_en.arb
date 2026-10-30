@@ -355,5 +355,14 @@
         "type": "String"
       }
     }
-  }
+  },
+  "viewerTagDeleted": "\"{name}\" deleted",
+  "@viewerTagDeleted": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "viewerTagUndo": "Undo"
 }

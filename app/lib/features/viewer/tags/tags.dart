@@ -101,6 +101,12 @@ class TagsNotifier extends Notifier<List<ViewerTag>> {
           if (t.id != id) t,
       ]);
 
+  /// Undo of [remove]: clips keep the tag id, so they get their tag back.
+  void restore(ViewerTag tag, int index) {
+    if (state.any((t) => t.id == tag.id)) return;
+    _set([...state]..insert(index.clamp(0, state.length), tag));
+  }
+
   /// Moves the tag at [oldIndex] so it ends up at [newIndex].
   void reorder(int oldIndex, int newIndex) {
     final list = [...state];
@@ -110,8 +116,16 @@ class TagsNotifier extends Notifier<List<ViewerTag>> {
 
   void _set(List<ViewerTag> tags) {
     state = tags;
+    // On web this is localStorage, which can be full or unavailable (private mode): keep working
+    // with the in-memory tags rather than failing.
     unawaited(
-      ref.read(sharedPreferencesProvider).setString(storageKey, jsonEncode([for (final t in tags) t.toJson()])),
+      ref
+          .read(sharedPreferencesProvider)
+          .setString(storageKey, jsonEncode([for (final t in tags) t.toJson()]))
+          .catchError((Object e) {
+        debugPrint('Could not save tags: $e');
+        return false;
+      }),
     );
   }
 }

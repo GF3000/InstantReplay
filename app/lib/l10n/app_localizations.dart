@@ -913,6 +913,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The phone is hot ({level}). Shade it or lower the quality.'**
   String cameraHotWarning(String level);
+
+  /// No description provided for @viewerTagDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'\"{name}\" deleted'**
+  String viewerTagDeleted(String name);
+
+  /// No description provided for @viewerTagUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get viewerTagUndo;
 }
 
 class _AppLocalizationsDelegate

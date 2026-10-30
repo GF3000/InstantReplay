@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:replay_capture_android/replay_capture_android.dart';
+import 'package:replay_protocol/replay_protocol.dart' show hotThermalStatus;
 
 import '../../core/orientation_lock.dart';
 import '../../l10n/app_localizations.dart';
@@ -24,11 +25,15 @@ class CameraPage extends ConsumerWidget {
     // Keeps the API server alive across the setup/operating switch; it stops with this screen.
     ref.listen(cameraServerProvider, (_, _) {});
     // UX §2.2: going from no viewers to one turns the screen black. Waking to setup while viewers
-    // stay connected is respected until the count drops to zero and rises again.
+    // stay connected is respected; so is a recent wake, because a viewer whose phone locks or loses
+    // Wi-Fi reconnects (0 → 1) and must not blank the screen while the coach is reframing.
     ref.listen(cameraServerProvider.select((s) => s.viewers), (previous, viewers) {
       if ((previous ?? 0) > 0 || viewers == 0) return;
+      final session = ref.read(cameraSessionProvider.notifier);
       if (ref.read(cameraSessionProvider).phase != CameraPhase.running) return;
-      ref.read(cameraSessionProvider.notifier).startOperating();
+      final woken = session.lastWokenAt;
+      if (woken != null && DateTime.now().difference(woken) < autoOperatingQuietPeriod) return;
+      session.startOperating();
     });
     return OrientationLock(child: operating ? const _OperatingView() : const _SetupView());
   }
@@ -470,7 +475,10 @@ class _OperatingViewState extends ConsumerState<_OperatingView> {
 // endregion
 
 /// `PowerManager.THERMAL_STATUS_MODERATE`: the first level that degrades capture (SPEC §3.6).
-const _thermalModerate = 2;
+/// After a manual wake, a viewer (re)connecting does not switch to operating mode for this long.
+const autoOperatingQuietPeriod = Duration(minutes: 2);
+
+const _thermalModerate = hotThermalStatus;
 
 String thermalName(AppLocalizations l10n, int status) => switch (status) {
       <= 0 => l10n.thermalNone,

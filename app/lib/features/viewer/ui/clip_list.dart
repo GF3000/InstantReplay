@@ -37,12 +37,13 @@ List<ViewerTag> tagsInUse(List<SessionClip> clips, Map<String, String> clipTags,
   ];
 }
 
-/// [clips] with tag [filter], or all of them when [filter] is null.
+/// [clips] with tag [filter], or all of them when [filter] is null. Clips that are not ready yet
+/// always show, so a save made while filtering never looks lost (it has no tag at first).
 List<SessionClip> filterClips(List<SessionClip> clips, Map<String, String> clipTags, String? filter) => filter == null
     ? clips
     : [
         for (final c in clips)
-          if (clipTags[c.requestId] == filter) c,
+          if (clipTags[c.requestId] == filter || c.phase != SessionClipPhase.ready) c,
       ];
 
 /// Newest first, with filter chips by tag on top.
@@ -56,8 +57,12 @@ class ClipList extends ConsumerWidget {
     final clipTags = ref.watch(clipTagsProvider);
     final inUse = tagsInUse(clips, clipTags, ref.watch(tagsProvider));
     final selected = ref.watch(clipFilterProvider);
-    // A filter whose tag is no longer on any clip falls back to "All".
+    // A filter whose tag is no longer on any clip falls back to "All", and is cleared for good:
+    // otherwise tagging a later clip would silently switch it back on.
     final filter = inUse.any((t) => t.id == selected) ? selected : null;
+    if (selected != null && filter == null) {
+      Future.microtask(() => ref.read(clipFilterProvider.notifier).select(null));
+    }
     final shown = filterClips(clips, clipTags, filter);
     final small = Theme.of(context).textTheme.bodySmall;
     void select(String? id) => ref.read(clipFilterProvider.notifier).select(id);
@@ -166,7 +171,8 @@ class ClipTile extends ConsumerWidget {
             padding: const EdgeInsetsDirectional.only(start: 7, end: 4),
             child: Row(
               children: [
-                _Thumbnail(clip: clip),
+                // Narrow panels (phone landscape) need the room for the name.
+                _Thumbnail(clip: clip, width: roomy ? 96 : 64),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -216,9 +222,10 @@ class ClipTile extends ConsumerWidget {
 }
 
 class _Thumbnail extends ConsumerWidget {
-  const _Thumbnail({required this.clip});
+  const _Thumbnail({required this.clip, required this.width});
 
   final SessionClip clip;
+  final double width;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -232,8 +239,8 @@ class _Thumbnail extends ConsumerWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(6),
       child: SizedBox(
-        width: 96,
-        height: 54,
+        width: width,
+        height: width * 9 / 16,
         child: ColoredBox(
           color: scheme.surfaceContainerHighest,
           child: Stack(

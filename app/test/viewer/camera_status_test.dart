@@ -48,8 +48,9 @@ void main() {
     expect(CameraHealth.of(_link(LinkPhase.connected, _status(recording: false))).problems, [
       CameraProblem.notRecording,
     ]);
-    expect(CameraHealth.of(_link(LinkPhase.connected, _status(thermal: 2))).ok, isTrue);
-    expect(CameraHealth.of(_link(LinkPhase.connected, _status(thermal: 3))).problems, [CameraProblem.hot]);
+    // Same threshold as the Camera (MODERATE): it degrades capture from there.
+    expect(CameraHealth.of(_link(LinkPhase.connected, _status(thermal: 1))).ok, isTrue);
+    expect(CameraHealth.of(_link(LinkPhase.connected, _status(thermal: 2))).problems, [CameraProblem.hot]);
     expect(CameraHealth.of(_link(LinkPhase.connected, _status(battery: 15, plugged: false))).problems, [
       CameraProblem.batteryLow,
     ]);

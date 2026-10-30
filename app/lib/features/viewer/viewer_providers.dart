@@ -429,6 +429,15 @@ class ViewerClipsNotifier extends Notifier<List<SessionClip>> {
 final viewerClipsProvider = NotifierProvider.autoDispose<ViewerClipsNotifier, List<SessionClip>>(ViewerClipsNotifier.new);
 
 /// Thumbnail of a stored clip, grabbed once per clip (web); null where unsupported.
-final clipThumbnailProvider = FutureProvider.family<Uint8List?, StoredClip>((ref, clip) => clip.thumbnail());
+/// Kept while a tile shows it and a few minutes after, so scrolling back doesn't decode the clip
+/// again, but released clips don't pin their thumbnails for the whole session.
+final clipThumbnailProvider = FutureProvider.autoDispose.family<Uint8List?, StoredClip>((ref, clip) {
+  final link = ref.keepAlive();
+  Timer? release;
+  ref.onCancel(() => release = Timer(const Duration(minutes: 5), link.close));
+  ref.onResume(() => release?.cancel());
+  ref.onDispose(() => release?.cancel());
+  return clip.thumbnail();
+});
 
 // endregion

@@ -510,4 +510,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String cameraHotWarning(String level) {
     return 'El teléfono está caliente ($level). Ponlo a la sombra o baja la calidad.';
   }
+
+  @override
+  String viewerTagDeleted(String name) {
+    return '\"$name\" borrada';
+  }
+
+  @override
+  String get viewerTagUndo => 'Deshacer';
 }

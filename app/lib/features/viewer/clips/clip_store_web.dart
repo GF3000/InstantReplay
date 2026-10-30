@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:js_interop';
 import 'dart:math' as math;
 import 'dart:typed_data';
@@ -53,16 +54,16 @@ class _BlobClip implements StoredClip {
       ..muted = true
       ..playsInline = true
       ..preload = 'auto';
-    final loaded = web.EventStreamProviders.loadedDataEvent.forTarget(video).first;
+    final loaded = _next(web.EventStreamProviders.loadedDataEvent, video, timeout);
     video.src = url;
     try {
-      await loaded.timeout(timeout);
+      await loaded;
       final d = video.duration;
       final at = d.isFinite && d > 0 ? math.min(1.0, d / 2) : 0.0;
       if (at > 0) {
-        final seeked = web.EventStreamProviders.seekedEvent.forTarget(video).first;
+        final seeked = _next(web.EventStreamProviders.seekedEvent, video, timeout);
         video.currentTime = at;
-        await seeked.timeout(timeout);
+        await seeked;
       }
       final (w, h) = (video.videoWidth, video.videoHeight);
       if (w == 0 || h == 0) return null;
@@ -81,4 +82,25 @@ class _BlobClip implements StoredClip {
 
   @override
   Future<void> release() async => web.URL.revokeObjectURL(url);
+
+  /// The next [event] on [video], failing on a media error or after [timeout]. Both listeners are
+  /// always cancelled, so a failed grab doesn't keep the element alive.
+  static Future<void> _next(
+    web.EventStreamProvider<web.Event> event,
+    web.HTMLVideoElement video,
+    Duration timeout,
+  ) {
+    final done = Completer<void>();
+    final subs = [
+      event.forTarget(video).listen((_) => done.isCompleted ? null : done.complete()),
+      web.EventStreamProviders.errorEvent.forTarget(video).listen(
+            (_) => done.isCompleted ? null : done.completeError(StateError('video error')),
+          ),
+    ];
+    return done.future.timeout(timeout).whenComplete(() {
+      for (final s in subs) {
+        s.cancel();
+      }
+    });
+  }
 }

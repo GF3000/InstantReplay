@@ -62,7 +62,19 @@ class TagEditorPage extends ConsumerWidget {
                             IconButton(
                               tooltip: l10n.viewerTagDelete,
                               icon: const Icon(Icons.delete_outline),
-                              onPressed: () => notifier.remove(t.id),
+                              onPressed: () {
+                                notifier.remove(t.id);
+                                // Next to the drag handle, a slip is easy: offer an undo.
+                                ScaffoldMessenger.of(context)
+                                  ..hideCurrentSnackBar()
+                                  ..showSnackBar(SnackBar(
+                                    content: Text(l10n.viewerTagDeleted(t.label(l10n))),
+                                    action: SnackBarAction(
+                                      label: l10n.viewerTagUndo,
+                                      onPressed: () => notifier.restore(t, i),
+                                    ),
+                                  ));
+                              },
                             ),
                             ReorderableDragStartListener(
                               index: i,

@@ -5,6 +5,7 @@ import 'package:instant_replay/core/preferences.dart';
 import 'package:instant_replay/features/viewer/clips/clip_transfers.dart';
 import 'package:instant_replay/features/viewer/data/session_link.dart';
 import 'package:instant_replay/features/viewer/tags/tags.dart';
+import 'package:instant_replay/features/viewer/ui/clip_list.dart';
 import 'package:instant_replay/features/viewer/ui/live_control_view.dart';
 import 'package:instant_replay/features/viewer/viewer_page.dart';
 import 'package:instant_replay/features/viewer/viewer_providers.dart';
@@ -153,6 +154,44 @@ void main() {
       await _settle(tester);
     });
   }
+
+  testWidgets('phone landscape keeps clip rows visible with filter chips and the tag bar', (tester) async {
+    tester.view.physicalSize = const Size(640, 360);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final clips = [
+      for (var i = 0; i < 6; i++)
+        SessionClip(
+          requestId: 'r$i',
+          seconds: 20,
+          requestedAt: DateTime(2026, 10, 29, 12, i),
+          phase: SessionClipPhase.ready,
+        ),
+    ];
+    await tester.pumpWidget(_app(const Column(children: [SizedBox(height: 48), Expanded(child: LiveControlView())]), [
+      sharedPreferencesProvider.overrideWithValue(await _prefs()),
+      linkStateProvider.overrideWith(_ConnectedLink.new),
+      liveViewProvider.overrideWith(_PlayingLive.new),
+      viewerClipsProvider.overrideWith(() => _RecordingClips([], clips)),
+    ]));
+    final ref = ProviderScope.containerOf(tester.element(find.byType(LiveControlView)));
+    ref.read(clipTagsProvider.notifier)
+      ..set('r0', TagsNotifier.good)
+      ..set('r1', TagsNotifier.bad);
+    await tester.tap(find.byKey(const ValueKey('viewer-save')));
+    await _settle(tester);
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(const ValueKey('filter-all')), findsOneWidget);
+    expect(find.byKey(const ValueKey('viewer-tag-bar')), findsOneWidget);
+    // At least one full clip row and part of the next stay on screen.
+    final rows = find.byType(ClipTile);
+    expect(rows, findsAtLeast(2));
+    expect(tester.getRect(rows.first).bottom, lessThanOrEqualTo(360));
+    await tester.pump(PostSaveTagBarNotifier.visibleFor);
+    await _settle(tester);
+    // With the tag bar gone, the quick chips are back in its place.
+    expect(find.byKey(const ValueKey('viewer-save-30')), findsOneWidget);
+  });
 
   testWidgets('save is disabled while not connected', (tester) async {
     final saved = <int?>[];

@@ -14,7 +14,6 @@ enum CameraProblem { disconnected, notRecording, hot, batteryLow }
 class CameraHealth {
   const CameraHealth({this.connecting = false, this.problems = const []});
 
-  static const hotThermalStatus = 3;
   static const lowBatteryPercent = 20;
 
   final bool connecting;
@@ -154,7 +153,7 @@ class CameraStatusDetails extends ConsumerWidget {
                   if (s.batteryTempC case final t?) l10n.viewerStatusTemperature(t.toStringAsFixed(0)),
                   _thermalName(l10n, s.thermalStatus),
                 ].join(' · '),
-                alert: s.thermalStatus >= CameraHealth.hotThermalStatus,
+                alert: s.thermalStatus >= hotThermalStatus,
               ),
               if (s.batteryPercent case final p?)
                 row(

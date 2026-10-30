@@ -135,5 +135,7 @@
   "viewerTagCancel": "Cancelar",
   "viewerTagOk": "Guardar",
   "cameraAdvanced": "Avanzado",
-  "cameraHotWarning": "El teléfono está caliente ({level}). Ponlo a la sombra o baja la calidad."
+  "cameraHotWarning": "El teléfono está caliente ({level}). Ponlo a la sombra o baja la calidad.",
+  "viewerTagDeleted": "\"{name}\" borrada",
+  "viewerTagUndo": "Deshacer"
 }

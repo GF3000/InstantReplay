@@ -25,7 +25,7 @@ class LiveControlView extends StatelessWidget {
             SizedBox(
               width: panel,
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                SaveControls(compact: c.maxHeight < 480),
+                SaveControls(compact: c.maxHeight < 480, tight: c.maxHeight < 400),
                 const Divider(height: 1),
                 const Expanded(child: ClipList()),
               ]),
@@ -87,10 +87,14 @@ class LivePanel extends ConsumerWidget {
 /// The big SAVE button (default preset), quick chips that save at once with their duration (D11),
 /// and the post-save tag bar in a fixed slot below them.
 class SaveControls extends ConsumerWidget {
-  const SaveControls({super.key, this.compact = false});
+  const SaveControls({super.key, this.compact = false, this.tight = false});
 
   /// Short screens: a lower Save button so the clip list keeps some room.
   final bool compact;
+
+  /// Very short screens (phone landscape): the tag bar takes the chips' row while it shows, and
+  /// the save hint is dropped, so the clip list keeps about two rows.
+  final bool tight;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -104,11 +108,25 @@ class SaveControls extends ConsumerWidget {
       if (requestId != null) ref.read(postSaveTagBarProvider.notifier).show(requestId);
     }
 
+    final chips = Row(children: [
+      for (final s in presets.quickSeconds)
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: OutlinedButton(
+              key: ValueKey('viewer-save-$s'),
+              onPressed: enabled ? () => save(s) : null,
+              child: Text(l10n.viewerSaveQuick(s), style: const TextStyle(fontSize: 16)),
+            ),
+          ),
+        ),
+    ]);
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         SizedBox(
-          height: compact ? 64 : 88,
+          height: tight ? 56 : (compact ? 64 : 88),
           child: FilledButton.icon(
             key: const ValueKey('viewer-save'),
             onPressed: enabled ? () => save(null) : null,
@@ -123,29 +141,21 @@ class SaveControls extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 8),
-        Row(children: [
-          for (final s in presets.quickSeconds)
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: OutlinedButton(
-                  key: ValueKey('viewer-save-$s'),
-                  onPressed: enabled ? () => save(s) : null,
-                  child: Text(l10n.viewerSaveQuick(s), style: const TextStyle(fontSize: 16)),
-                ),
-              ),
+        if (tight)
+          PostSaveTagBar(idle: chips)
+        else ...[
+          chips,
+          const SizedBox(height: 4),
+          PostSaveTagBar(
+            idle: Text(
+              l10n.viewerSaveHint(presets.postSeconds),
+              style: Theme.of(context).textTheme.bodySmall,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
-        ]),
-        const SizedBox(height: 4),
-        PostSaveTagBar(
-          idle: Text(
-            l10n.viewerSaveHint(presets.postSeconds),
-            style: Theme.of(context).textTheme.bodySmall,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
           ),
-        ),
+        ],
       ]),
     );
   }

@@ -16,11 +16,11 @@ Future<ProviderContainer> _container([Map<String, Object> prefs = const {}]) asy
   return c;
 }
 
-SessionClip _clip(String id, {DateTime? at}) => SessionClip(
+SessionClip _clip(String id, {DateTime? at, SessionClipPhase phase = SessionClipPhase.ready}) => SessionClip(
       requestId: id,
       seconds: 20,
       requestedAt: at ?? DateTime(2026, 10, 29, 12, 41),
-      phase: SessionClipPhase.ready,
+      phase: phase,
     );
 
 void main() {
@@ -122,6 +122,32 @@ void main() {
       );
       expect([for (final c in filterClips(clips, clipTags, TagsNotifier.other)) c.requestId], ['a', 'c']);
       expect(filterClips(clips, clipTags, null), clips);
+    });
+
+    test('a save made while filtering stays visible until it is ready', () {
+      final clips = [
+        _clip('new', phase: SessionClipPhase.downloading),
+        _clip('a'),
+        _clip('b'),
+      ];
+      final clipTags = {'a': TagsNotifier.good, 'b': TagsNotifier.bad};
+      expect([for (final c in filterClips(clips, clipTags, TagsNotifier.good)) c.requestId], ['new', 'a']);
+    });
+  });
+
+  group('tag delete undo', () {
+    test('restoring a deleted tag gives its clips their tag back, at the same place', () async {
+      final c = await _container();
+      final n = c.read(tagsProvider.notifier);
+      c.read(clipTagsProvider.notifier).set('r1', TagsNotifier.bad);
+      final bad = n.byId(TagsNotifier.bad)!;
+      n.remove(TagsNotifier.bad);
+      expect(c.read(clipTagProvider('r1')), isNull);
+      n.restore(bad, 1);
+      expect(c.read(clipTagProvider('r1'))?.id, TagsNotifier.bad);
+      expect([for (final t in c.read(tagsProvider)) t.id], [TagsNotifier.good, TagsNotifier.bad, TagsNotifier.other]);
+      n.restore(bad, 0); // already there: no duplicate
+      expect(c.read(tagsProvider), hasLength(3));
     });
   });
 }

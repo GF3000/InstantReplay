@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:instant_replay/app/app.dart';
 import 'package:instant_replay/core/capabilities.dart';
 import 'package:instant_replay/core/preferences.dart';
+import 'package:instant_replay/features/camera/camera_page.dart';
+import 'package:instant_replay/features/camera/camera_session.dart';
 import 'package:instant_replay/features/camera/capture_layer.dart';
 import 'package:instant_replay/features/server/api_server.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -255,7 +257,18 @@ void main() {
       expect(_operating(tester), isFalse);
       expect(fake.calls.last, 'preview:true');
 
-      // Everyone left and someone connects again: operating mode once more.
+      // The viewer drops and reconnects (screen lock, Wi-Fi blip) right after the coach woke the
+      // Camera: it must not blank the screen mid-reframing.
+      api.viewers.add(0);
+      await tester.pumpAndSettle();
+      api.viewers.add(1);
+      await tester.pumpAndSettle();
+      expect(_operating(tester), isFalse);
+
+      // Long after the wake, everyone left and someone connects again: operating mode once more.
+      final container = ProviderScope.containerOf(tester.element(find.byType(CameraPage)));
+      container.read(cameraSessionProvider.notifier).lastWokenAt =
+          DateTime.now().subtract(autoOperatingQuietPeriod + const Duration(seconds: 1));
       api.viewers.add(0);
       await tester.pumpAndSettle();
       expect(_operating(tester), isFalse);
