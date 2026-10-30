@@ -142,5 +142,10 @@ void main() {
     await settle(tester);
     expect(find.byType(LiveControlView), findsOneWidget);
     expect(container.read(activeSessionProvider)?.id, session.id);
+
+    // The live list watches the session's clips in the library: drift closes its query streams
+    // on a timer, so let it run before the test ends.
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 1));
   });
 }

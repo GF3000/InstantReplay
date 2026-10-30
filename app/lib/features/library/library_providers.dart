@@ -176,8 +176,27 @@ class LibraryCatalog implements ClipCatalog {
 /// While the live screen is open: writes what the Viewer knows of each saved clip (request,
 /// times, duration) and its tag into the library as soon as the clip is stored.
 /// Tagging stays in memory first, so it never waits for the database or blocks a save.
+///
+/// A resumed session brings back the tags of its earlier clips: once per session, the stored
+/// tags fill the in-memory map (keys not set yet only), without being written back.
 final liveLibrarySyncProvider = Provider.autoDispose<void>((ref) {
   if (!ref.watch(libraryEnabledProvider)) return;
+  final inLibrary = ref.watch(_libraryClipTagsProvider);
+  final seeded = <String>{};
+  ref.listen<String?>(activeSessionProvider.select((s) => s?.id), (_, sessionId) {
+    if (sessionId == null || !seeded.add(sessionId)) return;
+    unawaited(() async {
+      try {
+        final entries = await ref.read(libraryDatabaseProvider).watchSessionClips(sessionId).first;
+        if (!ref.mounted) return;
+        final tags = {for (final e in entries) e.clip.requestId ?? e.clip.id: ?e.tagIds.firstOrNull};
+        inLibrary.addAll(tags);
+        ref.read(clipTagsProvider.notifier).seed(tags);
+      } catch (e) {
+        debugPrint('Could not read the tags of session $sessionId: $e');
+      }
+    }());
+  }, fireImmediately: true);
   final written = <String>{};
   ref.listen<List<SessionClip>>(viewerClipsProvider, (_, clips) {
     final db = ref.read(libraryDatabaseProvider);
@@ -191,7 +210,9 @@ final liveLibrarySyncProvider = Provider.autoDispose<void>((ref) {
             requestedAt: Value(c.requestedAt),
             durationMs: Value(c.durationMs),
           ));
-          await writeClipTag(ref, c.requestId, clipId: clipId);
+          if (await writeClipTag(ref, c.requestId, clipId: clipId)) {
+            inLibrary[c.requestId] = ref.read(clipTagsProvider)[c.requestId];
+          }
         } catch (e) {
           debugPrint('Could not update clip $clipId: $e');
         }
@@ -205,25 +226,108 @@ final liveLibrarySyncProvider = Provider.autoDispose<void>((ref) {
 /// request id.
 final clipLabelWriterProvider = Provider.autoDispose<void>((ref) {
   if (!ref.watch(libraryEnabledProvider)) return;
+  final inLibrary = ref.watch(_libraryClipTagsProvider);
   ref.listen<Map<String, String>>(clipTagsProvider, (before, after) {
     for (final requestId in {...after.keys, ...?before?.keys}) {
-      if (before?[requestId] != after[requestId]) unawaited(writeClipTag(ref, requestId));
+      final tagId = after[requestId];
+      if (before?[requestId] == tagId) continue;
+      // Tags just read from the library (a resumed session) are not written back.
+      if (inLibrary.containsKey(requestId) && inLibrary[requestId] == tagId) continue;
+      unawaited(() async {
+        if (await writeClipTag(ref, requestId)) inLibrary[requestId] = tagId;
+      }());
     }
   });
 });
 
-/// Copies the in-memory tag of request [requestId] to its library clip, if stored.
-Future<void> writeClipTag(Ref ref, String requestId, {String? clipId}) async {
+/// The tag each clip has in the library as far as this screen knows (read from it or written to
+/// it), by request id; lets [clipLabelWriterProvider] skip writes that change nothing.
+final _libraryClipTagsProvider = Provider.autoDispose<Map<String, String?>>((_) => {});
+
+/// Copies the in-memory tag of request [requestId] to its library clip, if stored. True when
+/// written.
+Future<bool> writeClipTag(Ref ref, String requestId, {String? clipId}) async {
   final db = ref.read(libraryDatabaseProvider);
   final tagId = ref.read(clipTagsProvider)[requestId];
   try {
     final id = clipId ?? await db.clipIdForRequest(requestId);
-    if (id == null) return;
+    if (id == null) return false;
     await db.setClipTags(id, [?tagId]);
+    return true;
   } catch (e) {
     debugPrint('Could not save the tag of $requestId: $e');
+    return false;
   }
 }
+
+// endregion
+
+// region Earlier clips of the active session
+
+/// A library clip as the clip list and the review show it. Keyed by its save request when known,
+/// like the clips of this run, so its tag lives under the same key.
+SessionClip sessionClipFromEntry(ClipEntry e, {StoredClip? stored}) {
+  final c = e.clip;
+  return SessionClip(
+    requestId: c.requestId ?? c.id,
+    seconds: (c.durationMs ?? 0) / 1000,
+    requestedAt: c.requestedAt,
+    phase: SessionClipPhase.ready,
+    clipId: c.id,
+    durationMs: c.durationMs,
+    received: c.sizeBytes,
+    total: c.sizeBytes,
+    stored: stored ?? ClipStore.openFile(c.id, c.filePath, c.sizeBytes),
+    acked: true,
+  );
+}
+
+/// The clips of the active library session already in the database, newest first: after
+/// resuming a session, the ones saved before (Android). Empty on web (D15) or without a session.
+final activeSessionStoredClipsProvider = StreamProvider.autoDispose<List<SessionClip>>((ref) {
+  if (!ref.watch(libraryEnabledProvider)) return Stream.value(const []);
+  // The id only: editing the tags replaces the session state and must not restart the stream.
+  final sessionId = ref.watch(activeSessionProvider.select((s) => s?.id));
+  if (sessionId == null) return Stream.value(const []);
+  // One StoredClip per clip, so the thumbnail family keeps its key across updates.
+  final opened = <String, StoredClip>{};
+  return ref.watch(libraryDatabaseProvider).watchSessionClips(sessionId).map((entries) {
+    final ids = {for (final e in entries) e.clip.id};
+    opened.removeWhere((id, _) => !ids.contains(id));
+    return [
+      for (final e in entries)
+        sessionClipFromEntry(
+          e,
+          stored: opened.putIfAbsent(e.clip.id, () => ClipStore.openFile(e.clip.id, e.clip.filePath, e.clip.sizeBytes)),
+        ),
+    ];
+  });
+});
+
+/// The live screen's clip list: this run's clips and the session's earlier ones from the library,
+/// newest first. A clip of this run shows once even when it is in the library too (matched by
+/// clip id, which the library has before the request id); the in-memory entry wins.
+final liveClipsProvider = Provider.autoDispose<List<SessionClip>>((ref) {
+  final live = ref.watch(viewerClipsProvider);
+  final stored = ref.watch(activeSessionStoredClipsProvider).value ?? const <SessionClip>[];
+  final pending = ref.watch(pendingClipDeletesProvider);
+  if (stored.isEmpty) return live;
+  final known = {...pending, for (final c in live) ...[c.requestId, ?c.clipId]};
+  final earlier = [
+    for (final c in stored)
+      if (!known.contains(c.requestId) && !known.contains(c.clipId)) c,
+  ];
+  if (earlier.isEmpty) return live;
+  // Both are newest first: merge, this run's clip first on a tie.
+  final merged = <SessionClip>[];
+  var i = 0;
+  var j = 0;
+  while (i < live.length || j < earlier.length) {
+    final takeLive = j >= earlier.length || (i < live.length && !earlier[j].requestedAt.isAfter(live[i].requestedAt));
+    merged.add(takeLive ? live[i++] : earlier[j++]);
+  }
+  return merged;
+});
 
 // endregion
 

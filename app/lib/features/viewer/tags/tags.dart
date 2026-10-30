@@ -157,7 +157,8 @@ class KnownLabelsNotifier extends Notifier<Map<String, ViewerTag>> {
 final knownLabelsProvider = NotifierProvider<KnownLabelsNotifier, Map<String, ViewerTag>>(KnownLabelsNotifier.new);
 
 /// Tag of each clip of this session, keyed by requestId so a clip can be tagged while it is still
-/// recording or downloading. Session-only, like the clips themselves (D15).
+/// recording or downloading. Session-only on web, like the clips themselves (D15); on Android a
+/// resumed session's earlier clips bring their tags back from the library.
 class ClipTagsNotifier extends Notifier<Map<String, String>> {
   @override
   Map<String, String> build() => const {};
@@ -167,6 +168,16 @@ class ClipTagsNotifier extends Notifier<Map<String, String>> {
           if (e.key != requestId) e.key: e.value,
         requestId: ?tagId,
       };
+
+  /// Adds the tags of clips this screen did not tag itself (the earlier clips of a resumed
+  /// session), leaving any tag already set alone.
+  void seed(Map<String, String> tags) {
+    final add = {
+      for (final e in tags.entries)
+        if (!state.containsKey(e.key)) e.key: e.value,
+    };
+    if (add.isNotEmpty) state = {...state, ...add};
+  }
 }
 
 final clipTagsProvider = NotifierProvider<ClipTagsNotifier, Map<String, String>>(ClipTagsNotifier.new);

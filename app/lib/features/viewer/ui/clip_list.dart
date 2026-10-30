@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../l10n/app_localizations.dart';
+import '../../library/library_providers.dart';
 import '../clips/clip_transfers.dart';
 import '../tags/tag_widgets.dart';
 import '../tags/tags.dart';
@@ -46,14 +47,15 @@ List<SessionClip> filterClips(List<SessionClip> clips, Map<String, String> clipT
           if (clipTags[c.requestId] == filter || c.phase != SessionClipPhase.ready) c,
       ];
 
-/// Newest first, with filter chips by tag on top.
+/// Newest first, with filter chips by tag on top. On Android a resumed session also lists the
+/// clips saved into it before ([liveClipsProvider]).
 class ClipList extends ConsumerWidget {
   const ClipList({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    final clips = ref.watch(viewerClipsProvider);
+    final clips = ref.watch(liveClipsProvider);
     final clipTags = ref.watch(clipTagsProvider);
     final inUse = tagsInUse(clips, clipTags, ref.watch(tagsProvider));
     final selected = ref.watch(clipFilterProvider);

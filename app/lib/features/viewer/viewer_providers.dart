@@ -485,6 +485,7 @@ class ViewerClipsNotifier extends Notifier<List<SessionClip>> {
     _transfers = transfers;
     final deleteStored = _deleteStored = ref.watch(clipDeleterProvider);
     _pendingDeletes.clear();
+    final pendingStored = _pendingStored..clear();
     // Leaving the screen while an undo is still offered: the deletion stands.
     ref.onDispose(() async {
       for (final requestId in _pendingDeletes.toList()) {
@@ -492,6 +493,11 @@ class ViewerClipsNotifier extends Notifier<List<SessionClip>> {
         if (clipId != null) await deleteStored(clipId);
       }
       _pendingDeletes.clear();
+      final earlier = pendingStored.values.toList();
+      pendingStored.clear();
+      for (final clipId in earlier) {
+        await deleteStored(clipId);
+      }
       await transfers.dispose();
     });
     // Not watched: a change in Settings must not rebuild this and drop the session's clips.
@@ -527,24 +533,46 @@ class ViewerClipsNotifier extends Notifier<List<SessionClip>> {
   void retry(String requestId) => _transfers?.retry(requestId);
 
   /// Takes a finished clip off the list; [undoDelete] brings it back until [commitDelete]. False
-  /// for a clip still in progress.
+  /// for a clip still in progress. Also works for an earlier clip of a resumed session, which
+  /// only the library holds ([activeSessionStoredClipsProvider]).
   bool delete(String requestId) {
-    final hidden = _transfers?.hide(requestId) ?? false;
-    if (hidden) _pendingDeletes.add(requestId);
-    return hidden;
+    final inMemory = state.where((c) => c.requestId == requestId).firstOrNull;
+    if (_transfers?.hide(requestId) ?? false) {
+      _pendingDeletes.add(requestId);
+      // Its library row must not show in its place while the undo is offered.
+      ref.read(pendingClipDeletesProvider.notifier).add(requestId, inMemory?.clipId);
+      return true;
+    }
+    if (inMemory != null) return false;
+    final earlier = ref.read(activeSessionStoredClipsProvider).value?.where((c) => c.requestId == requestId).firstOrNull;
+    final clipId = earlier?.clipId;
+    if (clipId == null) return false;
+    _pendingStored[requestId] = clipId;
+    ref.read(pendingClipDeletesProvider.notifier).add(requestId, clipId);
+    return true;
   }
 
   void undoDelete(String requestId) {
-    _pendingDeletes.remove(requestId);
-    _transfers?.unhide(requestId);
+    final clipId = _pendingStored.remove(requestId);
+    if (clipId == null) {
+      _pendingDeletes.remove(requestId);
+      _transfers?.unhide(requestId);
+    }
+    ref.read(pendingClipDeletesProvider.notifier).remove(requestId);
   }
 
-  /// Deletes the clip for good: its bytes, its library entry and file (Android), and its labels.
+  /// Deletes the clip for good: its bytes, its library entry and file (Android), and its tag.
+  /// It stays in [pendingClipDeletesProvider], so the library row cannot show again before the
+  /// library notices it is gone.
   Future<void> commitDelete(String requestId) async {
-    if (!_pendingDeletes.remove(requestId)) return;
-    final clip = await _transfers?.forget(requestId);
-    final clipId = clip?.clipId;
-    if (clip?.stored != null && clipId != null) await _deleteStored(clipId);
+    if (_pendingStored.remove(requestId) case final clipId?) {
+      await _deleteStored(clipId);
+    } else {
+      if (!_pendingDeletes.remove(requestId)) return;
+      final clip = await _transfers?.forget(requestId);
+      final clipId = clip?.clipId;
+      if (clip?.stored != null && clipId != null) await _deleteStored(clipId);
+    }
     if (!ref.mounted) return;
     ref.read(clipTagsProvider.notifier).set(requestId, null);
   }
@@ -553,7 +581,36 @@ class ViewerClipsNotifier extends Notifier<List<SessionClip>> {
 
   /// Deleted on screen but not yet for good (the undo is still offered).
   final _pendingDeletes = <String>{};
+
+  /// The same for earlier clips of the session, which only the library holds: clip id by request.
+  final _pendingStored = <String, String>{};
 }
+
+/// Request and clip ids of clips taken off the live list (undo offered, or deleted for good):
+/// their library rows must not show in the merged list ([liveClipsProvider]).
+class PendingClipDeletesNotifier extends Notifier<Set<String>> {
+  @override
+  Set<String> build() => const {};
+
+  void add(String requestId, String? clipId) {
+    _clipIds[requestId] = clipId;
+    state = {...state, requestId, ?clipId};
+  }
+
+  /// Undo: the request and the clip id it was added with.
+  void remove(String requestId) {
+    final clipId = _clipIds.remove(requestId);
+    state = {
+      for (final k in state)
+        if (k != requestId && k != clipId) k,
+    };
+  }
+
+  final _clipIds = <String, String?>{};
+}
+
+final pendingClipDeletesProvider =
+    NotifierProvider.autoDispose<PendingClipDeletesNotifier, Set<String>>(PendingClipDeletesNotifier.new);
 
 /// Deletes a stored clip for good: the Android library row and file. Web keeps clips in memory
 /// only, so releasing them is enough.

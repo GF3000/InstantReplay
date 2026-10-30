@@ -3,8 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../l10n/app_localizations.dart';
-import '../../viewer/clips/clip_store.dart';
-import '../../viewer/clips/clip_transfers.dart';
 import '../../viewer/tags/tags.dart';
 import '../../viewer/ui/clip_list.dart';
 import '../../viewer/ui/review_page.dart';
@@ -132,21 +130,9 @@ class _SessionClipsPageState extends ConsumerState<SessionClipsPage> {
       ...labels,
       for (final l in [...?choices?.tags]) l.id: l,
     });
-    final c = e.clip;
-    final key = c.requestId ?? c.id;
-    ref.read(clipTagsProvider.notifier).set(key, e.tagIds.firstOrNull);
-    await Navigator.of(context).push(ReviewPage.route(labelChoices: choices, SessionClip(
-      requestId: key,
-      seconds: (c.durationMs ?? 0) / 1000,
-      requestedAt: c.requestedAt,
-      phase: SessionClipPhase.ready,
-      clipId: c.id,
-      durationMs: c.durationMs,
-      received: c.sizeBytes,
-      total: c.sizeBytes,
-      stored: ClipStore.openFile(c.id, c.filePath, c.sizeBytes),
-      acked: true,
-    )));
+    final clip = sessionClipFromEntry(e);
+    ref.read(clipTagsProvider.notifier).set(clip.requestId, e.tagIds.firstOrNull);
+    await Navigator.of(context).push(ReviewPage.route(labelChoices: choices, clip));
   }
 
   @override

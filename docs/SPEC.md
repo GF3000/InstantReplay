@@ -228,7 +228,7 @@ JSON `{type, id?, payload}`. Shared Dart package `replay_protocol` defines all m
 ### 5.1 Screens
 1. **Role select** (first run; remembered).
 2. **Connect:** discovered cameras list, Scan QR, Enter code, network hint (hotspot/router guide).
-3. **Session picker:** new session (name, type match/training, template) or continue the latest one.
+3. **Session picker:** new session (name, type match/training, template) or continue the latest one. Continuing lists the session's earlier clips on the live screen with their tags (Android; they can be reviewed, retagged and swiped away like new ones). Web keeps the current session in memory only (D15).
 4. **Live control (main screen)**
    - Live video full-bleed; status bar (latency, camera temperature, buffer).
    - Huge **SAVE** button (default duration) + small preset chips 10/30/60 s.
