@@ -21,12 +21,13 @@ Future<SharedPreferences> _pumpCamera(
   double height = 1080,
   double width = 2400,
   FakeServerPlatform? server,
+  Map<String, Object> saved = const {},
 }) async {
   // A landscape phone; tests that read the whole status panel use a taller view.
   tester.view.physicalSize = Size(width, height);
   tester.view.devicePixelRatio = 2.5;
   addTearDown(tester.view.reset);
-  SharedPreferences.setMockInitialValues({'role': 'camera'});
+  SharedPreferences.setMockInitialValues({'role': 'camera', ...saved});
   final prefs = await SharedPreferences.getInstance();
   await tester.pumpWidget(ProviderScope(
     overrides: [
@@ -100,10 +101,33 @@ void main() {
     await _openAdvanced(tester);
 
     await _tapVisible(tester, find.byKey(const Key('camera-profile')));
-    await tester.tap(find.text('1080p60 · 20 Mbps').last);
+    await tester.tap(find.text('1080p60 · 20 Mbps · 9.0 GB/h').last);
     await tester.pumpAndSettle();
 
     expect(fake.calls.where((c) => c == 'stop' || c.startsWith('start:')), ['start:1080p30', 'stop', 'start:1080p60']);
+  });
+
+  testWidgets('the chosen profile is remembered for the next session', (tester) async {
+    final eight = CaptureProfile(id: '1080p30-8m', width: 1920, height: 1080, fps: 30, bitrate: 8000000);
+    final fake = FakeCaptureLayer(profiles: [profile('1080p30'), eight]);
+    final prefs = await _pumpCamera(tester, fake);
+    await _openAdvanced(tester);
+    await _tapVisible(tester, find.byKey(const Key('camera-profile')));
+    await tester.tap(find.text('1080p30 · 8 Mbps · 3.6 GB/h').last);
+    await tester.pumpAndSettle();
+    expect(fake.starts, ['1080p30', '1080p30-8m']);
+    expect(prefs.getString('camera.profile'), '1080p30-8m');
+
+    await tester.pumpWidget(const SizedBox());
+    final next = FakeCaptureLayer(profiles: [profile('1080p30'), eight]);
+    await _pumpCamera(tester, next, saved: {'camera.profile': '1080p30-8m'});
+    expect(next.starts, ['1080p30-8m']);
+  });
+
+  testWidgets('a remembered profile the device lacks falls back to the default', (tester) async {
+    final fake = FakeCaptureLayer();
+    await _pumpCamera(tester, fake, saved: {'camera.profile': '1080p30-8m'});
+    expect(fake.starts, ['1080p30']);
   });
 
   testWidgets('shows stats from the stream', (tester) async {
@@ -184,7 +208,7 @@ void main() {
 
     await _openAdvanced(tester);
     expect(find.byKey(const Key('camera-profile')), findsOneWidget);
-    expect(find.text('1080p30 · 20 Mbps'), findsOneWidget);
+    expect(find.text('1080p30 · 20 Mbps · 9.0 GB/h'), findsOneWidget);
     expect(find.text('Save test clip (last 20 s)'), findsOneWidget);
   });
 
@@ -328,7 +352,7 @@ void main() {
       await _openAdvanced(tester);
 
       await _tapVisible(tester, find.byKey(const Key('camera-profile')));
-      await tester.tap(find.text('1080p60 · 20 Mbps').last);
+      await tester.tap(find.text('1080p60 · 20 Mbps · 9.0 GB/h').last);
       await tester.pumpAndSettle();
 
       expect(fake.starts, ['1080p30', '1080p60']);

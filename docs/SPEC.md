@@ -20,7 +20,7 @@
 | D9 | Multi-viewer | A clip goes only to the viewer that requested it; other viewers get a notification and may fetch it while it is still in the outbox. |
 | D10 | Organization | Session (match/training) → Clips. Sessions live on the Viewer. |
 | D11 | Save button | Default duration (20 s) + presets (10/30/60 s) + configurable post-roll (0–5 s). |
-| D12 | Video | Configurable: **1080p30 default**, 720p30 or 1080p60 optional; a profile is offered only if the camera supports it in a regular session. H.264 only. |
+| D12 | Video | Configurable: **1080p30 at 12 Mbps default**; 1080p30 at 8 Mbps (a third less storage), 720p30 or 1080p60 optional; the Camera remembers the last choice; a profile is offered only if the camera supports it in a regular session. H.264 only. |
 | D13 | Analysis | Speed (0.25/0.5/1x), frame stepping, **non-destructive trim**, **telestrator burned into exported video as freeze-frame + drawing for N s**. |
 | D14 | Export | Single clip: save to gallery + system share (native). Download (web). |
 | D15 | Web | Live view + save + review of **current session only** (IndexedDB, volatile) + download MP4. No gallery/share/trim/telestrator. |
