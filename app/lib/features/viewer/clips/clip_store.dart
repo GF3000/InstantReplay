@@ -27,8 +27,11 @@ abstract class StoredClip {
   /// A new player for this clip; the caller initializes and disposes it.
   VideoPlayerController createPlayer();
 
-  /// Web can save the MP4 through the browser; Android shares or exports it in a later task.
+  /// Web can save the MP4 through the browser; Android exports [filePath] instead (clip_export.dart).
   bool get canDownload;
+
+  /// The clip's file on disk, for the gallery and share sheet (SPEC §5.4); null on web.
+  String? get filePath;
 
   /// Saves the file through the browser (web only).
   Future<void> download(String fileName);

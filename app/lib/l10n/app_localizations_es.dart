@@ -534,6 +534,25 @@ class AppLocalizationsEs extends AppLocalizations {
   String get viewerTagUndo => 'Deshacer';
 
   @override
+  String get viewerClipSaveToGallery => 'Guardar en la galería';
+
+  @override
+  String get viewerClipShare => 'Compartir';
+
+  @override
+  String get viewerClipSavedToGallery => 'Guardado en la galería';
+
+  @override
+  String get viewerClipGalleryDenied =>
+      'Sin permiso para guardar en la galería';
+
+  @override
+  String get viewerClipExportNoSpace => 'No queda espacio en el teléfono';
+
+  @override
+  String get viewerClipExportFailed => 'No se pudo exportar el clip';
+
+  @override
   String get libraryTitle => 'Biblioteca';
 
   @override

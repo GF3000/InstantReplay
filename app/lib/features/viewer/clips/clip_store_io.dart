@@ -55,9 +55,12 @@ class FileStoredClip implements StoredClip {
   @override
   VideoPlayerController createPlayer() => VideoPlayerController.file(file);
 
-  // TODO(M4.8): export to the gallery and the system share sheet (SPEC §5.4) instead of a download.
+  // Android exports to the gallery and the share sheet from [filePath] instead (SPEC §5.4).
   @override
   bool get canDownload => false;
+
+  @override
+  String? get filePath => file.path;
 
   @override
   Future<void> download(String fileName) async => throw UnsupportedError('Download is web only');

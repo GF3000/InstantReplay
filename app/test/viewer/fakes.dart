@@ -28,6 +28,9 @@ class MemoryClip implements StoredClip {
   bool get canDownload => false;
 
   @override
+  String? get filePath => null;
+
+  @override
   VideoPlayerController createPlayer() => throw UnimplementedError();
 
   @override
