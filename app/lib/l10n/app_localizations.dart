@@ -950,29 +950,167 @@ abstract class AppLocalizations {
   /// **'Undo'**
   String get viewerTagUndo;
 
-  /// No description provided for @viewerNearbyTitle.
+  /// No description provided for @recTitle.
   ///
   /// In en, this message translates to:
-  /// **'Cameras on this network'**
-  String get viewerNearbyTitle;
+  /// **'Full recording'**
+  String get recTitle;
 
-  /// No description provided for @viewerNearbySearching.
+  /// No description provided for @recRecord.
   ///
   /// In en, this message translates to:
-  /// **'Looking for cameras…'**
-  String get viewerNearbySearching;
+  /// **'Record'**
+  String get recRecord;
 
-  /// No description provided for @viewerNearbyIncompatible.
+  /// No description provided for @recResume.
   ///
   /// In en, this message translates to:
-  /// **'Different InstantReplay version'**
-  String get viewerNearbyIncompatible;
+  /// **'Resume'**
+  String get recResume;
 
-  /// No description provided for @viewerNearbyOther.
+  /// No description provided for @recPause.
   ///
   /// In en, this message translates to:
-  /// **'Or connect another way'**
-  String get viewerNearbyOther;
+  /// **'Pause'**
+  String get recPause;
+
+  /// No description provided for @recFinish.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish'**
+  String get recFinish;
+
+  /// No description provided for @recOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording options'**
+  String get recOptions;
+
+  /// No description provided for @recFromNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Record from now'**
+  String get recFromNow;
+
+  /// No description provided for @recResumeFromNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume from now'**
+  String get recResumeFromNow;
+
+  /// No description provided for @recIncludeLast.
+  ///
+  /// In en, this message translates to:
+  /// **'Record including the last {seconds} s'**
+  String recIncludeLast(int seconds);
+
+  /// No description provided for @recResumeIncludeLast.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume including the last {seconds} s'**
+  String recResumeIncludeLast(int seconds);
+
+  /// No description provided for @recIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Not recording'**
+  String get recIdle;
+
+  /// No description provided for @recPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused · {elapsed}'**
+  String recPaused(String elapsed);
+
+  /// No description provided for @recPart.
+  ///
+  /// In en, this message translates to:
+  /// **'part {part}'**
+  String recPart(int part);
+
+  /// No description provided for @recRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'{time} left'**
+  String recRemaining(String time);
+
+  /// No description provided for @recLowSpace.
+  ///
+  /// In en, this message translates to:
+  /// **'Low space: {time} left'**
+  String recLowSpace(String time);
+
+  /// No description provided for @recLowSpaceUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Low space on the camera'**
+  String get recLowSpaceUnknown;
+
+  /// No description provided for @recFree.
+  ///
+  /// In en, this message translates to:
+  /// **'{gigabytes} GB free'**
+  String recFree(String gigabytes);
+
+  /// No description provided for @recFinishTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish the recording?'**
+  String get recFinishTitle;
+
+  /// No description provided for @recFinishBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The {elapsed} recorded will be saved to the camera\'s gallery (Movies/InstantReplay).'**
+  String recFinishBody(String elapsed);
+
+  /// No description provided for @recFinishKeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep recording'**
+  String get recFinishKeep;
+
+  /// No description provided for @recSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'{parts, plural, =1{Recording saved to the camera\'s gallery ({duration})} other{Recording saved to the camera\'s gallery ({duration}, {parts} parts)}}'**
+  String recSaved(int parts, String duration);
+
+  /// No description provided for @recSavedLowSpace.
+  ///
+  /// In en, this message translates to:
+  /// **'The camera ran out of space: the recording stopped and was saved ({duration})'**
+  String recSavedLowSpace(String duration);
+
+  /// No description provided for @recSavedError.
+  ///
+  /// In en, this message translates to:
+  /// **'The recording stopped because of an error; what was recorded is saved ({duration})'**
+  String recSavedError(String duration);
+
+  /// No description provided for @recRecovered.
+  ///
+  /// In en, this message translates to:
+  /// **'Recovered a {duration} recording'**
+  String recRecovered(String duration);
+
+  /// No description provided for @recRecoveredHint.
+  ///
+  /// In en, this message translates to:
+  /// **'It was left open when the app closed. It is in the gallery (Movies/InstantReplay).'**
+  String get recRecoveredHint;
+
+  /// No description provided for @recNoSpace.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough space on the camera to record (it needs 1 GB free)'**
+  String get recNoSpace;
+
+  /// No description provided for @recFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording failed: {message}'**
+  String recFailed(String message);
 
   /// No description provided for @viewerClipSaveToGallery.
   ///
@@ -1357,6 +1495,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Penalty'**
   String get libraryTagPenalty;
+
+  /// No description provided for @viewerNearbyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cameras on this network'**
+  String get viewerNearbyTitle;
+
+  /// No description provided for @viewerNearbySearching.
+  ///
+  /// In en, this message translates to:
+  /// **'Looking for cameras…'**
+  String get viewerNearbySearching;
+
+  /// No description provided for @viewerNearbyIncompatible.
+  ///
+  /// In en, this message translates to:
+  /// **'Different InstantReplay version'**
+  String get viewerNearbyIncompatible;
+
+  /// No description provided for @viewerNearbyOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Or connect another way'**
+  String get viewerNearbyOther;
 }
 
 class _AppLocalizationsDelegate

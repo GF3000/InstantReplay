@@ -167,6 +167,7 @@ class CameraStatus {
     this.batteryTempC,
     this.batteryPercent,
     this.plugged,
+    this.sessionRecording,
   });
 
   factory CameraStatus.fromJson(Json j) => CameraStatus(
@@ -178,8 +179,14 @@ class CameraStatus {
         batteryTempC: (j['batteryTempC'] as num?)?.toDouble(),
         batteryPercent: j['batteryPercent'] as int?,
         plugged: j['plugged'] as bool?,
+        sessionRecording: switch (j['sessionRecording']) {
+          final Json r => SessionRecording.fromJson(r),
+          _ => null,
+        },
       );
 
+  /// The capture pipeline is running (the ring buffer is filling). Not the full-session
+  /// recording, which is [sessionRecording].
   final bool recording;
   final double fps;
   final int bufferMs;
@@ -191,6 +198,9 @@ class CameraStatus {
   final int? batteryPercent;
   final bool? plugged;
 
+  /// Full-session recording (SPEC §3.8); null from a Camera without it.
+  final SessionRecording? sessionRecording;
+
   Json toJson() => {
         'recording': recording,
         'fps': fps,
@@ -200,7 +210,60 @@ class CameraStatus {
         if (batteryTempC != null) 'batteryTempC': batteryTempC,
         if (batteryPercent != null) 'batteryPercent': batteryPercent,
         if (plugged != null) 'plugged': plugged,
+        if (sessionRecording != null) 'sessionRecording': sessionRecording!.toJson(),
       };
 }
+
+enum SessionRecordingState { idle, recording, paused }
+
+/// Full-session recording on the Camera (SPEC D8, §3.8). Every viewer sees and controls the same one.
+class SessionRecording {
+  const SessionRecording({
+    required this.state,
+    required this.elapsedMs,
+    required this.parts,
+    required this.freeBytes,
+    required this.lowSpace,
+    this.remainingMs,
+  });
+
+  factory SessionRecording.fromJson(Json j) => SessionRecording(
+        state: SessionRecordingState.values.asNameMap()[j['state']] ?? SessionRecordingState.idle,
+        elapsedMs: j['elapsedMs']! as int,
+        parts: j['parts']! as int,
+        freeBytes: j['freeBytes']! as int,
+        lowSpace: j['lowSpace']! as bool,
+        remainingMs: j['remainingMs'] as int?,
+      );
+
+  final SessionRecordingState state;
+
+  /// Video time recorded so far, pauses excluded.
+  final int elapsedMs;
+
+  /// Files so far: a capture restart (profile or thermal change) starts a new part.
+  final int parts;
+
+  /// Free storage on the Camera.
+  final int freeBytes;
+
+  /// Estimated recording time left at the current rate; null if unknown.
+  final int? remainingMs;
+
+  /// Less than 10 minutes left.
+  final bool lowSpace;
+
+  Json toJson() => {
+        'state': state.name,
+        'elapsedMs': elapsedMs,
+        'parts': parts,
+        'freeBytes': freeBytes,
+        'lowSpace': lowSpace,
+        if (remainingMs != null) 'remainingMs': remainingMs,
+      };
+}
+
+/// Why a full-session recording ended.
+enum RecordingEndReason { user, lowSpace, error, recovered }
 
 bool _eq(Json a, Json b) => a.length == b.length && a.keys.every((k) => b.containsKey(k) && a[k] == b[k]);

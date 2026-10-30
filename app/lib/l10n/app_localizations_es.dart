@@ -534,16 +534,120 @@ class AppLocalizationsEs extends AppLocalizations {
   String get viewerTagUndo => 'Deshacer';
 
   @override
-  String get viewerNearbyTitle => 'Cámaras en esta red';
+  String get recTitle => 'Grabación completa';
 
   @override
-  String get viewerNearbySearching => 'Buscando cámaras…';
+  String get recRecord => 'Grabar';
 
   @override
-  String get viewerNearbyIncompatible => 'Otra versión de InstantReplay';
+  String get recResume => 'Reanudar';
 
   @override
-  String get viewerNearbyOther => 'O conecta de otra forma';
+  String get recPause => 'Pausar';
+
+  @override
+  String get recFinish => 'Terminar';
+
+  @override
+  String get recOptions => 'Opciones de grabación';
+
+  @override
+  String get recFromNow => 'Grabar desde ahora';
+
+  @override
+  String get recResumeFromNow => 'Reanudar desde ahora';
+
+  @override
+  String recIncludeLast(int seconds) {
+    return 'Grabar incluyendo los últimos $seconds s';
+  }
+
+  @override
+  String recResumeIncludeLast(int seconds) {
+    return 'Reanudar incluyendo los últimos $seconds s';
+  }
+
+  @override
+  String get recIdle => 'Sin grabar';
+
+  @override
+  String recPaused(String elapsed) {
+    return 'En pausa · $elapsed';
+  }
+
+  @override
+  String recPart(int part) {
+    return 'parte $part';
+  }
+
+  @override
+  String recRemaining(String time) {
+    return 'quedan $time';
+  }
+
+  @override
+  String recLowSpace(String time) {
+    return 'Poco espacio: quedan $time';
+  }
+
+  @override
+  String get recLowSpaceUnknown => 'Poco espacio en la cámara';
+
+  @override
+  String recFree(String gigabytes) {
+    return '$gigabytes GB libres';
+  }
+
+  @override
+  String get recFinishTitle => '¿Terminar la grabación?';
+
+  @override
+  String recFinishBody(String elapsed) {
+    return 'Lo grabado ($elapsed) se guardará en la galería de la cámara (Movies/InstantReplay).';
+  }
+
+  @override
+  String get recFinishKeep => 'Seguir grabando';
+
+  @override
+  String recSaved(int parts, String duration) {
+    String _temp0 = intl.Intl.pluralLogic(
+      parts,
+      locale: localeName,
+      other:
+          'Grabación guardada en la galería de la cámara ($duration, $parts partes)',
+      one: 'Grabación guardada en la galería de la cámara ($duration)',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recSavedLowSpace(String duration) {
+    return 'La cámara se quedó sin espacio: la grabación se detuvo y se guardó ($duration)';
+  }
+
+  @override
+  String recSavedError(String duration) {
+    return 'La grabación se detuvo por un error; se ha guardado lo grabado ($duration)';
+  }
+
+  @override
+  String recRecovered(String duration) {
+    return 'Se ha recuperado una grabación de $duration';
+  }
+
+  @override
+  String get recRecoveredHint =>
+      'Quedó abierta al cerrarse la app. Está en la galería (Movies/InstantReplay).';
+
+  @override
+  String get recNoSpace =>
+      'No hay espacio suficiente en la cámara para grabar (hace falta 1 GB libre)';
+
+  @override
+  String recFailed(String message) {
+    return 'No se pudo grabar: $message';
+  }
 
   @override
   String get viewerClipSaveToGallery => 'Guardar en la galería';
@@ -766,4 +870,16 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get libraryTagPenalty => 'Penalti';
+
+  @override
+  String get viewerNearbyTitle => 'Cámaras en esta red';
+
+  @override
+  String get viewerNearbySearching => 'Buscando cámaras…';
+
+  @override
+  String get viewerNearbyIncompatible => 'Otra versión de InstantReplay';
+
+  @override
+  String get viewerNearbyOther => 'O conecta de otra forma';
 }

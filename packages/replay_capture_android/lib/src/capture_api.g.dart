@@ -115,6 +115,21 @@ enum ClipState {
   expired,
 }
 
+/// Full-session recording (SPEC D8, §3.8): idle, recording, or paused between plays.
+enum RecordingState {
+  idle,
+  recording,
+  paused,
+}
+
+/// Why a recording ended.
+enum RecordingEnd {
+  user,
+  lowSpace,
+  error,
+  recovered,
+}
+
 /// Staged degradation applied by the thermal policy (SPEC §3.6).
 enum ThermalAction {
   none,
@@ -472,6 +487,7 @@ class CaptureStats {
     this.batteryTempC,
     this.batteryPercent,
     required this.plugged,
+    this.recording,
   });
 
   int encodedFrames;
@@ -504,6 +520,10 @@ class CaptureStats {
 
   bool plugged;
 
+  /// Full-session recording, idle until someone presses Record. Viewers show their controls when
+  /// it is present.
+  RecordingStatus? recording;
+
   List<Object?> _toList() {
     return <Object?>[
       encodedFrames,
@@ -520,6 +540,7 @@ class CaptureStats {
       batteryTempC,
       batteryPercent,
       plugged,
+      recording,
     ];
   }
 
@@ -543,6 +564,7 @@ class CaptureStats {
       batteryTempC: result[11] as double?,
       batteryPercent: result[12] as int?,
       plugged: result[13]! as bool,
+      recording: result[14] as RecordingStatus?,
     );
   }
 
@@ -555,7 +577,7 @@ class CaptureStats {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(encodedFrames, other.encodedFrames) && _deepEquals(fps, other.fps) && _deepEquals(gaps, other.gaps) && _deepEquals(cameraGaps, other.cameraGaps) && _deepEquals(glGaps, other.glGaps) && _deepEquals(bufferMs, other.bufferMs) && _deepEquals(bufferBytes, other.bufferBytes) && _deepEquals(outboxClips, other.outboxClips) && _deepEquals(outboxBytes, other.outboxBytes) && _deepEquals(thermalStatus, other.thermalStatus) && _deepEquals(thermalHeadroom, other.thermalHeadroom) && _deepEquals(batteryTempC, other.batteryTempC) && _deepEquals(batteryPercent, other.batteryPercent) && _deepEquals(plugged, other.plugged);
+    return _deepEquals(encodedFrames, other.encodedFrames) && _deepEquals(fps, other.fps) && _deepEquals(gaps, other.gaps) && _deepEquals(cameraGaps, other.cameraGaps) && _deepEquals(glGaps, other.glGaps) && _deepEquals(bufferMs, other.bufferMs) && _deepEquals(bufferBytes, other.bufferBytes) && _deepEquals(outboxClips, other.outboxClips) && _deepEquals(outboxBytes, other.outboxBytes) && _deepEquals(thermalStatus, other.thermalStatus) && _deepEquals(thermalHeadroom, other.thermalHeadroom) && _deepEquals(batteryTempC, other.batteryTempC) && _deepEquals(batteryPercent, other.batteryPercent) && _deepEquals(plugged, other.plugged) && _deepEquals(recording, other.recording);
   }
 
   @override
@@ -564,7 +586,161 @@ class CaptureStats {
 
   @override
   String toString() {
-    return 'CaptureStats(encodedFrames: $encodedFrames, fps: $fps, gaps: $gaps, cameraGaps: $cameraGaps, glGaps: $glGaps, bufferMs: $bufferMs, bufferBytes: $bufferBytes, outboxClips: $outboxClips, outboxBytes: $outboxBytes, thermalStatus: $thermalStatus, thermalHeadroom: $thermalHeadroom, batteryTempC: $batteryTempC, batteryPercent: $batteryPercent, plugged: $plugged)';
+    return 'CaptureStats(encodedFrames: $encodedFrames, fps: $fps, gaps: $gaps, cameraGaps: $cameraGaps, glGaps: $glGaps, bufferMs: $bufferMs, bufferBytes: $bufferBytes, outboxClips: $outboxClips, outboxBytes: $outboxBytes, thermalStatus: $thermalStatus, thermalHeadroom: $thermalHeadroom, batteryTempC: $batteryTempC, batteryPercent: $batteryPercent, plugged: $plugged, recording: $recording)';
+  }
+}
+
+class RecordingStatus {
+  RecordingStatus({
+    required this.state,
+    required this.elapsedMs,
+    required this.bytes,
+    required this.parts,
+    required this.freeBytes,
+    this.remainingMs,
+    required this.lowSpace,
+  });
+
+  RecordingState state;
+
+  /// Video time written so far in the current recording, all parts together (pauses excluded).
+  int elapsedMs;
+
+  int bytes;
+
+  /// Files of the current recording: a new part starts when the encoder restarts (profile or
+  /// thermal change). 0 until the first fragment is written.
+  int parts;
+
+  /// Free bytes on shared storage (Movies/InstantReplay).
+  int freeBytes;
+
+  /// Estimated recording time left at the current rate before the recorder stops; null if unknown.
+  int? remainingMs;
+
+  /// Less than 10 minutes left: warn the coach.
+  bool lowSpace;
+
+  List<Object?> _toList() {
+    return <Object?>[
+      state,
+      elapsedMs,
+      bytes,
+      parts,
+      freeBytes,
+      remainingMs,
+      lowSpace,
+    ];
+  }
+
+  Object encode() {
+    return _toList();  }
+
+  static RecordingStatus decode(Object result) {
+    result as List<Object?>;
+    return RecordingStatus(
+      state: result[0]! as RecordingState,
+      elapsedMs: result[1]! as int,
+      bytes: result[2]! as int,
+      parts: result[3]! as int,
+      freeBytes: result[4]! as int,
+      remainingMs: result[5] as int?,
+      lowSpace: result[6]! as bool,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! RecordingStatus || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(state, other.state) && _deepEquals(elapsedMs, other.elapsedMs) && _deepEquals(bytes, other.bytes) && _deepEquals(parts, other.parts) && _deepEquals(freeBytes, other.freeBytes) && _deepEquals(remainingMs, other.remainingMs) && _deepEquals(lowSpace, other.lowSpace);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+
+  @override
+  String toString() {
+    return 'RecordingStatus(state: $state, elapsedMs: $elapsedMs, bytes: $bytes, parts: $parts, freeBytes: $freeBytes, remainingMs: $remainingMs, lowSpace: $lowSpace)';
+  }
+}
+
+/// A finished recording, now visible in the gallery of the Camera phone.
+class RecordingSaved {
+  RecordingSaved({
+    required this.name,
+    required this.parts,
+    required this.durationMs,
+    required this.bytes,
+    required this.reason,
+    this.message,
+  });
+
+  /// Display name of the first part, e.g. `InstantReplay_2026-10-30_11-30.mp4`.
+  String name;
+
+  int parts;
+
+  int durationMs;
+
+  int bytes;
+
+  RecordingEnd reason;
+
+  /// Error detail when [reason] is [RecordingEnd.error].
+  String? message;
+
+  List<Object?> _toList() {
+    return <Object?>[
+      name,
+      parts,
+      durationMs,
+      bytes,
+      reason,
+      message,
+    ];
+  }
+
+  Object encode() {
+    return _toList();  }
+
+  static RecordingSaved decode(Object result) {
+    result as List<Object?>;
+    return RecordingSaved(
+      name: result[0]! as String,
+      parts: result[1]! as int,
+      durationMs: result[2]! as int,
+      bytes: result[3]! as int,
+      reason: result[4]! as RecordingEnd,
+      message: result[5] as String?,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! RecordingSaved || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(name, other.name) && _deepEquals(parts, other.parts) && _deepEquals(durationMs, other.durationMs) && _deepEquals(bytes, other.bytes) && _deepEquals(reason, other.reason) && _deepEquals(message, other.message);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+
+  @override
+  String toString() {
+    return 'RecordingSaved(name: $name, parts: $parts, durationMs: $durationMs, bytes: $bytes, reason: $reason, message: $message)';
   }
 }
 
@@ -704,32 +880,44 @@ class _PigeonCodec extends StandardMessageCodec {
     }    else if (value is ClipState) {
       buffer.putUint8(129);
       writeValue(buffer, value.index);
-    }    else if (value is ThermalAction) {
+    }    else if (value is RecordingState) {
       buffer.putUint8(130);
       writeValue(buffer, value.index);
-    }    else if (value is CaptureProfile) {
+    }    else if (value is RecordingEnd) {
       buffer.putUint8(131);
-      writeValue(buffer, value.encode());
-    }    else if (value is StartRequest) {
+      writeValue(buffer, value.index);
+    }    else if (value is ThermalAction) {
       buffer.putUint8(132);
-      writeValue(buffer, value.encode());
-    }    else if (value is StartResult) {
+      writeValue(buffer, value.index);
+    }    else if (value is CaptureProfile) {
       buffer.putUint8(133);
       writeValue(buffer, value.encode());
-    }    else if (value is SaveRequest) {
+    }    else if (value is StartRequest) {
       buffer.putUint8(134);
       writeValue(buffer, value.encode());
-    }    else if (value is ClipInfo) {
+    }    else if (value is StartResult) {
       buffer.putUint8(135);
       writeValue(buffer, value.encode());
-    }    else if (value is CaptureStats) {
+    }    else if (value is SaveRequest) {
       buffer.putUint8(136);
       writeValue(buffer, value.encode());
-    }    else if (value is ThermalEvent) {
+    }    else if (value is ClipInfo) {
       buffer.putUint8(137);
       writeValue(buffer, value.encode());
-    }    else if (value is LiveViewerStats) {
+    }    else if (value is CaptureStats) {
       buffer.putUint8(138);
+      writeValue(buffer, value.encode());
+    }    else if (value is RecordingStatus) {
+      buffer.putUint8(139);
+      writeValue(buffer, value.encode());
+    }    else if (value is RecordingSaved) {
+      buffer.putUint8(140);
+      writeValue(buffer, value.encode());
+    }    else if (value is ThermalEvent) {
+      buffer.putUint8(141);
+      writeValue(buffer, value.encode());
+    }    else if (value is LiveViewerStats) {
+      buffer.putUint8(142);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -744,22 +932,32 @@ class _PigeonCodec extends StandardMessageCodec {
         return value == null ? null : ClipState.values[value];
       case 130:
         final value = readValue(buffer) as int?;
-        return value == null ? null : ThermalAction.values[value];
+        return value == null ? null : RecordingState.values[value];
       case 131:
-        return CaptureProfile.decode(readValue(buffer)!);
+        final value = readValue(buffer) as int?;
+        return value == null ? null : RecordingEnd.values[value];
       case 132:
-        return StartRequest.decode(readValue(buffer)!);
+        final value = readValue(buffer) as int?;
+        return value == null ? null : ThermalAction.values[value];
       case 133:
-        return StartResult.decode(readValue(buffer)!);
+        return CaptureProfile.decode(readValue(buffer)!);
       case 134:
-        return SaveRequest.decode(readValue(buffer)!);
+        return StartRequest.decode(readValue(buffer)!);
       case 135:
-        return ClipInfo.decode(readValue(buffer)!);
+        return StartResult.decode(readValue(buffer)!);
       case 136:
-        return CaptureStats.decode(readValue(buffer)!);
+        return SaveRequest.decode(readValue(buffer)!);
       case 137:
-        return ThermalEvent.decode(readValue(buffer)!);
+        return ClipInfo.decode(readValue(buffer)!);
       case 138:
+        return CaptureStats.decode(readValue(buffer)!);
+      case 139:
+        return RecordingStatus.decode(readValue(buffer)!);
+      case 140:
+        return RecordingSaved.decode(readValue(buffer)!);
+      case 141:
+        return ThermalEvent.decode(readValue(buffer)!);
+      case 142:
         return LiveViewerStats.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
@@ -1048,6 +1246,106 @@ class CaptureHostApi {
     ;
     return (pigeonVar_replyValue! as List<Object?>).cast<LiveViewerStats>();
   }
+
+  Future<RecordingStatus> recordingStatus() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.replay_capture_android.CaptureHostApi.recordingStatus$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return pigeonVar_replyValue! as RecordingStatus;
+  }
+
+  /// Starts a recording, or resumes a paused one. [includeSeconds] > 0 first writes that much of
+  /// the ring buffer (what happened just before pressing). Fails with `no_space` below 1 GB free.
+  Future<RecordingStatus> recordStart(int includeSeconds) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.replay_capture_android.CaptureHostApi.recordStart$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[includeSeconds]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return pigeonVar_replyValue! as RecordingStatus;
+  }
+
+  /// Pauses at the end of the fragment in progress.
+  Future<RecordingStatus> recordPause() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.replay_capture_android.CaptureHostApi.recordPause$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return pigeonVar_replyValue! as RecordingStatus;
+  }
+
+  /// Finishes the recording and publishes it to the gallery. Null when nothing was recording.
+  Future<RecordingSaved?> recordStop() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.replay_capture_android.CaptureHostApi.recordStop$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+    return pigeonVar_replyValue as RecordingSaved?;
+  }
+
+  /// Finishes recordings left open by a crash or a kill. Call before the first start.
+  Future<List<RecordingSaved>> recoverRecordings() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.replay_capture_android.CaptureHostApi.recoverRecordings$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return (pigeonVar_replyValue! as List<Object?>).cast<RecordingSaved>();
+  }
 }
 
 abstract class CaptureEventsApi {
@@ -1069,6 +1367,12 @@ abstract class CaptureEventsApi {
 
   /// PeerConnection state for [viewerId]: `new`, `connecting`, `connected`, `disconnected`, `failed`, `closed`.
   void onLiveState(String viewerId, String state);
+
+  /// The recording state changed (start, pause, resume, new part, low space).
+  void onRecording(RecordingStatus status);
+
+  /// A recording finished: by the user, by low space or an error, or recovered after a crash.
+  void onRecordingSaved(RecordingSaved saved);
 
   static void setUp(CaptureEventsApi? api, {BinaryMessenger? binaryMessenger, String messageChannelSuffix = '',}) {
     messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
@@ -1214,6 +1518,48 @@ abstract class CaptureEventsApi {
           final String arg_state = args[1]! as String;
           try {
             api.onLiveState(arg_viewerId, arg_state);
+            return wrapResponse(empty: true);
+          } on PlatformException catch (e) {
+            return wrapResponse(error: e);
+          }          catch (e) {
+            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
+          }
+        });
+      }
+    }
+    {
+      final pigeonVar_channel = BasicMessageChannel<Object?>(
+          'dev.flutter.pigeon.replay_capture_android.CaptureEventsApi.onRecording$messageChannelSuffix', pigeonChannelCodec,
+          binaryMessenger: binaryMessenger);
+      if (api == null) {
+        pigeonVar_channel.setMessageHandler(null);
+      } else {
+        pigeonVar_channel.setMessageHandler((Object? message) async {
+          final List<Object?> args = message! as List<Object?>;
+          final RecordingStatus arg_status = args[0]! as RecordingStatus;
+          try {
+            api.onRecording(arg_status);
+            return wrapResponse(empty: true);
+          } on PlatformException catch (e) {
+            return wrapResponse(error: e);
+          }          catch (e) {
+            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
+          }
+        });
+      }
+    }
+    {
+      final pigeonVar_channel = BasicMessageChannel<Object?>(
+          'dev.flutter.pigeon.replay_capture_android.CaptureEventsApi.onRecordingSaved$messageChannelSuffix', pigeonChannelCodec,
+          binaryMessenger: binaryMessenger);
+      if (api == null) {
+        pigeonVar_channel.setMessageHandler(null);
+      } else {
+        pigeonVar_channel.setMessageHandler((Object? message) async {
+          final List<Object?> args = message! as List<Object?>;
+          final RecordingSaved arg_saved = args[0]! as RecordingSaved;
+          try {
+            api.onRecordingSaved(arg_saved);
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
