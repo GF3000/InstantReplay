@@ -182,8 +182,11 @@ class SessionLink {
       if (_state.phase == LinkPhase.connected) _set(_state.copyWith(phase: LinkPhase.reconnecting));
       final wait = backoff[min(failures, backoff.length - 1)];
       failures++;
-      _wake = Completer<void>();
-      await Future.any([Future<void>.delayed(wait), _wake!.future]);
+      // A timer rather than Future.delayed, so dispose() cancels the wait instead of leaving it pending.
+      final wake = _wake = Completer<void>();
+      final timer = Timer(wait, _wakeUp);
+      await wake.future;
+      timer.cancel();
       _wake = null;
     }
   }

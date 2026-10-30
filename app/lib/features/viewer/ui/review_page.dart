@@ -6,10 +6,11 @@ import '../../../l10n/app_localizations.dart';
 import '../clips/clip_transfers.dart';
 import '../tags/tag_widgets.dart';
 import '../tags/tags.dart';
+import 'clip_export_actions.dart';
 import 'clip_list.dart';
 
 /// Clip review (SPEC §5.1.5, §6, UX §3.4): full screen, autoplay loop, 0.25×/0.5×/1×, ±1 frame,
-/// scrub, change tag, and Download on web.
+/// scrub, change tag, and Download on web or Save to gallery / Share on Android.
 ///
 /// Frame stepping seeks by 1/30 s and is approximate, which is enough for S1 (media_kit later).
 class ReviewPage extends ConsumerStatefulWidget {
@@ -114,6 +115,7 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
               icon: const Icon(Icons.download),
               onPressed: () => stored.download(clipFileName(clip)),
             ),
+          ClipExportActions(stored: stored, fileName: clipFileName(clip)),
         ],
       ),
       body: SafeArea(
