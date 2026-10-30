@@ -942,4 +942,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsStorageUnavailable => 'Could not read the storage used.';
+
+  @override
+  String get viewerTagPanelTitle => 'Tag this play';
+
+  @override
+  String get viewerTagPanelClose => 'Close';
 }

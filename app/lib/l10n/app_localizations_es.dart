@@ -946,4 +946,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get settingsStorageUnavailable => 'No se pudo leer el espacio usado.';
+
+  @override
+  String get viewerTagPanelTitle => 'Etiqueta la jugada';
+
+  @override
+  String get viewerTagPanelClose => 'Cerrar';
 }

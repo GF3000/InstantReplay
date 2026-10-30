@@ -156,15 +156,19 @@ void main() {
     await tester.pump(PostSaveTagBarNotifier.visibleFor);
   });
 
-  testWidgets('after a save the tag bar tags that clip, and a new save replaces the bar', (tester) async {
+  testWidgets('after a save the left panel tags that clip, a new save replaces it, Save stays free', (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     final saved = <int?>[];
     late WidgetRef ref;
     await tester.pumpWidget(_app(Consumer(builder: (context, r, _) {
       ref = r;
-      return const SaveControls();
+      return const LiveControlView();
     }), [
       sharedPreferencesProvider.overrideWithValue(await _prefs()),
       linkStateProvider.overrideWith(_ConnectedLink.new),
+      liveViewProvider.overrideWith(_PlayingLive.new),
       viewerClipsProvider.overrideWith(() => _RecordingClips(saved)),
     ]));
     final bar = find.byKey(const ValueKey('viewer-tag-bar'));
@@ -173,6 +177,10 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('viewer-save'))); // r1
     await _settle(tester);
     expect(bar, findsOneWidget);
+    // On the left, over the live view, clear of the Save button.
+    final panel = tester.getRect(find.byKey(const ValueKey('viewer-tag-panel')));
+    expect(panel.left, 0);
+    expect(panel.overlaps(tester.getRect(find.byKey(const ValueKey('viewer-save')))), isFalse);
     // The chips stay usable while the bar is up.
     await tester.tap(find.text('30 s')); // r2
     await _settle(tester);
@@ -186,6 +194,14 @@ void main() {
     await _settle(tester);
     expect(bar, findsOneWidget);
     await tester.pump(PostSaveTagBarNotifier.visibleFor);
+    await _settle(tester);
+    expect(bar, findsNothing);
+    expect(ref.read(clipTagsProvider), {'r2': TagsNotifier.bad});
+
+    // The close button hides it without tagging.
+    await tester.tap(find.byKey(const ValueKey('viewer-save'))); // r4
+    await _settle(tester);
+    await tester.tap(find.byKey(const ValueKey('viewer-tag-panel-close')));
     await _settle(tester);
     expect(bar, findsNothing);
     expect(ref.read(clipTagsProvider), {'r2': TagsNotifier.bad});

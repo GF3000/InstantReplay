@@ -42,7 +42,7 @@ class LiveControlView extends ConsumerWidget {
         if (wide) {
           final panel = c.maxWidth >= 1000 ? 400.0 : (c.maxWidth * 0.42).clamp(260.0, 360.0);
           return Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            const Expanded(child: LivePanel()),
+            const Expanded(child: _LiveWithTagPanel()),
             SizedBox(
               width: panel,
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -55,13 +55,33 @@ class LiveControlView extends ConsumerWidget {
           ]);
         }
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          SizedBox(height: (c.maxWidth * 9 / 16).clamp(120.0, c.maxHeight * 0.42), child: const LivePanel()),
+          SizedBox(height: (c.maxWidth * 9 / 16).clamp(120.0, c.maxHeight * 0.42), child: const _LiveWithTagPanel()),
           const ViewerRecordingBar(),
           SaveControls(compact: c.maxHeight < 760),
           const Divider(height: 1),
           const Expanded(child: ClipList()),
         ]);
       });
+}
+
+/// The live view, with the post-save tag panel sliding in over its left side: as wide as the
+/// tags need (the whole view on a phone), so Save and the chips stay free for the next play.
+class _LiveWithTagPanel extends StatelessWidget {
+  const _LiveWithTagPanel();
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (context, c) => Stack(fit: StackFit.expand, children: [
+          const LivePanel(),
+          PositionedDirectional(
+            start: 0,
+            top: 0,
+            bottom: 0,
+            width: c.maxWidth < 600 ? c.maxWidth : (c.maxWidth * 0.6).clamp(420.0, 640.0),
+            child: const Align(alignment: AlignmentDirectional.topStart, child: PostSaveTagPanel()),
+          ),
+        ]),
+      );
 }
 
 class LivePanel extends ConsumerWidget {
@@ -191,19 +211,15 @@ class SaveControls extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 8),
-        if (tight)
-          PostSaveTagBar(idle: chips)
-        else ...[
-          chips,
+        chips,
+        if (!tight) ...[
           const SizedBox(height: 4),
-          PostSaveTagBar(
-            idle: Text(
-              l10n.viewerSaveHint(presets.postSeconds),
-              style: Theme.of(context).textTheme.bodySmall,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
+          Text(
+            l10n.viewerSaveHint(presets.postSeconds),
+            style: Theme.of(context).textTheme.bodySmall,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ]),

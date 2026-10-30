@@ -1621,6 +1621,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not read the storage used.'**
   String get settingsStorageUnavailable;
+
+  /// No description provided for @viewerTagPanelTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Tag this play'**
+  String get viewerTagPanelTitle;
+
+  /// No description provided for @viewerTagPanelClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get viewerTagPanelClose;
 }
 
 class _AppLocalizationsDelegate

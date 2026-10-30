@@ -253,5 +253,7 @@
   "settingsStorageSection": "Almacenamiento",
   "settingsStorageClips": "Clips guardados",
   "settingsStorageUsage": "{size} en {count, plural, =1{1 clip} other{{count} clips}}",
-  "settingsStorageUnavailable": "No se pudo leer el espacio usado."
+  "settingsStorageUnavailable": "No se pudo leer el espacio usado.",
+  "viewerTagPanelTitle": "Etiqueta la jugada",
+  "viewerTagPanelClose": "Cerrar"
 }

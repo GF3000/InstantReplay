@@ -650,5 +650,7 @@
       }
     }
   },
-  "settingsStorageUnavailable": "Could not read the storage used."
+  "settingsStorageUnavailable": "Could not read the storage used.",
+  "viewerTagPanelTitle": "Tag this play",
+  "viewerTagPanelClose": "Close"
 }
