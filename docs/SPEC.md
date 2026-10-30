@@ -61,7 +61,7 @@ flowchart LR
     CLIENT --> LIVE[Live view<br/>flutter_webrtc]
     CLIENT --> DL[Transfer: download,<br/>sha256 verify, ACK]
     DL --> LIB[(Library: drift/SQLite<br/>+ clip files)]
-    LIB --> PLAYER[Player: media_kit]
+    LIB --> PLAYER[Player: video_player<br/>exact frame stepping]
     LIB --> EXP[Export: Media3 Transformer<br/>remux / trim / telestrator]
     EXP --> GAL[gal / share_plus]
   end
@@ -234,7 +234,11 @@ Built-in templates: Football, Basketball, Handball, Hockey, Generic (categories:
 - Output to cache → `gal` (gallery) or `share_plus`.
 
 ### 5.5 Player
-`media_kit` (libmpv): exact frame stepping (forward and backward), `rate` 0.25–1, seamless loop. Gestures: tap play/pause, horizontal drag scrub, ±1 frame buttons. *(Pinch zoom: not in scope.)*
+`video_player` (ExoPlayer on Android, `<video>` on web): exact frame stepping (forward and backward), `rate` 0.25/0.5/1, seamless loop. Gestures: tap play/pause, horizontal drag scrub (one frame per 6 px), scrub bar, ±1 frame buttons. *(Pinch zoom: not in scope.)*
+
+**Exact stepping.** The Viewer reads every frame's timestamp from the clip itself (`moov` timescale + each `moof`'s `tfdt`/`trun`, skipping `mdat`), so camera jitter and dropped frames are respected. A step pauses, snaps to the frame on screen, moves ±1 in that list and seeks to a whole-millisecond position the player is known to resolve to exactly that frame: ExoPlayer seeks exactly and shows the first frame at or after the position (seek to the frame start, floored to ms); `<video>` shows the frame whose interval contains `currentTime` (seek to the middle of the frame). If the file can't be parsed, a 30 fps grid is used.
+
+**Decision (v0.1): stay on `video_player`, not `media_kit`.** Measured on this project (release, `--split-per-abi`): `media_kit` + `media_kit_video` + `media_kit_libs_video` build fine next to `flutter_webrtc`, but add **+12.3 MB to the arm64 APK** (54.9 → 67.2 MB, +22 %), +12.2 MB to armeabi-v7a and +16.3 MB to x86_64, so the universal APK grows by ~40 MB. Its exact stepping (mpv `frame-step` / `frame-back-step`) exists only on native: on web it is a plain `<video>`, so web would still need the approach above. Releases have also slowed (latest `media_kit` ~10 months old; `media_kit_libs_android_video` unlisted on pub.dev). Since timestamp-driven seeks give exact stepping on both platforms with the player we already ship, libmpv's size is not worth it. Revisit if we need things ExoPlayer can't do (e.g. reverse playback).
 
 ---
 
@@ -248,11 +252,11 @@ Built from the same Flutter codebase (`flutter build web`), bundled inside the A
 | Save + presets | ✅ | |
 | Tagging | ✅ | Current session only |
 | Clip review loop + speed | ✅ | `<video>` + `playbackRate` |
-| Frame stepping | 🟡 | Seek ±1/fps using `requestVideoFrameCallback`; approximate |
+| Frame stepping | ✅ | Exact: frame timestamps from the clip (§5.5); `requestVideoFrameCallback` tells which frame is on screen |
 | Storage | 🟡 | IndexedDB, current session only; may be evicted (Safari). Banner says so |
 | Download | ✅ | `?format=mp4` progressive → `<a download>` |
 | Gallery / share / trim / telestrator / library / remote camera settings | ❌ | Hidden via `Capabilities` |
-| Screen wake | 🟡 | Hidden looping video workaround (Wake Lock needs HTTPS) |
+| Screen wake | 🟡 | While a review is paused: Wake Lock on HTTPS, otherwise a hidden looping muted copy of the clip |
 
 Build requirements:
 - CanvasKit and all fonts bundled locally (no Google CDN); JS renderer, not wasm (cross-origin isolation is unavailable without HTTPS).
@@ -302,7 +306,7 @@ instantreplay/
 Native ↔ Dart boundary: Pigeon-generated API for commands (`start`, `stop`, `setProfile`, `assembleClip`, `remux`), EventChannel for status/thermal/buffer events. Signaling messages flow Dart ↔ native through the same channel.
 
 ### 7.1 Dependencies (all permissive; CI license check)
-Flutter / Dart: `flutter_riverpod`, `go_router`, `shelf`, `shelf_router`, `shelf_web_socket`, `shelf_static`, `web_socket_channel`, `flutter_webrtc`, `media_kit`, `drift`, `bonsoir`, `mobile_scanner`, `qr_flutter`, `gal`, `share_plus`, `crypto`, `intl`.
+Flutter / Dart: `flutter_riverpod`, `go_router`, `shelf`, `shelf_router`, `shelf_web_socket`, `shelf_static`, `web_socket_channel`, `flutter_webrtc`, `video_player`, `drift`, `bonsoir`, `mobile_scanner`, `qr_flutter`, `gal`, `share_plus`, `crypto`, `intl`.
 Android: Camera2/CameraX, MediaCodec, `androidx.media3` (muxer, transformer), libwebrtc (**the same artifact flutter_webrtc ships**, to avoid duplicate classes — verify in Phase 0).
 
 H.264 note: encoding and decoding use the device's licensed hardware codecs; the project ships no codec implementation.

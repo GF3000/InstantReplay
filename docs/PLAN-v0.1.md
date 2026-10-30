@@ -67,7 +67,7 @@ Sizes: **S** ≈ one sitting · **M** ≈ a few sittings · **L** ≈ a week of 
 | 4.4 | Transfer: queue, Range resume, sha256, ack | M | Kill Wi-Fi mid-download → clip still arrives |
 | 4.5 | Library (`drift`): sessions, clips, categories, tags, templates (5 built-in, JSON import/export) | M | Migrations tested |
 | 4.6 | One-tap tag bar after save; library screen with filters | M | Tagging never blocks the next save |
-| 4.7 | Player (`media_kit`): loop, 0.25/0.5/1×, frame ±1, scrub | M | Exact frame stepping on a 30 fps clip |
+| 4.7 | Player (`video_player`, SPEC §5.5): loop, 0.25/0.5/1×, frame ±1, scrub | M | Exact frame stepping on a 30 fps clip |
 | 4.8 | Export: gallery (`gal`) and share (`share_plus`) | S | Clip lands in Photos and WhatsApp |
 | 4.9 | Layouts: tablet landscape + phone portrait/landscape | M | Checked on phone and tablet |
 
@@ -124,7 +124,7 @@ M2 and the protocol part of M3 (3.1) can run in parallel. M4 and M5 share the Vi
 | `flutter_webrtc` still uses the legacy Kotlin Gradle plugin; future Flutter may break it | M4 | Pin versions; track upstream; our plugin already depends on the same libwebrtc directly |
 | Shared EGL context across threads (2.2) misbehaves on some GPUs | M2 | Fallback: keep the current "skip when behind" logic |
 | fMP4 not accepted by gallery/WhatsApp | M2 decision point | Remux on the Camera |
-| `media_kit` frame stepping or web support gaps | M4/M5 | Spike 4.7 early; HTML video fallback on web |
+| Player frame stepping or web support gaps | M4/M5 | Done in 4.7/5.3 without `media_kit` (SPEC §5.5) |
 | No old device and no iOS device for testing | M2, M5 | Cheap used phone before M6; borrowed iPhone for 5.4 |
 | Weak charger: battery drains even when plugged | Field use | Documented in setup guide; battery shown in Camera status |
 
