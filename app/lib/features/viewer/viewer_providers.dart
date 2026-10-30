@@ -7,6 +7,7 @@ import 'package:replay_protocol/replay_protocol.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/preferences.dart';
+import '../library/library_providers.dart';
 import 'clips/clip_store.dart';
 import 'clips/clip_transfers.dart';
 import 'clips/partial_download.dart';
@@ -29,7 +30,10 @@ final channelConnectorProvider = Provider<ChannelConnector>((_) => connectWebSoc
 
 final livePeerFactoryProvider = Provider<LivePeerFactory>((_) => createWebRtcLivePeer);
 
-final clipStoreProvider = Provider<ClipStore>((_) => ClipStore.platform());
+/// Android saves clips into the library (SPEC §5.3); web keeps the current session in memory.
+final clipStoreProvider = Provider<ClipStore>(
+  (ref) => ClipStore.platform(catalog: ref.watch(libraryEnabledProvider) ? LibraryCatalog(ref) : null),
+);
 
 /// Where a clip download keeps its bytes between attempts, to resume with a Range request.
 final partialDownloadFactoryProvider = Provider<PartialDownload Function(String clipId)>((_) => PartialDownload.platform);

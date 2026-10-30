@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
 
 import '../../core/web_bundle.dart';
+import '../discovery/nsd.dart';
 import 'api_server.dart';
 import 'camera_server.dart';
 
@@ -15,6 +16,7 @@ final serverPlatform = ServerPlatform(
   ),
   localAddress: localNetworkAddress,
   deviceName: _deviceName,
+  announce: announceCamera,
 );
 
 /// The private IPv4 address viewers most likely reach us on: Wi-Fi or hotspot interfaces first,

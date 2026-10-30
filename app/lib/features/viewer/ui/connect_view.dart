@@ -3,7 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:replay_protocol/replay_protocol.dart';
 
+import '../../../core/capabilities.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../discovery/discovered_camera.dart';
+import '../../discovery/nsd.dart';
 import '../data/viewer_api.dart';
 import '../scan/qr_scan_page.dart';
 import '../viewer_providers.dart';
@@ -34,7 +37,7 @@ class _FormFrame extends StatelessWidget {
       );
 }
 
-/// Android without NSD yet: type the Camera address shown under its QR.
+/// Android: pick a Camera found over NSD, scan its QR, or type the address shown under it.
 class AddressForm extends ConsumerStatefulWidget {
   const AddressForm({super.key});
 
@@ -70,12 +73,20 @@ class _AddressFormState extends ConsumerState<AddressForm> {
     final l10n = AppLocalizations.of(context);
     final error = ref.watch(viewerSetupProvider.select((s) => s.error));
     final canScan = ref.watch(qrScannerAvailableProvider).value ?? false;
+    final canBrowse = ref.watch(capabilitiesProvider).canBrowseNsd;
     return _FormFrame(children: [
       Text(l10n.viewerConnectTitle, style: Theme.of(context).textTheme.headlineSmall),
       const SizedBox(height: 24),
+      if (canBrowse) ...[
+        const _NearbyCameras(),
+        const SizedBox(height: 16),
+        Text(l10n.viewerNearbyOther, style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 12),
+      ],
       TextField(
         controller: _controller,
-        autofocus: true,
+        // The keyboard would hide the nearby list.
+        autofocus: !canBrowse,
         keyboardType: TextInputType.url,
         autocorrect: false,
         textInputAction: TextInputAction.go,
@@ -98,6 +109,43 @@ class _AddressFormState extends ConsumerState<AddressForm> {
           label: Text(l10n.viewerScanQr),
         ),
       ],
+    ]);
+  }
+}
+
+/// Cameras announced on this network (NSD). Tapping one goes on to its code.
+class _NearbyCameras extends ConsumerWidget {
+  const _NearbyCameras();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final cameras = ref.watch(discoveredCamerasProvider).value ?? const <DiscoveredCamera>[];
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Text(l10n.viewerNearbyTitle, style: theme.textTheme.titleSmall),
+      const SizedBox(height: 8),
+      if (cameras.isEmpty)
+        ListTile(
+          key: const ValueKey('viewer-nearby-searching'),
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.wifi_find),
+          title: Text(l10n.viewerNearbySearching, style: theme.textTheme.bodyMedium),
+        )
+      else
+        for (final camera in cameras)
+          Card(
+            key: ValueKey('viewer-nearby-${camera.cameraId}'),
+            margin: const EdgeInsets.only(bottom: 8),
+            child: ListTile(
+              enabled: camera.compatible,
+              leading: const Icon(Icons.videocam),
+              title: Text(camera.name),
+              subtitle: Text(camera.compatible ? cameraKey(camera.base) : l10n.viewerNearbyIncompatible),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => ref.read(viewerSetupProvider.notifier).setAddress(cameraKey(camera.base)),
+            ),
+          ),
     ]);
   }
 }

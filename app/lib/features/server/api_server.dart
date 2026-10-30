@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:replay_protocol/replay_protocol.dart';
 
 import '../camera/capture_layer.dart';
+import '../discovery/nsd.dart';
 import 'pairing.dart';
 import 'server_platform.dart' as platform;
 
@@ -32,7 +33,12 @@ class ApiServerConfig {
 /// Platform pieces of the server, injectable for tests. Web gets a stub that never runs (the
 /// Camera role is Android-only).
 class ServerPlatform {
-  const ServerPlatform({required this.createServer, required this.localAddress, required this.deviceName});
+  const ServerPlatform({
+    required this.createServer,
+    required this.localAddress,
+    required this.deviceName,
+    this.announce = _noAnnounce,
+  });
 
   final Future<ApiServer> Function(ApiServerConfig config) createServer;
 
@@ -41,7 +47,13 @@ class ServerPlatform {
 
   /// Human-readable device name for `/info`, e.g. "Google Pixel 7".
   final Future<String> Function() deviceName;
+
+  /// Announces the running server over NSD so native Viewers can list it; null when there is
+  /// nothing to announce on (tests).
+  final Future<NsdAnnouncement?> Function(NsdAdvert advert) announce;
 }
+
+Future<NsdAnnouncement?> _noAnnounce(NsdAdvert _) async => null;
 
 /// The server publishes the native outbox and live view, so it only runs over the real capture
 /// plugin; with any other capture layer (widget tests) it is inert unless a test overrides this.
