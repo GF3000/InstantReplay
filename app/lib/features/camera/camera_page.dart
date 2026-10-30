@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:replay_capture_android/replay_capture_android.dart';
 import 'package:replay_protocol/replay_protocol.dart' show RecordingEndReason, hotThermalStatus;
 
@@ -358,7 +359,7 @@ class _Advanced extends ConsumerWidget {
                 isExpanded: true,
                 itemHeight: 56,
                 items: [
-                  for (final p in state.profiles) DropdownMenuItem(value: p.id, child: Text(_profileLabel(p))),
+                  for (final p in state.profiles) DropdownMenuItem(value: p.id, child: Text(_profileLabel(context, p))),
                 ],
                 onChanged: state.phase == CameraPhase.starting || state.phase == CameraPhase.initializing
                     ? null
@@ -420,8 +421,11 @@ class _Advanced extends ConsumerWidget {
     messenger.showSnackBar(SnackBar(content: Text(message)));
   }
 
-  static String _profileLabel(CaptureProfile p) =>
-      '${p.height}p${p.fps} · ${(p.bitrate / 1e6).toStringAsFixed(0)} Mbps';
+  /// "1080p30 · 8 Mbps · 3.6 GB/h": the storage per hour helps to pick a bitrate.
+  static String _profileLabel(BuildContext context, CaptureProfile p) {
+    final gbPerHour = NumberFormat('0.0', Localizations.localeOf(context).toString()).format(p.bitrate * 3600 / 8 / 1e9);
+    return '${p.height}p${p.fps} · ${(p.bitrate / 1e6).toStringAsFixed(0)} Mbps · $gbPerHour GB/h';
+  }
 }
 
 class _ErrorCard extends StatelessWidget {

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:replay_capture_android/replay_capture_android.dart';
 
+import '../../core/preferences.dart';
 import 'capture_layer.dart';
 
 enum CameraPhase {
@@ -115,6 +116,7 @@ final class RecordingSavedNotice {
 /// when the screen goes away (the provider is auto-disposed).
 class CameraSessionNotifier extends Notifier<CameraSessionState> {
   static const defaultProfileId = '1080p30';
+  static const _profileKey = 'camera.profile';
   static const _maxErrors = 5;
 
   late CaptureLayer _capture;
@@ -186,7 +188,9 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
       state = state.copyWith(phase: CameraPhase.noProfiles, notificationsDenied: !notifications);
       return;
     }
-    final keep = profiles.any((p) => p.id == state.profileId) ? state.profileId : null;
+    // The profile in use (a retry), else the one chosen last time.
+    final wanted = state.profileId ?? ref.read(sharedPreferencesProvider).getString(_profileKey);
+    final keep = profiles.any((p) => p.id == wanted) ? wanted : null;
     final id = keep ?? (profiles.any((p) => p.id == defaultProfileId) ? defaultProfileId : profiles.first.id);
     state = state.copyWith(profiles: profiles, profileId: id, notificationsDenied: !notifications);
     await _recover();
@@ -213,6 +217,7 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
   Future<void> selectProfile(String id) async {
     if (id == state.profileId && state.phase == CameraPhase.running) return;
     state = state.copyWith(profileId: id);
+    unawaited(ref.read(sharedPreferencesProvider).setString(_profileKey, id));
     await _start(id);
   }
 
