@@ -384,7 +384,7 @@ void main() {
       await _tapNow(tester, _rec('record'));
       await _openAdvanced(tester);
       await _tapVisible(tester, find.byKey(const Key('camera-profile')));
-      await tester.tap(find.text('1080p60 · 20 Mbps').last);
+      await tester.tap(find.text('1080p60 · 20 Mbps · 9.0 GB/h').last);
       await tester.pumpAndSettle();
 
       expect(fake.starts, ['1080p30', '1080p60']);
