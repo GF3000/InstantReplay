@@ -946,4 +946,12 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get settingsStorageUnavailable => 'No se pudo leer el espacio usado.';
+
+  @override
+  String viewerClipDeleted(String name) {
+    return '$name borrado';
+  }
+
+  @override
+  String get viewerClipUndo => 'Deshacer';
 }

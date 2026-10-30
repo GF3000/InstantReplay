@@ -1621,6 +1621,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not read the storage used.'**
   String get settingsStorageUnavailable;
+
+  /// SnackBar after swiping a clip away; name is the clip name, e.g. 'Good · 12:41'.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} deleted'**
+  String viewerClipDeleted(String name);
+
+  /// No description provided for @viewerClipUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get viewerClipUndo;
 }
 
 class _AppLocalizationsDelegate
