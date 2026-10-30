@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/preferences.dart';
+import '../library/library_providers.dart';
 import '../viewer/clips/save_presets.dart';
 import 'storage_usage.dart';
 
@@ -104,6 +105,10 @@ class LocaleNotifier extends Notifier<Locale?> {
 
 final localeProvider = NotifierProvider<LocaleNotifier, Locale?>(LocaleNotifier.new);
 
-/// Space taken by saved clips; null where it cannot be measured (web). Read again each time the
-/// Settings screen opens.
-final storageUsageProvider = FutureProvider.autoDispose<StorageUsage?>((_) => savedClipsUsage());
+/// Space taken by the clips in the library; null without one (web keeps clips in memory, D15).
+/// Read again each time the Settings screen opens.
+final storageUsageProvider = FutureProvider.autoDispose<StorageUsage?>((ref) async {
+  if (!ref.watch(libraryEnabledProvider)) return null;
+  final (bytes, clips) = await ref.watch(libraryDatabaseProvider).usage();
+  return StorageUsage(bytes: bytes, clips: clips);
+});

@@ -1,10 +1,15 @@
 import 'dart:math' as math;
 
+import 'package:drift/drift.dart' show Value, driftRuntimeOptions;
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:instant_replay/app/theme.dart';
+import 'package:instant_replay/core/capabilities.dart';
 import 'package:instant_replay/core/preferences.dart';
+import 'package:instant_replay/features/library/data/library_database.dart';
+import 'package:instant_replay/features/library/library_providers.dart';
 import 'package:instant_replay/features/settings/settings_page.dart';
 import 'package:instant_replay/features/settings/settings_providers.dart';
 import 'package:instant_replay/features/viewer/clips/save_presets.dart';
@@ -134,6 +139,44 @@ void main() {
       expect(c.read(localeProvider), isNull);
       c.read(localeProvider.notifier).set(const Locale('de'));
       expect(c.read(localeProvider), isNull);
+    });
+  });
+
+  group('storage usage', () {
+    Future<ProviderContainer> withLibrary(Capabilities caps) async {
+      driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
+      final db = LibraryDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      final session = await db.createSession(name: 's', type: SessionType.match);
+      for (final (id, size) in [('a', 1000), ('b', 2500)]) {
+        await db.addClip(ClipsCompanion.insert(
+          id: id,
+          sessionId: session.id,
+          requestId: Value(id),
+          requestedAt: DateTime(2026, 10, 30),
+          filePath: '/files/clips/${session.id}/$id.mp4',
+          sizeBytes: size,
+          createdAt: DateTime(2026, 10, 30),
+          updatedAt: DateTime(2026, 10, 30),
+        ));
+      }
+      final c = ProviderContainer(overrides: [
+        libraryDatabaseProvider.overrideWithValue(db),
+        capabilitiesProvider.overrideWithValue(caps),
+      ]);
+      addTearDown(c.dispose);
+      return c;
+    }
+
+    test('sums the clips in the library', () async {
+      final c = await withLibrary(Capabilities.nativeAndroid);
+      final usage = (await c.read(storageUsageProvider.future))!;
+      expect((usage.bytes, usage.clips), (3500, 2));
+    });
+
+    test('is null without a library (web)', () async {
+      final c = await withLibrary(Capabilities.web);
+      expect(await c.read(storageUsageProvider.future), isNull);
     });
   });
 

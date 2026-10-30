@@ -7,6 +7,7 @@ import 'package:replay_protocol/replay_protocol.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/preferences.dart';
+import '../library/library_providers.dart';
 import '../settings/settings_providers.dart';
 import 'clips/clip_store.dart';
 import 'clips/clip_transfers.dart';
@@ -30,7 +31,10 @@ final channelConnectorProvider = Provider<ChannelConnector>((_) => connectWebSoc
 
 final livePeerFactoryProvider = Provider<LivePeerFactory>((_) => createWebRtcLivePeer);
 
-final clipStoreProvider = Provider<ClipStore>((_) => ClipStore.platform());
+/// Android saves clips into the library (SPEC §5.3); web keeps the current session in memory.
+final clipStoreProvider = Provider<ClipStore>(
+  (ref) => ClipStore.platform(catalog: ref.watch(libraryEnabledProvider) ? LibraryCatalog(ref) : null),
+);
 
 /// The page address on web (the Camera serves the bundle, so its origin is the Camera); null on Android.
 final pageUriProvider = Provider<Uri?>((_) => kIsWeb ? Uri.base : null);

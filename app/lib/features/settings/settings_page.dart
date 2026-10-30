@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../core/capabilities.dart';
 import '../../l10n/app_localizations.dart';
+import '../library/library_providers.dart';
 import '../viewer/clips/save_presets.dart';
 import 'settings_providers.dart';
 
@@ -22,7 +22,7 @@ class SettingsPage extends ConsumerWidget {
     final presetsNotifier = ref.read(savePresetsProvider.notifier);
     final locale = ref.watch(localeProvider);
     final themeMode = ref.watch(themeModeProvider);
-    final showStorage = ref.watch(capabilitiesProvider.select((c) => c.hasPersistentLibrary));
+    final showStorage = ref.watch(libraryEnabledProvider);
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.settingsTitle)),
