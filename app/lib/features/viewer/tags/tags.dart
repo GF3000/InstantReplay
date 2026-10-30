@@ -8,8 +8,11 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/preferences.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../library/labels.dart';
+import '../../library/library_providers.dart';
 
-/// A label the coach puts on a clip (UX §3.5). Viewer-local: the Camera never sees tags.
+/// A label the coach puts on a clip (UX §3.5): a tag, or on Android also a category (SPEC §5.3).
+/// Viewer-local: the Camera never sees tags.
 @immutable
 class ViewerTag {
   const ViewerTag({required this.id, this.name, required this.color});
@@ -19,7 +22,8 @@ class ViewerTag {
 
   final String id;
 
-  /// What the user typed; null for an untouched default tag, which shows its localized name.
+  /// What the user typed; null for an untouched default or built-in label, which shows its
+  /// localized name.
   final String? name;
 
   /// ARGB.
@@ -27,14 +31,7 @@ class ViewerTag {
 
   Color get colour => Color(color);
 
-  String label(AppLocalizations l10n) =>
-      name ??
-      switch (id) {
-        TagsNotifier.good => l10n.viewerTagDefaultGood,
-        TagsNotifier.bad => l10n.viewerTagDefaultBad,
-        TagsNotifier.other => l10n.viewerTagDefaultOther,
-        _ => id,
-      };
+  String label(AppLocalizations l10n) => name ?? builtInLabel(l10n, id) ?? id;
 
   ViewerTag copyWith({String? name, int? color}) =>
       ViewerTag(id: id, name: name ?? this.name, color: color ?? this.color);
@@ -61,7 +58,9 @@ const tagPalette = <int>[
   0xFF9E9E9E, // grey
 ];
 
-/// The tag set, in display order, persisted in shared_preferences (localStorage on web).
+/// The tag set, in display order. On Android with a library session these are the tags of the
+/// session's template, kept in the library; otherwise (web) they live in shared_preferences
+/// (localStorage on web).
 class TagsNotifier extends Notifier<List<ViewerTag>> {
   static const storageKey = 'viewer.tags';
   static const good = 'good';
@@ -75,6 +74,7 @@ class TagsNotifier extends Notifier<List<ViewerTag>> {
 
   @override
   List<ViewerTag> build() {
+    if (ref.watch(activeSessionProvider) case final session?) return session.tags;
     final raw = ref.watch(sharedPreferencesProvider).getString(storageKey);
     if (raw == null) return defaults;
     try {
@@ -116,6 +116,10 @@ class TagsNotifier extends Notifier<List<ViewerTag>> {
 
   void _set(List<ViewerTag> tags) {
     state = tags;
+    if (ref.read(activeSessionProvider) != null) {
+      ref.read(activeSessionProvider.notifier).setTags(tags);
+      return;
+    }
     // On web this is localStorage, which can be full or unavailable (private mode): keep working
     // with the in-memory tags rather than failing.
     unawaited(
@@ -132,6 +136,32 @@ class TagsNotifier extends Notifier<List<ViewerTag>> {
 
 final tagsProvider = NotifierProvider<TagsNotifier, List<ViewerTag>>(TagsNotifier.new);
 
+/// The categories of the library session's template (Android); none without a session (web).
+/// One per clip, unlike tags. Same editing operations as [TagsNotifier].
+class CategoriesNotifier extends TagsNotifier {
+  @override
+  List<ViewerTag> build() => ref.watch(activeSessionProvider)?.categories ?? const [];
+
+  @override
+  void _set(List<ViewerTag> tags) {
+    state = tags;
+    ref.read(activeSessionProvider.notifier).setCategories(tags);
+  }
+}
+
+final categoriesProvider = NotifierProvider<CategoriesNotifier, List<ViewerTag>>(CategoriesNotifier.new);
+
+/// Labels of clips outside the active template, by id: the library fills it before opening a
+/// clip of another session, so its tag still shows in the review.
+class KnownLabelsNotifier extends Notifier<Map<String, ViewerTag>> {
+  @override
+  Map<String, ViewerTag> build() => const {};
+
+  void addAll(Map<String, ViewerTag> labels) => state = {...state, ...labels};
+}
+
+final knownLabelsProvider = NotifierProvider<KnownLabelsNotifier, Map<String, ViewerTag>>(KnownLabelsNotifier.new);
+
 /// Tag of each clip of this session, keyed by requestId so a clip can be tagged while it is still
 /// recording or downloading. Session-only, like the clips themselves (D15).
 class ClipTagsNotifier extends Notifier<Map<String, String>> {
@@ -147,10 +177,21 @@ class ClipTagsNotifier extends Notifier<Map<String, String>> {
 
 final clipTagsProvider = NotifierProvider<ClipTagsNotifier, Map<String, String>>(ClipTagsNotifier.new);
 
+/// Category of each clip, keyed by requestId like [clipTagsProvider] (Android library only).
+final clipCategoriesProvider = NotifierProvider<ClipTagsNotifier, Map<String, String>>(ClipTagsNotifier.new);
+
 /// The tag of clip [requestId], or null if untagged or its tag was deleted.
 final clipTagProvider = Provider.family<ViewerTag?, String>((ref, requestId) {
   final id = ref.watch(clipTagsProvider.select((m) => m[requestId]));
-  return id == null ? null : ref.watch(tagsProvider).where((t) => t.id == id).firstOrNull;
+  if (id == null) return null;
+  return ref.watch(tagsProvider).where((t) => t.id == id).firstOrNull ?? ref.watch(knownLabelsProvider)[id];
+});
+
+/// The category of clip [requestId], or null.
+final clipCategoryProvider = Provider.family<ViewerTag?, String>((ref, requestId) {
+  final id = ref.watch(clipCategoriesProvider.select((m) => m[requestId]));
+  if (id == null) return null;
+  return ref.watch(categoriesProvider).where((t) => t.id == id).firstOrNull ?? ref.watch(knownLabelsProvider)[id];
 });
 
 /// The post-save tag bar (UX §3.2): offers the tags for the newest save for [visibleFor], then fades.
@@ -184,6 +225,15 @@ class PostSaveTagBarNotifier extends Notifier<String?> {
     if (requestId == null) return;
     ref.read(clipTagsProvider.notifier).set(requestId, tagId);
     dismiss();
+  }
+
+  /// A category tap keeps the bar up a little longer, so a tag can follow it.
+  void pickCategory(String categoryId) {
+    final requestId = state;
+    if (requestId == null) return;
+    final current = ref.read(clipCategoriesProvider)[requestId];
+    ref.read(clipCategoriesProvider.notifier).set(requestId, current == categoryId ? null : categoryId);
+    show(requestId);
   }
 }
 

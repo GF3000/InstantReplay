@@ -973,6 +973,390 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Or connect another way'**
   String get viewerNearbyOther;
+
+  /// No description provided for @viewerClipSaveToGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Save to gallery'**
+  String get viewerClipSaveToGallery;
+
+  /// No description provided for @viewerClipShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get viewerClipShare;
+
+  /// No description provided for @viewerClipSavedToGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved to the gallery'**
+  String get viewerClipSavedToGallery;
+
+  /// No description provided for @viewerClipGalleryDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'No permission to save to the gallery'**
+  String get viewerClipGalleryDenied;
+
+  /// No description provided for @viewerClipExportNoSpace.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough space on the phone'**
+  String get viewerClipExportNoSpace;
+
+  /// No description provided for @viewerClipExportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t export the clip'**
+  String get viewerClipExportFailed;
+
+  /// No description provided for @libraryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Library'**
+  String get libraryTitle;
+
+  /// No description provided for @libraryChangeSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Change session'**
+  String get libraryChangeSession;
+
+  /// No description provided for @librarySessionLatest.
+  ///
+  /// In en, this message translates to:
+  /// **'Latest session'**
+  String get librarySessionLatest;
+
+  /// No description provided for @librarySessionContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get librarySessionContinue;
+
+  /// No description provided for @librarySessionNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New session'**
+  String get librarySessionNew;
+
+  /// No description provided for @librarySessionName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get librarySessionName;
+
+  /// No description provided for @librarySessionDefaultName.
+  ///
+  /// In en, this message translates to:
+  /// **'{type} {date}'**
+  String librarySessionDefaultName(String type, String date);
+
+  /// No description provided for @librarySessionTemplate.
+  ///
+  /// In en, this message translates to:
+  /// **'Tag template'**
+  String get librarySessionTemplate;
+
+  /// No description provided for @librarySessionStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start session'**
+  String get librarySessionStart;
+
+  /// No description provided for @librarySessionTypeMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Match'**
+  String get librarySessionTypeMatch;
+
+  /// No description provided for @librarySessionTypeTraining.
+  ///
+  /// In en, this message translates to:
+  /// **'Training'**
+  String get librarySessionTypeTraining;
+
+  /// No description provided for @librarySessionTypeOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get librarySessionTypeOther;
+
+  /// No description provided for @librarySessionClips.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{no clips} =1{1 clip} other{{count} clips}}'**
+  String librarySessionClips(int count);
+
+  /// No description provided for @librarySessionClipsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No clips in this session.'**
+  String get librarySessionClipsEmpty;
+
+  /// No description provided for @libraryEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No sessions yet.'**
+  String get libraryEmpty;
+
+  /// No description provided for @librarySelected.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} selected'**
+  String librarySelected(int count);
+
+  /// No description provided for @librarySelectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Select all'**
+  String get librarySelectAll;
+
+  /// No description provided for @libraryDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get libraryDelete;
+
+  /// No description provided for @libraryDeleteClipsConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Delete 1 clip? This can\'t be undone.} other{Delete {count} clips? This can\'t be undone.}}'**
+  String libraryDeleteClipsConfirm(int count);
+
+  /// No description provided for @libraryDeleteSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete session'**
+  String get libraryDeleteSession;
+
+  /// No description provided for @libraryDeleteSessionConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete \"{name}\" and all its clips? This can\'t be undone.'**
+  String libraryDeleteSessionConfirm(String name);
+
+  /// No description provided for @libraryTemplatesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Tag templates'**
+  String get libraryTemplatesTitle;
+
+  /// No description provided for @libraryTemplateBuiltIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Built-in'**
+  String get libraryTemplateBuiltIn;
+
+  /// No description provided for @libraryTemplateExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy as JSON'**
+  String get libraryTemplateExport;
+
+  /// No description provided for @libraryTemplateExported.
+  ///
+  /// In en, this message translates to:
+  /// **'Template copied to the clipboard'**
+  String get libraryTemplateExported;
+
+  /// No description provided for @libraryTemplateImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import JSON'**
+  String get libraryTemplateImport;
+
+  /// No description provided for @libraryTemplateImportHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste a template exported from InstantReplay'**
+  String get libraryTemplateImportHint;
+
+  /// No description provided for @libraryTemplateImported.
+  ///
+  /// In en, this message translates to:
+  /// **'\"{name}\" imported'**
+  String libraryTemplateImported(String name);
+
+  /// No description provided for @libraryTemplateImportError.
+  ///
+  /// In en, this message translates to:
+  /// **'Not a valid template: {reason}'**
+  String libraryTemplateImportError(String reason);
+
+  /// No description provided for @libraryTemplateDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete template'**
+  String get libraryTemplateDelete;
+
+  /// No description provided for @libraryTemplateLabelsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags and categories'**
+  String get libraryTemplateLabelsTitle;
+
+  /// No description provided for @libraryCategoriesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Categories'**
+  String get libraryCategoriesTitle;
+
+  /// No description provided for @libraryCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Category'**
+  String get libraryCategory;
+
+  /// No description provided for @libraryCategoryAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add category'**
+  String get libraryCategoryAdd;
+
+  /// No description provided for @libraryCategoriesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No categories. Add one to group your clips.'**
+  String get libraryCategoriesEmpty;
+
+  /// No description provided for @libraryTemplateFootball.
+  ///
+  /// In en, this message translates to:
+  /// **'Football'**
+  String get libraryTemplateFootball;
+
+  /// No description provided for @libraryTemplateBasketball.
+  ///
+  /// In en, this message translates to:
+  /// **'Basketball'**
+  String get libraryTemplateBasketball;
+
+  /// No description provided for @libraryTemplateHandball.
+  ///
+  /// In en, this message translates to:
+  /// **'Handball'**
+  String get libraryTemplateHandball;
+
+  /// No description provided for @libraryTemplateHockey.
+  ///
+  /// In en, this message translates to:
+  /// **'Hockey'**
+  String get libraryTemplateHockey;
+
+  /// No description provided for @libraryTemplateGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Generic'**
+  String get libraryTemplateGeneric;
+
+  /// No description provided for @libraryTemplateMigrated.
+  ///
+  /// In en, this message translates to:
+  /// **'My tags'**
+  String get libraryTemplateMigrated;
+
+  /// No description provided for @libraryCategoryAttack.
+  ///
+  /// In en, this message translates to:
+  /// **'Attack'**
+  String get libraryCategoryAttack;
+
+  /// No description provided for @libraryCategoryDefense.
+  ///
+  /// In en, this message translates to:
+  /// **'Defence'**
+  String get libraryCategoryDefense;
+
+  /// No description provided for @libraryCategoryTransition.
+  ///
+  /// In en, this message translates to:
+  /// **'Transition'**
+  String get libraryCategoryTransition;
+
+  /// No description provided for @libraryCategorySetPiece.
+  ///
+  /// In en, this message translates to:
+  /// **'Set piece'**
+  String get libraryCategorySetPiece;
+
+  /// No description provided for @libraryTagGoal.
+  ///
+  /// In en, this message translates to:
+  /// **'Goal'**
+  String get libraryTagGoal;
+
+  /// No description provided for @libraryTagShot.
+  ///
+  /// In en, this message translates to:
+  /// **'Shot'**
+  String get libraryTagShot;
+
+  /// No description provided for @libraryTagFoul.
+  ///
+  /// In en, this message translates to:
+  /// **'Foul'**
+  String get libraryTagFoul;
+
+  /// No description provided for @libraryTagCorner.
+  ///
+  /// In en, this message translates to:
+  /// **'Corner'**
+  String get libraryTagCorner;
+
+  /// No description provided for @libraryTagFreeKick.
+  ///
+  /// In en, this message translates to:
+  /// **'Free kick'**
+  String get libraryTagFreeKick;
+
+  /// No description provided for @libraryTagTurnover.
+  ///
+  /// In en, this message translates to:
+  /// **'Turnover'**
+  String get libraryTagTurnover;
+
+  /// No description provided for @libraryTagBasket.
+  ///
+  /// In en, this message translates to:
+  /// **'Basket'**
+  String get libraryTagBasket;
+
+  /// No description provided for @libraryTagThreePointer.
+  ///
+  /// In en, this message translates to:
+  /// **'3-pointer'**
+  String get libraryTagThreePointer;
+
+  /// No description provided for @libraryTagRebound.
+  ///
+  /// In en, this message translates to:
+  /// **'Rebound'**
+  String get libraryTagRebound;
+
+  /// No description provided for @libraryTagSteal.
+  ///
+  /// In en, this message translates to:
+  /// **'Steal'**
+  String get libraryTagSteal;
+
+  /// No description provided for @libraryTagSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get libraryTagSave;
+
+  /// No description provided for @libraryTagSevenMeters.
+  ///
+  /// In en, this message translates to:
+  /// **'7 m throw'**
+  String get libraryTagSevenMeters;
+
+  /// No description provided for @libraryTagPenalty.
+  ///
+  /// In en, this message translates to:
+  /// **'Penalty'**
+  String get libraryTagPenalty;
 }
 
 class _AppLocalizationsDelegate

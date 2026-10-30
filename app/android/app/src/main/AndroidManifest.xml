@@ -2,10 +2,13 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- NSD announce/browse (bonsoir also declares it; kept here so it is visible). -->
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <!-- gal: saving into the gallery album needs this on Android 10 only (minSdk 29). -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
     <application
         android:label="InstantReplay"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:requestLegacyExternalStorage="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -372,5 +372,121 @@
   "viewerNearbyTitle": "Cameras on this network",
   "viewerNearbySearching": "Looking for cameras…",
   "viewerNearbyIncompatible": "Different InstantReplay version",
-  "viewerNearbyOther": "Or connect another way"
+  "viewerNearbyOther": "Or connect another way",
+  "viewerClipSaveToGallery": "Save to gallery",
+  "viewerClipShare": "Share",
+  "viewerClipSavedToGallery": "Saved to the gallery",
+  "viewerClipGalleryDenied": "No permission to save to the gallery",
+  "viewerClipExportNoSpace": "Not enough space on the phone",
+  "viewerClipExportFailed": "Couldn't export the clip",
+  "libraryTitle": "Library",
+  "libraryChangeSession": "Change session",
+  "librarySessionLatest": "Latest session",
+  "librarySessionContinue": "Continue",
+  "librarySessionNew": "New session",
+  "librarySessionName": "Name",
+  "librarySessionDefaultName": "{type} {date}",
+  "@librarySessionDefaultName": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "librarySessionTemplate": "Tag template",
+  "librarySessionStart": "Start session",
+  "librarySessionTypeMatch": "Match",
+  "librarySessionTypeTraining": "Training",
+  "librarySessionTypeOther": "Other",
+  "librarySessionClips": "{count, plural, =0{no clips} =1{1 clip} other{{count} clips}}",
+  "@librarySessionClips": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "librarySessionClipsEmpty": "No clips in this session.",
+  "libraryEmpty": "No sessions yet.",
+  "librarySelected": "{count} selected",
+  "@librarySelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "librarySelectAll": "Select all",
+  "libraryDelete": "Delete",
+  "libraryDeleteClipsConfirm": "{count, plural, =1{Delete 1 clip? This can't be undone.} other{Delete {count} clips? This can't be undone.}}",
+  "@libraryDeleteClipsConfirm": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "libraryDeleteSession": "Delete session",
+  "libraryDeleteSessionConfirm": "Delete \"{name}\" and all its clips? This can't be undone.",
+  "@libraryDeleteSessionConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "libraryTemplatesTitle": "Tag templates",
+  "libraryTemplateBuiltIn": "Built-in",
+  "libraryTemplateExport": "Copy as JSON",
+  "libraryTemplateExported": "Template copied to the clipboard",
+  "libraryTemplateImport": "Import JSON",
+  "libraryTemplateImportHint": "Paste a template exported from InstantReplay",
+  "libraryTemplateImported": "\"{name}\" imported",
+  "@libraryTemplateImported": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "libraryTemplateImportError": "Not a valid template: {reason}",
+  "@libraryTemplateImportError": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "libraryTemplateDelete": "Delete template",
+  "libraryTemplateLabelsTitle": "Tags and categories",
+  "libraryCategoriesTitle": "Categories",
+  "libraryCategory": "Category",
+  "libraryCategoryAdd": "Add category",
+  "libraryCategoriesEmpty": "No categories. Add one to group your clips.",
+  "libraryTemplateFootball": "Football",
+  "libraryTemplateBasketball": "Basketball",
+  "libraryTemplateHandball": "Handball",
+  "libraryTemplateHockey": "Hockey",
+  "libraryTemplateGeneric": "Generic",
+  "libraryTemplateMigrated": "My tags",
+  "libraryCategoryAttack": "Attack",
+  "libraryCategoryDefense": "Defence",
+  "libraryCategoryTransition": "Transition",
+  "libraryCategorySetPiece": "Set piece",
+  "libraryTagGoal": "Goal",
+  "libraryTagShot": "Shot",
+  "libraryTagFoul": "Foul",
+  "libraryTagCorner": "Corner",
+  "libraryTagFreeKick": "Free kick",
+  "libraryTagTurnover": "Turnover",
+  "libraryTagBasket": "Basket",
+  "libraryTagThreePointer": "3-pointer",
+  "libraryTagRebound": "Rebound",
+  "libraryTagSteal": "Steal",
+  "libraryTagSave": "Save",
+  "libraryTagSevenMeters": "7 m throw",
+  "libraryTagPenalty": "Penalty"
 }
