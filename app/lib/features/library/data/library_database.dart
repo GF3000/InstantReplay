@@ -351,6 +351,13 @@ class LibraryDatabase extends _$LibraryDatabase {
 
   Future<void> addClip(ClipsCompanion clip) => into(clips).insertOnConflictUpdate(clip);
 
+  /// Total bytes and number of clips in the library (Settings → storage).
+  Future<(int bytes, int clips)> usage() async {
+    final (bytes, count) = (clips.sizeBytes.sum(), clips.id.count());
+    final row = await (selectOnly(clips)..addColumns([bytes, count])).getSingle();
+    return (row.read(bytes) ?? 0, row.read(count) ?? 0);
+  }
+
   Future<ClipRow?> clip(String id) => (select(clips)..where((c) => c.id.equals(id))).getSingleOrNull();
 
   /// Clips of a session with their tag ids, newest first.

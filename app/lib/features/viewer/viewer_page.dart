@@ -34,6 +34,12 @@ class ViewerPage extends ConsumerWidget {
         ),
         actions: [
           if (setup.paired) const CameraStatusIndicator(),
+          IconButton(
+            key: const ValueKey('viewer-settings'),
+            tooltip: l10n.settingsTitle,
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => context.push('/viewer/settings'),
+          ),
           PopupMenuButton<_MenuItem>(
             key: const ValueKey('viewer-menu'),
             icon: const Icon(Icons.more_vert),

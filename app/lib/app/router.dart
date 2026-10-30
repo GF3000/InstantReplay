@@ -7,6 +7,7 @@ import '../features/camera/camera_page.dart';
 import '../features/lab/lab_page.dart';
 import '../features/role/role.dart';
 import '../features/role/role_gate_page.dart';
+import '../features/settings/settings_page.dart';
 import '../features/viewer/viewer_page.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -14,7 +15,11 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: '/', builder: (_, _) => const RoleGatePage()),
       GoRoute(path: '/camera', builder: (_, _) => const CameraPage()),
-      GoRoute(path: '/viewer', builder: (_, _) => const ViewerPage()),
+      GoRoute(
+        path: '/viewer',
+        builder: (_, _) => const ViewerPage(),
+        routes: [GoRoute(path: 'settings', builder: (_, _) => const SettingsPage())],
+      ),
       GoRoute(path: '/lab', builder: (_, _) => const LabPage()),
     ],
     redirect: (_, state) {

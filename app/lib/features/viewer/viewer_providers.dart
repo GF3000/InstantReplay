@@ -8,15 +8,17 @@ import 'package:uuid/uuid.dart';
 
 import '../../core/preferences.dart';
 import '../library/library_providers.dart';
+import '../settings/settings_providers.dart';
 import 'clips/clip_store.dart';
 import 'clips/clip_transfers.dart';
 import 'clips/partial_download.dart';
-import 'clips/save_presets.dart';
 import 'data/page_url.dart';
 import 'data/session_link.dart';
 import 'data/viewer_api.dart';
 import 'live/live_signaling.dart';
 import 'live/webrtc_live_peer.dart';
+
+export '../settings/settings_providers.dart' show savePresetsProvider;
 
 // region Injection points (overridden in tests)
 
@@ -37,8 +39,6 @@ final clipStoreProvider = Provider<ClipStore>(
 
 /// Where a clip download keeps its bytes between attempts, to resume with a Range request.
 final partialDownloadFactoryProvider = Provider<PartialDownload Function(String clipId)>((_) => PartialDownload.platform);
-
-final savePresetsProvider = Provider<SavePresets>((_) => const SavePresets());
 
 /// The page address on web (the Camera serves the bundle, so its origin is the Camera); null on Android.
 final pageUriProvider = Provider<Uri?>((_) => kIsWeb ? Uri.base : null);
@@ -476,13 +476,15 @@ class ViewerClipsNotifier extends Notifier<List<SessionClip>> {
       store: ref.watch(clipStoreProvider),
       newPartial: ref.watch(partialDownloadFactoryProvider),
       viewerId: ref.watch(viewerIdProvider),
-      presets: ref.watch(savePresetsProvider),
+      presets: ref.read(savePresetsProvider),
       onChanged: (clips) {
         if (ref.mounted) state = clips;
       },
     );
     _transfers = transfers;
     ref.onDispose(transfers.dispose);
+    // Not watched: a change in Settings must not rebuild this and drop the session's clips.
+    ref.listen(savePresetsProvider, (_, presets) => transfers.presets = presets);
     ref.listen(viewerApiProvider, (_, api) => transfers.api = api, fireImmediately: true);
     StreamSubscription<WsMessage>? sub;
     ref.listen(sessionLinkProvider, (_, link) {

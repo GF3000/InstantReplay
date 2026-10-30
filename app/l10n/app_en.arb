@@ -609,5 +609,46 @@
   "viewerNearbyTitle": "Cameras on this network",
   "viewerNearbySearching": "Looking for cameras…",
   "viewerNearbyIncompatible": "Different InstantReplay version",
-  "viewerNearbyOther": "Or connect another way"
+  "viewerNearbyOther": "Or connect another way",
+  "settingsTitle": "Settings",
+  "settingsSaveSection": "Save button",
+  "settingsDefaultDuration": "Default duration",
+  "settingsQuickPresets": "Quick buttons",
+  "settingsQuickPresetsHint": "Choose up to {max}. Each one saves at once with its own duration.",
+  "@settingsQuickPresetsHint": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsPostRoll": "Post-roll: {seconds} s",
+  "@settingsPostRoll": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsPostRollHint": "Seconds still recorded after you tap Save.",
+  "settingsDisplaySection": "Display",
+  "settingsLanguage": "Language",
+  "settingsSystem": "System",
+  "settingsTheme": "Theme",
+  "settingsThemeDark": "Dark",
+  "settingsThemeLight": "Light",
+  "settingsStorageSection": "Storage",
+  "settingsStorageClips": "Saved clips",
+  "settingsStorageUsage": "{size} in {count, plural, =1{1 clip} other{{count} clips}}",
+  "@settingsStorageUsage": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsStorageUnavailable": "Could not read the storage used."
 }

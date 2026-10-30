@@ -1519,6 +1519,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Or connect another way'**
   String get viewerNearbyOther;
+
+  /// No description provided for @settingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settingsTitle;
+
+  /// No description provided for @settingsSaveSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Save button'**
+  String get settingsSaveSection;
+
+  /// No description provided for @settingsDefaultDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Default duration'**
+  String get settingsDefaultDuration;
+
+  /// No description provided for @settingsQuickPresets.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick buttons'**
+  String get settingsQuickPresets;
+
+  /// No description provided for @settingsQuickPresetsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose up to {max}. Each one saves at once with its own duration.'**
+  String settingsQuickPresetsHint(int max);
+
+  /// No description provided for @settingsPostRoll.
+  ///
+  /// In en, this message translates to:
+  /// **'Post-roll: {seconds} s'**
+  String settingsPostRoll(int seconds);
+
+  /// No description provided for @settingsPostRollHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Seconds still recorded after you tap Save.'**
+  String get settingsPostRollHint;
+
+  /// No description provided for @settingsDisplaySection.
+  ///
+  /// In en, this message translates to:
+  /// **'Display'**
+  String get settingsDisplaySection;
+
+  /// No description provided for @settingsLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get settingsLanguage;
+
+  /// No description provided for @settingsSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get settingsSystem;
+
+  /// No description provided for @settingsTheme.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme'**
+  String get settingsTheme;
+
+  /// No description provided for @settingsThemeDark.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get settingsThemeDark;
+
+  /// No description provided for @settingsThemeLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get settingsThemeLight;
+
+  /// No description provided for @settingsStorageSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Storage'**
+  String get settingsStorageSection;
+
+  /// No description provided for @settingsStorageClips.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved clips'**
+  String get settingsStorageClips;
+
+  /// No description provided for @settingsStorageUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'{size} in {count, plural, =1{1 clip} other{{count} clips}}'**
+  String settingsStorageUsage(String size, int count);
+
+  /// No description provided for @settingsStorageUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read the storage used.'**
+  String get settingsStorageUnavailable;
 }
 
 class _AppLocalizationsDelegate

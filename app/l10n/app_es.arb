@@ -236,5 +236,22 @@
   "viewerNearbyTitle": "Cámaras en esta red",
   "viewerNearbySearching": "Buscando cámaras…",
   "viewerNearbyIncompatible": "Otra versión de InstantReplay",
-  "viewerNearbyOther": "O conecta de otra forma"
+  "viewerNearbyOther": "O conecta de otra forma",
+  "settingsTitle": "Ajustes",
+  "settingsSaveSection": "Botón Guardar",
+  "settingsDefaultDuration": "Duración por defecto",
+  "settingsQuickPresets": "Botones rápidos",
+  "settingsQuickPresetsHint": "Elige hasta {max}. Cada uno guarda al instante con su duración.",
+  "settingsPostRoll": "Margen posterior: {seconds} s",
+  "settingsPostRollHint": "Segundos que se siguen grabando tras pulsar Guardar.",
+  "settingsDisplaySection": "Pantalla",
+  "settingsLanguage": "Idioma",
+  "settingsSystem": "Sistema",
+  "settingsTheme": "Tema",
+  "settingsThemeDark": "Oscuro",
+  "settingsThemeLight": "Claro",
+  "settingsStorageSection": "Almacenamiento",
+  "settingsStorageClips": "Clips guardados",
+  "settingsStorageUsage": "{size} en {count, plural, =1{1 clip} other{{count} clips}}",
+  "settingsStorageUnavailable": "No se pudo leer el espacio usado."
 }

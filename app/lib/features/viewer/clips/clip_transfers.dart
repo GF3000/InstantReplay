@@ -109,7 +109,8 @@ class ClipTransfers {
 
   final ClipStore store;
   final String viewerId;
-  final SavePresets presets;
+  /// Updated when Settings change; applies to the next save.
+  SavePresets presets;
   final void Function(List<SessionClip> clips) onChanged;
   final String Function() _newRequestId;
   final PartialDownload Function(String clipId) _newPartial;
