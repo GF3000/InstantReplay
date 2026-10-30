@@ -605,5 +605,9 @@
   "libraryTagSteal": "Steal",
   "libraryTagSave": "Save",
   "libraryTagSevenMeters": "7 m throw",
-  "libraryTagPenalty": "Penalty"
+  "libraryTagPenalty": "Penalty",
+  "viewerNearbyTitle": "Cameras on this network",
+  "viewerNearbySearching": "Looking for cameras…",
+  "viewerNearbyIncompatible": "Different InstantReplay version",
+  "viewerNearbyOther": "Or connect another way"
 }

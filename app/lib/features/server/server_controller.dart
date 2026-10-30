@@ -8,6 +8,8 @@ import 'package:replay_protocol/replay_protocol.dart';
 import '../../core/preferences.dart';
 import '../camera/camera_session.dart';
 import '../camera/capture_layer.dart';
+import '../discovery/discovered_camera.dart';
+import '../discovery/nsd.dart';
 import 'api_server.dart';
 import 'pairing.dart';
 
@@ -54,6 +56,7 @@ class CameraServerState {
 
 /// Runs the API server for the Camera role: starts once capture first runs and stays up across
 /// profile restarts, so viewers keep their token; stops when the Camera screen goes away.
+/// While it runs on a network it is announced over NSD (SPEC §4), so native Viewers list it.
 class CameraServerNotifier extends Notifier<CameraServerState> {
   static const _addressRefresh = Duration(seconds: 5);
 
@@ -63,6 +66,10 @@ class CameraServerNotifier extends Notifier<CameraServerState> {
   String _deviceName = 'InstantReplay';
   StreamSubscription<int>? _viewerSub;
   Timer? _addressTimer;
+  NsdAnnouncement? _announcement;
+
+  /// NSD calls run one after another, so a quick address change can't leave two announcements.
+  Future<void> _nsd = Future.value();
 
   @override
   CameraServerState build() {
@@ -78,6 +85,7 @@ class CameraServerNotifier extends Notifier<CameraServerState> {
     }, fireImmediately: true);
     ref.onDispose(() {
       _addressTimer?.cancel();
+      _nsd = _nsd.then((_) => _stopAnnouncing());
       unawaited(_viewerSub?.cancel());
       final server = _server;
       _server = null;
@@ -109,6 +117,7 @@ class CameraServerNotifier extends Notifier<CameraServerState> {
       _viewerSub = server.viewerCountChanges.listen((n) {
         if (ref.mounted) state = state.copyWith(viewers: n);
       });
+      final announce = platform.announce;
       final port = await server.start();
       if (!ref.mounted) {
         await server.close();
@@ -116,8 +125,9 @@ class CameraServerNotifier extends Notifier<CameraServerState> {
       }
       _server = server;
       state = state.copyWith(running: true, port: port, error: () => null);
-      await _refreshAddress();
-      _addressTimer = Timer.periodic(_addressRefresh, (_) => _refreshAddress());
+      final advert = (name: _deviceName, port: port, txt: cameraTxt(cameraId: cameraId, name: _deviceName));
+      await _refreshAddress(onChange: () => _announce(announce, advert));
+      _addressTimer = Timer.periodic(_addressRefresh, (_) => _refreshAddress(onChange: () => _announce(announce, advert)));
     } catch (e) {
       if (server != null && _server != server) unawaited(server.close().catchError((Object _) {}));
       if (ref.mounted) state = state.copyWith(running: false, error: () => '$e');
@@ -127,9 +137,37 @@ class CameraServerNotifier extends Notifier<CameraServerState> {
   }
 
   /// The hotspot or Wi-Fi may come up after the Camera screen, so keep looking.
-  Future<void> _refreshAddress() async {
+  Future<void> _refreshAddress({required void Function() onChange}) async {
     final address = await ref.read(serverPlatformProvider).localAddress().catchError((Object _) => null);
-    if (ref.mounted && address != state.address) state = state.copyWith(address: () => address);
+    if (!ref.mounted || address == state.address) return;
+    state = state.copyWith(address: () => address);
+    onChange();
+  }
+
+  /// (Re)announces on the current network, or stops when there is none. Re-announcing on every
+  /// address change makes the OS publish on the new interface (e.g. the hotspot came up).
+  void _announce(Future<NsdAnnouncement?> Function(NsdAdvert) announce, NsdAdvert advert) {
+    _nsd = _nsd.then((_) async {
+      await _stopAnnouncing();
+      if (!ref.mounted || state.address == null) return;
+      try {
+        final announcement = await announce(advert);
+        if (ref.mounted) {
+          _announcement = announcement;
+        } else {
+          await announcement?.stop();
+        }
+      } catch (e) {
+        // Viewers can still use the QR or the address; don't fail the server for it.
+        debugPrint('NSD announce failed: $e');
+      }
+    });
+  }
+
+  Future<void> _stopAnnouncing() async {
+    final announcement = _announcement;
+    _announcement = null;
+    await announcement?.stop().catchError((Object _) {});
   }
 }
 

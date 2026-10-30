@@ -866,4 +866,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get libraryTagPenalty => 'Penalty';
+
+  @override
+  String get viewerNearbyTitle => 'Cameras on this network';
+
+  @override
+  String get viewerNearbySearching => 'Looking for cameras…';
+
+  @override
+  String get viewerNearbyIncompatible => 'Different InstantReplay version';
+
+  @override
+  String get viewerNearbyOther => 'Or connect another way';
 }

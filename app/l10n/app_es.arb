@@ -232,5 +232,9 @@
   "libraryTagSteal": "Robo",
   "libraryTagSave": "Parada",
   "libraryTagSevenMeters": "7 metros",
-  "libraryTagPenalty": "Penalti"
+  "libraryTagPenalty": "Penalti",
+  "viewerNearbyTitle": "Cámaras en esta red",
+  "viewerNearbySearching": "Buscando cámaras…",
+  "viewerNearbyIncompatible": "Otra versión de InstantReplay",
+  "viewerNearbyOther": "O conecta de otra forma"
 }
