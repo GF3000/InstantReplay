@@ -111,7 +111,7 @@ class ClipList extends ConsumerWidget {
               : ListView.builder(
                   itemCount: shown.length + (kIsWeb ? 1 : 0),
                   itemBuilder: (context, i) => i < shown.length
-                      ? ClipTile(key: ValueKey(shown[i].requestId), clip: shown[i])
+                      ? _Deletable(key: ValueKey(shown[i].requestId), clip: shown[i])
                       : Padding(
                           padding: const EdgeInsets.all(12),
                           child: Text(l10n.viewerSessionOnlyNotice, style: small, textAlign: TextAlign.center),
@@ -121,6 +121,61 @@ class ClipList extends ConsumerWidget {
       ],
     );
   }
+}
+
+/// Swipe a finished clip to delete it; a SnackBar offers Undo before the deletion stands.
+/// Clips still being requested, recorded or downloaded cannot be swiped.
+class _Deletable extends ConsumerWidget {
+  const _Deletable({super.key, required this.clip});
+
+  final SessionClip clip;
+
+  static bool canDelete(SessionClip c) => c.phase == SessionClipPhase.ready || c.phase == SessionClipPhase.failed;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tile = ClipTile(clip: clip);
+    if (!canDelete(clip)) return tile;
+    final scheme = Theme.of(context).colorScheme;
+    return Dismissible(
+      key: ValueKey('clip-delete-${clip.requestId}'),
+      direction: DismissDirection.endToStart,
+      background: ColoredBox(
+        color: scheme.errorContainer,
+        child: Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: Padding(
+            padding: const EdgeInsetsDirectional.only(end: 24),
+            child: Icon(Icons.delete_outline, color: scheme.onErrorContainer),
+          ),
+        ),
+      ),
+      onDismissed: (_) => deleteClipWithUndo(context, ref, clip),
+      child: tile,
+    );
+  }
+}
+
+/// Takes [clip] off the list and offers Undo; the deletion stands when the SnackBar goes away.
+void deleteClipWithUndo(BuildContext context, WidgetRef ref, SessionClip clip) {
+  final l10n = AppLocalizations.of(context);
+  final clips = ref.read(viewerClipsProvider.notifier);
+  if (!clips.delete(clip.requestId)) return;
+  final messenger = ScaffoldMessenger.of(context)..hideCurrentSnackBar();
+  final tag = ref.read(clipTagProvider(clip.requestId));
+  messenger
+      .showSnackBar(SnackBar(
+        content: Text(l10n.viewerClipDeleted(clipName(l10n, tag, clip.requestedAt))),
+        action: SnackBarAction(label: l10n.viewerClipUndo, onPressed: () {}),
+        // A SnackBar with an action stays until dismissed by default; this one must go away so
+        // the deletion stands.
+        persist: false,
+        duration: const Duration(seconds: 5),
+      ))
+      .closed
+      .then((reason) => reason == SnackBarClosedReason.action
+          ? clips.undoDelete(clip.requestId)
+          : clips.commitDelete(clip.requestId));
 }
 
 /// Thumbnail, name (tag + time), duration, tag colour and state. Tap to review; long-press or the

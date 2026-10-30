@@ -262,6 +262,41 @@ void main() {
     expect(camera.acks.keys, ['clip-old']);
   });
 
+  test('a deleted clip hides at once, comes back on undo, and is freed for good on forget', () async {
+    await transfers.save();
+    expect(transfers.hide('r1'), isFalse, reason: 'still recording');
+    transfers.onClipChanged(camera.dto('r1', ClipState.ready));
+    await settle();
+    await transfers.save();
+
+    expect(transfers.hide('r1'), isTrue);
+    expect(transfers.clips.map((c) => c.requestId), ['r2']);
+    expect(history.last.map((c) => c.requestId), ['r2']);
+
+    transfers.unhide('r1');
+    expect(transfers.clips.map((c) => c.requestId), ['r2', 'r1'], reason: 'back in its place');
+
+    final stored = clip('r1').stored! as MemoryClip;
+    transfers.hide('r1');
+    final gone = await transfers.forget('r1');
+    expect(gone?.clipId, 'clip-r1');
+    expect(stored.released, isTrue);
+    expect(await transfers.forget('r1'), isNull);
+
+    // The Camera may still talk about it (outbox listing after a reconnect): it stays gone.
+    transfers.onClipChanged(camera.dto('r1', ClipState.ready));
+    await settle();
+    expect(transfers.clips.map((c) => c.requestId), ['r2']);
+  });
+
+  test('a failed clip can be deleted too', () async {
+    await transfers.save();
+    transfers.onClipChanged(camera.dto('r1', ClipState.expired));
+    expect(transfers.hide('r1'), isTrue);
+    expect(await transfers.forget('r1'), isNotNull);
+    expect(transfers.clips, isEmpty);
+  });
+
   test('duplicate ready events download once; expiry fails a pending clip', () async {
     camera.downloadGate = Completer();
     await transfers.save();

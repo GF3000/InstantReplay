@@ -108,6 +108,36 @@ class _RecordingClips extends ViewerClipsNotifier {
   }
 }
 
+/// Clips whose delete/undo/commit only hide and restore entries, recording each call.
+class _DeletableClips extends ViewerClipsNotifier {
+  _DeletableClips(this.all);
+
+  final List<SessionClip> all;
+  final hidden = <String>{};
+  final calls = <String>[];
+
+  @override
+  List<SessionClip> build() => all;
+
+  @override
+  bool delete(String requestId) {
+    calls.add('delete:$requestId');
+    hidden.add(requestId);
+    state = [for (final c in all) if (!hidden.contains(c.requestId)) c];
+    return true;
+  }
+
+  @override
+  void undoDelete(String requestId) {
+    calls.add('undo:$requestId');
+    hidden.remove(requestId);
+    state = [for (final c in all) if (!hidden.contains(c.requestId)) c];
+  }
+
+  @override
+  Future<void> commitDelete(String requestId) async => calls.add('commit:$requestId');
+}
+
 class _PlayingLive extends LiveViewNotifier {
   @override
   LiveViewState build() => const LiveViewState(phase: LivePhase.playing);
@@ -414,6 +444,47 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Enter the code shown on the camera'), findsOneWidget);
     expect(find.text('Camera at http://192.168.1.20:8080'), findsOneWidget);
+  });
+
+  testWidgets('swipe deletes a finished clip with Undo; clips in progress cannot be swiped', (tester) async {
+    final clips = _DeletableClips([
+      SessionClip(requestId: 'busy', seconds: 20, requestedAt: DateTime(2026, 10, 30, 12, 2), phase: SessionClipPhase.downloading),
+      SessionClip(requestId: 'b', seconds: 20, requestedAt: DateTime(2026, 10, 30, 12, 1), phase: SessionClipPhase.ready),
+      SessionClip(requestId: 'a', seconds: 20, requestedAt: DateTime(2026, 10, 30, 12, 0), phase: SessionClipPhase.failed),
+    ]);
+    await tester.pumpWidget(_app(const ClipList(), [
+      sharedPreferencesProvider.overrideWithValue(await _prefs()),
+      viewerClipsProvider.overrideWith(() => clips),
+    ]));
+
+    // The downloading clip's spinner never settles, so the test steps through the swipe animations.
+    Future<void> step() async {
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 250));
+      }
+    }
+
+    await tester.drag(find.text('Clip · 12:02'), const Offset(-600, 0));
+    await step();
+    expect(find.text('Clip · 12:02'), findsOneWidget, reason: 'still downloading');
+    expect(clips.calls, isEmpty);
+
+    await tester.drag(find.text('Clip · 12:01'), const Offset(-600, 0));
+    await step();
+    expect(find.text('Clip · 12:01'), findsNothing);
+    expect(find.text('Clip · 12:01 deleted'), findsOneWidget);
+    await tester.tap(find.text('Undo'));
+    await step();
+    expect(find.text('Clip · 12:01'), findsOneWidget);
+    expect(clips.calls, ['delete:b', 'undo:b']);
+
+    // A failed clip too; without Undo the deletion stands once the SnackBar goes.
+    await tester.drag(find.text('Clip · 12:00'), const Offset(-600, 0));
+    await step();
+    await tester.pump(const Duration(seconds: 10));
+    await step();
+    expect(find.text('Clip · 12:00'), findsNothing);
+    expect(clips.calls.skip(2), ['delete:a', 'commit:a']);
   });
 }
 

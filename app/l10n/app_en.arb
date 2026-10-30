@@ -650,5 +650,15 @@
       }
     }
   },
-  "settingsStorageUnavailable": "Could not read the storage used."
+  "settingsStorageUnavailable": "Could not read the storage used.",
+  "viewerClipDeleted": "{name} deleted",
+  "@viewerClipDeleted": {
+    "description": "SnackBar after swiping a clip away; name is the clip name, e.g. 'Good · 12:41'.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "viewerClipUndo": "Undo"
 }

@@ -17,6 +17,7 @@ import 'data/session_link.dart';
 import 'data/viewer_api.dart';
 import 'live/live_signaling.dart';
 import 'live/webrtc_live_peer.dart';
+import 'tags/tags.dart';
 
 export '../settings/settings_providers.dart' show savePresetsProvider;
 
@@ -482,7 +483,17 @@ class ViewerClipsNotifier extends Notifier<List<SessionClip>> {
       },
     );
     _transfers = transfers;
-    ref.onDispose(transfers.dispose);
+    final deleteStored = _deleteStored = ref.watch(clipDeleterProvider);
+    _pendingDeletes.clear();
+    // Leaving the screen while an undo is still offered: the deletion stands.
+    ref.onDispose(() async {
+      for (final requestId in _pendingDeletes.toList()) {
+        final clipId = (await transfers.forget(requestId))?.clipId;
+        if (clipId != null) await deleteStored(clipId);
+      }
+      _pendingDeletes.clear();
+      await transfers.dispose();
+    });
     // Not watched: a change in Settings must not rebuild this and drop the session's clips.
     ref.listen(savePresetsProvider, (_, presets) => transfers.presets = presets);
     ref.listen(viewerApiProvider, (_, api) => transfers.api = api, fireImmediately: true);
@@ -514,7 +525,43 @@ class ViewerClipsNotifier extends Notifier<List<SessionClip>> {
   }
 
   void retry(String requestId) => _transfers?.retry(requestId);
+
+  /// Takes a finished clip off the list; [undoDelete] brings it back until [commitDelete]. False
+  /// for a clip still in progress.
+  bool delete(String requestId) {
+    final hidden = _transfers?.hide(requestId) ?? false;
+    if (hidden) _pendingDeletes.add(requestId);
+    return hidden;
+  }
+
+  void undoDelete(String requestId) {
+    _pendingDeletes.remove(requestId);
+    _transfers?.unhide(requestId);
+  }
+
+  /// Deletes the clip for good: its bytes, its library entry and file (Android), and its labels.
+  Future<void> commitDelete(String requestId) async {
+    if (!_pendingDeletes.remove(requestId)) return;
+    final clip = await _transfers?.forget(requestId);
+    final clipId = clip?.clipId;
+    if (clip?.stored != null && clipId != null) await _deleteStored(clipId);
+    if (!ref.mounted) return;
+    ref.read(clipTagsProvider.notifier).set(requestId, null);
+    ref.read(clipCategoriesProvider.notifier).set(requestId, null);
+  }
+
+  late Future<void> Function(String clipId) _deleteStored;
+
+  /// Deleted on screen but not yet for good (the undo is still offered).
+  final _pendingDeletes = <String>{};
 }
+
+/// Deletes a stored clip for good: the Android library row and file. Web keeps clips in memory
+/// only, so releasing them is enough.
+final clipDeleterProvider = Provider<Future<void> Function(String clipId)>((ref) {
+  if (!ref.watch(libraryEnabledProvider)) return (_) async {};
+  return (clipId) => deleteLibraryClips(ref.read, [clipId]);
+});
 
 final viewerClipsProvider = NotifierProvider.autoDispose<ViewerClipsNotifier, List<SessionClip>>(ViewerClipsNotifier.new);
 
