@@ -16,18 +16,14 @@ import 'package:instant_replay/l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('sessions → clips, filter by category and tag, batch delete', (tester) async {
+  testWidgets('sessions → clips, filter by tag, batch delete', (tester) async {
     driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
     final db = LibraryDatabase(NativeDatabase.memory());
     final deleted = <String>[];
     late SessionRow session;
     await tester.runAsync(() async {
       session = await db.createSession(name: 'League 7', type: SessionType.match, templateId: BuiltInTemplates.football);
-      for (final (i, (cat, tag)) in [
-        ('football.cat.attack', 'football.tag.goal'),
-        ('football.cat.attack', 'football.tag.shot'),
-        ('football.cat.defense', 'football.tag.goal'),
-      ].indexed) {
+      for (final (i, tag) in ['football.cat.attack', 'football.tag.shot', 'football.tag.goal'].indexed) {
         await db.addClip(ClipsCompanion.insert(
           id: 'c$i',
           sessionId: session.id,
@@ -38,7 +34,6 @@ void main() {
           createdAt: DateTime(2026, 10, 30),
           updatedAt: DateTime(2026, 10, 30),
         ));
-        await db.setClipCategory('c$i', cat);
         await db.setClipTags('c$i', [tag]);
       }
     });
@@ -81,10 +76,10 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('library-filter-football.cat.attack')));
     await tester.pump();
-    expect(shown(), ['c1', 'c0']);
+    expect(shown(), ['c0']);
     await tester.tap(find.byKey(const ValueKey('library-filter-football.tag.goal')));
     await tester.pump();
-    expect(shown(), ['c0']);
+    expect(shown(), ['c2']);
     await tester.tap(find.byKey(const ValueKey('library-filter-all')));
     await tester.pump();
     expect(shown(), ['c2', 'c1', 'c0']);
@@ -107,9 +102,9 @@ void main() {
     await tester.runAsync(db.close);
   });
 
-  // The picker used to offer the active session's labels: with no session (the library opened
-  // from the session picker) the web tag set good/bad/other, whose ids are no library tags, and
-  // no categories; with another session active, that session's template.
+  // The picker used to offer the active session's tags: with no session (the library opened
+  // from the session picker) the web tag set good/bad/other, whose ids are no library tags; with
+  // another session active, that session's template.
   for (final activeTemplate in [null, BuiltInTemplates.basketball]) {
     testWidgets("a reviewed clip is tagged from its own session's template (active: $activeTemplate)", (tester) async {
       driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -134,8 +129,8 @@ void main() {
             updatedAt: DateTime(2026, 10, 30),
           ),
         );
-        await db.setClipCategory('c0', 'football.cat.attack');
-        await db.setClipTags('c0', ['football.tag.goal']);
+        // A label that was a category before the merge is a tag like any other.
+        await db.setClipTags('c0', ['football.cat.attack']);
       });
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
@@ -174,10 +169,10 @@ void main() {
 
       // Queried from the test zone, behind the app's own writes (a real-async query could wait
       // forever on a write left in the fake zone).
-      Future<(String?, List<String>)> stored() async {
-        (String?, List<String>)? result;
+      Future<List<String>> stored() async {
+        List<String>? result;
         unawaited(() async {
-          result = ((await db.clip('c0'))!.categoryId, [for (final t in await db.select(db.clipTags).get()) t.tagId]);
+          result = [for (final t in await db.select(db.clipTags).get()) t.tagId];
         }());
         for (var i = 0; result == null && i < 50; i++) {
           await settle();
@@ -191,7 +186,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('review-tag')));
       await settle();
 
-      // Football's categories and tags, the current ones selected; nothing from elsewhere.
+      // Football's tags in one list, the current one selected; nothing from elsewhere.
       for (final id in ['football.cat.defense', 'football.tag.shot', 'football.tag.corner']) {
         expect(find.byKey(ValueKey('tag-$id')), findsOneWidget, reason: id);
       }
@@ -208,17 +203,15 @@ void main() {
             .selected,
         isTrue,
       );
+      // One section only: no categories any more.
+      expect(find.text('Category'), findsNothing);
       // The active template is not editable from a clip of another session.
       expect(find.text('Edit tags'), findsNothing);
 
-      // A category change keeps the tag; a tag change keeps the category. Both reach the library.
-      await tester.tap(find.byKey(const ValueKey('tag-football.cat.defense')));
-      await settle();
+      // The new tag replaces the old one and reaches the library.
       await tester.tap(find.byKey(const ValueKey('tag-football.tag.shot')));
       await settle();
-      final (category, tags) = await stored();
-      expect(category, 'football.cat.defense');
-      expect(tags, ['football.tag.shot']);
+      expect(await stored(), ['football.tag.shot']);
       expect(find.text('Shot · 12:00'), findsOneWidget); // The review's title.
 
       await tester.pumpWidget(const SizedBox());

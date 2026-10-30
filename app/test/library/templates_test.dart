@@ -11,7 +11,7 @@ void main() {
   final es = lookupAppLocalizations(const Locale('es'));
 
   group('built-in templates', () {
-    test('Football, Basketball, Handball, Hockey and Generic, each with categories and tags', () {
+    test('Football, Basketball, Handball, Hockey and Generic: one tag list, the phases first', () {
       expect([for (final t in BuiltInTemplates.all) t.id], [
         BuiltInTemplates.football,
         BuiltInTemplates.basketball,
@@ -20,16 +20,19 @@ void main() {
         BuiltInTemplates.generic,
       ]);
       for (final t in BuiltInTemplates.all) {
-        expect([for (final c in t.categories) builtInLabel(en, c.id!)], ['Attack', 'Defence', 'Transition', 'Set piece']);
-        expect(t.tags, isNotEmpty);
+        expect([for (final c in t.tags.take(4)) builtInLabel(en, c.id!)], ['Attack', 'Defence', 'Transition', 'Set piece']);
+        // The phases keep their old category ids, so clips labelled with one keep it.
+        expect(t.tags.first.id, '${t.sport}.cat.attack');
+        expect(t.tags.length, greaterThan(4));
+        expect({for (final l in t.tags) builtInLabel(en, l.id!)}, hasLength(t.tags.length), reason: 'no repeated names');
       }
     });
 
     test('every built-in label and template has a name in English and Spanish', () {
       final ids = {
-        for (final t in BuiltInTemplates.all) ...[for (final l in [...t.categories, ...t.tags]) l.id!],
+        for (final t in BuiltInTemplates.all) ...[for (final l in t.tags) l.id!],
       };
-      expect(ids, hasLength(BuiltInTemplates.all.fold<int>(0, (n, t) => n + t.categories.length + t.tags.length)));
+      expect(ids, hasLength(BuiltInTemplates.all.fold<int>(0, (n, t) => n + t.tags.length)));
       for (final id in ids) {
         expect(builtInLabel(en, id), isNotNull, reason: id);
         expect(builtInLabel(es, id), isNotNull, reason: id);
@@ -48,15 +51,15 @@ void main() {
       expect(json['format'], TemplateSpec.format);
       expect(json['schemaVersion'], TemplateSpec.schemaVersion);
       expect(json['name'], 'Fútbol');
-      expect((json['categories'] as List).first, {'name': 'Ataque', 'color': '#E53935'});
+      expect(json.containsKey('categories'), isFalse);
+      expect((json['tags'] as List).first, {'name': 'Ataque', 'color': '#E53935'});
 
       final back = TemplateSpec.decode(file);
       expect(back.id, isNull);
       expect(back.name, 'Fútbol');
       expect(back.sport, 'football');
-      expect([for (final c in back.categories) c.name], ['Ataque', 'Defensa', 'Transición', 'Balón parado']);
-      expect([for (final c in back.categories) c.color], [for (final c in football.categories) c.color]);
-      expect(back.tags.length, football.tags.length);
+      expect([for (final c in back.tags.take(4)) c.name], ['Ataque', 'Defensa', 'Transición', 'Balón parado']);
+      expect([for (final c in back.tags) c.color], [for (final c in football.tags) c.color]);
       expect(back.tags.every((t) => t.id == null), isTrue);
     });
 
@@ -75,8 +78,28 @@ void main() {
       });
       expect(t.name, 'Waterpolo');
       expect(t.sport, 'generic');
-      expect(t.categories, isEmpty);
       expect([for (final l in t.tags) l.color], [0xFF00FF00, 0x80FF0000, 0xFF123456, 0xFF9E9E9E, 0xFF9E9E9E]);
+    });
+
+    test('a file from before the merge: its categories become the first tags, without repeats', () {
+      final t = TemplateSpec.fromJson({
+        'format': TemplateSpec.format,
+        'schemaVersion': 1,
+        'name': 'Old',
+        'categories': [
+          {'name': 'Attack', 'color': '#FF0000'},
+          {'name': 'Defence', 'color': '#0000FF'},
+        ],
+        'tags': [
+          {'name': 'Goal', 'color': '#00FF00'},
+          {'name': 'attack', 'color': '#FFFFFF'},
+        ],
+      });
+      expect([for (final l in t.tags) (l.name, l.color)], [
+        ('Attack', 0xFFFF0000),
+        ('Defence', 0xFF0000FF),
+        ('Goal', 0xFF00FF00),
+      ]);
     });
 
     test('rejects what is not a template, with a reason', () {

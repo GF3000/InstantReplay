@@ -107,24 +107,28 @@ void main() {
     final session = (await tester.runAsync(db.latestSession))!;
     expect((session.name, session.type, session.templateId), ('Cup final', SessionType.match, BuiltInTemplates.handball));
 
-    // The tag bar shows the handball categories and tags; tagging is in memory, never blocking.
+    // The panel shows the handball tags in one list (the phases first, no categories); one tap
+    // tags the clip in memory and closes it, never blocking.
     await tester.tap(find.byKey(const ValueKey('viewer-save')));
     await settle(tester);
+    expect(find.byKey(const ValueKey('viewer-tag-panel')), findsOneWidget);
     expect(find.text('Set piece'), findsOneWidget);
+    expect(find.text('Category'), findsNothing);
     await tester.tap(find.byKey(const ValueKey('tag-handball.cat.attack')));
+    await settle(tester);
+    expect(find.byKey(const ValueKey('viewer-tag-panel')), findsNothing);
     await tester.tap(find.byKey(const ValueKey('viewer-save')));
     await settle(tester);
-    // Categories come first; the row scrolls to the tags.
     await tester.dragUntilVisible(
       find.byKey(const ValueKey('tag-handball.tag.goal')),
       find.byKey(const ValueKey('viewer-tag-bar')),
-      const Offset(-200, 0),
+      const Offset(0, -200),
     );
     await tester.tap(find.byKey(const ValueKey('tag-handball.tag.goal')));
     await settle(tester);
+    expect(find.byKey(const ValueKey('viewer-tag-panel')), findsNothing);
     final container = ProviderScope.containerOf(tester.element(find.byType(ViewerPage)));
-    expect(container.read(clipCategoriesProvider), {'r1': 'handball.cat.attack'});
-    expect(container.read(clipTagsProvider), {'r2': 'handball.tag.goal'});
+    expect(container.read(clipTagsProvider), {'r1': 'handball.cat.attack', 'r2': 'handball.tag.goal'});
     await tester.pump(PostSaveTagBarNotifier.visibleFor);
 
     // Change session from the menu: back to the picker, which now offers to continue.

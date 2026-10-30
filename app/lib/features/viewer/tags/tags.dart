@@ -11,8 +11,8 @@ import '../../../l10n/app_localizations.dart';
 import '../../library/labels.dart';
 import '../../library/library_providers.dart';
 
-/// A label the coach puts on a clip (UX §3.5): a tag, or on Android also a category (SPEC §5.3).
-/// Viewer-local: the Camera never sees tags.
+/// The tag the coach puts on a clip (UX §3.5), one per clip. Viewer-local: the Camera never sees
+/// tags.
 @immutable
 class ViewerTag {
   const ViewerTag({required this.id, this.name, required this.color});
@@ -136,28 +136,12 @@ class TagsNotifier extends Notifier<List<ViewerTag>> {
 
 final tagsProvider = NotifierProvider<TagsNotifier, List<ViewerTag>>(TagsNotifier.new);
 
-/// The categories of the library session's template (Android); none without a session (web).
-/// One per clip, unlike tags. Same editing operations as [TagsNotifier].
-class CategoriesNotifier extends TagsNotifier {
-  @override
-  List<ViewerTag> build() => ref.watch(activeSessionProvider)?.categories ?? const [];
-
-  @override
-  void _set(List<ViewerTag> tags) {
-    state = tags;
-    ref.read(activeSessionProvider.notifier).setCategories(tags);
-  }
-}
-
-final categoriesProvider = NotifierProvider<CategoriesNotifier, List<ViewerTag>>(CategoriesNotifier.new);
-
-/// The categories and tags a clip can be given when it does not belong to the active session:
-/// those of its own session's template (a clip reviewed from the library).
+/// The tags a clip can be given when it does not belong to the active session: those of its own
+/// session's template (a clip reviewed from the library).
 @immutable
 class ClipLabelChoices {
-  const ClipLabelChoices({this.categories = const [], this.tags = const []});
+  const ClipLabelChoices({this.tags = const []});
 
-  final List<ViewerTag> categories;
   final List<ViewerTag> tags;
 }
 
@@ -187,21 +171,11 @@ class ClipTagsNotifier extends Notifier<Map<String, String>> {
 
 final clipTagsProvider = NotifierProvider<ClipTagsNotifier, Map<String, String>>(ClipTagsNotifier.new);
 
-/// Category of each clip, keyed by requestId like [clipTagsProvider] (Android library only).
-final clipCategoriesProvider = NotifierProvider<ClipTagsNotifier, Map<String, String>>(ClipTagsNotifier.new);
-
 /// The tag of clip [requestId], or null if untagged or its tag was deleted.
 final clipTagProvider = Provider.family<ViewerTag?, String>((ref, requestId) {
   final id = ref.watch(clipTagsProvider.select((m) => m[requestId]));
   if (id == null) return null;
   return ref.watch(tagsProvider).where((t) => t.id == id).firstOrNull ?? ref.watch(knownLabelsProvider)[id];
-});
-
-/// The category of clip [requestId], or null.
-final clipCategoryProvider = Provider.family<ViewerTag?, String>((ref, requestId) {
-  final id = ref.watch(clipCategoriesProvider.select((m) => m[requestId]));
-  if (id == null) return null;
-  return ref.watch(categoriesProvider).where((t) => t.id == id).firstOrNull ?? ref.watch(knownLabelsProvider)[id];
 });
 
 /// The post-save tag bar (UX §3.2): offers the tags for the newest save for [visibleFor], then fades.
@@ -235,15 +209,6 @@ class PostSaveTagBarNotifier extends Notifier<String?> {
     if (requestId == null) return;
     ref.read(clipTagsProvider.notifier).set(requestId, tagId);
     dismiss();
-  }
-
-  /// A category tap keeps the bar up a little longer, so a tag can follow it.
-  void pickCategory(String categoryId) {
-    final requestId = state;
-    if (requestId == null) return;
-    final current = ref.read(clipCategoriesProvider)[requestId];
-    ref.read(clipCategoriesProvider.notifier).set(requestId, current == categoryId ? null : categoryId);
-    show(requestId);
   }
 }
 

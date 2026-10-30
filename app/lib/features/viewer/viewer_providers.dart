@@ -547,7 +547,6 @@ class ViewerClipsNotifier extends Notifier<List<SessionClip>> {
     if (clip?.stored != null && clipId != null) await _deleteStored(clipId);
     if (!ref.mounted) return;
     ref.read(clipTagsProvider.notifier).set(requestId, null);
-    ref.read(clipCategoriesProvider.notifier).set(requestId, null);
   }
 
   late Future<void> Function(String clipId) _deleteStored;

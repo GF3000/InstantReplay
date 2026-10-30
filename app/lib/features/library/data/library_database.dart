@@ -39,20 +39,6 @@ class Sessions extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
-@DataClassName('CategoryRow')
-class Categories extends Table {
-  TextColumn get id => text()();
-  TextColumn get templateId => text().references(TagTemplates, #id, onDelete: KeyAction.cascade)();
-
-  /// Null for a built-in category (localized by id).
-  TextColumn get name => text().nullable()();
-  IntColumn get color => integer()();
-  IntColumn get position => integer()();
-
-  @override
-  Set<Column<Object>> get primaryKey => {id};
-}
-
 @DataClassName('TagRow')
 class Tags extends Table {
   TextColumn get id => text()();
@@ -85,7 +71,6 @@ class Clips extends Table {
   IntColumn get sizeBytes => integer()();
   TextColumn get sha256 => text().nullable()();
   TextColumn get title => text().nullable()();
-  TextColumn get categoryId => text().nullable().references(Categories, #id, onDelete: KeyAction.setNull)();
   TextColumn get notes => text().nullable()();
 
   /// v0.2, non-destructive trim.
@@ -111,13 +96,12 @@ class ClipTags extends Table {
 
 // endregion
 
-/// A template with its categories and tags in order.
+/// A template with its tags in order.
 @immutable
 class TemplateContent {
-  const TemplateContent({required this.template, required this.categories, required this.tags});
+  const TemplateContent({required this.template, required this.tags});
 
   final TemplateRow template;
-  final List<CategoryRow> categories;
   final List<TagRow> tags;
 }
 
@@ -130,7 +114,7 @@ class SessionSummary {
   final int clipCount;
 }
 
-/// A clip with the ids of its tags.
+/// A clip with the ids of its tags (one at most: the live screen and the review set one).
 @immutable
 class ClipEntry {
   const ClipEntry({required this.clip, required this.tagIds});
@@ -141,7 +125,7 @@ class ClipEntry {
 
 /// The Viewer's clip library (SPEC §5.3), Android only. Clip files live next to it; this only
 /// records their paths.
-@DriftDatabase(tables: [TagTemplates, Sessions, Categories, Tags, Clips, ClipTags])
+@DriftDatabase(tables: [TagTemplates, Sessions, Tags, Clips, ClipTags])
 class LibraryDatabase extends _$LibraryDatabase {
   /// [legacyTagsJson] is the tag set the Viewer kept in shared_preferences (`viewer.tags`); on
   /// first creation it becomes a template of its own, with the same tag ids.
@@ -150,8 +134,9 @@ class LibraryDatabase extends _$LibraryDatabase {
   final String? legacyTagsJson;
   final String Function() _newId;
 
+  /// 1: first library. 2: categories merged into tags (one label per clip).
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -162,8 +147,12 @@ class LibraryDatabase extends _$LibraryDatabase {
           }
           await _migrateLegacyTags();
         },
-        // Later versions add their steps here (see test/library/migration_test.dart).
-        onUpgrade: (m, from, to) async {},
+        // Each version adds its step here (see test/library/migration_test.dart).
+        onUpgrade: (m, from, to) async {
+          // Off while tables are rebuilt, so dropping the old clips table does not cascade.
+          await customStatement('PRAGMA foreign_keys = OFF');
+          if (from < 2) await _mergeCategoriesIntoTags(m);
+        },
         beforeOpen: (details) async {
           await customStatement('PRAGMA foreign_keys = ON');
         },
@@ -180,19 +169,15 @@ class LibraryDatabase extends _$LibraryDatabase {
   Future<TemplateContent?> templateContent(String id) async {
     final template = await (select(tagTemplates)..where((t) => t.id.equals(id))).getSingleOrNull();
     if (template == null) return null;
-    final cats = await (select(categories)
-          ..where((c) => c.templateId.equals(id))
-          ..orderBy([(c) => OrderingTerm.asc(c.position)]))
-        .get();
     final tgs = await (select(tags)
           ..where((t) => t.templateId.equals(id))
           ..orderBy([(t) => OrderingTerm.asc(t.position)]))
         .get();
-    return TemplateContent(template: template, categories: cats, tags: tgs);
+    return TemplateContent(template: template, tags: tgs);
   }
 
-  /// Every tag and category, for showing clips of any session.
-  Future<(List<CategoryRow>, List<TagRow>)> allLabels() async => (await select(categories).get(), await select(tags).get());
+  /// Every tag, for showing clips of any session.
+  Future<List<TagRow>> allTags() => select(tags).get();
 
   /// Adds an imported template (new ids) and returns its id.
   Future<String> importTemplate(TemplateSpec spec) => transaction(() async {
@@ -202,7 +187,6 @@ class LibraryDatabase extends _$LibraryDatabase {
             id: id,
             name: spec.name,
             sport: spec.sport,
-            categories: [for (final c in spec.categories) LabelSpec(id: _newId(), name: c.name, color: c.color)],
             tags: [for (final t in spec.tags) LabelSpec(id: _newId(), name: t.name, color: t.color)],
           ),
           builtIn: false,
@@ -218,7 +202,6 @@ class LibraryDatabase extends _$LibraryDatabase {
       id: c.template.id,
       name: c.template.name,
       sport: c.template.sport,
-      categories: [for (final r in c.categories) LabelSpec(id: r.id, name: r.name, color: r.color)],
       tags: [for (final r in c.tags) LabelSpec(id: r.id, name: r.name, color: r.color)],
     );
   }
@@ -237,17 +220,6 @@ class LibraryDatabase extends _$LibraryDatabase {
         }
       });
 
-  /// Makes [labels] the categories of [templateId], in that order. Clips in a deleted category
-  /// become uncategorized.
-  Future<void> replaceCategories(String templateId, List<LabelSpec> labels) => transaction(() async {
-        await (delete(categories)..where((c) => c.templateId.equals(templateId) & c.id.isNotIn(_ids(labels)))).go();
-        for (final (i, l) in labels.indexed) {
-          await into(categories).insertOnConflictUpdate(
-            CategoryRow(id: l.id!, templateId: templateId, name: l.name, color: l.color, position: i),
-          );
-        }
-      });
-
   static List<String> _ids(List<LabelSpec> labels) => [for (final l in labels) l.id!];
 
   Future<void> _insertTemplate(TemplateSpec t, {required bool builtIn}) async {
@@ -258,15 +230,77 @@ class LibraryDatabase extends _$LibraryDatabase {
       builtIn: Value(builtIn),
     ));
     await batch((b) {
-      b.insertAll(categories, [
-        for (final (i, c) in t.categories.indexed)
-          CategoriesCompanion.insert(id: c.id!, templateId: t.id!, name: Value(c.name), color: c.color, position: i),
-      ]);
       b.insertAll(tags, [
         for (final (i, g) in t.tags.indexed)
           TagsCompanion.insert(id: g.id!, templateId: t.id!, name: Value(g.name), color: g.color, position: i),
       ]);
     });
+  }
+
+  /// v1 → v2: one label per clip. Every template's categories become tags of it, with the same
+  /// id, name and colour (built-in templates: before their tags, as [BuiltInTemplates] lists them
+  /// now; user templates: after). A category whose name a tag of the template already has is not
+  /// copied; its clips get that tag instead. A clip with a category and no tag gets the category
+  /// as its tag (a clip with both keeps its tag). Then the categories table and the clips'
+  /// category column go.
+  Future<void> _mergeCategoriesIntoTags(Migrator m) async {
+    final templateRows = await customSelect('SELECT id, built_in FROM tag_templates').get();
+    // Category id → the tag id its clips get.
+    final tagFor = <String, String>{};
+    for (final t in templateRows) {
+      final templateId = t.read<String>('id');
+      final builtIn = t.read<bool>('built_in');
+      final cats = await customSelect(
+        'SELECT id, name, color FROM categories WHERE template_id = ? ORDER BY position',
+        variables: [Variable(templateId)],
+      ).get();
+      if (cats.isEmpty) continue;
+      final existing = await customSelect(
+        'SELECT id, name FROM tags WHERE template_id = ? ORDER BY position',
+        variables: [Variable(templateId)],
+      ).get();
+      String key(String id, String? name) => (name ?? id.split('.').last).trim().toLowerCase();
+      final byName = {for (final r in existing) key(r.read<String>('id'), r.read<String?>('name')): r.read<String>('id')};
+      final added = <(String, String?, int)>[];
+      for (final c in cats) {
+        final id = c.read<String>('id');
+        final name = c.read<String?>('name');
+        final same = byName[key(id, name)];
+        if (same != null) {
+          tagFor[id] = same;
+        } else {
+          tagFor[id] = id;
+          byName[key(id, name)] = id;
+          added.add((id, name, c.read<int>('color')));
+        }
+      }
+      final order = builtIn
+          ? [for (final a in added) a.$1, for (final r in existing) r.read<String>('id')]
+          : [for (final r in existing) r.read<String>('id'), for (final a in added) a.$1];
+      for (final (id, name, color) in added) {
+        await customStatement(
+          'INSERT OR IGNORE INTO tags (id, template_id, name, color, position) VALUES (?, ?, ?, ?, 0)',
+          [id, templateId, name, color],
+        );
+      }
+      for (final (i, id) in order.indexed) {
+        await customStatement('UPDATE tags SET position = ? WHERE id = ? AND template_id = ?', [i, id, templateId]);
+      }
+    }
+    final categorized = await customSelect(
+      'SELECT id, category_id FROM clips WHERE category_id IS NOT NULL '
+      'AND NOT EXISTS (SELECT 1 FROM clip_tags WHERE clip_tags.clip_id = clips.id)',
+    ).get();
+    for (final c in categorized) {
+      final categoryId = c.read<String>('category_id');
+      await customStatement(
+        'INSERT OR IGNORE INTO clip_tags (clip_id, tag_id) VALUES (?, ?)',
+        [c.read<String>('id'), tagFor[categoryId] ?? categoryId],
+      );
+    }
+    // Rebuilds clips without the column (and its reference to categories), keeping every row.
+    await m.alterTable(TableMigration(clips));
+    await customStatement('DROP TABLE IF EXISTS categories');
   }
 
   /// `[{"id": "good", "color": 4282622023}, {"id": "…", "name": "Contra", "color": …}]`
@@ -380,9 +414,6 @@ class LibraryDatabase extends _$LibraryDatabase {
   /// Fills in what the Viewer learned about a clip after storing it.
   Future<void> updateClip(String id, ClipsCompanion fields) =>
       (update(clips)..where((c) => c.id.equals(id))).write(fields.copyWith(updatedAt: Value(DateTime.now())));
-
-  Future<void> setClipCategory(String clipId, String? categoryId) =>
-      updateClip(clipId, ClipsCompanion(categoryId: Value(categoryId)));
 
   /// Replaces the tags of a clip.
   Future<void> setClipTags(String clipId, Iterable<String> tagIds) => transaction(() async {
