@@ -16,7 +16,7 @@
 | D5 | Cameras | 1 camera in MVP; protocol and data model carry `cameraId` to allow N later. |
 | D6 | Viewers | Usually 1, occasionally 2–3 concurrent viewers. |
 | D7 | Audio | **None.** Video only. |
-| D8 | Storage | **Camera = buffer only.** The clip library lives on the Viewer. Camera keeps a clip in an *outbox* until the requesting Viewer confirms the download (checksum). |
+| D8 | Storage | **Camera = clip buffer + outbox**, plus an optional **full-session recording** to its own gallery (§3.8). The clip library lives on the Viewer. Camera keeps a clip in an *outbox* until the requesting Viewer confirms the download (checksum). |
 | D9 | Multi-viewer | A clip goes only to the viewer that requested it; other viewers get a notification and may fetch it while it is still in the outbox. |
 | D10 | Organization | Session (match/training) → Clips. Sessions live on the Viewer. |
 | D11 | Save button | Default duration (20 s) + presets (10/30/60 s) + configurable post-roll (0–5 s). |
@@ -61,7 +61,7 @@ flowchart LR
     CLIENT --> LIVE[Live view<br/>flutter_webrtc]
     CLIENT --> DL[Transfer: download,<br/>sha256 verify, ACK]
     DL --> LIB[(Library: drift/SQLite<br/>+ clip files)]
-    LIB --> PLAYER[Player: media_kit]
+    LIB --> PLAYER[Player: video_player<br/>exact frame stepping]
     LIB --> EXP[Export: Media3 Transformer<br/>remux / trim / telestrator]
     EXP --> GAL[gal / share_plus]
   end
@@ -149,6 +149,34 @@ Uses `PowerManager.getCurrentThermalStatus` (API 29) and `getThermalHeadroom` (A
 
 Every degradation is reported as a `thermal_state` event and in the UI. No automatic upgrade back during a session (avoids oscillation); the user can restore manually.
 
+### 3.8 Full-session recording
+Besides the clip buffer, the Camera can record the **whole session** (the match, the training) into its own gallery, `Movies/InstantReplay`, to review it later on a bigger screen. Video only (D7).
+
+**Who controls it.** There is one recording, and it lives on the Camera. **Any paired Viewer** (native or web) and **the Camera itself** can Record, Pause and Finish it; they all see the same state. If a Viewer disconnects, the recording carries on. Leaving the Camera screen finishes it and saves what was recorded.
+
+**States.** `idle → recording ⇄ paused → idle`. A session starts **idle**: nothing is recorded until someone presses Record. Pausing cuts at the end of the fragment (second) in progress. Finish asks for confirmation on both roles. Record and Resume can also **include the last 30 s** of the ring buffer (`includeSeconds`), for when the coach presses a moment late.
+
+**File format.**
+- Written progressively as **fMP4** (the same 1 s fragments as the buffer) into a MediaStore item marked *pending*, so it is invisible in the gallery until finished and nothing is lost if the app dies.
+- Pause works per fragment: fragments are simply not written while paused, and `decodeTime` stays **continuous** across pauses, so the file plays without a gap or a jump.
+- At finish, an index and a `sidx` are written (seekable in galleries and players, see Phase 0 results) and the item is published.
+- **Parts:** an encoder restart (profile change, thermal fallback) needs a new init segment, so the recording continues in a **new part** (a new file in the gallery); so does every **4 h** of video, to keep files manageable. The Viewer's profile change stays allowed during a recording. The UI shows "part N" when there is more than one.
+- **Names:** `InstantReplay_yyyy-MM-dd_HH-mm.mp4` (the recording's start time), then `…_part2.mp4`, `…_part3.mp4`.
+
+**Space.**
+
+| Free space / time left | Action |
+|---|---|
+| < 1 GB free | Refuse to start (`no_space`) |
+| < 10 min left at the current bitrate | `lowSpace` warning on the Camera and every Viewer |
+| < 500 MB free | Stop and save (`recording_finished` with reason `lowSpace`), told to everyone |
+
+The 500 MB floor keeps room for the ring buffer and the outbox, so clip saving keeps working after the recording stops.
+
+**Crash recovery.** On entry to the Camera role, before capture starts, recordings left *pending* by a crash or a kill are finished (index + `sidx` written from the fragments on disk) and published automatically. The Camera shows a note such as "Recovered a 47 min recording".
+
+**Reporting.** The state rides on every `status` as `sessionRecording` (§4.2), and changes are pushed at once rather than with the next 1 s tick. A finished recording is announced to every Viewer with `recording_finished` (reason `user`, `lowSpace`, `error` or `recovered`).
+
 ---
 
 ## 4. Network, discovery, pairing
@@ -187,6 +215,10 @@ JSON `{type, id?, payload}`. Shared Dart package `replay_protocol` defines all m
 - Signaling: `rtc_offer`, `rtc_answer`, `rtc_ice` (A is the offerer; host candidates only; browser mDNS candidates resolved via peer-reflexive).
 - Events: `clip_recording`, `clip_ready`, `clip_available`, `clip_expired`, `thermal_state`, `buffer_state`, `settings_changed`.
 - Control: `camera_set {zoom?, exposureComp?, focusMode?, profile?}` → `settings_changed`.
+- Full-session recording (§3.8):
+  - Viewer → Camera: `rec_start {includeSeconds?}` (start, or resume when paused; `includeSeconds` > 0 also keeps that much of the buffer, omitted = 0), `rec_pause`, `rec_stop`. The new state arrives in the next `status`, sent at once; a refusal comes back as `error {code: "no_space"}` (less than 1 GB free) or `error {code: "rec_failed", message}`.
+  - Camera → all viewers: `recording_finished {name, parts, durationMs, reason}`, with `reason` one of `user`, `lowSpace`, `error`, `recovered`; `name` is the first part's file name.
+  - In `status`: `sessionRecording {state: idle|recording|paused, elapsedMs, parts, freeBytes, lowSpace, remainingMs?}`. `elapsedMs` excludes pauses; `remainingMs` is the estimated time left at the current bitrate; `lowSpace` means under 10 min left. Absent from a Camera without the feature, and viewers then hide the controls.
 - Keep-alive: ping every 5 s; viewer marked gone after 15 s.
 
 ---
@@ -234,7 +266,11 @@ Built-in templates: Football, Basketball, Handball, Hockey, Generic (categories:
 - Output to cache → `gal` (gallery) or `share_plus`.
 
 ### 5.5 Player
-`media_kit` (libmpv): exact frame stepping (forward and backward), `rate` 0.25–1, seamless loop. Gestures: tap play/pause, horizontal drag scrub, ±1 frame buttons. *(Pinch zoom: not in scope.)*
+`video_player` (ExoPlayer on Android, `<video>` on web): exact frame stepping (forward and backward), `rate` 0.25/0.5/1, seamless loop. Gestures: tap play/pause, horizontal drag scrub (one frame per 6 px), scrub bar, ±1 frame buttons. *(Pinch zoom: not in scope.)*
+
+**Exact stepping.** The Viewer reads every frame's timestamp from the clip itself (`moov` timescale + each `moof`'s `tfdt`/`trun`, skipping `mdat`), so camera jitter and dropped frames are respected. A step pauses, snaps to the frame on screen, moves ±1 in that list and seeks to a whole-millisecond position the player is known to resolve to exactly that frame: ExoPlayer seeks exactly and shows the first frame at or after the position (seek to the frame start, floored to ms); `<video>` shows the frame whose interval contains `currentTime` (seek to the middle of the frame). If the file can't be parsed, a 30 fps grid is used.
+
+**Decision (v0.1): stay on `video_player`, not `media_kit`.** Measured on this project (release, `--split-per-abi`): `media_kit` + `media_kit_video` + `media_kit_libs_video` build fine next to `flutter_webrtc`, but add **+12.3 MB to the arm64 APK** (54.9 → 67.2 MB, +22 %), +12.2 MB to armeabi-v7a and +16.3 MB to x86_64, so the universal APK grows by ~40 MB. Its exact stepping (mpv `frame-step` / `frame-back-step`) exists only on native: on web it is a plain `<video>`, so web would still need the approach above. Releases have also slowed (latest `media_kit` ~10 months old; `media_kit_libs_android_video` unlisted on pub.dev). Since timestamp-driven seeks give exact stepping on both platforms with the player we already ship, libmpv's size is not worth it. Revisit if we need things ExoPlayer can't do (e.g. reverse playback).
 
 ---
 
@@ -248,11 +284,11 @@ Built from the same Flutter codebase (`flutter build web`), bundled inside the A
 | Save + presets | ✅ | |
 | Tagging | ✅ | Current session only |
 | Clip review loop + speed | ✅ | `<video>` + `playbackRate` |
-| Frame stepping | 🟡 | Seek ±1/fps using `requestVideoFrameCallback`; approximate |
+| Frame stepping | ✅ | Exact: frame timestamps from the clip (§5.5); `requestVideoFrameCallback` tells which frame is on screen |
 | Storage | 🟡 | IndexedDB, current session only; may be evicted (Safari). Banner says so |
 | Download | ✅ | `?format=mp4` progressive → `<a download>` |
 | Gallery / share / trim / telestrator / library / remote camera settings | ❌ | Hidden via `Capabilities` |
-| Screen wake | 🟡 | Hidden looping video workaround (Wake Lock needs HTTPS) |
+| Screen wake | 🟡 | While a review is paused: Wake Lock on HTTPS, otherwise a hidden looping muted copy of the clip |
 
 Build requirements:
 - CanvasKit and all fonts bundled locally (no Google CDN); JS renderer, not wasm (cross-origin isolation is unavailable without HTTPS).
@@ -302,7 +338,7 @@ instantreplay/
 Native ↔ Dart boundary: Pigeon-generated API for commands (`start`, `stop`, `setProfile`, `assembleClip`, `remux`), EventChannel for status/thermal/buffer events. Signaling messages flow Dart ↔ native through the same channel.
 
 ### 7.1 Dependencies (all permissive; CI license check)
-Flutter / Dart: `flutter_riverpod`, `go_router`, `shelf`, `shelf_router`, `shelf_web_socket`, `shelf_static`, `web_socket_channel`, `flutter_webrtc`, `media_kit`, `drift`, `bonsoir`, `mobile_scanner`, `qr_flutter`, `gal`, `share_plus`, `crypto`, `intl`.
+Flutter / Dart: `flutter_riverpod`, `go_router`, `shelf`, `shelf_router`, `shelf_web_socket`, `shelf_static`, `web_socket_channel`, `flutter_webrtc`, `video_player`, `drift`, `bonsoir`, `mobile_scanner`, `qr_flutter`, `gal`, `share_plus`, `crypto`, `intl`.
 Android: Camera2/CameraX, MediaCodec, `androidx.media3` (muxer, transformer), libwebrtc (**the same artifact flutter_webrtc ships**, to avoid duplicate classes — verify in Phase 0).
 
 H.264 note: encoding and decoding use the device's licensed hardware codecs; the project ships no codec implementation.

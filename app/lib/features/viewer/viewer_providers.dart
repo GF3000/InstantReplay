@@ -7,6 +7,7 @@ import 'package:replay_protocol/replay_protocol.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/preferences.dart';
+import '../library/library_providers.dart';
 import 'clips/clip_store.dart';
 import 'clips/clip_transfers.dart';
 import 'clips/save_presets.dart';
@@ -28,7 +29,10 @@ final channelConnectorProvider = Provider<ChannelConnector>((_) => connectWebSoc
 
 final livePeerFactoryProvider = Provider<LivePeerFactory>((_) => createWebRtcLivePeer);
 
-final clipStoreProvider = Provider<ClipStore>((_) => ClipStore.platform());
+/// Android saves clips into the library (SPEC §5.3); web keeps the current session in memory.
+final clipStoreProvider = Provider<ClipStore>(
+  (ref) => ClipStore.platform(catalog: ref.watch(libraryEnabledProvider) ? LibraryCatalog(ref) : null),
+);
 
 final savePresetsProvider = Provider<SavePresets>((_) => const SavePresets());
 
@@ -211,6 +215,71 @@ class LinkStateNotifier extends Notifier<LinkState?> {
 }
 
 final linkStateProvider = NotifierProvider.autoDispose<LinkStateNotifier, LinkState?>(LinkStateNotifier.new);
+
+// endregion
+
+// region Full-session recording
+
+/// The Camera's full-session recording (SPEC §3.8); null when this Camera does not offer it.
+/// Kept while reconnecting, like the rest of the status, so the controls do not flicker.
+final sessionRecordingProvider = Provider.autoDispose<SessionRecording?>(
+    (ref) => ref.watch(linkStateProvider.select((s) => s?.status?.sessionRecording)));
+
+/// Something to tell the coach about the recording: it ended, or a command was refused.
+@immutable
+sealed class RecordingNotice {
+  const RecordingNotice();
+}
+
+final class RecordingEnded extends RecordingNotice {
+  const RecordingEnded(this.finished);
+
+  final RecordingFinished finished;
+}
+
+final class RecordingRefused extends RecordingNotice {
+  const RecordingRefused(this.code, this.message);
+
+  /// `no_space` or `rec_failed`.
+  final String code;
+  final String? message;
+}
+
+/// Sends Record / Pause / Finish to the Camera and keeps the last [RecordingNotice]. The recording
+/// state itself comes back in the status ([sessionRecordingProvider]).
+class ViewerRecordingNotifier extends Notifier<RecordingNotice?> {
+  @override
+  RecordingNotice? build() {
+    StreamSubscription<WsMessage>? sub;
+    ref.listen(sessionLinkProvider, (_, link) {
+      unawaited(sub?.cancel());
+      sub = link?.messages.listen((m) {
+        switch (m) {
+          case RecordingFinished():
+            state = RecordingEnded(m);
+          case ErrorMessage(:final code, :final message) when code == 'no_space' || code == 'rec_failed':
+            state = RecordingRefused(code, message);
+          default:
+        }
+      });
+    }, fireImmediately: true);
+    ref.onDispose(() => sub?.cancel());
+    return null;
+  }
+
+  /// Starts, or resumes when paused; [includeSeconds] > 0 keeps that much from before the press.
+  /// False when not connected.
+  bool record({int includeSeconds = 0}) => _send(RecStart(includeSeconds: includeSeconds));
+
+  bool pause() => _send(const RecPause());
+
+  bool finish() => _send(const RecStop());
+
+  bool _send(WsMessage m) => ref.read(sessionLinkProvider)?.send(m) ?? false;
+}
+
+final viewerRecordingProvider =
+    NotifierProvider.autoDispose<ViewerRecordingNotifier, RecordingNotice?>(ViewerRecordingNotifier.new);
 
 // endregion
 

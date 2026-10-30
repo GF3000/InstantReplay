@@ -529,4 +529,353 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get viewerTagUndo => 'Undo';
+
+  @override
+  String get recTitle => 'Full recording';
+
+  @override
+  String get recRecord => 'Record';
+
+  @override
+  String get recResume => 'Resume';
+
+  @override
+  String get recPause => 'Pause';
+
+  @override
+  String get recFinish => 'Finish';
+
+  @override
+  String get recOptions => 'Recording options';
+
+  @override
+  String get recFromNow => 'Record from now';
+
+  @override
+  String get recResumeFromNow => 'Resume from now';
+
+  @override
+  String recIncludeLast(int seconds) {
+    return 'Record including the last $seconds s';
+  }
+
+  @override
+  String recResumeIncludeLast(int seconds) {
+    return 'Resume including the last $seconds s';
+  }
+
+  @override
+  String get recIdle => 'Not recording';
+
+  @override
+  String recPaused(String elapsed) {
+    return 'Paused · $elapsed';
+  }
+
+  @override
+  String recPart(int part) {
+    return 'part $part';
+  }
+
+  @override
+  String recRemaining(String time) {
+    return '$time left';
+  }
+
+  @override
+  String recLowSpace(String time) {
+    return 'Low space: $time left';
+  }
+
+  @override
+  String get recLowSpaceUnknown => 'Low space on the camera';
+
+  @override
+  String recFree(String gigabytes) {
+    return '$gigabytes GB free';
+  }
+
+  @override
+  String get recFinishTitle => 'Finish the recording?';
+
+  @override
+  String recFinishBody(String elapsed) {
+    return 'The $elapsed recorded will be saved to the camera\'s gallery (Movies/InstantReplay).';
+  }
+
+  @override
+  String get recFinishKeep => 'Keep recording';
+
+  @override
+  String recSaved(int parts, String duration) {
+    String _temp0 = intl.Intl.pluralLogic(
+      parts,
+      locale: localeName,
+      other:
+          'Recording saved to the camera\'s gallery ($duration, $parts parts)',
+      one: 'Recording saved to the camera\'s gallery ($duration)',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recSavedLowSpace(String duration) {
+    return 'The camera ran out of space: the recording stopped and was saved ($duration)';
+  }
+
+  @override
+  String recSavedError(String duration) {
+    return 'The recording stopped because of an error; what was recorded is saved ($duration)';
+  }
+
+  @override
+  String recRecovered(String duration) {
+    return 'Recovered a $duration recording';
+  }
+
+  @override
+  String get recRecoveredHint =>
+      'It was left open when the app closed. It is in the gallery (Movies/InstantReplay).';
+
+  @override
+  String get recNoSpace =>
+      'Not enough space on the camera to record (it needs 1 GB free)';
+
+  @override
+  String recFailed(String message) {
+    return 'Recording failed: $message';
+  }
+
+  @override
+  String get viewerClipSaveToGallery => 'Save to gallery';
+
+  @override
+  String get viewerClipShare => 'Share';
+
+  @override
+  String get viewerClipSavedToGallery => 'Saved to the gallery';
+
+  @override
+  String get viewerClipGalleryDenied => 'No permission to save to the gallery';
+
+  @override
+  String get viewerClipExportNoSpace => 'Not enough space on the phone';
+
+  @override
+  String get viewerClipExportFailed => 'Couldn\'t export the clip';
+
+  @override
+  String get libraryTitle => 'Library';
+
+  @override
+  String get libraryChangeSession => 'Change session';
+
+  @override
+  String get librarySessionLatest => 'Latest session';
+
+  @override
+  String get librarySessionContinue => 'Continue';
+
+  @override
+  String get librarySessionNew => 'New session';
+
+  @override
+  String get librarySessionName => 'Name';
+
+  @override
+  String librarySessionDefaultName(String type, String date) {
+    return '$type $date';
+  }
+
+  @override
+  String get librarySessionTemplate => 'Tag template';
+
+  @override
+  String get librarySessionStart => 'Start session';
+
+  @override
+  String get librarySessionTypeMatch => 'Match';
+
+  @override
+  String get librarySessionTypeTraining => 'Training';
+
+  @override
+  String get librarySessionTypeOther => 'Other';
+
+  @override
+  String librarySessionClips(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count clips',
+      one: '1 clip',
+      zero: 'no clips',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get librarySessionClipsEmpty => 'No clips in this session.';
+
+  @override
+  String get libraryEmpty => 'No sessions yet.';
+
+  @override
+  String librarySelected(int count) {
+    return '$count selected';
+  }
+
+  @override
+  String get librarySelectAll => 'Select all';
+
+  @override
+  String get libraryDelete => 'Delete';
+
+  @override
+  String libraryDeleteClipsConfirm(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Delete $count clips? This can\'t be undone.',
+      one: 'Delete 1 clip? This can\'t be undone.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get libraryDeleteSession => 'Delete session';
+
+  @override
+  String libraryDeleteSessionConfirm(String name) {
+    return 'Delete \"$name\" and all its clips? This can\'t be undone.';
+  }
+
+  @override
+  String get libraryTemplatesTitle => 'Tag templates';
+
+  @override
+  String get libraryTemplateBuiltIn => 'Built-in';
+
+  @override
+  String get libraryTemplateExport => 'Copy as JSON';
+
+  @override
+  String get libraryTemplateExported => 'Template copied to the clipboard';
+
+  @override
+  String get libraryTemplateImport => 'Import JSON';
+
+  @override
+  String get libraryTemplateImportHint =>
+      'Paste a template exported from InstantReplay';
+
+  @override
+  String libraryTemplateImported(String name) {
+    return '\"$name\" imported';
+  }
+
+  @override
+  String libraryTemplateImportError(String reason) {
+    return 'Not a valid template: $reason';
+  }
+
+  @override
+  String get libraryTemplateDelete => 'Delete template';
+
+  @override
+  String get libraryTemplateLabelsTitle => 'Tags and categories';
+
+  @override
+  String get libraryCategoriesTitle => 'Categories';
+
+  @override
+  String get libraryCategory => 'Category';
+
+  @override
+  String get libraryCategoryAdd => 'Add category';
+
+  @override
+  String get libraryCategoriesEmpty =>
+      'No categories. Add one to group your clips.';
+
+  @override
+  String get libraryTemplateFootball => 'Football';
+
+  @override
+  String get libraryTemplateBasketball => 'Basketball';
+
+  @override
+  String get libraryTemplateHandball => 'Handball';
+
+  @override
+  String get libraryTemplateHockey => 'Hockey';
+
+  @override
+  String get libraryTemplateGeneric => 'Generic';
+
+  @override
+  String get libraryTemplateMigrated => 'My tags';
+
+  @override
+  String get libraryCategoryAttack => 'Attack';
+
+  @override
+  String get libraryCategoryDefense => 'Defence';
+
+  @override
+  String get libraryCategoryTransition => 'Transition';
+
+  @override
+  String get libraryCategorySetPiece => 'Set piece';
+
+  @override
+  String get libraryTagGoal => 'Goal';
+
+  @override
+  String get libraryTagShot => 'Shot';
+
+  @override
+  String get libraryTagFoul => 'Foul';
+
+  @override
+  String get libraryTagCorner => 'Corner';
+
+  @override
+  String get libraryTagFreeKick => 'Free kick';
+
+  @override
+  String get libraryTagTurnover => 'Turnover';
+
+  @override
+  String get libraryTagBasket => 'Basket';
+
+  @override
+  String get libraryTagThreePointer => '3-pointer';
+
+  @override
+  String get libraryTagRebound => 'Rebound';
+
+  @override
+  String get libraryTagSteal => 'Steal';
+
+  @override
+  String get libraryTagSave => 'Save';
+
+  @override
+  String get libraryTagSevenMeters => '7 m throw';
+
+  @override
+  String get libraryTagPenalty => 'Penalty';
+
+  @override
+  String get viewerNearbyTitle => 'Cameras on this network';
+
+  @override
+  String get viewerNearbySearching => 'Looking for cameras…';
+
+  @override
+  String get viewerNearbyIncompatible => 'Different InstantReplay version';
+
+  @override
+  String get viewerNearbyOther => 'Or connect another way';
 }

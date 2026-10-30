@@ -37,6 +37,15 @@ sealed class WsMessage {
       ClipChanged.typeName => ClipChanged(clip: ClipDto.fromJson(j['clip']! as Json)),
       StatusUpdate.typeName => StatusUpdate(status: CameraStatus.fromJson(j['status']! as Json)),
       ErrorMessage.typeName => ErrorMessage(code: j['code']! as String, message: j['message'] as String?),
+      RecStart.typeName => RecStart(includeSeconds: j['includeSeconds'] as int? ?? 0),
+      RecPause.typeName => const RecPause(),
+      RecStop.typeName => const RecStop(),
+      RecordingFinished.typeName => RecordingFinished(
+          name: j['name']! as String,
+          parts: j['parts']! as int,
+          durationMs: j['durationMs']! as int,
+          reason: RecordingEndReason.values.asNameMap()[j['reason']] ?? RecordingEndReason.user,
+        ),
       Ping.typeName => const Ping(),
       Pong.typeName => const Pong(),
       _ => null,
@@ -191,6 +200,67 @@ final class ErrorMessage extends WsMessage {
 
   @override
   Json fields() => {'code': code, if (message != null) 'message': message};
+}
+
+/// Viewer → Camera: start the full-session recording, or resume it when paused (SPEC §3.8).
+/// [includeSeconds] > 0 also keeps that much of the buffer from before the press. The new state
+/// arrives in the next [StatusUpdate]; a failure as [ErrorMessage] `rec_failed` or `no_space`.
+final class RecStart extends WsMessage {
+  const RecStart({this.includeSeconds = 0});
+
+  static const typeName = 'rec_start';
+  final int includeSeconds;
+
+  @override
+  String get type => typeName;
+
+  @override
+  Json fields() => {if (includeSeconds > 0) 'includeSeconds': includeSeconds};
+}
+
+/// Viewer → Camera: pause the recording at the end of the second in progress.
+final class RecPause extends WsMessage {
+  const RecPause();
+
+  static const typeName = 'rec_pause';
+
+  @override
+  String get type => typeName;
+
+  @override
+  Json fields() => const {};
+}
+
+/// Viewer → Camera: finish the recording and save it to the Camera's gallery.
+final class RecStop extends WsMessage {
+  const RecStop();
+
+  static const typeName = 'rec_stop';
+
+  @override
+  String get type => typeName;
+
+  @override
+  Json fields() => const {};
+}
+
+/// Camera → all viewers: a recording was saved to the Camera's gallery (Movies/InstantReplay).
+final class RecordingFinished extends WsMessage {
+  const RecordingFinished({required this.name, required this.parts, required this.durationMs, required this.reason});
+
+  static const typeName = 'recording_finished';
+
+  /// File name of the first part.
+  final String name;
+  final int parts;
+  final int durationMs;
+  final RecordingEndReason reason;
+
+  @override
+  String get type => typeName;
+
+  @override
+  Json fields() => {'name': name, 'parts': parts, 'durationMs': durationMs, 'reason': reason.name};
 }
 
 /// Keep-alive: the Viewer pings every 5 s; the Camera drops a viewer silent for 15 s.

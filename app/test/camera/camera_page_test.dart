@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:instant_replay/app/app.dart';
@@ -51,6 +52,14 @@ Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
   final panel = find.descendant(of: find.byType(ListView), matching: find.byType(Scrollable)).first;
   await tester.scrollUntilVisible(finder, 100, scrollable: panel);
   await tester.pumpAndSettle();
+  await tester.tap(finder);
+  await tester.pumpAndSettle();
+}
+
+/// The Camera's own recording buttons (on the preview in setup, on the black operating screen).
+Finder _rec(String name) => find.byKey(Key('camera-rec-$name'));
+
+Future<void> _tapNow(WidgetTester tester, Finder finder) async {
   await tester.tap(finder);
   await tester.pumpAndSettle();
 }
@@ -245,6 +254,153 @@ void main() {
     expect(_operating(tester), isTrue);
     expect(find.text('Severe'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  group('full-session recording', () {
+    testWidgets('recovers crashed recordings on entry, before the first start, with a note', (tester) async {
+      final old = RecordingSaved(
+          name: 'InstantReplay_old.mp4', parts: 1, durationMs: 47 * 60000, bytes: 1, reason: RecordingEnd.recovered);
+      final fake = FakeCaptureLayer()..toRecover = [old];
+      await _pumpCamera(tester, fake, height: 2400);
+
+      expect(fake.calls.where((c) => c == 'recoverRecordings' || c.startsWith('start:')),
+          ['recoverRecordings', 'start:1080p30']);
+      expect(find.text('Recovered a 47 min recording'), findsOneWidget);
+
+      // The same file announced again by the recorder's event is not a second note.
+      fake.recordingSavedController.add(old);
+      await tester.pumpAndSettle();
+      expect(find.text('Recovered a 47 min recording'), findsOneWidget);
+
+      await _tapVisible(
+          tester, find.descendant(of: find.byKey(const Key('camera-recovered')), matching: find.text('Dismiss')));
+      expect(find.text('Recovered a 47 min recording'), findsNothing);
+    });
+
+    testWidgets('starts idle; Record, Pause and Finish with a confirmation', (tester) async {
+      final fake = FakeCaptureLayer();
+      await _pumpCamera(tester, fake, height: 2400);
+      expect(find.text('Full recording'), findsOneWidget);
+      expect(_rec('pause'), findsNothing);
+      expect(_rec('finish'), findsNothing);
+      expect(fake.calls.where((c) => c.startsWith('record')), isEmpty, reason: 'the session starts paused');
+
+      await _tapNow(tester, _rec('record'));
+      expect(fake.calls.last, 'recordStart:0');
+      expect(_rec('pause'), findsOneWidget);
+
+      fake.statsController.add(stats(recording: recStatus(state: RecordingState.recording, elapsedMs: 754000, parts: 2)));
+      await tester.pumpAndSettle();
+      expect(find.text('12:34 · part 2'), findsOneWidget);
+      expect(find.text('10 h left'), findsOneWidget);
+
+      await _tapNow(tester, _rec('pause'));
+      expect(fake.calls.last, 'recordPause');
+      expect(find.textContaining('Paused'), findsOneWidget);
+
+      // Finish asks first; "Keep recording" changes nothing.
+      await _tapNow(tester, _rec('finish'));
+      expect(find.text('Finish the recording?'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('rec-finish-keep')));
+      await tester.pumpAndSettle();
+      expect(fake.calls.where((c) => c == 'recordStop'), isEmpty);
+
+      await _tapNow(tester, _rec('finish'));
+      await tester.tap(find.byKey(const ValueKey('rec-finish-confirm')));
+      await tester.pumpAndSettle();
+      expect(fake.calls.last, 'recordStop');
+      expect(find.textContaining('Recording saved to the camera'), findsOneWidget);
+      expect(_rec('finish'), findsNothing);
+    });
+
+    testWidgets('Record and Resume can include the last 30 s from the menu or a long-press', (tester) async {
+      final fake = FakeCaptureLayer();
+      await _pumpCamera(tester, fake, height: 2400);
+
+      await _tapNow(tester, _rec('record-menu'));
+      expect(find.text('Record including the last 30 s'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('rec-include-30')));
+      await tester.pumpAndSettle();
+      expect(fake.calls.last, 'recordStart:30');
+
+      await _tapNow(tester, _rec('pause'));
+      await tester.longPress(_rec('record'));
+      await tester.pumpAndSettle();
+      expect(find.text('Resume including the last 30 s'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('rec-include-30')));
+      await tester.pumpAndSettle();
+      expect(fake.calls.last, 'recordStart:30');
+    });
+
+    testWidgets('no space to start is explained', (tester) async {
+      final fake = FakeCaptureLayer()..recordStartError = PlatformException(code: 'no_space');
+      await _pumpCamera(tester, fake, height: 2400);
+      await _tapNow(tester, _rec('record'));
+      expect(find.text('Not enough space on the camera to record (it needs 1 GB free)'), findsOneWidget);
+    });
+
+    testWidgets('warns on low space and tells when the Camera stopped for it', (tester) async {
+      final fake = FakeCaptureLayer();
+      await _pumpCamera(tester, fake, height: 2400);
+      fake.recordingController
+          .add(recStatus(state: RecordingState.recording, elapsedMs: 60000, remainingMs: 8 * 60000, lowSpace: true));
+      await tester.pumpAndSettle();
+      expect(find.text('Low space: 8 min left'), findsOneWidget);
+
+      fake.recordingSavedController
+          .add(RecordingSaved(name: 'a.mp4', parts: 1, durationMs: 3600000, bytes: 1, reason: RecordingEnd.lowSpace));
+      await tester.pumpAndSettle();
+      expect(find.text('The camera ran out of space: the recording stopped and was saved (1 h)'), findsOneWidget);
+    });
+
+    testWidgets('works from the operating screen without waking it', (tester) async {
+      final server = FakeServerPlatform();
+      final fake = FakeCaptureLayer();
+      await _pumpCamera(tester, fake, server: server);
+      server.last!.viewers.add(1);
+      await tester.pumpAndSettle();
+      expect(_operating(tester), isTrue);
+
+      await tester.tap(_rec('record'));
+      await tester.pumpAndSettle();
+      expect(fake.calls.last, 'recordStart:0');
+      expect(_operating(tester), isTrue);
+
+      await tester.tap(_rec('pause'));
+      await tester.pumpAndSettle();
+      expect(fake.calls.last, 'recordPause');
+
+      await tester.tap(_rec('finish'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('rec-finish-confirm')));
+      await tester.pumpAndSettle();
+      expect(fake.calls.last, 'recordStop');
+      expect(_operating(tester), isTrue);
+    });
+
+    testWidgets('a profile change keeps the recording going', (tester) async {
+      final fake = FakeCaptureLayer();
+      await _pumpCamera(tester, fake);
+      await _tapNow(tester, _rec('record'));
+      await _openAdvanced(tester);
+      await _tapVisible(tester, find.byKey(const Key('camera-profile')));
+      await tester.tap(find.text('1080p60 · 20 Mbps').last);
+      await tester.pumpAndSettle();
+
+      expect(fake.starts, ['1080p30', '1080p60']);
+      expect(fake.calls.where((c) => c == 'recordStop' || c == 'recordPause'), isEmpty);
+      expect(_rec('pause'), findsOneWidget);
+    });
+
+    testWidgets('leaving the Camera finishes the recording, then stops capture', (tester) async {
+      final fake = FakeCaptureLayer();
+      await _pumpCamera(tester, fake, height: 2400);
+      await _tapNow(tester, _rec('record'));
+
+      await tester.tap(find.byTooltip('Switch role'));
+      await tester.pumpAndSettle();
+      expect(fake.calls.skipWhile((c) => c != 'recordStop').toList(), ['recordStop', 'stop']);
+    });
   });
 
   group('automatic operating mode', () {

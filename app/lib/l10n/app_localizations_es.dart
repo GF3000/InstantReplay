@@ -532,4 +532,354 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get viewerTagUndo => 'Deshacer';
+
+  @override
+  String get recTitle => 'Grabación completa';
+
+  @override
+  String get recRecord => 'Grabar';
+
+  @override
+  String get recResume => 'Reanudar';
+
+  @override
+  String get recPause => 'Pausar';
+
+  @override
+  String get recFinish => 'Terminar';
+
+  @override
+  String get recOptions => 'Opciones de grabación';
+
+  @override
+  String get recFromNow => 'Grabar desde ahora';
+
+  @override
+  String get recResumeFromNow => 'Reanudar desde ahora';
+
+  @override
+  String recIncludeLast(int seconds) {
+    return 'Grabar incluyendo los últimos $seconds s';
+  }
+
+  @override
+  String recResumeIncludeLast(int seconds) {
+    return 'Reanudar incluyendo los últimos $seconds s';
+  }
+
+  @override
+  String get recIdle => 'Sin grabar';
+
+  @override
+  String recPaused(String elapsed) {
+    return 'En pausa · $elapsed';
+  }
+
+  @override
+  String recPart(int part) {
+    return 'parte $part';
+  }
+
+  @override
+  String recRemaining(String time) {
+    return 'quedan $time';
+  }
+
+  @override
+  String recLowSpace(String time) {
+    return 'Poco espacio: quedan $time';
+  }
+
+  @override
+  String get recLowSpaceUnknown => 'Poco espacio en la cámara';
+
+  @override
+  String recFree(String gigabytes) {
+    return '$gigabytes GB libres';
+  }
+
+  @override
+  String get recFinishTitle => '¿Terminar la grabación?';
+
+  @override
+  String recFinishBody(String elapsed) {
+    return 'Lo grabado ($elapsed) se guardará en la galería de la cámara (Movies/InstantReplay).';
+  }
+
+  @override
+  String get recFinishKeep => 'Seguir grabando';
+
+  @override
+  String recSaved(int parts, String duration) {
+    String _temp0 = intl.Intl.pluralLogic(
+      parts,
+      locale: localeName,
+      other:
+          'Grabación guardada en la galería de la cámara ($duration, $parts partes)',
+      one: 'Grabación guardada en la galería de la cámara ($duration)',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recSavedLowSpace(String duration) {
+    return 'La cámara se quedó sin espacio: la grabación se detuvo y se guardó ($duration)';
+  }
+
+  @override
+  String recSavedError(String duration) {
+    return 'La grabación se detuvo por un error; se ha guardado lo grabado ($duration)';
+  }
+
+  @override
+  String recRecovered(String duration) {
+    return 'Se ha recuperado una grabación de $duration';
+  }
+
+  @override
+  String get recRecoveredHint =>
+      'Quedó abierta al cerrarse la app. Está en la galería (Movies/InstantReplay).';
+
+  @override
+  String get recNoSpace =>
+      'No hay espacio suficiente en la cámara para grabar (hace falta 1 GB libre)';
+
+  @override
+  String recFailed(String message) {
+    return 'No se pudo grabar: $message';
+  }
+
+  @override
+  String get viewerClipSaveToGallery => 'Guardar en la galería';
+
+  @override
+  String get viewerClipShare => 'Compartir';
+
+  @override
+  String get viewerClipSavedToGallery => 'Guardado en la galería';
+
+  @override
+  String get viewerClipGalleryDenied =>
+      'Sin permiso para guardar en la galería';
+
+  @override
+  String get viewerClipExportNoSpace => 'No queda espacio en el teléfono';
+
+  @override
+  String get viewerClipExportFailed => 'No se pudo exportar el clip';
+
+  @override
+  String get libraryTitle => 'Biblioteca';
+
+  @override
+  String get libraryChangeSession => 'Cambiar sesión';
+
+  @override
+  String get librarySessionLatest => 'Última sesión';
+
+  @override
+  String get librarySessionContinue => 'Continuar';
+
+  @override
+  String get librarySessionNew => 'Nueva sesión';
+
+  @override
+  String get librarySessionName => 'Nombre';
+
+  @override
+  String librarySessionDefaultName(String type, String date) {
+    return '$type $date';
+  }
+
+  @override
+  String get librarySessionTemplate => 'Plantilla de etiquetas';
+
+  @override
+  String get librarySessionStart => 'Empezar sesión';
+
+  @override
+  String get librarySessionTypeMatch => 'Partido';
+
+  @override
+  String get librarySessionTypeTraining => 'Entrenamiento';
+
+  @override
+  String get librarySessionTypeOther => 'Otro';
+
+  @override
+  String librarySessionClips(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count clips',
+      one: '1 clip',
+      zero: 'sin clips',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get librarySessionClipsEmpty => 'No hay clips en esta sesión.';
+
+  @override
+  String get libraryEmpty => 'Aún no hay sesiones.';
+
+  @override
+  String librarySelected(int count) {
+    return '$count seleccionados';
+  }
+
+  @override
+  String get librarySelectAll => 'Seleccionar todo';
+
+  @override
+  String get libraryDelete => 'Borrar';
+
+  @override
+  String libraryDeleteClipsConfirm(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '¿Borrar $count clips? No se puede deshacer.',
+      one: '¿Borrar 1 clip? No se puede deshacer.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get libraryDeleteSession => 'Borrar sesión';
+
+  @override
+  String libraryDeleteSessionConfirm(String name) {
+    return '¿Borrar «$name» y todos sus clips? No se puede deshacer.';
+  }
+
+  @override
+  String get libraryTemplatesTitle => 'Plantillas de etiquetas';
+
+  @override
+  String get libraryTemplateBuiltIn => 'Incluida';
+
+  @override
+  String get libraryTemplateExport => 'Copiar como JSON';
+
+  @override
+  String get libraryTemplateExported => 'Plantilla copiada al portapapeles';
+
+  @override
+  String get libraryTemplateImport => 'Importar JSON';
+
+  @override
+  String get libraryTemplateImportHint =>
+      'Pega una plantilla exportada desde InstantReplay';
+
+  @override
+  String libraryTemplateImported(String name) {
+    return '«$name» importada';
+  }
+
+  @override
+  String libraryTemplateImportError(String reason) {
+    return 'No es una plantilla válida: $reason';
+  }
+
+  @override
+  String get libraryTemplateDelete => 'Borrar plantilla';
+
+  @override
+  String get libraryTemplateLabelsTitle => 'Etiquetas y categorías';
+
+  @override
+  String get libraryCategoriesTitle => 'Categorías';
+
+  @override
+  String get libraryCategory => 'Categoría';
+
+  @override
+  String get libraryCategoryAdd => 'Añadir categoría';
+
+  @override
+  String get libraryCategoriesEmpty =>
+      'No hay categorías. Añade una para agrupar tus clips.';
+
+  @override
+  String get libraryTemplateFootball => 'Fútbol';
+
+  @override
+  String get libraryTemplateBasketball => 'Baloncesto';
+
+  @override
+  String get libraryTemplateHandball => 'Balonmano';
+
+  @override
+  String get libraryTemplateHockey => 'Hockey';
+
+  @override
+  String get libraryTemplateGeneric => 'Genérica';
+
+  @override
+  String get libraryTemplateMigrated => 'Mis etiquetas';
+
+  @override
+  String get libraryCategoryAttack => 'Ataque';
+
+  @override
+  String get libraryCategoryDefense => 'Defensa';
+
+  @override
+  String get libraryCategoryTransition => 'Transición';
+
+  @override
+  String get libraryCategorySetPiece => 'Balón parado';
+
+  @override
+  String get libraryTagGoal => 'Gol';
+
+  @override
+  String get libraryTagShot => 'Tiro';
+
+  @override
+  String get libraryTagFoul => 'Falta';
+
+  @override
+  String get libraryTagCorner => 'Córner';
+
+  @override
+  String get libraryTagFreeKick => 'Tiro libre';
+
+  @override
+  String get libraryTagTurnover => 'Pérdida';
+
+  @override
+  String get libraryTagBasket => 'Canasta';
+
+  @override
+  String get libraryTagThreePointer => 'Triple';
+
+  @override
+  String get libraryTagRebound => 'Rebote';
+
+  @override
+  String get libraryTagSteal => 'Robo';
+
+  @override
+  String get libraryTagSave => 'Parada';
+
+  @override
+  String get libraryTagSevenMeters => '7 metros';
+
+  @override
+  String get libraryTagPenalty => 'Penalti';
+
+  @override
+  String get viewerNearbyTitle => 'Cámaras en esta red';
+
+  @override
+  String get viewerNearbySearching => 'Buscando cámaras…';
+
+  @override
+  String get viewerNearbyIncompatible => 'Otra versión de InstantReplay';
+
+  @override
+  String get viewerNearbyOther => 'O conecta de otra forma';
 }

@@ -6,7 +6,13 @@ import 'package:replay_capture_android/replay_capture_android.dart';
 CaptureProfile profile(String id, {int width = 1920, int height = 1080, int fps = 30}) =>
     CaptureProfile(id: id, width: width, height: height, fps: fps, bitrate: 20000000);
 
-CaptureStats stats({int bufferMs = 42000, int outboxClips = 3, double? batteryTempC = 36.5, bool plugged = true}) =>
+CaptureStats stats({
+  int bufferMs = 42000,
+  int outboxClips = 3,
+  double? batteryTempC = 36.5,
+  bool plugged = true,
+  RecordingStatus? recording,
+}) =>
     CaptureStats(
       encodedFrames: 1000,
       fps: 30,
@@ -21,6 +27,7 @@ CaptureStats stats({int bufferMs = 42000, int outboxClips = 3, double? batteryTe
       plugged: plugged,
       batteryTempC: batteryTempC,
       batteryPercent: 80,
+      recording: recording,
     );
 
 /// In-memory capture layer that records every call.
@@ -188,4 +195,87 @@ class FakeCaptureLayer implements CaptureLayer {
 
   @override
   Future<void> liveClose(String viewerId) async => calls.add('liveClose:$viewerId');
+
+  // region Recording: an in-memory state machine; tests push status and saved events directly.
+
+  final recordingController = StreamController<RecordingStatus>.broadcast();
+  final recordingSavedController = StreamController<RecordingSaved>.broadcast();
+  RecordingStatus recordingState = recStatus();
+  List<RecordingSaved> toRecover = [];
+
+  /// Thrown by [recordStart] when set, e.g. `PlatformException(code: 'no_space')`.
+  Object? recordStartError;
+
+  @override
+  Stream<RecordingStatus> get recording => recordingController.stream;
+
+  @override
+  Stream<RecordingSaved> get recordingSaved => recordingSavedController.stream;
+
+  @override
+  Future<RecordingStatus> recordingStatus() async => recordingState;
+
+  void _setRecording(RecordingStatus s) {
+    recordingState = s;
+    recordingController.add(s);
+  }
+
+  @override
+  Future<RecordingStatus> recordStart({int includeSeconds = 0}) async {
+    calls.add('recordStart:$includeSeconds');
+    if (recordStartError case final e?) throw e;
+    _setRecording(recStatus(state: RecordingState.recording, elapsedMs: recordingState.elapsedMs, parts: 1));
+    return recordingState;
+  }
+
+  @override
+  Future<RecordingStatus> recordPause() async {
+    calls.add('recordPause');
+    _setRecording(recStatus(state: RecordingState.paused, elapsedMs: recordingState.elapsedMs, parts: 1));
+    return recordingState;
+  }
+
+  @override
+  Future<RecordingSaved?> recordStop() async {
+    calls.add('recordStop');
+    if (recordingState.state == RecordingState.idle) return null;
+    final saved = RecordingSaved(
+      name: 'InstantReplay_2026-10-30_11-30.mp4',
+      parts: recordingState.parts,
+      durationMs: recordingState.elapsedMs,
+      bytes: recordingState.bytes,
+      reason: RecordingEnd.user,
+    );
+    _setRecording(recStatus());
+    recordingSavedController.add(saved);
+    return saved;
+  }
+
+  @override
+  Future<List<RecordingSaved>> recoverRecordings() async {
+    calls.add('recoverRecordings');
+    final found = toRecover;
+    toRecover = [];
+    return found;
+  }
+
+  // endregion
 }
+
+RecordingStatus recStatus({
+  RecordingState state = RecordingState.idle,
+  int elapsedMs = 0,
+  int parts = 0,
+  int freeBytes = 20000000000,
+  int? remainingMs = 36000000,
+  bool lowSpace = false,
+}) =>
+    RecordingStatus(
+      state: state,
+      elapsedMs: elapsedMs,
+      bytes: elapsedMs * 1500,
+      parts: parts,
+      freeBytes: freeBytes,
+      remainingMs: remainingMs,
+      lowSpace: lowSpace,
+    );

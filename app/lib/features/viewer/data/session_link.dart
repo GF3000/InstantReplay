@@ -182,8 +182,11 @@ class SessionLink {
       if (_state.phase == LinkPhase.connected) _set(_state.copyWith(phase: LinkPhase.reconnecting));
       final wait = backoff[min(failures, backoff.length - 1)];
       failures++;
-      _wake = Completer<void>();
-      await Future.any([Future<void>.delayed(wait), _wake!.future]);
+      // A timer rather than Future.delayed, so dispose() cancels the wait instead of leaving it pending.
+      final wake = _wake = Completer<void>();
+      final timer = Timer(wait, _wakeUp);
+      await wake.future;
+      timer.cancel();
       _wake = null;
     }
   }
@@ -218,6 +221,10 @@ class SessionLink {
             if (isConnected) _set(_state.copyWith(status: status));
           case Ping():
             ch.send(const Pong().encode());
+          case RecordingFinished():
+            // Only forwarded (the live screen tells the coach); the idle state that follows comes
+            // in its own StatusUpdate, so the link state is not touched here.
+            break;
           default:
         }
         if (!_messages.isClosed) _messages.add(msg);

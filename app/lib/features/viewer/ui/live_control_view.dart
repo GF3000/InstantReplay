@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../l10n/app_localizations.dart';
+import '../../recording/recording_widgets.dart';
 import '../data/session_link.dart';
 import '../tags/tag_widgets.dart';
 import '../tags/tags.dart';
@@ -11,12 +12,32 @@ import 'clip_list.dart';
 /// Main Viewer screen, "balanced" layout (UX §3.2): a large live view and a large Save button.
 ///
 /// Portrait: live on top, Save + chips + tag bar below, clip list underneath. Landscape (phone,
-/// tablet, laptop): live on the left, a right panel with Save, chips, tag bar and clip list.
-class LiveControlView extends StatelessWidget {
+/// tablet, laptop): live on the left, a right panel with Save, chips, tag bar and clip list. The
+/// full-session recording row sits right above Save in both, one line high.
+class LiveControlView extends ConsumerWidget {
   const LiveControlView({super.key});
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(builder: (context, c) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Recording news from the Camera: saved (by anyone, or because space ran out) or refused.
+    ref.listen(viewerRecordingProvider, (_, notice) {
+      final l10n = AppLocalizations.of(context);
+      final text = switch (notice) {
+        RecordingEnded(:final finished) => recordingSavedMessage(
+            l10n,
+            parts: finished.parts,
+            durationMs: finished.durationMs,
+            reason: finished.reason,
+          ),
+        RecordingRefused(:final code, :final message) => recordingErrorMessage(l10n, code, message),
+        null => null,
+      };
+      if (text != null) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+    });
+    return _layout();
+  }
+
+  Widget _layout() => LayoutBuilder(builder: (context, c) {
         final wide = c.maxWidth > c.maxHeight && c.maxWidth >= 560;
         if (wide) {
           final panel = c.maxWidth >= 1000 ? 400.0 : (c.maxWidth * 0.42).clamp(260.0, 360.0);
@@ -25,6 +46,7 @@ class LiveControlView extends StatelessWidget {
             SizedBox(
               width: panel,
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                const ViewerRecordingBar(),
                 SaveControls(compact: c.maxHeight < 480, tight: c.maxHeight < 400),
                 const Divider(height: 1),
                 const Expanded(child: ClipList()),
@@ -34,6 +56,7 @@ class LiveControlView extends StatelessWidget {
         }
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           SizedBox(height: (c.maxWidth * 9 / 16).clamp(120.0, c.maxHeight * 0.42), child: const LivePanel()),
+          const ViewerRecordingBar(),
           SaveControls(compact: c.maxHeight < 760),
           const Divider(height: 1),
           const Expanded(child: ClipList()),
@@ -80,6 +103,33 @@ class LivePanel extends ConsumerWidget {
             ),
           ),
       ]),
+    );
+  }
+}
+
+/// Record / Pause / Finish for the Camera's full-session recording, with the time recorded and
+/// the space left (SPEC §3.8). Hidden when the Camera does not offer it (an older Camera).
+class ViewerRecordingBar extends ConsumerWidget {
+  const ViewerRecordingBar({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final recording = ref.watch(sessionRecordingProvider);
+    if (recording == null) return const SizedBox.shrink();
+    final connected = ref.watch(linkStateProvider.select((s) => s?.phase == LinkPhase.connected));
+    final capturing = ref.watch(linkStateProvider.select((s) => s?.status?.recording ?? false));
+    final remote = ref.read(viewerRecordingProvider.notifier);
+    return Padding(
+      key: const ValueKey('viewer-recording'),
+      padding: const EdgeInsets.fromLTRB(12, 6, 8, 0),
+      child: RecordingBar(
+        recording: recording,
+        enabled: connected && capturing,
+        keyPrefix: 'viewer-rec',
+        onRecord: (seconds) => remote.record(includeSeconds: seconds),
+        onPause: remote.pause,
+        onFinish: remote.finish,
+      ),
     );
   }
 }

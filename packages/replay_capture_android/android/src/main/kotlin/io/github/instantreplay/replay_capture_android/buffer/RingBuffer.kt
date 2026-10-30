@@ -38,6 +38,12 @@ internal class RingBuffer(private val dir: File, private val windowUs: Long) {
     @Volatile var epoch = 0
         private set
 
+    /**
+     * Called with every fragment once it is in the window, on the writer's thread and outside the
+     * lock. Used by the session recorder, which archives what the window would otherwise evict.
+     */
+    @Volatile var fragmentListener: ((Fragment, ByteArray) -> Unit)? = null
+
     @Volatile private var currentTrack: TrackInfo? = null
 
     /** Codec configuration of the current epoch; null until the encoder reports its format. */
@@ -102,12 +108,13 @@ internal class RingBuffer(private val dir: File, private val windowUs: Long) {
         if (epoch != this.epoch) return
         val file = File(dir, "e%04d_frag_%08d.m4s".format(epoch, sequence))
         file.writeBytes(data)
+        val fragment = Fragment(epoch, sequence, startUs, endUs, baseTicks, durationTicks, file, data.size.toLong())
         synchronized(lock) {
             if (epoch != this.epoch) {
                 file.delete()
                 return
             }
-            fragments.addLast(Fragment(epoch, sequence, startUs, endUs, baseTicks, durationTicks, file, data.size.toLong()))
+            fragments.addLast(fragment)
             totalBytes += data.size
             totalUs += endUs - startUs
             // Fragments are contiguous within an epoch, so the summed duration is the window span.
@@ -120,6 +127,7 @@ internal class RingBuffer(private val dir: File, private val windowUs: Long) {
             tracks.keys.retainAll { e -> e == this.epoch || fragments.any { it.epoch == e } }
             lock.notifyAll()
         }
+        fragmentListener?.invoke(fragment, data)
     }
 
     /**
