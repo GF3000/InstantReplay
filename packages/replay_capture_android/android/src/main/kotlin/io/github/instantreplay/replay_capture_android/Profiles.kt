@@ -10,6 +10,8 @@ internal object Profiles {
     private val candidates = listOf(
         CaptureProfile(id = "1080p60", width = 1920L, height = 1080L, fps = 60L, bitrate = 20_000_000L),
         CaptureProfile(id = "1080p30", width = 1920L, height = 1080L, fps = 30L, bitrate = 12_000_000L),
+        // Same picture for a third less storage; enough for a camera on a tripod.
+        CaptureProfile(id = "1080p30-8m", width = 1920L, height = 1080L, fps = 30L, bitrate = 8_000_000L),
         CaptureProfile(id = "720p30", width = 1280L, height = 720L, fps = 30L, bitrate = 5_000_000L),
     )
 

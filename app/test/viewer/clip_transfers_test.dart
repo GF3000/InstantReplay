@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:instant_replay/features/viewer/clips/clip_transfers.dart';
+import 'package:instant_replay/features/viewer/clips/partial_download.dart';
 import 'package:instant_replay/features/viewer/clips/save_presets.dart';
 import 'package:instant_replay/features/viewer/data/viewer_api.dart';
 import 'package:replay_protocol/replay_protocol.dart';
@@ -26,7 +27,67 @@ class FakeCamera {
   Completer<void>? saveGate;
   Completer<void>? downloadGate;
 
+  /// `Range` header of each download request (null for a full one).
+  final ranges = <String?>[];
+
+  /// Download requests, after the [cuts], that fail before any byte (the network is down).
+  int failDownloads = 0;
+
+  /// For each coming download, how many body bytes to send before the connection drops.
+  final cuts = <int>[];
+
+  /// Body bytes sent across all downloads.
+  int served = 0;
+
+  /// What GET /clips lists.
+  final outbox = <ClipDto>[];
+
   String get sha => sha256.convert(file).toString();
+
+  http.Client get client => MockClient.streaming((request, body) async {
+        if (request.method == 'GET' && request.url.path.startsWith('${Api.clips}/')) return _download(request);
+        final r = http.Request(request.method, request.url)
+          ..headers.addAll(request.headers)
+          ..bodyBytes = await body.toBytes();
+        final res = await handle(r);
+        return http.StreamedResponse(Stream.value(res.bodyBytes), res.statusCode, headers: res.headers);
+      });
+
+  Future<http.StreamedResponse> _download(http.BaseRequest r) async {
+    downloads++;
+    final range = r.headers['range'];
+    ranges.add(range);
+    await downloadGate?.future;
+    if (failDownloads > 0 && cuts.isEmpty) {
+      failDownloads--;
+      throw http.ClientException('Network is unreachable');
+    }
+    final data = Uint8List.fromList(file);
+    if (corruptDownloads > 0) {
+      corruptDownloads--;
+      data[data.length - 1] ^= 0xff;
+    }
+    final start = int.parse(RegExp(r'^bytes=(\d+)-$').firstMatch(range ?? '')?[1] ?? '0');
+    if (start >= data.length) {
+      return http.StreamedResponse(const Stream.empty(), 416, headers: {'content-range': 'bytes */${data.length}'});
+    }
+    final cut = cuts.isEmpty ? null : cuts.removeAt(0);
+    Stream<List<int>> body() async* {
+      var sent = 0;
+      for (var at = start; at < data.length; at += 8192) {
+        if (cut != null && sent >= cut) throw http.ClientException('Connection closed while receiving data');
+        final chunk = data.sublist(at, (at + 8192).clamp(0, data.length));
+        sent += chunk.length;
+        served += chunk.length;
+        yield chunk;
+      }
+    }
+
+    return http.StreamedResponse(body(), start > 0 ? 206 : 200, headers: {
+      'content-length': '${data.length - start}',
+      if (start > 0) 'content-range': 'bytes $start-${data.length - 1}/${data.length}',
+    });
+  }
 
   ClipDto dto(String requestId, ClipState state, {String requestedBy = me}) => ClipDto(
         id: 'clip-$requestId',
@@ -51,14 +112,8 @@ class FakeCamera {
       }
       return http.Response(jsonEncode(dto(req.requestId, ClipState.recording, requestedBy: req.viewerId!).toJson()), 202);
     }
-    if (r.method == 'GET' && path.startsWith('${Api.clips}/')) {
-      downloads++;
-      await downloadGate?.future;
-      if (corruptDownloads > 0) {
-        corruptDownloads--;
-        return http.Response.bytes(Uint8List.fromList([...file]..[0] ^= 0xff), 200);
-      }
-      return http.Response.bytes(file, 200, headers: {'content-length': '${file.length}'});
+    if (r.method == 'GET' && path == Api.clips) {
+      return http.Response(jsonEncode([for (final d in outbox) d.toJson()]), 200);
     }
     if (r.method == 'POST' && path.endsWith('/ack')) {
       final id = path.split('/')[path.split('/').length - 2];
@@ -86,12 +141,13 @@ void main() {
       viewerId: me,
       onChanged: history.add,
       newRequestId: () => 'r${++n}',
+      newPartial: (_) => MemoryPartialDownload(),
       retryDelay: Duration.zero,
-    )..api = ViewerApi(client: MockClient(camera.handle), base: Uri.parse('http://cam:8080'), token: 't');
+    )..api = ViewerApi(client: camera.client, base: Uri.parse('http://cam:8080'), token: 't');
   });
 
   Future<void> settle() async {
-    for (var i = 0; i < 20; i++) {
+    for (var i = 0; i < 100; i++) {
       await Future<void>.delayed(Duration.zero);
     }
   }
@@ -219,6 +275,73 @@ void main() {
     transfers.onClipChanged(camera.dto('r2', ClipState.expired));
     expect(clip('r2').phase, SessionClipPhase.failed);
     expect(clip('r2').failure, ClipFailure.expired);
+  });
+
+  test('a cut download resumes with Range and completes with the right hash', () async {
+    await transfers.save();
+    camera.cuts.addAll([30000, 30000]); // Each cut lands on the next 8 KiB chunk boundary.
+    transfers.onClipChanged(camera.dto('r1', ClipState.ready));
+    await settle();
+
+    expect(camera.ranges, [null, 'bytes=32768-', 'bytes=65536-']);
+    expect(camera.served, camera.file.length); // Nothing downloaded twice.
+    expect(clip('r1').phase, SessionClipPhase.ready);
+    expect(store.stored['clip-r1'], camera.file);
+    expect(camera.acks['clip-r1'], camera.sha);
+  });
+
+  test('a checksum mismatch after a resume discards the partial and starts from zero', () async {
+    await transfers.save();
+    camera.cuts.add(50000);
+    camera.corruptDownloads = 2; // The resumed range carries a bad last byte.
+    transfers.onClipChanged(camera.dto('r1', ClipState.ready));
+    await settle();
+
+    expect(camera.ranges, [null, 'bytes=57344-', null]);
+    expect(clip('r1').phase, SessionClipPhase.ready);
+    expect(store.stored['clip-r1'], camera.file);
+    expect(camera.acks['clip-r1'], camera.sha);
+  });
+
+  test('a network outage fails the clip but keeps the partial; reconnect resumes it', () async {
+    await transfers.save();
+    camera.cuts.add(40000);
+    camera.failDownloads = 2;
+    transfers.onClipChanged(camera.dto('r1', ClipState.ready));
+    await settle();
+    expect(camera.ranges, [null, 'bytes=40960-', 'bytes=40960-']);
+    expect(clip('r1').phase, SessionClipPhase.failed);
+    expect(clip('r1').failure, ClipFailure.download);
+    expect(clip('r1').received, 40960);
+
+    camera.outbox.add(camera.dto('r1', ClipState.ready));
+    await transfers.recover();
+    await settle();
+    expect(camera.ranges.last, 'bytes=40960-');
+    expect(camera.served, camera.file.length);
+    expect(clip('r1').phase, SessionClipPhase.ready);
+    expect(camera.acks['clip-r1'], camera.sha);
+  });
+
+  test('a manual retry also resumes; downloads stay one at a time', () async {
+    await transfers.save();
+    await transfers.save();
+    camera.cuts.add(20000);
+    camera.failDownloads = 2;
+    transfers.onClipChanged(camera.dto('r1', ClipState.ready));
+    transfers.onClipChanged(camera.dto('r2', ClipState.ready));
+    await settle();
+    // r1 gave up after the outage, then r2 downloaded whole.
+    expect(camera.ranges, [null, 'bytes=24576-', 'bytes=24576-', null]);
+    expect(clip('r1').phase, SessionClipPhase.failed);
+    expect(clip('r2').phase, SessionClipPhase.ready);
+
+    transfers.retry('r1');
+    expect(clip('r1').received, 24576);
+    await settle();
+    expect(camera.ranges.last, 'bytes=24576-');
+    expect(clip('r1').phase, SessionClipPhase.ready);
+    expect(store.stored['clip-r1'], camera.file);
   });
 
   test('presets: default 20 s, quick 10/30/60 s, post-roll 2 s', () {

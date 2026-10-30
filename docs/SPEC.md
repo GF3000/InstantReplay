@@ -16,11 +16,11 @@
 | D5 | Cameras | 1 camera in MVP; protocol and data model carry `cameraId` to allow N later. |
 | D6 | Viewers | Usually 1, occasionally 2–3 concurrent viewers. |
 | D7 | Audio | **None.** Video only. |
-| D8 | Storage | **Camera = buffer only.** The clip library lives on the Viewer. Camera keeps a clip in an *outbox* until the requesting Viewer confirms the download (checksum). |
+| D8 | Storage | **Camera = clip buffer + outbox**, plus an optional **full-session recording** to its own gallery (§3.8). The clip library lives on the Viewer. Camera keeps a clip in an *outbox* until the requesting Viewer confirms the download (checksum). |
 | D9 | Multi-viewer | A clip goes only to the viewer that requested it; other viewers get a notification and may fetch it while it is still in the outbox. |
 | D10 | Organization | Session (match/training) → Clips. Sessions live on the Viewer. |
 | D11 | Save button | Default duration (20 s) + presets (10/30/60 s) + configurable post-roll (0–5 s). |
-| D12 | Video | Configurable: **1080p30 default**, 720p30 or 1080p60 optional; a profile is offered only if the camera supports it in a regular session. H.264 only. |
+| D12 | Video | Configurable: **1080p30 at 12 Mbps default**; 1080p30 at 8 Mbps (a third less storage), 720p30 or 1080p60 optional; the Camera remembers the last choice; a profile is offered only if the camera supports it in a regular session. H.264 only. |
 | D13 | Analysis | Speed (0.25/0.5/1x), frame stepping, **non-destructive trim**, **telestrator burned into exported video as freeze-frame + drawing for N s**. |
 | D14 | Export | Single clip: save to gallery + system share (native). Download (web). |
 | D15 | Web | Live view + save + review of **current session only** (IndexedDB, volatile) + download MP4. No gallery/share/trim/telestrator. |
@@ -149,6 +149,34 @@ Uses `PowerManager.getCurrentThermalStatus` (API 29) and `getThermalHeadroom` (A
 
 Every degradation is reported as a `thermal_state` event and in the UI. No automatic upgrade back during a session (avoids oscillation); the user can restore manually.
 
+### 3.8 Full-session recording
+Besides the clip buffer, the Camera can record the **whole session** (the match, the training) into its own gallery, `Movies/InstantReplay`, to review it later on a bigger screen. Video only (D7).
+
+**Who controls it.** There is one recording, and it lives on the Camera. **Any paired Viewer** (native or web) and **the Camera itself** can Record, Pause and Finish it; they all see the same state. If a Viewer disconnects, the recording carries on. Leaving the Camera screen finishes it and saves what was recorded.
+
+**States.** `idle → recording ⇄ paused → idle`. A session starts **idle**: nothing is recorded until someone presses Record. Pausing cuts at the end of the fragment (second) in progress. Finish asks for confirmation on both roles. Record and Resume can also **include the last 30 s** of the ring buffer (`includeSeconds`), for when the coach presses a moment late.
+
+**File format.**
+- Written progressively as **fMP4** (the same 1 s fragments as the buffer) into a MediaStore item marked *pending*, so it is invisible in the gallery until finished and nothing is lost if the app dies.
+- Pause works per fragment: fragments are simply not written while paused, and `decodeTime` stays **continuous** across pauses, so the file plays without a gap or a jump.
+- At finish, an index and a `sidx` are written (seekable in galleries and players, see Phase 0 results) and the item is published.
+- **Parts:** an encoder restart (profile change, thermal fallback) needs a new init segment, so the recording continues in a **new part** (a new file in the gallery); so does every **4 h** of video, to keep files manageable. The Viewer's profile change stays allowed during a recording. The UI shows "part N" when there is more than one.
+- **Names:** `InstantReplay_yyyy-MM-dd_HH-mm.mp4` (the recording's start time), then `…_part2.mp4`, `…_part3.mp4`.
+
+**Space.**
+
+| Free space / time left | Action |
+|---|---|
+| < 1 GB free | Refuse to start (`no_space`) |
+| < 10 min left at the current bitrate | `lowSpace` warning on the Camera and every Viewer |
+| < 500 MB free | Stop and save (`recording_finished` with reason `lowSpace`), told to everyone |
+
+The 500 MB floor keeps room for the ring buffer and the outbox, so clip saving keeps working after the recording stops.
+
+**Crash recovery.** On entry to the Camera role, before capture starts, recordings left *pending* by a crash or a kill are finished (index + `sidx` written from the fragments on disk) and published automatically. The Camera shows a note such as "Recovered a 47 min recording".
+
+**Reporting.** The state rides on every `status` as `sessionRecording` (§4.2), and changes are pushed at once rather than with the next 1 s tick. A finished recording is announced to every Viewer with `recording_finished` (reason `user`, `lowSpace`, `error` or `recovered`).
+
 ---
 
 ## 4. Network, discovery, pairing
@@ -187,6 +215,10 @@ JSON `{type, id?, payload}`. Shared Dart package `replay_protocol` defines all m
 - Signaling: `rtc_offer`, `rtc_answer`, `rtc_ice` (A is the offerer; host candidates only; browser mDNS candidates resolved via peer-reflexive).
 - Events: `clip_recording`, `clip_ready`, `clip_available`, `clip_expired`, `thermal_state`, `buffer_state`, `settings_changed`.
 - Control: `camera_set {zoom?, exposureComp?, focusMode?, profile?}` → `settings_changed`.
+- Full-session recording (§3.8):
+  - Viewer → Camera: `rec_start {includeSeconds?}` (start, or resume when paused; `includeSeconds` > 0 also keeps that much of the buffer, omitted = 0), `rec_pause`, `rec_stop`. The new state arrives in the next `status`, sent at once; a refusal comes back as `error {code: "no_space"}` (less than 1 GB free) or `error {code: "rec_failed", message}`.
+  - Camera → all viewers: `recording_finished {name, parts, durationMs, reason}`, with `reason` one of `user`, `lowSpace`, `error`, `recovered`; `name` is the first part's file name.
+  - In `status`: `sessionRecording {state: idle|recording|paused, elapsedMs, parts, freeBytes, lowSpace, remainingMs?}`. `elapsedMs` excludes pauses; `remainingMs` is the estimated time left at the current bitrate; `lowSpace` means under 10 min left. Absent from a Camera without the feature, and viewers then hide the controls.
 - Keep-alive: ping every 5 s; viewer marked gone after 15 s.
 
 ---

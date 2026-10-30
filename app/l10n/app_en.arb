@@ -369,10 +369,127 @@
     }
   },
   "viewerTagUndo": "Undo",
-  "viewerNearbyTitle": "Cameras on this network",
-  "viewerNearbySearching": "Looking for cameras…",
-  "viewerNearbyIncompatible": "Different InstantReplay version",
-  "viewerNearbyOther": "Or connect another way",
+  "recTitle": "Full recording",
+  "recRecord": "Record",
+  "recResume": "Resume",
+  "recPause": "Pause",
+  "recFinish": "Finish",
+  "recOptions": "Recording options",
+  "recFromNow": "Record from now",
+  "recResumeFromNow": "Resume from now",
+  "recIncludeLast": "Record including the last {seconds} s",
+  "@recIncludeLast": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "recResumeIncludeLast": "Resume including the last {seconds} s",
+  "@recResumeIncludeLast": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "recIdle": "Not recording",
+  "recPaused": "Paused · {elapsed}",
+  "@recPaused": {
+    "placeholders": {
+      "elapsed": {
+        "type": "String"
+      }
+    }
+  },
+  "recPart": "part {part}",
+  "@recPart": {
+    "placeholders": {
+      "part": {
+        "type": "int"
+      }
+    }
+  },
+  "recRemaining": "{time} left",
+  "@recRemaining": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "recLowSpace": "Low space: {time} left",
+  "@recLowSpace": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "recLowSpaceUnknown": "Low space on the camera",
+  "recFree": "{gigabytes} GB free",
+  "@recFree": {
+    "placeholders": {
+      "gigabytes": {
+        "type": "String"
+      }
+    }
+  },
+  "recFinishTitle": "Finish the recording?",
+  "recFinishBody": "The {elapsed} recorded will be saved to the camera's gallery (Movies/InstantReplay).",
+  "@recFinishBody": {
+    "placeholders": {
+      "elapsed": {
+        "type": "String"
+      }
+    }
+  },
+  "recFinishKeep": "Keep recording",
+  "recSaved": "{parts, plural, =1{Recording saved to the camera's gallery ({duration})} other{Recording saved to the camera's gallery ({duration}, {parts} parts)}}",
+  "@recSaved": {
+    "placeholders": {
+      "parts": {
+        "type": "int"
+      },
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "recSavedLowSpace": "The camera ran out of space: the recording stopped and was saved ({duration})",
+  "@recSavedLowSpace": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "recSavedError": "The recording stopped because of an error; what was recorded is saved ({duration})",
+  "@recSavedError": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "recRecovered": "Recovered a {duration} recording",
+  "@recRecovered": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "recRecoveredHint": "It was left open when the app closed. It is in the gallery (Movies/InstantReplay).",
+  "recNoSpace": "Not enough space on the camera to record (it needs 1 GB free)",
+  "recFailed": "Recording failed: {message}",
+  "@recFailed": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
   "viewerClipSaveToGallery": "Save to gallery",
   "viewerClipShare": "Share",
   "viewerClipSavedToGallery": "Saved to the gallery",
@@ -489,6 +606,10 @@
   "libraryTagSave": "Save",
   "libraryTagSevenMeters": "7 m throw",
   "libraryTagPenalty": "Penalty",
+  "viewerNearbyTitle": "Cameras on this network",
+  "viewerNearbySearching": "Looking for cameras…",
+  "viewerNearbyIncompatible": "Different InstantReplay version",
+  "viewerNearbyOther": "Or connect another way",
   "settingsTitle": "Settings",
   "settingsSaveSection": "Save button",
   "settingsDefaultDuration": "Default duration",

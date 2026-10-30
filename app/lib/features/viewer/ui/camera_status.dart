@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:replay_protocol/replay_protocol.dart';
 
 import '../../../l10n/app_localizations.dart';
+import '../../recording/recording_widgets.dart';
 import '../data/session_link.dart';
 import '../viewer_providers.dart';
 
@@ -146,6 +147,25 @@ class CameraStatusDetails extends ConsumerWidget {
               row(Icons.speed, l10n.viewerStatusFpsLabel, l10n.viewerStatusFps(s.fps.round())),
               row(Icons.history, l10n.viewerStatusBufferLabel, l10n.viewerStatusSeconds((s.bufferMs / 1000).round())),
               row(Icons.outbox, l10n.viewerStatusPendingLabel, '${s.outboxClips}'),
+              // Longer than the other values: under the label, not beside it.
+              if (s.sessionRecording case final r?)
+                ListTile(
+                  dense: true,
+                  leading: Icon(Icons.videocam, color: r.lowSpace ? scheme.error : null),
+                  title: Text(l10n.recTitle),
+                  subtitle: Text(
+                    [
+                      switch (r.state) {
+                        SessionRecordingState.idle => l10n.recIdle,
+                        SessionRecordingState.recording => formatRecordingClock(r.elapsedMs),
+                        SessionRecordingState.paused => l10n.recPaused(formatRecordingClock(r.elapsedMs)),
+                      },
+                      if (r.remainingMs case final left?)
+                        r.lowSpace ? l10n.recLowSpace(formatRecordingSpan(left)) : l10n.recRemaining(formatRecordingSpan(left)),
+                    ].join(' · '),
+                    style: TextStyle(fontSize: 16, color: r.lowSpace ? scheme.error : null),
+                  ),
+                ),
               row(
                 Icons.thermostat,
                 l10n.viewerStatusTemperatureLabel,

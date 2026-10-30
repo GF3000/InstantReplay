@@ -9,6 +9,8 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:instant_replay/core/preferences.dart';
 import 'package:instant_replay/features/viewer/clips/clip_transfers.dart';
+import 'package:instant_replay/features/viewer/clips/partial_download.dart';
+import 'package:instant_replay/features/viewer/data/session_link.dart';
 import 'package:instant_replay/features/viewer/live/live_signaling.dart';
 import 'package:instant_replay/features/viewer/viewer_providers.dart';
 import 'package:replay_protocol/replay_protocol.dart';
@@ -62,6 +64,7 @@ void main() {
       sharedPreferencesProvider.overrideWithValue(prefs),
       pageUriProvider.overrideWithValue(null),
       clipStoreProvider.overrideWithValue(store),
+      partialDownloadFactoryProvider.overrideWithValue((_) => MemoryPartialDownload()),
       viewerHttpClientProvider.overrideWithValue(MockClient((r) async {
         if (r.url.path == Api.info) return http.Response(jsonEncode(camera.toJson()), 200);
         if (r.url.path == Api.clips && r.method == 'GET') return http.Response('[]', 200);
@@ -159,6 +162,49 @@ void main() {
     await until(() => sent(ch).any((m) => m is LiveStart));
     ch.push(const ErrorMessage(code: 'live_failed', message: 'Capture is not running').encode());
     await until(() => c.read(liveViewProvider).phase == LivePhase.interrupted);
+  });
+
+  test('full-session recording: status, commands and notices through the link', () async {
+    final c = await container();
+    c.listen(viewerRecordingProvider, (_, _) {});
+    await until(() => channels.isNotEmpty);
+    final ch = channels.single;
+    ch.push(const Welcome(camera: camera).encode());
+    await until(() => c.read(linkStateProvider)?.phase == LinkPhase.connected);
+    expect(c.read(sessionRecordingProvider), isNull);
+
+    ch.push(const StatusUpdate(
+      status: CameraStatus(
+        recording: true,
+        fps: 30,
+        bufferMs: 1000,
+        outboxClips: 0,
+        thermalStatus: 0,
+        sessionRecording: SessionRecording(
+            state: SessionRecordingState.recording, elapsedMs: 5000, parts: 1, freeBytes: 1, lowSpace: false),
+      ),
+    ).encode());
+    await until(() => c.read(sessionRecordingProvider)?.state == SessionRecordingState.recording);
+
+    final remote = c.read(viewerRecordingProvider.notifier);
+    expect(remote.record(includeSeconds: 30), isTrue);
+    expect(remote.pause(), isTrue);
+    expect(remote.finish(), isTrue);
+    final rec = sent(ch).where((m) => m is RecStart || m is RecPause || m is RecStop).toList();
+    expect(rec.map((m) => m.type), ['rec_start', 'rec_pause', 'rec_stop']);
+    expect((rec.first as RecStart).includeSeconds, 30);
+
+    ch.push(const RecordingFinished(name: 'a.mp4', parts: 1, durationMs: 1000, reason: RecordingEndReason.lowSpace)
+        .encode());
+    await until(() => c.read(viewerRecordingProvider) is RecordingEnded);
+    expect((c.read(viewerRecordingProvider)! as RecordingEnded).finished.reason, RecordingEndReason.lowSpace);
+
+    ch.push(const ErrorMessage(code: 'no_space').encode());
+    await until(() => c.read(viewerRecordingProvider) is RecordingRefused);
+    // Other errors are not about the recording.
+    ch.push(const ErrorMessage(code: 'live_failed').encode());
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect((c.read(viewerRecordingProvider)! as RecordingRefused).code, 'no_space');
   });
 
   test('save through the providers ends with a stored, acked clip', () async {

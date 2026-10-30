@@ -60,6 +60,10 @@ CameraLink? parseScannedCameraLink(String raw) {
   return parseCameraLink(uri);
 }
 
+/// An open clip download: [body] carries the file from byte [start]; [total] is the size of the
+/// whole file when known.
+typedef ClipDownload = ({int start, int? total, Stream<List<int>> body});
+
 /// Key that identifies one Camera in local storage.
 String cameraKey(Uri base) => '${base.scheme}://${base.host}:${base.port}';
 
@@ -115,19 +119,37 @@ class ViewerApi {
 
   /// Downloads a clip file. [onProgress] gets (received, total); total is null when unknown.
   Future<Uint8List> downloadClip(String id, {void Function(int received, int? total)? onProgress}) async {
-    final req = http.Request('GET', _uri(Api.clip(id)))..headers.addAll(_auth);
-    final res = await client.send(req);
-    if (res.statusCode != 200) {
-      final body = await res.stream.bytesToString().catchError((_) => '');
-      _checkStatus(res.statusCode, body);
-    }
-    final total = res.contentLength;
+    final download = await openClipDownload(id);
     final out = BytesBuilder(copy: false);
-    await for (final chunk in res.stream) {
+    await for (final chunk in download.body) {
       out.add(chunk);
-      onProgress?.call(out.length, total);
+      onProgress?.call(out.length, download.total);
     }
     return out.takeBytes();
+  }
+
+  /// Starts a clip download at [offset] (`Range: bytes=<offset>-` when > 0), to resume a cut one.
+  ///
+  /// The Camera answers 206 from [offset], or 200 with the whole file when it ignores the range;
+  /// [ClipDownload.start] says which. Throws [ApiException] 416 when [offset] is past the end.
+  Future<ClipDownload> openClipDownload(String id, {int offset = 0}) async {
+    final req = http.Request('GET', _uri(Api.clip(id)))..headers.addAll(_auth);
+    if (offset > 0) req.headers['Range'] = 'bytes=$offset-';
+    final res = await client.send(req);
+    switch (res.statusCode) {
+      case 200:
+        return (start: 0, total: res.contentLength, body: res.stream);
+      case 206:
+        final range = RegExp(r'^bytes (\d+)-\d+/(\d+|\*)$').firstMatch(res.headers['content-range'] ?? '');
+        if (range != null && int.parse(range[1]!) == offset) {
+          return (start: offset, total: int.tryParse(range[2]!), body: res.stream);
+        }
+        await res.stream.drain<void>().catchError((_) {});
+        throw ApiException(206, 'unexpected content-range: ${res.headers['content-range']}');
+    }
+    final body = await res.stream.bytesToString().catchError((_) => '');
+    _checkStatus(res.statusCode, body);
+    throw ApiException(res.statusCode, body);
   }
 
   /// Confirms a verified download so the Camera can release it. Throws [ApiException] 409 on a hash mismatch.

@@ -77,6 +77,19 @@ class Fmp4Test {
     }
 
     @Test
+    fun sidxFirstOffsetAndFreeBox() {
+        val sidx = Fmp4.sidx(listOf(1000 to 90_000L), firstOffset = 40)
+        assertEquals(Fmp4.sidxSize(1), sidx.size)
+        assertEquals(40, u32(sidx, 24))
+        assertEquals(0, u32(Fmp4.sidx(listOf(1000 to 90_000L)), 24))
+
+        val free = Fmp4.free(40)
+        assertEquals(40, free.size)
+        assertEquals(40, u32(free, 0))
+        assertEquals("free", type(free, 4))
+    }
+
+    @Test
     fun annexBToAvccStripsParameterSets() {
         val annexB = byteArrayOf(
             0, 0, 0, 1, 0x67, 1, 2,      // SPS (dropped)
