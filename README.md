@@ -6,7 +6,7 @@
 
 Offline instant replay for team sports. One Android phone on a tripod films continuously and keeps the last minute in a rolling buffer; the coach's phone or tablet watches the live feed and, with one tap, pulls the last 10–60 seconds to review in slow motion, tag and share. No Internet connection needed: everything runs over a local Wi-Fi network (a phone hotspot or a travel router).
 
-> **Status:** early, working end to end: the Camera records, serves a live view and clips; any browser on the same Wi-Fi is the Viewer (live, save, tag, review). Field testing is next. Design: [docs/SPEC.md](docs/SPEC.md) · UX: [docs/UX.md](docs/UX.md) · Plan: [docs/PLAN-v0.1.md](docs/PLAN-v0.1.md).
+> **Status:** MVP ([v0.3.0](https://github.com/GF3000/InstantReplay/releases/latest)): the Camera records, serves a live view and clips, and can record the whole session; the Viewer (Android app or any browser on the same Wi-Fi) watches live, saves, tags and reviews clips, and on Android keeps a clip library. Field testing is next. Design: [docs/SPEC.md](docs/SPEC.md) · UX: [docs/UX.md](docs/UX.md) · Plan: [docs/PLAN-v0.1.md](docs/PLAN-v0.1.md).
 >
 > **Try it:** install the APK on an Android phone (10+), follow the [setup guide](docs/setup-guide.md) (Spanish: [guía de montaje](docs/guia-de-montaje.md)).
 
