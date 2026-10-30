@@ -529,4 +529,225 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get viewerTagUndo => 'Undo';
+
+  @override
+  String get viewerClipSaveToGallery => 'Save to gallery';
+
+  @override
+  String get viewerClipShare => 'Share';
+
+  @override
+  String get viewerClipSavedToGallery => 'Saved to the gallery';
+
+  @override
+  String get viewerClipGalleryDenied => 'No permission to save to the gallery';
+
+  @override
+  String get viewerClipExportNoSpace => 'Not enough space on the phone';
+
+  @override
+  String get viewerClipExportFailed => 'Couldn\'t export the clip';
+
+  @override
+  String get libraryTitle => 'Library';
+
+  @override
+  String get libraryChangeSession => 'Change session';
+
+  @override
+  String get librarySessionLatest => 'Latest session';
+
+  @override
+  String get librarySessionContinue => 'Continue';
+
+  @override
+  String get librarySessionNew => 'New session';
+
+  @override
+  String get librarySessionName => 'Name';
+
+  @override
+  String librarySessionDefaultName(String type, String date) {
+    return '$type $date';
+  }
+
+  @override
+  String get librarySessionTemplate => 'Tag template';
+
+  @override
+  String get librarySessionStart => 'Start session';
+
+  @override
+  String get librarySessionTypeMatch => 'Match';
+
+  @override
+  String get librarySessionTypeTraining => 'Training';
+
+  @override
+  String get librarySessionTypeOther => 'Other';
+
+  @override
+  String librarySessionClips(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count clips',
+      one: '1 clip',
+      zero: 'no clips',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get librarySessionClipsEmpty => 'No clips in this session.';
+
+  @override
+  String get libraryEmpty => 'No sessions yet.';
+
+  @override
+  String librarySelected(int count) {
+    return '$count selected';
+  }
+
+  @override
+  String get librarySelectAll => 'Select all';
+
+  @override
+  String get libraryDelete => 'Delete';
+
+  @override
+  String libraryDeleteClipsConfirm(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Delete $count clips? This can\'t be undone.',
+      one: 'Delete 1 clip? This can\'t be undone.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get libraryDeleteSession => 'Delete session';
+
+  @override
+  String libraryDeleteSessionConfirm(String name) {
+    return 'Delete \"$name\" and all its clips? This can\'t be undone.';
+  }
+
+  @override
+  String get libraryTemplatesTitle => 'Tag templates';
+
+  @override
+  String get libraryTemplateBuiltIn => 'Built-in';
+
+  @override
+  String get libraryTemplateExport => 'Copy as JSON';
+
+  @override
+  String get libraryTemplateExported => 'Template copied to the clipboard';
+
+  @override
+  String get libraryTemplateImport => 'Import JSON';
+
+  @override
+  String get libraryTemplateImportHint =>
+      'Paste a template exported from InstantReplay';
+
+  @override
+  String libraryTemplateImported(String name) {
+    return '\"$name\" imported';
+  }
+
+  @override
+  String libraryTemplateImportError(String reason) {
+    return 'Not a valid template: $reason';
+  }
+
+  @override
+  String get libraryTemplateDelete => 'Delete template';
+
+  @override
+  String get libraryTemplateLabelsTitle => 'Tags and categories';
+
+  @override
+  String get libraryCategoriesTitle => 'Categories';
+
+  @override
+  String get libraryCategory => 'Category';
+
+  @override
+  String get libraryCategoryAdd => 'Add category';
+
+  @override
+  String get libraryCategoriesEmpty =>
+      'No categories. Add one to group your clips.';
+
+  @override
+  String get libraryTemplateFootball => 'Football';
+
+  @override
+  String get libraryTemplateBasketball => 'Basketball';
+
+  @override
+  String get libraryTemplateHandball => 'Handball';
+
+  @override
+  String get libraryTemplateHockey => 'Hockey';
+
+  @override
+  String get libraryTemplateGeneric => 'Generic';
+
+  @override
+  String get libraryTemplateMigrated => 'My tags';
+
+  @override
+  String get libraryCategoryAttack => 'Attack';
+
+  @override
+  String get libraryCategoryDefense => 'Defence';
+
+  @override
+  String get libraryCategoryTransition => 'Transition';
+
+  @override
+  String get libraryCategorySetPiece => 'Set piece';
+
+  @override
+  String get libraryTagGoal => 'Goal';
+
+  @override
+  String get libraryTagShot => 'Shot';
+
+  @override
+  String get libraryTagFoul => 'Foul';
+
+  @override
+  String get libraryTagCorner => 'Corner';
+
+  @override
+  String get libraryTagFreeKick => 'Free kick';
+
+  @override
+  String get libraryTagTurnover => 'Turnover';
+
+  @override
+  String get libraryTagBasket => 'Basket';
+
+  @override
+  String get libraryTagThreePointer => '3-pointer';
+
+  @override
+  String get libraryTagRebound => 'Rebound';
+
+  @override
+  String get libraryTagSteal => 'Steal';
+
+  @override
+  String get libraryTagSave => 'Save';
+
+  @override
+  String get libraryTagSevenMeters => '7 m throw';
+
+  @override
+  String get libraryTagPenalty => 'Penalty';
 }

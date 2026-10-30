@@ -8,10 +8,11 @@ import '../player/frame_timeline.dart';
 import '../player/player_platform.dart';
 import '../tags/tag_widgets.dart';
 import '../tags/tags.dart';
+import 'clip_export_actions.dart';
 import 'clip_list.dart';
 
 /// Clip review (SPEC §5.1.5, §5.5, §6, UX §3.4): full screen, autoplay loop, 0.25×/0.5×/1×, ±1 frame,
-/// scrub, change tag, and Download on web.
+/// scrub, change tag, and Download on web or Save to gallery / Share on Android.
 ///
 /// Frame stepping is exact: frames come from the clip's own timestamps ([FrameTimeline]) and each
 /// step seeks to a position the platform player resolves to that frame ([SeekRule]).
@@ -205,6 +206,7 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
               icon: const Icon(Icons.download),
               onPressed: () => stored.download(clipFileName(clip)),
             ),
+          ClipExportActions(stored: stored, fileName: clipFileName(clip)),
         ],
       ),
       body: SafeArea(
