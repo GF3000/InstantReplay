@@ -373,7 +373,9 @@ compilación que incluya el visor web.</p>
           if (_liveOwners[s.viewerId] == s) {
             await capture.liveAddIceCandidate(s.viewerId!, candidate, sdpMid: sdpMid, sdpMLineIndex: sdpMLineIndex);
           }
-        case Welcome() || RtcOffer() || ClipChanged() || StatusUpdate() || ErrorMessage() || Pong():
+        case RecStart() || RecPause() || RecStop():
+          break; // Full-session recording: wired up next.
+        case Welcome() || RtcOffer() || ClipChanged() || StatusUpdate() || RecordingFinished() || ErrorMessage() || Pong():
           break; // Camera → Viewer messages; nothing to do.
       }
     } catch (e) {
