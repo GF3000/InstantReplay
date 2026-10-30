@@ -52,6 +52,24 @@ abstract interface class CaptureLayer {
   Future<void> liveAddIceCandidate(String viewerId, String candidate, {String? sdpMid, int? sdpMLineIndex});
 
   Future<void> liveClose(String viewerId);
+
+  // Full-session recording (SPEC §3.8).
+
+  Stream<RecordingStatus> get recording;
+
+  Stream<RecordingSaved> get recordingSaved;
+
+  Future<RecordingStatus> recordingStatus();
+
+  /// Starts or resumes; [includeSeconds] > 0 also keeps that much of the buffer.
+  Future<RecordingStatus> recordStart({int includeSeconds = 0});
+
+  Future<RecordingStatus> recordPause();
+
+  /// Null when nothing was recording.
+  Future<RecordingSaved?> recordStop();
+
+  Future<List<RecordingSaved>> recoverRecordings();
 }
 
 /// The real plugin. Only constructed on Android: the /camera route is unreachable elsewhere.
@@ -126,6 +144,27 @@ class PluginCaptureLayer implements CaptureLayer {
 
   @override
   Future<void> liveClose(String viewerId) => _capture.liveClose(viewerId);
+
+  @override
+  Stream<RecordingStatus> get recording => _capture.recording;
+
+  @override
+  Stream<RecordingSaved> get recordingSaved => _capture.recordingSaved;
+
+  @override
+  Future<RecordingStatus> recordingStatus() => _capture.recordingStatus();
+
+  @override
+  Future<RecordingStatus> recordStart({int includeSeconds = 0}) => _capture.recordStart(includeSeconds: includeSeconds);
+
+  @override
+  Future<RecordingStatus> recordPause() => _capture.recordPause();
+
+  @override
+  Future<RecordingSaved?> recordStop() => _capture.recordStop();
+
+  @override
+  Future<List<RecordingSaved>> recoverRecordings() => _capture.recoverRecordings();
 }
 
 final captureLayerProvider = Provider<CaptureLayer>((ref) => PluginCaptureLayer());

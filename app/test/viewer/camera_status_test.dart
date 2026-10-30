@@ -75,6 +75,34 @@ void main() {
     expect(find.byIcon(Icons.battery_charging_full), findsOneWidget);
   });
 
+  testWidgets('details include the full-session recording when the Camera sends it', (tester) async {
+    const status = CameraStatus(
+      recording: true,
+      fps: 30,
+      bufferMs: 60000,
+      outboxClips: 0,
+      thermalStatus: 0,
+      sessionRecording: SessionRecording(
+        state: SessionRecordingState.paused,
+        elapsedMs: 754000,
+        parts: 1,
+        freeBytes: 1,
+        lowSpace: true,
+        remainingMs: 480000,
+      ),
+    );
+    await tester.pumpWidget(_app(_link(LinkPhase.connected, status)));
+    await tester.tap(find.byKey(const ValueKey('viewer-status')));
+    await tester.pumpAndSettle();
+    expect(find.text('Full recording'), findsOneWidget);
+    expect(find.text('Paused · 12:34 · Low space: 8 min left'), findsOneWidget);
+
+    await tester.pumpWidget(_app(_link(LinkPhase.connected, _status())));
+    await tester.tap(find.byKey(const ValueKey('viewer-status')));
+    await tester.pumpAndSettle();
+    expect(find.text('Full recording'), findsNothing);
+  });
+
   testWidgets('problems show a red warning without tapping', (tester) async {
     await tester.pumpWidget(_app(_link(LinkPhase.connected, _status(thermal: 4))));
     expect(find.text('Overheating'), findsOneWidget);

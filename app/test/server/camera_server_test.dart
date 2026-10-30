@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:instant_replay/features/server/camera_server.dart';
 import 'package:instant_replay/features/server/pairing.dart';
+import 'package:replay_capture_android/replay_capture_android.dart' show RecordingEnd, RecordingSaved, RecordingState;
 import 'package:replay_protocol/replay_protocol.dart';
 
 import '../camera/fake_capture_layer.dart';
@@ -371,6 +373,117 @@ void main() {
       await v.close();
       await _eventually(() => server.viewerCount == 0);
       expect(counts, [1, 0]);
+    });
+  });
+
+  group('full-session recording', () {
+    setUp(startServer);
+
+    Future<_Viewer> greeted(String id) async {
+      final v = await _Viewer.connect(port);
+      await v.hello(id);
+      return v;
+    }
+
+    test('stats carry the recording into the status', () async {
+      final v = await greeted('viewer-a');
+      capture.statsController.add(stats(recording: recStatus(state: RecordingState.recording, elapsedMs: 61000, parts: 2)));
+      final r = (await v.next<StatusUpdate>()).status.sessionRecording!;
+      expect((r.state, r.elapsedMs, r.parts, r.lowSpace), (SessionRecordingState.recording, 61000, 2, false));
+      await v.close();
+    });
+
+    test('rec_start, rec_pause and rec_stop drive the recorder and every viewer hears at once', () async {
+      final a = await greeted('viewer-a');
+      final b = await greeted('viewer-b');
+      capture.statsController.add(stats(recording: recStatus()));
+      for (final v in [a, b]) {
+        expect((await v.next<StatusUpdate>()).status.sessionRecording!.state, SessionRecordingState.idle);
+      }
+
+      // Well inside the 1 s stats throttle: the update must not wait for the next tick.
+      a.send(const RecStart(includeSeconds: 30));
+      for (final v in [a, b]) {
+        expect((await v.next<StatusUpdate>()).status.sessionRecording!.state, SessionRecordingState.recording);
+      }
+      expect(capture.calls, contains('recordStart:30'));
+
+      b.send(const RecPause());
+      for (final v in [a, b]) {
+        final s = (await v.next<StatusUpdate>()).status;
+        expect(s.sessionRecording!.state, SessionRecordingState.paused);
+        // The rest of the status is the last one from the stats.
+        expect((s.bufferMs, s.outboxClips), (42000, 3));
+      }
+
+      a.send(const RecStop());
+      for (final v in [a, b]) {
+        final finished = await v.next<RecordingFinished>();
+        expect((finished.name, finished.reason), ('InstantReplay_2026-10-30_11-30.mp4', RecordingEndReason.user));
+        expect((await v.next<StatusUpdate>()).status.sessionRecording!.state, SessionRecordingState.idle);
+      }
+      expect(capture.calls.where((c) => c.startsWith('record')), ['recordStart:30', 'recordPause', 'recordStop']);
+      // A command's result and the recorder's event are one change: sent once.
+      expect(a.received.whereType<StatusUpdate>(), isEmpty);
+      await a.close();
+      await b.close();
+    });
+
+    test('a recording event before any stats waits for the first tick', () async {
+      final v = await greeted('viewer-a');
+      capture.recordingController.add(recStatus(state: RecordingState.recording, elapsedMs: 5000));
+      capture.statsController.add(stats());
+      expect((await v.next<StatusUpdate>()).status.sessionRecording!.elapsedMs, 5000);
+      await v.close();
+    });
+
+    test('a stop by the Camera for low space reaches every viewer', () async {
+      final a = await greeted('viewer-a');
+      final b = await greeted('viewer-b');
+      capture.recordingSavedController.add(RecordingSaved(
+        name: 'InstantReplay_2026-10-30_11-30.mp4',
+        parts: 3,
+        durationMs: 2820000,
+        bytes: 1,
+        reason: RecordingEnd.lowSpace,
+      ));
+      for (final v in [a, b]) {
+        final m = await v.next<RecordingFinished>();
+        expect((m.parts, m.durationMs, m.reason), (3, 2820000, RecordingEndReason.lowSpace));
+      }
+      await a.close();
+      await b.close();
+    });
+
+    test('no space and other failures come back as error codes', () async {
+      final v = await greeted('viewer-a');
+      capture.recordStartError = PlatformException(code: 'no_space', message: 'Less than 1 GB free');
+      v.send(const RecStart());
+      final noSpace = await v.next<ErrorMessage>();
+      expect((noSpace.code, noSpace.message), ('no_space', 'Less than 1 GB free'));
+
+      capture.recordStartError = Exception('muxer broke');
+      v.send(const RecStart());
+      expect((await v.next<ErrorMessage>()).code, 'rec_failed');
+      await v.close();
+    });
+
+    test('the recording carries on when a viewer leaves', () async {
+      final a = await greeted('viewer-a');
+      a.send(const RecStart());
+      await _eventually(() => capture.calls.contains('recordStart:0'));
+      await a.close();
+      await _eventually(() => server.viewerCount == 0);
+      expect(capture.calls.where((c) => c == 'recordStop' || c == 'recordPause'), isEmpty);
+      expect(capture.recordingState.state, RecordingState.recording);
+    });
+
+    test('rec_* need hello first', () async {
+      final v = await _Viewer.connect(port);
+      v.send(const RecStart());
+      expect((await v.next<ErrorMessage>()).code, 'hello_required');
+      expect(capture.calls.where((c) => c.startsWith('record')), isEmpty);
+      await v.close();
     });
   });
 

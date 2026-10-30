@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:replay_capture_android/replay_capture_android.dart';
 
+import '../../core/preferences.dart';
 import 'capture_layer.dart';
 
 enum CameraPhase {
@@ -34,6 +35,9 @@ class CameraSessionState {
     this.startError,
     this.operating = false,
     this.notificationsDenied = false,
+    this.recording,
+    this.recovered = const [],
+    this.lastSaved,
   });
 
   final CameraPhase phase;
@@ -56,6 +60,15 @@ class CameraSessionState {
   final bool operating;
   final bool notificationsDenied;
 
+  /// Full-session recording (SPEC §3.8); null until the recorder reports, which means idle.
+  final RecordingStatus? recording;
+
+  /// Recordings left open by a crash and finished on entry, shown as notes until dismissed.
+  final List<RecordingSaved> recovered;
+
+  /// The last recording that ended while this screen was open, for a one-off message.
+  final RecordingSavedNotice? lastSaved;
+
   CaptureProfile? get profile => profiles.where((p) => p.id == profileId).firstOrNull;
 
   CameraSessionState copyWith({
@@ -70,6 +83,9 @@ class CameraSessionState {
     String? Function()? startError,
     bool? operating,
     bool? notificationsDenied,
+    RecordingStatus? recording,
+    List<RecordingSaved>? recovered,
+    RecordingSavedNotice? lastSaved,
   }) =>
       CameraSessionState(
         phase: phase ?? this.phase,
@@ -83,23 +99,40 @@ class CameraSessionState {
         startError: startError == null ? this.startError : startError(),
         operating: operating ?? this.operating,
         notificationsDenied: notificationsDenied ?? this.notificationsDenied,
+        recording: recording ?? this.recording,
+        recovered: recovered ?? this.recovered,
+        lastSaved: lastSaved ?? this.lastSaved,
       );
+}
+
+/// Wraps a [RecordingSaved] so that every save is a new value for listeners, even an identical one.
+final class RecordingSavedNotice {
+  RecordingSavedNotice(this.saved);
+
+  final RecordingSaved saved;
 }
 
 /// Owns the capture pipeline while the Camera role screen is open: starts it on entry and stops it
 /// when the screen goes away (the provider is auto-disposed).
 class CameraSessionNotifier extends Notifier<CameraSessionState> {
   static const defaultProfileId = '1080p30';
+  static const _profileKey = 'camera.profile';
   static const _maxErrors = 5;
 
   late CaptureLayer _capture;
   bool _running = false;
 
+  /// Crash recovery runs once per screen, before the first start (the recorder needs it first).
+  bool _recoveryDone = false;
+
   @override
   CameraSessionState build() {
     _capture = ref.watch(captureLayerProvider);
     final subs = <StreamSubscription<Object>>[
-      _capture.stats.listen((s) => state = state.copyWith(stats: () => s, thermalStatus: s.thermalStatus)),
+      _capture.stats.listen(
+          (s) => state = state.copyWith(stats: () => s, thermalStatus: s.thermalStatus, recording: s.recording)),
+      _capture.recording.listen((r) => state = state.copyWith(recording: r)),
+      _capture.recordingSaved.listen(_onRecordingSaved),
       _capture.thermal.listen(_onThermal),
       _capture.cameraState.listen((s) => state = state.copyWith(cameraState: s)),
       _capture.errors.listen(_addError),
@@ -108,10 +141,18 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
       for (final s in subs) {
         s.cancel();
       }
-      if (_running) {
-        _running = false;
-        unawaited(_capture.stop().catchError((Object _) {}));
-      }
+      // Leaving the Camera finishes the recording first, so it reaches the gallery, then stops
+      // capture. Always asked: the recorder may hold a recording this screen has not heard of yet.
+      final running = _running;
+      _running = false;
+      unawaited(() async {
+        try {
+          await _capture.recordStop();
+        } catch (_) {
+          // Nothing recording, or the recorder is gone; capture must stop anyway.
+        }
+        if (running) await _capture.stop().catchError((Object _) {});
+      }());
     });
     Future.microtask(enter);
     return const CameraSessionState();
@@ -147,16 +188,36 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
       state = state.copyWith(phase: CameraPhase.noProfiles, notificationsDenied: !notifications);
       return;
     }
-    final keep = profiles.any((p) => p.id == state.profileId) ? state.profileId : null;
+    // The profile in use (a retry), else the one chosen last time.
+    final wanted = state.profileId ?? ref.read(sharedPreferencesProvider).getString(_profileKey);
+    final keep = profiles.any((p) => p.id == wanted) ? wanted : null;
     final id = keep ?? (profiles.any((p) => p.id == defaultProfileId) ? defaultProfileId : profiles.first.id);
     state = state.copyWith(profiles: profiles, profileId: id, notificationsDenied: !notifications);
+    await _recover();
+    if (!ref.mounted) return;
     await _start(id);
   }
 
-  /// Changing the profile restarts capture.
+  /// Finishes recordings a crash or a kill left open, so they reach the gallery (SPEC §3.8).
+  Future<void> _recover() async {
+    if (_recoveryDone) return;
+    _recoveryDone = true;
+    try {
+      final found = await _capture.recoverRecordings();
+      if (!ref.mounted || found.isEmpty) return;
+      final known = {for (final r in state.recovered) r.name};
+      state = state.copyWith(recovered: [...state.recovered, ...found.where((r) => !known.contains(r.name))]);
+    } catch (e) {
+      _addError(_describe(e));
+    }
+  }
+
+  /// Changing the profile restarts capture. A full-session recording carries on: the recorder
+  /// starts a new part with the new encoder.
   Future<void> selectProfile(String id) async {
     if (id == state.profileId && state.phase == CameraPhase.running) return;
     state = state.copyWith(profileId: id);
+    unawaited(ref.read(sharedPreferencesProvider).setString(_profileKey, id));
     await _start(id);
   }
 
@@ -231,6 +292,41 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
         ? cooler.first
         : cooler.reduce((a, b) => a.width * a.height <= b.width * b.height ? a : b);
   }
+
+  // region Full-session recording (SPEC §3.8). Errors are rethrown for the screen to show.
+
+  /// Starts, or resumes when paused. [includeSeconds] > 0 also keeps that much of the buffer.
+  Future<void> recordStart({int includeSeconds = 0}) async {
+    final status = await _capture.recordStart(includeSeconds: includeSeconds);
+    if (ref.mounted) state = state.copyWith(recording: status);
+  }
+
+  Future<void> recordPause() async {
+    final status = await _capture.recordPause();
+    if (ref.mounted) state = state.copyWith(recording: status);
+  }
+
+  /// Finishes and saves to the gallery; the saved event brings the message.
+  Future<void> recordStop() async {
+    await _capture.recordStop();
+    if (!ref.mounted) return;
+    state = state.copyWith(recording: await _capture.recordingStatus());
+  }
+
+  void _onRecordingSaved(RecordingSaved saved) {
+    if (!ref.mounted) return;
+    if (saved.reason == RecordingEnd.recovered) {
+      // Also returned by recoverRecordings(); keep one note per file.
+      if (state.recovered.any((r) => r.name == saved.name)) return;
+      state = state.copyWith(recovered: [...state.recovered, saved]);
+      return;
+    }
+    state = state.copyWith(lastSaved: RecordingSavedNotice(saved));
+  }
+
+  void dismissRecovered() => state = state.copyWith(recovered: const []);
+
+  // endregion
 
   void dismissErrors() => state = state.copyWith(errors: const []);
 

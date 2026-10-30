@@ -209,6 +209,33 @@ enum class ClipState(val raw: Int) {
   }
 }
 
+/** Full-session recording (SPEC D8, §3.8): idle, recording, or paused between plays. */
+enum class RecordingState(val raw: Int) {
+  IDLE(0),
+  RECORDING(1),
+  PAUSED(2);
+
+  companion object {
+    fun ofRaw(raw: Int): RecordingState? {
+      return values().firstOrNull { it.raw == raw }
+    }
+  }
+}
+
+/** Why a recording ended. */
+enum class RecordingEnd(val raw: Int) {
+  USER(0),
+  LOW_SPACE(1),
+  ERROR(2),
+  RECOVERED(3);
+
+  companion object {
+    fun ofRaw(raw: Int): RecordingEnd? {
+      return values().firstOrNull { it.raw == raw }
+    }
+  }
+}
+
 /** Staged degradation applied by the thermal policy (SPEC §3.6). */
 enum class ThermalAction(val raw: Int) {
   NONE(0),
@@ -516,7 +543,12 @@ data class CaptureStats (
   val thermalHeadroom: Double? = null,
   val batteryTempC: Double? = null,
   val batteryPercent: Long? = null,
-  val plugged: Boolean
+  val plugged: Boolean,
+  /**
+   * Full-session recording, idle until someone presses Record. Viewers show their controls when
+   * it is present.
+   */
+  val recording: RecordingStatus? = null
 )
  {
   companion object {
@@ -535,7 +567,8 @@ data class CaptureStats (
       val batteryTempC = pigeonVar_list[11] as Double?
       val batteryPercent = pigeonVar_list[12] as Long?
       val plugged = pigeonVar_list[13] as Boolean
-      return CaptureStats(encodedFrames, fps, gaps, cameraGaps, glGaps, bufferMs, bufferBytes, outboxClips, outboxBytes, thermalStatus, thermalHeadroom, batteryTempC, batteryPercent, plugged)
+      val recording = pigeonVar_list[14] as RecordingStatus?
+      return CaptureStats(encodedFrames, fps, gaps, cameraGaps, glGaps, bufferMs, bufferBytes, outboxClips, outboxBytes, thermalStatus, thermalHeadroom, batteryTempC, batteryPercent, plugged, recording)
     }
   }
   fun toList(): List<Any?> {
@@ -554,6 +587,7 @@ data class CaptureStats (
       batteryTempC,
       batteryPercent,
       plugged,
+      recording,
     )
   }
   override fun equals(other: Any?): Boolean {
@@ -564,7 +598,7 @@ data class CaptureStats (
       return true
     }
     val other = other as CaptureStats
-    return CaptureApiPigeonUtils.deepEquals(this.encodedFrames, other.encodedFrames) && CaptureApiPigeonUtils.deepEquals(this.fps, other.fps) && CaptureApiPigeonUtils.deepEquals(this.gaps, other.gaps) && CaptureApiPigeonUtils.deepEquals(this.cameraGaps, other.cameraGaps) && CaptureApiPigeonUtils.deepEquals(this.glGaps, other.glGaps) && CaptureApiPigeonUtils.deepEquals(this.bufferMs, other.bufferMs) && CaptureApiPigeonUtils.deepEquals(this.bufferBytes, other.bufferBytes) && CaptureApiPigeonUtils.deepEquals(this.outboxClips, other.outboxClips) && CaptureApiPigeonUtils.deepEquals(this.outboxBytes, other.outboxBytes) && CaptureApiPigeonUtils.deepEquals(this.thermalStatus, other.thermalStatus) && CaptureApiPigeonUtils.deepEquals(this.thermalHeadroom, other.thermalHeadroom) && CaptureApiPigeonUtils.deepEquals(this.batteryTempC, other.batteryTempC) && CaptureApiPigeonUtils.deepEquals(this.batteryPercent, other.batteryPercent) && CaptureApiPigeonUtils.deepEquals(this.plugged, other.plugged)
+    return CaptureApiPigeonUtils.deepEquals(this.encodedFrames, other.encodedFrames) && CaptureApiPigeonUtils.deepEquals(this.fps, other.fps) && CaptureApiPigeonUtils.deepEquals(this.gaps, other.gaps) && CaptureApiPigeonUtils.deepEquals(this.cameraGaps, other.cameraGaps) && CaptureApiPigeonUtils.deepEquals(this.glGaps, other.glGaps) && CaptureApiPigeonUtils.deepEquals(this.bufferMs, other.bufferMs) && CaptureApiPigeonUtils.deepEquals(this.bufferBytes, other.bufferBytes) && CaptureApiPigeonUtils.deepEquals(this.outboxClips, other.outboxClips) && CaptureApiPigeonUtils.deepEquals(this.outboxBytes, other.outboxBytes) && CaptureApiPigeonUtils.deepEquals(this.thermalStatus, other.thermalStatus) && CaptureApiPigeonUtils.deepEquals(this.thermalHeadroom, other.thermalHeadroom) && CaptureApiPigeonUtils.deepEquals(this.batteryTempC, other.batteryTempC) && CaptureApiPigeonUtils.deepEquals(this.batteryPercent, other.batteryPercent) && CaptureApiPigeonUtils.deepEquals(this.plugged, other.plugged) && CaptureApiPigeonUtils.deepEquals(this.recording, other.recording)
   }
 
   override fun hashCode(): Int {
@@ -583,10 +617,143 @@ data class CaptureStats (
     result = 31 * result + CaptureApiPigeonUtils.deepHash(this.batteryTempC)
     result = 31 * result + CaptureApiPigeonUtils.deepHash(this.batteryPercent)
     result = 31 * result + CaptureApiPigeonUtils.deepHash(this.plugged)
+    result = 31 * result + CaptureApiPigeonUtils.deepHash(this.recording)
     return result
   }
   override fun toString(): String {
-    return "CaptureStats(encodedFrames=$encodedFrames, fps=$fps, gaps=$gaps, cameraGaps=$cameraGaps, glGaps=$glGaps, bufferMs=$bufferMs, bufferBytes=$bufferBytes, outboxClips=$outboxClips, outboxBytes=$outboxBytes, thermalStatus=$thermalStatus, thermalHeadroom=$thermalHeadroom, batteryTempC=$batteryTempC, batteryPercent=$batteryPercent, plugged=$plugged)"
+    return "CaptureStats(encodedFrames=$encodedFrames, fps=$fps, gaps=$gaps, cameraGaps=$cameraGaps, glGaps=$glGaps, bufferMs=$bufferMs, bufferBytes=$bufferBytes, outboxClips=$outboxClips, outboxBytes=$outboxBytes, thermalStatus=$thermalStatus, thermalHeadroom=$thermalHeadroom, batteryTempC=$batteryTempC, batteryPercent=$batteryPercent, plugged=$plugged, recording=$recording)"
+  }
+}
+
+/** Generated class from Pigeon that represents data sent in messages. */
+data class RecordingStatus (
+  val state: RecordingState,
+  /** Video time written so far in the current recording, all parts together (pauses excluded). */
+  val elapsedMs: Long,
+  val bytes: Long,
+  /**
+   * Files of the current recording: a new part starts when the encoder restarts (profile or
+   * thermal change). 0 until the first fragment is written.
+   */
+  val parts: Long,
+  /** Free bytes on shared storage (Movies/InstantReplay). */
+  val freeBytes: Long,
+  /** Estimated recording time left at the current rate before the recorder stops; null if unknown. */
+  val remainingMs: Long? = null,
+  /** Less than 10 minutes left: warn the coach. */
+  val lowSpace: Boolean
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): RecordingStatus {
+      val state = pigeonVar_list[0] as RecordingState
+      val elapsedMs = pigeonVar_list[1] as Long
+      val bytes = pigeonVar_list[2] as Long
+      val parts = pigeonVar_list[3] as Long
+      val freeBytes = pigeonVar_list[4] as Long
+      val remainingMs = pigeonVar_list[5] as Long?
+      val lowSpace = pigeonVar_list[6] as Boolean
+      return RecordingStatus(state, elapsedMs, bytes, parts, freeBytes, remainingMs, lowSpace)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      state,
+      elapsedMs,
+      bytes,
+      parts,
+      freeBytes,
+      remainingMs,
+      lowSpace,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other == null || other.javaClass != javaClass) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    val other = other as RecordingStatus
+    return CaptureApiPigeonUtils.deepEquals(this.state, other.state) && CaptureApiPigeonUtils.deepEquals(this.elapsedMs, other.elapsedMs) && CaptureApiPigeonUtils.deepEquals(this.bytes, other.bytes) && CaptureApiPigeonUtils.deepEquals(this.parts, other.parts) && CaptureApiPigeonUtils.deepEquals(this.freeBytes, other.freeBytes) && CaptureApiPigeonUtils.deepEquals(this.remainingMs, other.remainingMs) && CaptureApiPigeonUtils.deepEquals(this.lowSpace, other.lowSpace)
+  }
+
+  override fun hashCode(): Int {
+    var result = javaClass.hashCode()
+    result = 31 * result + CaptureApiPigeonUtils.deepHash(this.state)
+    result = 31 * result + CaptureApiPigeonUtils.deepHash(this.elapsedMs)
+    result = 31 * result + CaptureApiPigeonUtils.deepHash(this.bytes)
+    result = 31 * result + CaptureApiPigeonUtils.deepHash(this.parts)
+    result = 31 * result + CaptureApiPigeonUtils.deepHash(this.freeBytes)
+    result = 31 * result + CaptureApiPigeonUtils.deepHash(this.remainingMs)
+    result = 31 * result + CaptureApiPigeonUtils.deepHash(this.lowSpace)
+    return result
+  }
+  override fun toString(): String {
+    return "RecordingStatus(state=$state, elapsedMs=$elapsedMs, bytes=$bytes, parts=$parts, freeBytes=$freeBytes, remainingMs=$remainingMs, lowSpace=$lowSpace)"
+  }
+}
+
+/**
+ * A finished recording, now visible in the gallery of the Camera phone.
+ *
+ * Generated class from Pigeon that represents data sent in messages.
+ */
+data class RecordingSaved (
+  /** Display name of the first part, e.g. `InstantReplay_2026-10-30_11-30.mp4`. */
+  val name: String,
+  val parts: Long,
+  val durationMs: Long,
+  val bytes: Long,
+  val reason: RecordingEnd,
+  /** Error detail when [reason] is [RecordingEnd.error]. */
+  val message: String? = null
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): RecordingSaved {
+      val name = pigeonVar_list[0] as String
+      val parts = pigeonVar_list[1] as Long
+      val durationMs = pigeonVar_list[2] as Long
+      val bytes = pigeonVar_list[3] as Long
+      val reason = pigeonVar_list[4] as RecordingEnd
+      val message = pigeonVar_list[5] as String?
+      return RecordingSaved(name, parts, durationMs, bytes, reason, message)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      name,
+      parts,
+      durationMs,
+      bytes,
+      reason,
+      message,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other == null || other.javaClass != javaClass) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    val other = other as RecordingSaved
+    return CaptureApiPigeonUtils.deepEquals(this.name, other.name) && CaptureApiPigeonUtils.deepEquals(this.parts, other.parts) && CaptureApiPigeonUtils.deepEquals(this.durationMs, other.durationMs) && CaptureApiPigeonUtils.deepEquals(this.bytes, other.bytes) && CaptureApiPigeonUtils.deepEquals(this.reason, other.reason) && CaptureApiPigeonUtils.deepEquals(this.message, other.message)
+  }
+
+  override fun hashCode(): Int {
+    var result = javaClass.hashCode()
+    result = 31 * result + CaptureApiPigeonUtils.deepHash(this.name)
+    result = 31 * result + CaptureApiPigeonUtils.deepHash(this.parts)
+    result = 31 * result + CaptureApiPigeonUtils.deepHash(this.durationMs)
+    result = 31 * result + CaptureApiPigeonUtils.deepHash(this.bytes)
+    result = 31 * result + CaptureApiPigeonUtils.deepHash(this.reason)
+    result = 31 * result + CaptureApiPigeonUtils.deepHash(this.message)
+    return result
+  }
+  override fun toString(): String {
+    return "RecordingSaved(name=$name, parts=$parts, durationMs=$durationMs, bytes=$bytes, reason=$reason, message=$message)"
   }
 }
 
@@ -701,45 +868,65 @@ private open class CaptureApiPigeonCodec : StandardMessageCodec() {
       }
       130.toByte() -> {
         return (readValue(buffer) as Long?)?.let {
-          ThermalAction.ofRaw(it.toInt())
+          RecordingState.ofRaw(it.toInt())
         }
       }
       131.toByte() -> {
-        return (readValue(buffer) as? List<Any?>)?.let {
-          CaptureProfile.fromList(it)
+        return (readValue(buffer) as Long?)?.let {
+          RecordingEnd.ofRaw(it.toInt())
         }
       }
       132.toByte() -> {
-        return (readValue(buffer) as? List<Any?>)?.let {
-          StartRequest.fromList(it)
+        return (readValue(buffer) as Long?)?.let {
+          ThermalAction.ofRaw(it.toInt())
         }
       }
       133.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          StartResult.fromList(it)
+          CaptureProfile.fromList(it)
         }
       }
       134.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          SaveRequest.fromList(it)
+          StartRequest.fromList(it)
         }
       }
       135.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          ClipInfo.fromList(it)
+          StartResult.fromList(it)
         }
       }
       136.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          CaptureStats.fromList(it)
+          SaveRequest.fromList(it)
         }
       }
       137.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          ThermalEvent.fromList(it)
+          ClipInfo.fromList(it)
         }
       }
       138.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          CaptureStats.fromList(it)
+        }
+      }
+      139.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          RecordingStatus.fromList(it)
+        }
+      }
+      140.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          RecordingSaved.fromList(it)
+        }
+      }
+      141.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          ThermalEvent.fromList(it)
+        }
+      }
+      142.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
           LiveViewerStats.fromList(it)
         }
@@ -753,40 +940,56 @@ private open class CaptureApiPigeonCodec : StandardMessageCodec() {
         stream.write(129)
         writeValue(stream, value.raw.toLong())
       }
-      is ThermalAction -> {
+      is RecordingState -> {
         stream.write(130)
         writeValue(stream, value.raw.toLong())
       }
-      is CaptureProfile -> {
+      is RecordingEnd -> {
         stream.write(131)
-        writeValue(stream, value.toList())
+        writeValue(stream, value.raw.toLong())
       }
-      is StartRequest -> {
+      is ThermalAction -> {
         stream.write(132)
-        writeValue(stream, value.toList())
+        writeValue(stream, value.raw.toLong())
       }
-      is StartResult -> {
+      is CaptureProfile -> {
         stream.write(133)
         writeValue(stream, value.toList())
       }
-      is SaveRequest -> {
+      is StartRequest -> {
         stream.write(134)
         writeValue(stream, value.toList())
       }
-      is ClipInfo -> {
+      is StartResult -> {
         stream.write(135)
         writeValue(stream, value.toList())
       }
-      is CaptureStats -> {
+      is SaveRequest -> {
         stream.write(136)
         writeValue(stream, value.toList())
       }
-      is ThermalEvent -> {
+      is ClipInfo -> {
         stream.write(137)
         writeValue(stream, value.toList())
       }
-      is LiveViewerStats -> {
+      is CaptureStats -> {
         stream.write(138)
+        writeValue(stream, value.toList())
+      }
+      is RecordingStatus -> {
+        stream.write(139)
+        writeValue(stream, value.toList())
+      }
+      is RecordingSaved -> {
+        stream.write(140)
+        writeValue(stream, value.toList())
+      }
+      is ThermalEvent -> {
+        stream.write(141)
+        writeValue(stream, value.toList())
+      }
+      is LiveViewerStats -> {
+        stream.write(142)
         writeValue(stream, value.toList())
       }
       else -> super.writeValue(stream, value)
@@ -821,6 +1024,18 @@ interface CaptureHostApi {
   fun liveAddIceCandidate(viewerId: String, candidate: String, sdpMid: String?, sdpMLineIndex: Long?)
   fun liveClose(viewerId: String)
   fun liveStats(callback: (Result<List<LiveViewerStats>>) -> Unit)
+  fun recordingStatus(): RecordingStatus
+  /**
+   * Starts a recording, or resumes a paused one. [includeSeconds] > 0 first writes that much of
+   * the ring buffer (what happened just before pressing). Fails with `no_space` below 1 GB free.
+   */
+  fun recordStart(includeSeconds: Long, callback: (Result<RecordingStatus>) -> Unit)
+  /** Pauses at the end of the fragment in progress. */
+  fun recordPause(callback: (Result<RecordingStatus>) -> Unit)
+  /** Finishes the recording and publishes it to the gallery. Null when nothing was recording. */
+  fun recordStop(callback: (Result<RecordingSaved?>) -> Unit)
+  /** Finishes recordings left open by a crash or a kill. Call before the first start. */
+  fun recoverRecordings(callback: (Result<List<RecordingSaved>>) -> Unit)
 
   companion object {
     /** The codec used by CaptureHostApi. */
@@ -1083,6 +1298,95 @@ interface CaptureHostApi {
           channel.setMessageHandler(null)
         }
       }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.replay_capture_android.CaptureHostApi.recordingStatus$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            val wrapped: List<Any?> = try {
+              listOf(api.recordingStatus())
+            } catch (exception: Throwable) {
+              CaptureApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.replay_capture_android.CaptureHostApi.recordStart$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val includeSecondsArg = args[0] as Long
+            api.recordStart(includeSecondsArg) { result: Result<RecordingStatus> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(CaptureApiPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(CaptureApiPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.replay_capture_android.CaptureHostApi.recordPause$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.recordPause{ result: Result<RecordingStatus> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(CaptureApiPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(CaptureApiPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.replay_capture_android.CaptureHostApi.recordStop$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.recordStop{ result: Result<RecordingSaved?> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(CaptureApiPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(CaptureApiPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.replay_capture_android.CaptureHostApi.recoverRecordings$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.recoverRecordings{ result: Result<List<RecordingSaved>> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(CaptureApiPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(CaptureApiPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
     }
   }
 }
@@ -1205,6 +1509,42 @@ class CaptureEventsApi(private val binaryMessenger: BinaryMessenger, private val
     val channelName = "dev.flutter.pigeon.replay_capture_android.CaptureEventsApi.onLiveState$separatedMessageChannelSuffix"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(listOf(viewerIdArg, stateArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else {
+          callback(Result.success(Unit))
+        }
+      } else {
+        callback(Result.failure(CaptureApiPigeonUtils.createConnectionError(channelName)))
+      } 
+    }
+  }
+  /** The recording state changed (start, pause, resume, new part, low space). */
+  fun onRecording(statusArg: RecordingStatus, callback: (Result<Unit>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.replay_capture_android.CaptureEventsApi.onRecording$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(statusArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else {
+          callback(Result.success(Unit))
+        }
+      } else {
+        callback(Result.failure(CaptureApiPigeonUtils.createConnectionError(channelName)))
+      } 
+    }
+  }
+  /** A recording finished: by the user, by low space or an error, or recovered after a crash. */
+  fun onRecordingSaved(savedArg: RecordingSaved, callback: (Result<Unit>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.replay_capture_android.CaptureEventsApi.onRecordingSaved$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(savedArg)) {
       if (it is List<*>) {
         if (it.size > 1) {
           callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))

@@ -9,6 +9,10 @@ export 'src/capture_api.g.dart'
         ClipInfo,
         ClipState,
         LiveViewerStats,
+        RecordingEnd,
+        RecordingSaved,
+        RecordingState,
+        RecordingStatus,
         SaveRequest,
         StartRequest,
         StartResult,
@@ -31,6 +35,8 @@ class ReplayCapture implements CaptureEventsApi {
   final _clips = StreamController<ClipInfo>.broadcast();
   final _liveIce = StreamController<LiveIceCandidate>.broadcast();
   final _liveState = StreamController<({String viewerId, String state})>.broadcast();
+  final _recording = StreamController<RecordingStatus>.broadcast();
+  final _recordingSaved = StreamController<RecordingSaved>.broadcast();
 
   /// About once per second while capturing.
   Stream<CaptureStats> get stats => _stats.stream;
@@ -46,6 +52,11 @@ class ReplayCapture implements CaptureEventsApi {
 
   /// PeerConnection state per viewer.
   Stream<({String viewerId, String state})> get liveStates => _liveState.stream;
+
+  /// Recording state changes; the latest state also rides on every [stats] event.
+  Stream<RecordingStatus> get recording => _recording.stream;
+
+  Stream<RecordingSaved> get recordingSaved => _recordingSaved.stream;
 
   Future<bool> requestPermission() => _host.requestPermission();
 
@@ -80,6 +91,16 @@ class ReplayCapture implements CaptureEventsApi {
 
   Future<List<LiveViewerStats>> liveStats() => _host.liveStats();
 
+  Future<RecordingStatus> recordingStatus() => _host.recordingStatus();
+
+  Future<RecordingStatus> recordStart({int includeSeconds = 0}) => _host.recordStart(includeSeconds);
+
+  Future<RecordingStatus> recordPause() => _host.recordPause();
+
+  Future<RecordingSaved?> recordStop() => _host.recordStop();
+
+  Future<List<RecordingSaved>> recoverRecordings() => _host.recoverRecordings();
+
   @override
   void onStats(CaptureStats stats) => _stats.add(stats);
 
@@ -101,6 +122,12 @@ class ReplayCapture implements CaptureEventsApi {
 
   @override
   void onLiveState(String viewerId, String state) => _liveState.add((viewerId: viewerId, state: state));
+
+  @override
+  void onRecording(RecordingStatus status) => _recording.add(status);
+
+  @override
+  void onRecordingSaved(RecordingSaved saved) => _recordingSaved.add(saved);
 }
 
 typedef LiveIceCandidate = ({String viewerId, String candidate, String? sdpMid, int? sdpMLineIndex});
