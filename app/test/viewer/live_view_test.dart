@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:instant_replay/core/preferences.dart';
 import 'package:instant_replay/features/viewer/clips/clip_transfers.dart';
+import 'package:instant_replay/features/viewer/clips/partial_download.dart';
 import 'package:instant_replay/features/viewer/data/session_link.dart';
 import 'package:instant_replay/features/viewer/live/live_signaling.dart';
 import 'package:instant_replay/features/viewer/viewer_providers.dart';
@@ -63,6 +64,7 @@ void main() {
       sharedPreferencesProvider.overrideWithValue(prefs),
       pageUriProvider.overrideWithValue(null),
       clipStoreProvider.overrideWithValue(store),
+      partialDownloadFactoryProvider.overrideWithValue((_) => MemoryPartialDownload()),
       viewerHttpClientProvider.overrideWithValue(MockClient((r) async {
         if (r.url.path == Api.info) return http.Response(jsonEncode(camera.toJson()), 200);
         if (r.url.path == Api.clips && r.method == 'GET') return http.Response('[]', 200);
