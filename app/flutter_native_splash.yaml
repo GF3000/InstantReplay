@@ -1,0 +1,12 @@
+# Splash screen: the round app icon on black, the same in light and dark mode because the app is always dark.
+# Regenerate with: dart run flutter_native_splash:create
+flutter_native_splash:
+  color: "#000000"
+  image: branding/png/splash_legacy.png
+  android_12:
+    image: branding/png/splash_android12.png
+    color: "#000000"
+    icon_background_color: "#FFC107"
+  # The web Viewer keeps Flutter's own loader; app/web/index.html only sets the background colour.
+  web: false
+  ios: false
