@@ -6,9 +6,11 @@ import android.app.Application
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
+import android.os.StatFs
 import android.view.WindowManager
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
@@ -18,6 +20,8 @@ import io.flutter.plugin.common.PluginRegistry
 import io.flutter.view.TextureRegistry
 import io.github.instantreplay.replay_capture_android.buffer.RingBuffer
 import io.github.instantreplay.replay_capture_android.outbox.Outbox
+import io.github.instantreplay.replay_capture_android.recording.MediaStorePartStore
+import io.github.instantreplay.replay_capture_android.recording.SessionRecorder
 import java.io.File
 
 class ReplayCaptureAndroidPlugin :
@@ -31,6 +35,7 @@ class ReplayCaptureAndroidPlugin :
     private lateinit var messenger: BinaryMessenger
     private lateinit var events: CaptureEventsApi
     private lateinit var outbox: Outbox
+    private lateinit var recorder: SessionRecorder
     private val mainHandler = Handler(Looper.getMainLooper())
 
     private var activityBinding: ActivityPluginBinding? = null
@@ -77,6 +82,13 @@ class ReplayCaptureAndroidPlugin :
         events = CaptureEventsApi(messenger)
         val outboxDir = File(context.getExternalFilesDir(null) ?: context.filesDir, "outbox")
         outbox = Outbox(outboxDir) { clip -> mainHandler.post { events.onClipChanged(clip) {} } }
+        recorder = SessionRecorder(
+            store = MediaStorePartStore(context.contentResolver),
+            stateDir = File(context.filesDir, "recording"),
+            freeBytes = ::sharedFreeBytes,
+            onStatus = { status -> mainHandler.post { events.onRecording(status) {} } },
+            onSaved = { saved -> mainHandler.post { events.onRecordingSaved(saved) {} } },
+        )
         CaptureHostApi.setUp(messenger, this)
     }
 
@@ -84,6 +96,7 @@ class ReplayCaptureAndroidPlugin :
         stopCapture()
         CaptureHostApi.setUp(messenger, null)
         outbox.release()
+        recorder.release()
     }
 
     // region CaptureHostApi
@@ -140,6 +153,7 @@ class ReplayCaptureAndroidPlugin :
         live = streamer
         preview = producer
         outbox.attach(ring)
+        recorder.attach(ring, config.bitrate)
         CaptureService.start(context)
         activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         // The engine only reports changes; a phone that is already hot must degrade from the start.
@@ -214,6 +228,28 @@ class ReplayCaptureAndroidPlugin :
         streamer.stats { stats -> mainHandler.post { callback(Result.success(stats.map(::toLiveStats))) } }
     }
 
+    override fun recordingStatus(): RecordingStatus = recorder.currentStatus()
+
+    override fun recordStart(includeSeconds: Long, callback: (Result<RecordingStatus>) -> Unit) {
+        recorder.start(includeSeconds) { r -> mainHandler.post { callback(r) } }
+    }
+
+    override fun recordPause(callback: (Result<RecordingStatus>) -> Unit) {
+        recorder.pause { r -> mainHandler.post { callback(r) } }
+    }
+
+    override fun recordStop(callback: (Result<RecordingSaved?>) -> Unit) {
+        recorder.stop { r -> mainHandler.post { callback(r) } }
+    }
+
+    override fun recoverRecordings(callback: (Result<List<RecordingSaved>>) -> Unit) {
+        recorder.recover { r -> mainHandler.post { callback(r) } }
+    }
+
+    /** Free space on shared storage, where Movies/InstantReplay lives. */
+    @Suppress("DEPRECATION")
+    private fun sharedFreeBytes(): Long = StatFs(Environment.getExternalStorageDirectory().path).availableBytes
+
     // endregion
 
     /**
@@ -244,6 +280,8 @@ class ReplayCaptureAndroidPlugin :
         preview?.release()
         preview = null
         outbox.attach(null)
+        // Closes the open part; a recording continues in a new part when capture starts again.
+        recorder.detach()
         CaptureService.stop(context)
         activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
@@ -300,6 +338,7 @@ class ReplayCaptureAndroidPlugin :
             batteryTempC = (e["batteryTempC"] as Number?)?.toDouble(),
             batteryPercent = (e["batteryPercent"] as Number?)?.toLong(),
             plugged = e["plugged"] == true,
+            recording = recorder.status(),
         )
     }
 

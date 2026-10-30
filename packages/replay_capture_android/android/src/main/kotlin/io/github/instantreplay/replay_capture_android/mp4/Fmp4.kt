@@ -31,6 +31,9 @@ object Fmp4 {
     internal const val MFHD_SEQUENCE_OFFSET = 20
     internal const val TFDT_DECODE_TIME_OFFSET = 60
 
+    private const val SIDX_HEADER_SIZE = 32
+    private const val SIDX_REFERENCE_SIZE = 12
+
     private const val SAMPLE_FLAGS_SYNC = 0x02000000
     private const val SAMPLE_FLAGS_NON_SYNC = 0x01010000
 
@@ -149,16 +152,32 @@ object Fmp4 {
         }.toByteArray()
     }
 
-    /** Segment index so players can seek without scanning: one reference per fragment. */
-    fun sidx(fragments: List<Pair<Int, Long>>): ByteArray = BoxWriter().apply {
+    /**
+     * Segment index so players can seek without scanning: one reference per fragment.
+     * [firstOffset] is the distance from the end of this box to the first fragment (a session
+     * recording leaves a `free` box in between).
+     */
+    fun sidx(fragments: List<Pair<Int, Long>>, firstOffset: Long = 0): ByteArray = BoxWriter().apply {
         fullBox("sidx", 0, 0) {
-            u32(TRACK_ID); u32(TIMESCALE); u32(0); u32(0)
+            u32(TRACK_ID); u32(TIMESCALE); u32(0); u32(firstOffset.toInt())
             u16(0); u16(fragments.size)
             for ((size, durationTicks) in fragments) {
                 u32(size and 0x7FFFFFFF); u32(durationTicks.toInt()); u32(0x90000000.toInt())
             }
         }
     }.toByteArray()
+
+    /** Size of a [sidx] box with [references] entries. */
+    fun sidxSize(references: Int): Int = SIDX_HEADER_SIZE + SIDX_REFERENCE_SIZE * references
+
+    /** A `free` box of [size] bytes in total (header included), zero-filled. */
+    fun free(size: Int): ByteArray {
+        require(size >= 8) { "free box needs at least 8 bytes, got $size" }
+        return ByteArray(size).also {
+            writeU32(it, 0, size)
+            "free".toByteArray(Charsets.US_ASCII).copyInto(it, 4)
+        }
+    }
 
     fun patchFragment(fragment: ByteArray, sequence: Int, baseDecodeTicks: Long) {
         writeU32(fragment, MFHD_SEQUENCE_OFFSET, sequence)
