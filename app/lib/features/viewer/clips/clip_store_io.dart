@@ -6,9 +6,29 @@ import 'package:video_player/video_player.dart';
 
 import 'clip_store.dart';
 
-ClipStore createPlatformClipStore() => _TempFileClipStore();
+ClipStore createPlatformClipStore({ClipCatalog? catalog}) =>
+    catalog == null ? _TempFileClipStore() : LibraryClipStore(catalog);
 
-/// Android: one file per clip under the temp directory, for the current session only.
+/// Android: each clip goes into the library folder the [catalog] picks and stays there.
+class LibraryClipStore implements ClipStore {
+  LibraryClipStore(this.catalog);
+
+  final ClipCatalog catalog;
+
+  @override
+  Future<StoredClip> store(String clipId, Uint8List bytes) async {
+    final file = File(await catalog.pathFor(clipId));
+    await file.parent.create(recursive: true);
+    // Write next to it and rename, so a killed app never leaves half a clip under the real name.
+    final part = File('${file.path}.part');
+    await part.writeAsBytes(bytes, flush: true);
+    await part.rename(file.path);
+    await catalog.added(clipId, file.path, bytes);
+    return FileStoredClip(clipId, file, bytes.length);
+  }
+}
+
+/// Fallback without a library (tests, desktop): one temp file per clip, for this session only.
 class _TempFileClipStore implements ClipStore {
   Directory? _dir;
 
@@ -17,18 +37,20 @@ class _TempFileClipStore implements ClipStore {
     final dir = _dir ??= await Directory('${(await getTemporaryDirectory()).path}/viewer_clips').create(recursive: true);
     final file = File('${dir.path}/$clipId.mp4');
     await file.writeAsBytes(bytes, flush: true);
-    return _FileClip(clipId, file, bytes.length);
+    return FileStoredClip(clipId, file, bytes.length, temporary: true);
   }
 }
 
-class _FileClip implements StoredClip {
-  _FileClip(this.clipId, this.file, this.length);
+/// A clip file on disk: in the library, or a temp file that [release] deletes.
+class FileStoredClip implements StoredClip {
+  FileStoredClip(this.clipId, this.file, this.length, {this.temporary = false});
 
   @override
   final String clipId;
   final File file;
   @override
   final int length;
+  final bool temporary;
 
   @override
   VideoPlayerController createPlayer() => VideoPlayerController.file(file);
@@ -46,6 +68,9 @@ class _FileClip implements StoredClip {
 
   @override
   Future<void> release() async {
-    if (await file.exists()) await file.delete();
+    if (temporary && await file.exists()) await file.delete();
   }
 }
+
+/// A library clip opened from its path, for review.
+StoredClip openStoredClip(String clipId, String path, int length) => FileStoredClip(clipId, File(path), length);
