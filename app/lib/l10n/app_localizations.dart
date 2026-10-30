@@ -1633,6 +1633,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Undo'**
   String get viewerClipUndo;
+
+  /// No description provided for @viewerTagPanelTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Tag this play'**
+  String get viewerTagPanelTitle;
+
+  /// No description provided for @viewerTagPanelClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get viewerTagPanelClose;
 }
 
 class _AppLocalizationsDelegate

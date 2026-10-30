@@ -660,5 +660,7 @@
       }
     }
   },
-  "viewerClipUndo": "Undo"
+  "viewerClipUndo": "Undo",
+  "viewerTagPanelTitle": "Tag this play",
+  "viewerTagPanelClose": "Close"
 }

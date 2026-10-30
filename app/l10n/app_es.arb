@@ -255,5 +255,7 @@
   "settingsStorageUsage": "{size} en {count, plural, =1{1 clip} other{{count} clips}}",
   "settingsStorageUnavailable": "No se pudo leer el espacio usado.",
   "viewerClipDeleted": "{name} borrado",
-  "viewerClipUndo": "Deshacer"
+  "viewerClipUndo": "Deshacer",
+  "viewerTagPanelTitle": "Etiqueta la jugada",
+  "viewerTagPanelClose": "Cerrar"
 }

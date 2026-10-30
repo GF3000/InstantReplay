@@ -954,4 +954,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get viewerClipUndo => 'Deshacer';
+
+  @override
+  String get viewerTagPanelTitle => 'Etiqueta la jugada';
+
+  @override
+  String get viewerTagPanelClose => 'Cerrar';
 }

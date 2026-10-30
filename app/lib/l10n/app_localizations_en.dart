@@ -950,4 +950,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get viewerClipUndo => 'Undo';
+
+  @override
+  String get viewerTagPanelTitle => 'Tag this play';
+
+  @override
+  String get viewerTagPanelClose => 'Close';
 }
