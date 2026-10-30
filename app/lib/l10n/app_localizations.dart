@@ -410,6 +410,30 @@ abstract class AppLocalizations {
   /// **'Continue'**
   String get viewerAddressSubmit;
 
+  /// No description provided for @viewerScanQr.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan QR'**
+  String get viewerScanQr;
+
+  /// No description provided for @viewerScanHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Point at the QR shown on the camera'**
+  String get viewerScanHint;
+
+  /// No description provided for @viewerScanNotCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'This QR is not from an InstantReplay camera. Keep pointing at the camera\'s QR.'**
+  String get viewerScanNotCamera;
+
+  /// No description provided for @viewerScanPermissionDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'No camera permission. Type the address, or allow the camera in Settings.'**
+  String get viewerScanPermissionDenied;
+
   /// No description provided for @viewerCodeTitle.
   ///
   /// In en, this message translates to:

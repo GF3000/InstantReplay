@@ -5,6 +5,7 @@ import 'package:replay_protocol/replay_protocol.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../data/viewer_api.dart';
+import '../scan/qr_scan_page.dart';
 import '../viewer_providers.dart';
 
 String? pairErrorText(AppLocalizations l10n, PairError? error) => switch (error) {
@@ -52,10 +53,23 @@ class _AddressFormState extends ConsumerState<AddressForm> {
 
   void _submit() => ref.read(viewerSetupProvider.notifier).setAddress(_controller.text);
 
+  Future<void> _scan() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final denied = AppLocalizations.of(context).viewerScanPermissionDenied;
+    if (!await ref.read(qrScannerProvider).requestPermission()) {
+      messenger.showSnackBar(SnackBar(content: Text(denied)));
+      return;
+    }
+    final link = await navigator.push<CameraLink>(MaterialPageRoute(builder: (_) => const QrScanPage()));
+    if (link != null && mounted) await ref.read(viewerSetupProvider.notifier).connectTo(link);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final error = ref.watch(viewerSetupProvider.select((s) => s.error));
+    final canScan = ref.watch(qrScannerAvailableProvider).value ?? false;
     return _FormFrame(children: [
       Text(l10n.viewerConnectTitle, style: Theme.of(context).textTheme.headlineSmall),
       const SizedBox(height: 24),
@@ -75,6 +89,15 @@ class _AddressFormState extends ConsumerState<AddressForm> {
       ),
       const SizedBox(height: 16),
       FilledButton(onPressed: _submit, child: Text(l10n.viewerAddressSubmit)),
+      if (canScan) ...[
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          key: const ValueKey('viewer-scan-qr'),
+          onPressed: _scan,
+          icon: const Icon(Icons.qr_code_scanner),
+          label: Text(l10n.viewerScanQr),
+        ),
+      ],
     ]);
   }
 }

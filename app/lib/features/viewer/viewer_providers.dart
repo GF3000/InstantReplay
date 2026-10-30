@@ -87,13 +87,12 @@ class ViewerSetupNotifier extends Notifier<ViewerSetup> {
     final prefs = ref.watch(sharedPreferencesProvider);
     final page = ref.watch(pageUriProvider);
     if (page != null) {
-      // `?camera=http://ip:8080` points a Viewer served from elsewhere (e.g. `flutter run -d chrome`)
-      // at a Camera; normally the Camera serves the page, so its origin is the Camera.
-      final base = normalizeCameraAddress(page.queryParameters['camera'] ?? page.origin);
-      if (base == null) return const ViewerSetup(addressFixed: true);
+      // Normally the Camera serves the page, so its origin is the Camera.
+      final link = parseCameraLink(page);
+      if (link == null) return const ViewerSetup(addressFixed: true);
+      final base = link.base;
       // The Camera's QR opens `http://ip:port/?k=<token>`: take the token and hide it.
-      final fromQr = page.queryParameters[Api.tokenParam];
-      if (fromQr != null && fromQr.isNotEmpty) {
+      if (link.token case final fromQr?) {
         unawaited(prefs.setString(_tokenKey(base), fromQr));
         stripTokenFromPageUrl();
         return ViewerSetup(base: base, token: fromQr, addressFixed: true);
@@ -116,6 +115,21 @@ class ViewerSetupNotifier extends Notifier<ViewerSetup> {
     await prefs.setString(_lastCameraKey, cameraKey(base));
     state = state.copyWith(base: () => base, token: () => prefs.getString(_tokenKey(base)), error: () => null);
     return true;
+  }
+
+  /// Android: the Camera's QR, read by the in-app scanner. With its token the Viewer is paired
+  /// at once; without one it goes on to the code. A stale token is caught by the session link,
+  /// which falls back to the code (see [forgetToken]).
+  Future<void> connectTo(CameraLink link) async {
+    final prefs = ref.read(sharedPreferencesProvider);
+    await prefs.setString(_lastCameraKey, cameraKey(link.base));
+    if (link.token case final token?) await prefs.setString(_tokenKey(link.base), token);
+    if (!ref.mounted) return;
+    state = state.copyWith(
+      base: () => link.base,
+      token: () => link.token ?? prefs.getString(_tokenKey(link.base)),
+      error: () => null,
+    );
   }
 
   /// Exchanges the 6-digit code for the token (POST /pair).

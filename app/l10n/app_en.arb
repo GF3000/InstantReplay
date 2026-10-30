@@ -142,6 +142,10 @@
   "viewerAddressLabel": "Camera address",
   "viewerAddressInvalid": "Enter an address like http://192.168.1.20:8080",
   "viewerAddressSubmit": "Continue",
+  "viewerScanQr": "Scan QR",
+  "viewerScanHint": "Point at the QR shown on the camera",
+  "viewerScanNotCamera": "This QR is not from an InstantReplay camera. Keep pointing at the camera's QR.",
+  "viewerScanPermissionDenied": "No camera permission. Type the address, or allow the camera in Settings.",
   "viewerCodeTitle": "Enter the code shown on the camera",
   "viewerCameraAt": "Camera at {address}",
   "@viewerCameraAt": {
