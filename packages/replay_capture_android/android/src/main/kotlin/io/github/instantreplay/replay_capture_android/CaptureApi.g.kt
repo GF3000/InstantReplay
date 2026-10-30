@@ -544,7 +544,10 @@ data class CaptureStats (
   val batteryTempC: Double? = null,
   val batteryPercent: Long? = null,
   val plugged: Boolean,
-  /** Full-session recording; null when the recorder has never been used in this process. */
+  /**
+   * Full-session recording, idle until someone presses Record. Viewers show their controls when
+   * it is present.
+   */
   val recording: RecordingStatus? = null
 )
  {

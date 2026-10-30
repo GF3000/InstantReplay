@@ -338,7 +338,7 @@ class ReplayCaptureAndroidPlugin :
             batteryTempC = (e["batteryTempC"] as Number?)?.toDouble(),
             batteryPercent = (e["batteryPercent"] as Number?)?.toLong(),
             plugged = e["plugged"] == true,
-            recording = recorder.status(),
+            recording = recorder.currentStatus(),
         )
     }
 

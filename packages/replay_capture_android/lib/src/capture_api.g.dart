@@ -520,7 +520,8 @@ class CaptureStats {
 
   bool plugged;
 
-  /// Full-session recording; null when the recorder has never been used in this process.
+  /// Full-session recording, idle until someone presses Record. Viewers show their controls when
+  /// it is present.
   RecordingStatus? recording;
 
   List<Object?> _toList() {
