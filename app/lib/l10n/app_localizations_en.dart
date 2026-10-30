@@ -529,4 +529,68 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get viewerTagUndo => 'Undo';
+
+  @override
+  String get settingsTitle => 'Settings';
+
+  @override
+  String get settingsSaveSection => 'Save button';
+
+  @override
+  String get settingsDefaultDuration => 'Default duration';
+
+  @override
+  String get settingsQuickPresets => 'Quick buttons';
+
+  @override
+  String settingsQuickPresetsHint(int max) {
+    return 'Choose up to $max. Each one saves at once with its own duration.';
+  }
+
+  @override
+  String settingsPostRoll(int seconds) {
+    return 'Post-roll: $seconds s';
+  }
+
+  @override
+  String get settingsPostRollHint =>
+      'Seconds still recorded after you tap Save.';
+
+  @override
+  String get settingsDisplaySection => 'Display';
+
+  @override
+  String get settingsLanguage => 'Language';
+
+  @override
+  String get settingsSystem => 'System';
+
+  @override
+  String get settingsTheme => 'Theme';
+
+  @override
+  String get settingsThemeDark => 'Dark';
+
+  @override
+  String get settingsThemeLight => 'Light';
+
+  @override
+  String get settingsStorageSection => 'Storage';
+
+  @override
+  String get settingsStorageClips => 'Saved clips';
+
+  @override
+  String settingsStorageUsage(String size, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count clips',
+      one: '1 clip',
+    );
+    return '$size in $_temp0';
+  }
+
+  @override
+  String get settingsStorageUnavailable => 'Could not read the storage used.';
 }

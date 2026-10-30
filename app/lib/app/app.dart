@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../features/settings/settings_providers.dart';
 import '../l10n/app_localizations.dart';
 import 'router.dart';
 import 'theme.dart';
-
-/// Dark by default (D20). Becomes user-selectable with the settings screen.
-final themeModeProvider = Provider<ThemeMode>((ref) => ThemeMode.dark);
 
 class InstantReplayApp extends ConsumerWidget {
   const InstantReplayApp({super.key});
@@ -18,6 +16,7 @@ class InstantReplayApp extends ConsumerWidget {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: ref.watch(themeModeProvider),
+      locale: ref.watch(localeProvider),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: ref.watch(routerProvider),

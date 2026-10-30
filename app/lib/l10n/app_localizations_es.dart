@@ -532,4 +532,68 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get viewerTagUndo => 'Deshacer';
+
+  @override
+  String get settingsTitle => 'Ajustes';
+
+  @override
+  String get settingsSaveSection => 'Botón Guardar';
+
+  @override
+  String get settingsDefaultDuration => 'Duración por defecto';
+
+  @override
+  String get settingsQuickPresets => 'Botones rápidos';
+
+  @override
+  String settingsQuickPresetsHint(int max) {
+    return 'Elige hasta $max. Cada uno guarda al instante con su duración.';
+  }
+
+  @override
+  String settingsPostRoll(int seconds) {
+    return 'Margen posterior: $seconds s';
+  }
+
+  @override
+  String get settingsPostRollHint =>
+      'Segundos que se siguen grabando tras pulsar Guardar.';
+
+  @override
+  String get settingsDisplaySection => 'Pantalla';
+
+  @override
+  String get settingsLanguage => 'Idioma';
+
+  @override
+  String get settingsSystem => 'Sistema';
+
+  @override
+  String get settingsTheme => 'Tema';
+
+  @override
+  String get settingsThemeDark => 'Oscuro';
+
+  @override
+  String get settingsThemeLight => 'Claro';
+
+  @override
+  String get settingsStorageSection => 'Almacenamiento';
+
+  @override
+  String get settingsStorageClips => 'Clips guardados';
+
+  @override
+  String settingsStorageUsage(String size, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count clips',
+      one: '1 clip',
+    );
+    return '$size en $_temp0';
+  }
+
+  @override
+  String get settingsStorageUnavailable => 'No se pudo leer el espacio usado.';
 }
