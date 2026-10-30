@@ -1,11 +1,11 @@
 {
-    "name": "instant_replay",
-    "short_name": "instant_replay",
+    "name": "InstantReplay",
+    "short_name": "InstantReplay",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#000000",
+    "theme_color": "#000000",
+    "description": "Instant replay for team sports, offline over local Wi-Fi.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
