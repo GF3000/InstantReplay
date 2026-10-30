@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 import '../../core/preferences.dart';
 import 'clips/clip_store.dart';
 import 'clips/clip_transfers.dart';
+import 'clips/partial_download.dart';
 import 'clips/save_presets.dart';
 import 'data/page_url.dart';
 import 'data/session_link.dart';
@@ -29,6 +30,9 @@ final channelConnectorProvider = Provider<ChannelConnector>((_) => connectWebSoc
 final livePeerFactoryProvider = Provider<LivePeerFactory>((_) => createWebRtcLivePeer);
 
 final clipStoreProvider = Provider<ClipStore>((_) => ClipStore.platform());
+
+/// Where a clip download keeps its bytes between attempts, to resume with a Range request.
+final partialDownloadFactoryProvider = Provider<PartialDownload Function(String clipId)>((_) => PartialDownload.platform);
 
 final savePresetsProvider = Provider<SavePresets>((_) => const SavePresets());
 
@@ -401,6 +405,7 @@ class ViewerClipsNotifier extends Notifier<List<SessionClip>> {
   List<SessionClip> build() {
     final transfers = ClipTransfers(
       store: ref.watch(clipStoreProvider),
+      newPartial: ref.watch(partialDownloadFactoryProvider),
       viewerId: ref.watch(viewerIdProvider),
       presets: ref.watch(savePresetsProvider),
       onChanged: (clips) {
