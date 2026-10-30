@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../library/library_providers.dart';
+import '../library/presentation/library_page.dart';
+import '../library/presentation/session_picker_view.dart';
 import '../role/role.dart';
 import 'data/session_link.dart';
 import 'tags/tag_editor_page.dart';
@@ -20,6 +23,8 @@ class ViewerPage extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final setup = ref.watch(viewerSetupProvider);
     final camera = setup.paired ? ref.watch(linkStateProvider.select((s) => s?.camera)) : null;
+    final library = ref.watch(libraryEnabledProvider);
+    final session = ref.watch(activeSessionProvider);
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: setup.paired ? 48 : null,
@@ -36,6 +41,10 @@ class ViewerPage extends ConsumerWidget {
               switch (item) {
                 case _MenuItem.tags:
                   await Navigator.of(context).push(TagEditorPage.route());
+                case _MenuItem.library:
+                  await Navigator.of(context).push(LibraryPage.route());
+                case _MenuItem.changeSession:
+                  ref.read(activeSessionProvider.notifier).close();
                 case _MenuItem.changeCamera:
                   await ref.read(viewerSetupProvider.notifier).changeCamera();
                 case _MenuItem.switchRole:
@@ -44,10 +53,22 @@ class ViewerPage extends ConsumerWidget {
               }
             },
             itemBuilder: (_) => [
-              PopupMenuItem(
-                value: _MenuItem.tags,
-                child: ListTile(leading: const Icon(Icons.sell_outlined), title: Text(l10n.viewerTagsEdit)),
-              ),
+              // Android edits the tags of the session's template, so it needs a session first.
+              if (!library || session != null)
+                PopupMenuItem(
+                  value: _MenuItem.tags,
+                  child: ListTile(leading: const Icon(Icons.sell_outlined), title: Text(l10n.viewerTagsEdit)),
+                ),
+              if (library)
+                PopupMenuItem(
+                  value: _MenuItem.library,
+                  child: ListTile(leading: const Icon(Icons.video_library_outlined), title: Text(l10n.libraryTitle)),
+                ),
+              if (library && session != null)
+                PopupMenuItem(
+                  value: _MenuItem.changeSession,
+                  child: ListTile(leading: const Icon(Icons.event_note), title: Text(l10n.libraryChangeSession)),
+                ),
               if (setup.paired && !setup.addressFixed)
                 PopupMenuItem(
                   value: _MenuItem.changeCamera,
@@ -74,7 +95,7 @@ class ViewerPage extends ConsumerWidget {
   static String _cameraTitle(String name, String? profile) => profile == null ? name : '$name · $profile';
 }
 
-enum _MenuItem { tags, changeCamera, switchRole }
+enum _MenuItem { tags, library, changeSession, changeCamera, switchRole }
 
 class _Session extends ConsumerWidget {
   const _Session();
@@ -82,6 +103,11 @@ class _Session extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final phase = ref.watch(linkStateProvider.select((s) => s?.phase));
+    // Android: clips go into a library session, picked before the live screen (SPEC §5.1.3).
+    if (ref.watch(libraryEnabledProvider)) {
+      if (ref.watch(activeSessionProvider) == null) return const SessionPickerView();
+      ref.watch(liveLibrarySyncProvider);
+    }
     if (phase == LinkPhase.incompatible) {
       return Center(
         child: Padding(

@@ -32,6 +32,10 @@ resolution: workspace
 dependencies:
   crypto: ^3.0.8
   device_info_plus: ^13.3.0
+  # Pinned to drift_dev's version: the drift_dev 2.34.0 CLI (schema dump/generate) does not compile
+  # against drift 2.34.4. Bump both together.
+  drift: 2.34.0
+  drift_flutter: ^0.3.1
   flutter:
     sdk: flutter
 
@@ -43,6 +47,7 @@ dependencies:
   go_router: ^18.1.1
   http: ^1.6.0
   intl: ^0.20.2
+  meta: ^1.18.0
   mobile_scanner: 7.4.2
   path_provider: ^2.1.6
   permission_handler: ^11.4.0
@@ -74,6 +79,8 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.4
   flutter_native_splash: ^2.4.7
+  drift_dev: ^2.34.0
+  build_runner: ^2.15.1
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

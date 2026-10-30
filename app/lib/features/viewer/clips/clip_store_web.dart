@@ -8,7 +8,10 @@ import 'package:web/web.dart' as web;
 
 import 'clip_store.dart';
 
-ClipStore createPlatformClipStore() => _BlobClipStore();
+ClipStore createPlatformClipStore({ClipCatalog? catalog}) => _BlobClipStore();
+
+StoredClip openStoredClip(String clipId, String path, int length) =>
+    throw UnsupportedError('The web Viewer has no library (D15)');
 
 /// Web: bytes stay in memory as a Blob and play through an object URL. Lost on reload (D15).
 class _BlobClipStore implements ClipStore {
