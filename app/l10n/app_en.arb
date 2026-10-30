@@ -369,6 +369,10 @@
     }
   },
   "viewerTagUndo": "Undo",
+  "viewerNearbyTitle": "Cameras on this network",
+  "viewerNearbySearching": "Looking for cameras…",
+  "viewerNearbyIncompatible": "Different InstantReplay version",
+  "viewerNearbyOther": "Or connect another way",
   "viewerClipSaveToGallery": "Save to gallery",
   "viewerClipShare": "Share",
   "viewerClipSavedToGallery": "Saved to the gallery",

@@ -534,6 +534,18 @@ class AppLocalizationsEs extends AppLocalizations {
   String get viewerTagUndo => 'Deshacer';
 
   @override
+  String get viewerNearbyTitle => 'Cámaras en esta red';
+
+  @override
+  String get viewerNearbySearching => 'Buscando cámaras…';
+
+  @override
+  String get viewerNearbyIncompatible => 'Otra versión de InstantReplay';
+
+  @override
+  String get viewerNearbyOther => 'O conecta de otra forma';
+
+  @override
   String get viewerClipSaveToGallery => 'Guardar en la galería';
 
   @override

@@ -950,6 +950,30 @@ abstract class AppLocalizations {
   /// **'Undo'**
   String get viewerTagUndo;
 
+  /// No description provided for @viewerNearbyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cameras on this network'**
+  String get viewerNearbyTitle;
+
+  /// No description provided for @viewerNearbySearching.
+  ///
+  /// In en, this message translates to:
+  /// **'Looking for cameras…'**
+  String get viewerNearbySearching;
+
+  /// No description provided for @viewerNearbyIncompatible.
+  ///
+  /// In en, this message translates to:
+  /// **'Different InstantReplay version'**
+  String get viewerNearbyIncompatible;
+
+  /// No description provided for @viewerNearbyOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Or connect another way'**
+  String get viewerNearbyOther;
+
   /// No description provided for @viewerClipSaveToGallery.
   ///
   /// In en, this message translates to:

@@ -531,6 +531,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get viewerTagUndo => 'Undo';
 
   @override
+  String get viewerNearbyTitle => 'Cameras on this network';
+
+  @override
+  String get viewerNearbySearching => 'Looking for cameras…';
+
+  @override
+  String get viewerNearbyIncompatible => 'Different InstantReplay version';
+
+  @override
+  String get viewerNearbyOther => 'Or connect another way';
+
+  @override
   String get viewerClipSaveToGallery => 'Save to gallery';
 
   @override
