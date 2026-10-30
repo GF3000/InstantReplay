@@ -368,5 +368,9 @@
       }
     }
   },
-  "viewerTagUndo": "Undo"
+  "viewerTagUndo": "Undo",
+  "viewerNearbyTitle": "Cameras on this network",
+  "viewerNearbySearching": "Looking for cameras…",
+  "viewerNearbyIncompatible": "Different InstantReplay version",
+  "viewerNearbyOther": "Or connect another way"
 }
