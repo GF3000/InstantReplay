@@ -532,4 +532,207 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get viewerTagUndo => 'Deshacer';
+
+  @override
+  String get libraryTitle => 'Biblioteca';
+
+  @override
+  String get libraryChangeSession => 'Cambiar sesión';
+
+  @override
+  String get librarySessionLatest => 'Última sesión';
+
+  @override
+  String get librarySessionContinue => 'Continuar';
+
+  @override
+  String get librarySessionNew => 'Nueva sesión';
+
+  @override
+  String get librarySessionName => 'Nombre';
+
+  @override
+  String librarySessionDefaultName(String type, String date) {
+    return '$type $date';
+  }
+
+  @override
+  String get librarySessionTemplate => 'Plantilla de etiquetas';
+
+  @override
+  String get librarySessionStart => 'Empezar sesión';
+
+  @override
+  String get librarySessionTypeMatch => 'Partido';
+
+  @override
+  String get librarySessionTypeTraining => 'Entrenamiento';
+
+  @override
+  String get librarySessionTypeOther => 'Otro';
+
+  @override
+  String librarySessionClips(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count clips',
+      one: '1 clip',
+      zero: 'sin clips',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get librarySessionClipsEmpty => 'No hay clips en esta sesión.';
+
+  @override
+  String get libraryEmpty => 'Aún no hay sesiones.';
+
+  @override
+  String librarySelected(int count) {
+    return '$count seleccionados';
+  }
+
+  @override
+  String get librarySelectAll => 'Seleccionar todo';
+
+  @override
+  String get libraryDelete => 'Borrar';
+
+  @override
+  String libraryDeleteClipsConfirm(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '¿Borrar $count clips? No se puede deshacer.',
+      one: '¿Borrar 1 clip? No se puede deshacer.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get libraryDeleteSession => 'Borrar sesión';
+
+  @override
+  String libraryDeleteSessionConfirm(String name) {
+    return '¿Borrar «$name» y todos sus clips? No se puede deshacer.';
+  }
+
+  @override
+  String get libraryTemplatesTitle => 'Plantillas de etiquetas';
+
+  @override
+  String get libraryTemplateBuiltIn => 'Incluida';
+
+  @override
+  String get libraryTemplateExport => 'Copiar como JSON';
+
+  @override
+  String get libraryTemplateExported => 'Plantilla copiada al portapapeles';
+
+  @override
+  String get libraryTemplateImport => 'Importar JSON';
+
+  @override
+  String get libraryTemplateImportHint =>
+      'Pega una plantilla exportada desde InstantReplay';
+
+  @override
+  String libraryTemplateImported(String name) {
+    return '«$name» importada';
+  }
+
+  @override
+  String libraryTemplateImportError(String reason) {
+    return 'No es una plantilla válida: $reason';
+  }
+
+  @override
+  String get libraryTemplateDelete => 'Borrar plantilla';
+
+  @override
+  String get libraryTemplateLabelsTitle => 'Etiquetas y categorías';
+
+  @override
+  String get libraryCategoriesTitle => 'Categorías';
+
+  @override
+  String get libraryCategory => 'Categoría';
+
+  @override
+  String get libraryCategoryAdd => 'Añadir categoría';
+
+  @override
+  String get libraryCategoriesEmpty =>
+      'No hay categorías. Añade una para agrupar tus clips.';
+
+  @override
+  String get libraryTemplateFootball => 'Fútbol';
+
+  @override
+  String get libraryTemplateBasketball => 'Baloncesto';
+
+  @override
+  String get libraryTemplateHandball => 'Balonmano';
+
+  @override
+  String get libraryTemplateHockey => 'Hockey';
+
+  @override
+  String get libraryTemplateGeneric => 'Genérica';
+
+  @override
+  String get libraryTemplateMigrated => 'Mis etiquetas';
+
+  @override
+  String get libraryCategoryAttack => 'Ataque';
+
+  @override
+  String get libraryCategoryDefense => 'Defensa';
+
+  @override
+  String get libraryCategoryTransition => 'Transición';
+
+  @override
+  String get libraryCategorySetPiece => 'Balón parado';
+
+  @override
+  String get libraryTagGoal => 'Gol';
+
+  @override
+  String get libraryTagShot => 'Tiro';
+
+  @override
+  String get libraryTagFoul => 'Falta';
+
+  @override
+  String get libraryTagCorner => 'Córner';
+
+  @override
+  String get libraryTagFreeKick => 'Tiro libre';
+
+  @override
+  String get libraryTagTurnover => 'Pérdida';
+
+  @override
+  String get libraryTagBasket => 'Canasta';
+
+  @override
+  String get libraryTagThreePointer => 'Triple';
+
+  @override
+  String get libraryTagRebound => 'Rebote';
+
+  @override
+  String get libraryTagSteal => 'Robo';
+
+  @override
+  String get libraryTagSave => 'Parada';
+
+  @override
+  String get libraryTagSevenMeters => '7 metros';
+
+  @override
+  String get libraryTagPenalty => 'Penalti';
 }
