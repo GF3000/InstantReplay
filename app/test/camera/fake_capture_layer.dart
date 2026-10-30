@@ -6,7 +6,13 @@ import 'package:replay_capture_android/replay_capture_android.dart';
 CaptureProfile profile(String id, {int width = 1920, int height = 1080, int fps = 30}) =>
     CaptureProfile(id: id, width: width, height: height, fps: fps, bitrate: 20000000);
 
-CaptureStats stats({int bufferMs = 42000, int outboxClips = 3, double? batteryTempC = 36.5, bool plugged = true}) =>
+CaptureStats stats({
+  int bufferMs = 42000,
+  int outboxClips = 3,
+  double? batteryTempC = 36.5,
+  bool plugged = true,
+  RecordingStatus? recording,
+}) =>
     CaptureStats(
       encodedFrames: 1000,
       fps: 30,
@@ -21,6 +27,7 @@ CaptureStats stats({int bufferMs = 42000, int outboxClips = 3, double? batteryTe
       plugged: plugged,
       batteryTempC: batteryTempC,
       batteryPercent: 80,
+      recording: recording,
     );
 
 /// In-memory capture layer that records every call.

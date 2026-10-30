@@ -4,11 +4,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:replay_capture_android/replay_capture_android.dart';
-import 'package:replay_protocol/replay_protocol.dart' show hotThermalStatus;
+import 'package:replay_protocol/replay_protocol.dart' show RecordingEndReason, hotThermalStatus;
 
 import '../../core/orientation_lock.dart';
 import '../../l10n/app_localizations.dart';
+import '../recording/recording_widgets.dart';
 import '../role/role.dart';
+import '../server/protocol_mapping.dart' show sessionRecording;
 import '../server/server_controller.dart';
 import 'camera_session.dart';
 import 'pairing_card.dart';
@@ -34,6 +36,20 @@ class CameraPage extends ConsumerWidget {
       final woken = session.lastWokenAt;
       if (woken != null && DateTime.now().difference(woken) < autoOperatingQuietPeriod) return;
       session.startOperating();
+    });
+    // A recording ended (by anyone: this screen, a viewer, low space or an error): say so here too.
+    ref.listen(cameraSessionProvider.select((s) => s.lastSaved), (_, notice) {
+      if (notice == null) return;
+      final saved = notice.saved;
+      final l10n = AppLocalizations.of(context);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(recordingSavedMessage(
+          l10n,
+          parts: saved.parts,
+          durationMs: saved.durationMs,
+          reason: RecordingEndReason.values.byName(saved.reason.name),
+        )),
+      ));
     });
     return OrientationLock(child: operating ? const _OperatingView() : const _SetupView());
   }
@@ -85,6 +101,19 @@ class _Preview extends ConsumerWidget {
       final aspect = profile == null || profile.height == 0 ? 16 / 9 : profile.width / profile.height;
       return Stack(children: [
         Center(child: AspectRatio(aspectRatio: aspect, child: Texture(textureId: session.textureId))),
+        // The full-session recording rides on the preview, so the pairing panel keeps its room.
+        PositionedDirectional(
+          start: 8,
+          top: 8,
+          end: 8,
+          child: Align(
+            alignment: AlignmentDirectional.topStart,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: _CameraRecording(state: state),
+            ),
+          ),
+        ),
         // The manual way in; the first viewer also starts operating mode by itself (UX §2.2).
         PositionedDirectional(
           start: 12,
@@ -188,8 +217,103 @@ class _Panel extends ConsumerWidget {
             _Warning(Icons.thermostat, l10n.cameraHotWarning(thermalName(l10n, thermal)), error: true),
           if (stats != null && !stats.plugged) _Warning(Icons.power_off, l10n.cameraNotChargingWarning),
           if (state.notificationsDenied) _Warning(Icons.notifications_off, l10n.cameraNotificationsDenied),
+          if (state.recovered.isNotEmpty) ...[
+            _RecoveredCard(recovered: state.recovered, onDismiss: notifier.dismissRecovered),
+            const SizedBox(height: 8),
+          ],
           _Advanced(state: state),
         ],
+      ),
+    );
+  }
+}
+
+/// The Camera's own Record / Pause / Finish (SPEC §3.8), the same controls every viewer has.
+class _CameraRecording extends ConsumerWidget {
+  const _CameraRecording({required this.state, this.dim = false});
+
+  final CameraSessionState state;
+  final bool dim;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(cameraSessionProvider.notifier);
+    final bar = RecordingBar(
+      key: const Key('camera-recording'),
+      recording: switch (state.recording) {
+        final r? => sessionRecording(r),
+        null => null,
+      },
+      enabled: state.phase == CameraPhase.running,
+      keyPrefix: 'camera-rec',
+      buttonSize: 56,
+      dim: dim,
+      onRecord: (seconds) => _run(context, () => notifier.recordStart(includeSeconds: seconds)),
+      onPause: () => _run(context, notifier.recordPause),
+      onFinish: () => _run(context, notifier.recordStop),
+    );
+    if (dim) return bar;
+    return Card(
+      margin: EdgeInsets.zero,
+      color: Theme.of(context).colorScheme.surfaceContainer.withValues(alpha: 0.85),
+      child: Padding(padding: const EdgeInsets.fromLTRB(12, 4, 4, 4), child: bar),
+    );
+  }
+
+  static Future<void> _run(BuildContext context, Future<void> Function() action) async {
+    final l10n = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await action();
+    } on PlatformException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(recordingErrorMessage(l10n, e.code, e.message))));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(l10n.recFailed('$e'))));
+    }
+  }
+}
+
+/// «Se ha recuperado una grabación de 47 min»: recordings a crash left open, finished on entry.
+class _RecoveredCard extends StatelessWidget {
+  const _RecoveredCard({required this.recovered, required this.onDismiss});
+
+  final List<RecordingSaved> recovered;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final style = TextStyle(color: scheme.onTertiaryContainer);
+    return Card(
+      key: const Key('camera-recovered'),
+      color: scheme.tertiaryContainer,
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 4, 4),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          for (final r in recovered)
+            Row(children: [
+              Icon(Icons.restore, color: scheme.onTertiaryContainer),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  l10n.recRecovered(formatRecordingSpan(r.durationMs)),
+                  style: style.copyWith(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+            ]),
+          const SizedBox(height: 4),
+          Text(l10n.recRecoveredHint, style: style),
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: TextButton(
+              style: TextButton.styleFrom(foregroundColor: scheme.onTertiaryContainer, minimumSize: const Size(56, 56)),
+              onPressed: onDismiss,
+              child: Text(l10n.cameraDismissErrors),
+            ),
+          ),
+        ]),
       ),
     );
   }
@@ -438,6 +562,15 @@ class _OperatingViewState extends ConsumerState<_OperatingView> {
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                // The recording stays at hand without waking the screen; the buttons take their
+                // own taps, everything around them wakes to setup.
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: _CameraRecording(state: state, dim: true),
+                ),
+                const SizedBox(height: 12),
+                for (final r in state.recovered)
+                  Text(l10n.recRecovered(formatRecordingSpan(r.durationMs)), style: _style),
                 for (final e in state.errors.take(2))
                   Text(e, style: _styleRed),
                 // A Wrap, not a Row: the line must never overflow on a small landscape phone.
