@@ -36,6 +36,30 @@ Uri? normalizeCameraAddress(String raw) {
   return Uri(scheme: uri.scheme, host: uri.host, port: port);
 }
 
+/// A Camera address plus, when the link carries one, its token.
+typedef CameraLink = ({Uri base, String? token});
+
+/// Reads a Camera link: what the Camera's QR encodes (`http://ip:port/?k=<token>`) and what the
+/// web Viewer finds in its own page address. `?camera=http://ip:8080` overrides the origin (a
+/// Viewer served from elsewhere, e.g. `flutter run -d chrome`). Null when there is no valid address.
+CameraLink? parseCameraLink(Uri uri) {
+  final base = normalizeCameraAddress(uri.queryParameters['camera'] ?? uri.toString());
+  if (base == null) return null;
+  final token = uri.queryParameters[Api.tokenParam];
+  return (base: base, token: token == null || token.isEmpty ? null : token);
+}
+
+/// A scanned QR is only taken as a Camera link when it looks exactly like the one the Camera
+/// shows: plain http, explicit port, no path, and no query besides the token. Anything else
+/// (a web site, a Wi-Fi QR, text) returns null.
+CameraLink? parseScannedCameraLink(String raw) {
+  final uri = Uri.tryParse(raw.trim());
+  if (uri == null || uri.scheme != 'http' || uri.host.isEmpty || !uri.hasPort) return null;
+  if (uri.path.isNotEmpty && uri.path != '/') return null;
+  if (uri.queryParameters.keys.any((k) => k != Api.tokenParam) || uri.hasFragment) return null;
+  return parseCameraLink(uri);
+}
+
 /// Key that identifies one Camera in local storage.
 String cameraKey(Uri base) => '${base.scheme}://${base.host}:${base.port}';
 

@@ -1,6 +1,7 @@
 package io.github.instantreplay.instant_replay
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.content.res.AssetManager
 import android.os.Build
 import android.os.Handler
@@ -29,6 +30,13 @@ class MainActivity : FlutterActivity() {
                         mainHandler.post { result.error("extract_failed", e.message, null) }
                     }
                 }
+                else -> result.notImplemented()
+            }
+        }
+        // The native Viewer offers its QR scanner only on devices with a camera.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "instant_replay/device").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "hasCamera" -> result.success(packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY))
                 else -> result.notImplemented()
             }
         }

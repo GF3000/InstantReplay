@@ -196,6 +196,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get viewerAddressSubmit => 'Continue';
 
   @override
+  String get viewerScanQr => 'Scan QR';
+
+  @override
+  String get viewerScanHint => 'Point at the QR shown on the camera';
+
+  @override
+  String get viewerScanNotCamera =>
+      'This QR is not from an InstantReplay camera. Keep pointing at the camera\'s QR.';
+
+  @override
+  String get viewerScanPermissionDenied =>
+      'No camera permission. Type the address, or allow the camera in Settings.';
+
+  @override
   String get viewerCodeTitle => 'Enter the code shown on the camera';
 
   @override
