@@ -3,11 +3,14 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:instant_replay/core/preferences.dart';
 import 'package:instant_replay/features/viewer/clips/clip_transfers.dart';
 import 'package:instant_replay/features/viewer/player/frame_timeline.dart';
 import 'package:instant_replay/features/viewer/player/player_platform.dart';
+import 'package:instant_replay/features/viewer/tags/tags.dart';
 import 'package:instant_replay/features/viewer/ui/review_page.dart';
 import 'package:instant_replay/l10n/app_localizations.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player/video_player.dart';
 
 import 'fakes.dart';
@@ -26,8 +29,11 @@ void main() {
       phase: SessionClipPhase.ready,
       stored: MemoryClip('c1', 1),
     );
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
     await tester.pumpWidget(
       ProviderScope(
+        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
         child: MaterialApp(
           locale: const Locale('en'),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -43,6 +49,17 @@ void main() {
     await tester.tap(find.byTooltip(tooltip));
     await tester.pumpAndSettle();
   }
+
+  testWidgets('the tag picked in review is kept for the clip', (tester) async {
+    await pump(tester);
+    await tester.tap(find.byKey(const ValueKey('review-tag')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('tag-${TagsNotifier.bad}')).last);
+    await tester.pumpAndSettle();
+    final container = ProviderScope.containerOf(tester.element(find.byType(ReviewPage)));
+    expect(container.read(clipTagsProvider), {'r1': TagsNotifier.bad});
+    expect(find.text('Bad · 12:41'), findsOneWidget);
+  });
 
   testWidgets('autoplays in a loop, muted', (tester) async {
     await pump(tester);
