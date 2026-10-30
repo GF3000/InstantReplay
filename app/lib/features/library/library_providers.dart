@@ -46,7 +46,7 @@ final libraryEnabledProvider = Provider<bool>((ref) => ref.watch(capabilitiesPro
 
 // region Active session
 
-/// The library session clips are saved into, with its template's labels in order.
+/// The library session clips are saved into, with its template's tags in order.
 @immutable
 class ActiveSession {
   const ActiveSession({
@@ -54,7 +54,6 @@ class ActiveSession {
     required this.name,
     required this.type,
     required this.templateId,
-    this.categories = const [],
     this.tags = const [],
   });
 
@@ -62,17 +61,10 @@ class ActiveSession {
   final String name;
   final SessionType type;
   final String? templateId;
-  final List<ViewerTag> categories;
   final List<ViewerTag> tags;
 
-  ActiveSession copyWith({List<ViewerTag>? categories, List<ViewerTag>? tags}) => ActiveSession(
-        id: id,
-        name: name,
-        type: type,
-        templateId: templateId,
-        categories: categories ?? this.categories,
-        tags: tags ?? this.tags,
-      );
+  ActiveSession copyWith({List<ViewerTag>? tags}) =>
+      ActiveSession(id: id, name: name, type: type, templateId: templateId, tags: tags ?? this.tags);
 }
 
 /// The session picked in the session picker (SPEC §5.1.3); null until one is picked. Not kept
@@ -96,7 +88,6 @@ class ActiveSessionNotifier extends Notifier<ActiveSession?> {
       name: row.name,
       type: row.type,
       templateId: content?.template.id,
-      categories: [for (final c in content?.categories ?? const <CategoryRow>[]) categoryLabel(c)],
       tags: [for (final t in content?.tags ?? const <TagRow>[]) tagLabel(t)],
     );
   }
@@ -116,31 +107,23 @@ class ActiveSessionNotifier extends Notifier<ActiveSession?> {
   void close() => state = null;
 
   /// The tag editor changed the template's tags.
-  void setTags(List<ViewerTag> tags) => _setLabels(tags: tags);
-
-  void setCategories(List<ViewerTag> categories) => _setLabels(categories: categories);
-
-  void _setLabels({List<ViewerTag>? tags, List<ViewerTag>? categories}) {
+  void setTags(List<ViewerTag> tags) {
     final s = state;
     if (s == null) return;
-    state = s.copyWith(tags: tags, categories: categories);
+    state = s.copyWith(tags: tags);
     final templateId = s.templateId;
     if (templateId == null) return; // Its template was deleted: edits last for this run only.
-    List<LabelSpec> specs(List<ViewerTag> l) => [for (final t in l) LabelSpec(id: t.id, name: t.name, color: t.color)];
     unawaited(() async {
       try {
-        if (tags != null) await _db.replaceTags(templateId, specs(tags));
-        if (categories != null) await _db.replaceCategories(templateId, specs(categories));
+        await _db.replaceTags(templateId, [for (final t in tags) LabelSpec(id: t.id, name: t.name, color: t.color)]);
       } catch (e) {
-        debugPrint('Could not save template labels: $e');
+        debugPrint('Could not save template tags: $e');
       }
     }());
   }
 }
 
 final activeSessionProvider = NotifierProvider<ActiveSessionNotifier, ActiveSession?>(ActiveSessionNotifier.new);
-
-ViewerTag categoryLabel(CategoryRow c) => ViewerTag(id: c.id, name: c.name, color: c.color);
 
 ViewerTag tagLabel(TagRow t) => ViewerTag(id: t.id, name: t.name, color: t.color);
 
@@ -191,10 +174,29 @@ class LibraryCatalog implements ClipCatalog {
 }
 
 /// While the live screen is open: writes what the Viewer knows of each saved clip (request,
-/// times, duration) and its tag and category into the library as soon as the clip is stored.
+/// times, duration) and its tag into the library as soon as the clip is stored.
 /// Tagging stays in memory first, so it never waits for the database or blocks a save.
+///
+/// A resumed session brings back the tags of its earlier clips: once per session, the stored
+/// tags fill the in-memory map (keys not set yet only), without being written back.
 final liveLibrarySyncProvider = Provider.autoDispose<void>((ref) {
   if (!ref.watch(libraryEnabledProvider)) return;
+  final inLibrary = ref.watch(_libraryClipTagsProvider);
+  final seeded = <String>{};
+  ref.listen<String?>(activeSessionProvider.select((s) => s?.id), (_, sessionId) {
+    if (sessionId == null || !seeded.add(sessionId)) return;
+    unawaited(() async {
+      try {
+        final entries = await ref.read(libraryDatabaseProvider).watchSessionClips(sessionId).first;
+        if (!ref.mounted) return;
+        final tags = {for (final e in entries) e.clip.requestId ?? e.clip.id: ?e.tagIds.firstOrNull};
+        inLibrary.addAll(tags);
+        ref.read(clipTagsProvider.notifier).seed(tags);
+      } catch (e) {
+        debugPrint('Could not read the tags of session $sessionId: $e');
+      }
+    }());
+  }, fireImmediately: true);
   final written = <String>{};
   ref.listen<List<SessionClip>>(viewerClipsProvider, (_, clips) {
     final db = ref.read(libraryDatabaseProvider);
@@ -208,7 +210,9 @@ final liveLibrarySyncProvider = Provider.autoDispose<void>((ref) {
             requestedAt: Value(c.requestedAt),
             durationMs: Value(c.durationMs),
           ));
-          await writeClipLabels(ref, c.requestId, clipId: clipId);
+          if (await writeClipTag(ref, c.requestId, clipId: clipId)) {
+            inLibrary[c.requestId] = ref.read(clipTagsProvider)[c.requestId];
+          }
         } catch (e) {
           debugPrint('Could not update clip $clipId: $e');
         }
@@ -218,38 +222,112 @@ final liveLibrarySyncProvider = Provider.autoDispose<void>((ref) {
   ref.watch(clipLabelWriterProvider);
 });
 
-/// Writes tag and category changes to clips already in the library (live or reviewed from the
-/// library), by request id.
+/// Writes tag changes to clips already in the library (live or reviewed from the library), by
+/// request id.
 final clipLabelWriterProvider = Provider.autoDispose<void>((ref) {
   if (!ref.watch(libraryEnabledProvider)) return;
-  // Each map writes only its own column: a tag change must not write a category that has not
-  // reached the map yet (the library seeds both when it opens a clip), and the other way round.
-  void Function(Map<String, String>?, Map<String, String>) changed({required bool tags}) => (before, after) {
-        for (final requestId in {...after.keys, ...?before?.keys}) {
-          if (before?[requestId] != after[requestId]) {
-            unawaited(writeClipLabels(ref, requestId, tags: tags, category: !tags));
-          }
-        }
-      };
-
-  ref.listen<Map<String, String>>(clipTagsProvider, changed(tags: true));
-  ref.listen<Map<String, String>>(clipCategoriesProvider, changed(tags: false));
+  final inLibrary = ref.watch(_libraryClipTagsProvider);
+  ref.listen<Map<String, String>>(clipTagsProvider, (before, after) {
+    for (final requestId in {...after.keys, ...?before?.keys}) {
+      final tagId = after[requestId];
+      if (before?[requestId] == tagId) continue;
+      // Tags just read from the library (a resumed session) are not written back.
+      if (inLibrary.containsKey(requestId) && inLibrary[requestId] == tagId) continue;
+      unawaited(() async {
+        if (await writeClipTag(ref, requestId)) inLibrary[requestId] = tagId;
+      }());
+    }
+  });
 });
 
-/// Copies the in-memory tag and category of request [requestId] to its library clip, if stored.
-Future<void> writeClipLabels(Ref ref, String requestId, {String? clipId, bool tags = true, bool category = true}) async {
+/// The tag each clip has in the library as far as this screen knows (read from it or written to
+/// it), by request id; lets [clipLabelWriterProvider] skip writes that change nothing.
+final _libraryClipTagsProvider = Provider.autoDispose<Map<String, String?>>((_) => {});
+
+/// Copies the in-memory tag of request [requestId] to its library clip, if stored. True when
+/// written.
+Future<bool> writeClipTag(Ref ref, String requestId, {String? clipId}) async {
   final db = ref.read(libraryDatabaseProvider);
   final tagId = ref.read(clipTagsProvider)[requestId];
-  final categoryId = ref.read(clipCategoriesProvider)[requestId];
   try {
     final id = clipId ?? await db.clipIdForRequest(requestId);
-    if (id == null) return;
-    if (tags) await db.setClipTags(id, [?tagId]);
-    if (category) await db.setClipCategory(id, categoryId);
+    if (id == null) return false;
+    await db.setClipTags(id, [?tagId]);
+    return true;
   } catch (e) {
-    debugPrint('Could not save labels of $requestId: $e');
+    debugPrint('Could not save the tag of $requestId: $e');
+    return false;
   }
 }
+
+// endregion
+
+// region Earlier clips of the active session
+
+/// A library clip as the clip list and the review show it. Keyed by its save request when known,
+/// like the clips of this run, so its tag lives under the same key.
+SessionClip sessionClipFromEntry(ClipEntry e, {StoredClip? stored}) {
+  final c = e.clip;
+  return SessionClip(
+    requestId: c.requestId ?? c.id,
+    seconds: (c.durationMs ?? 0) / 1000,
+    requestedAt: c.requestedAt,
+    phase: SessionClipPhase.ready,
+    clipId: c.id,
+    durationMs: c.durationMs,
+    received: c.sizeBytes,
+    total: c.sizeBytes,
+    stored: stored ?? ClipStore.openFile(c.id, c.filePath, c.sizeBytes),
+    acked: true,
+  );
+}
+
+/// The clips of the active library session already in the database, newest first: after
+/// resuming a session, the ones saved before (Android). Empty on web (D15) or without a session.
+final activeSessionStoredClipsProvider = StreamProvider.autoDispose<List<SessionClip>>((ref) {
+  if (!ref.watch(libraryEnabledProvider)) return Stream.value(const []);
+  // The id only: editing the tags replaces the session state and must not restart the stream.
+  final sessionId = ref.watch(activeSessionProvider.select((s) => s?.id));
+  if (sessionId == null) return Stream.value(const []);
+  // One StoredClip per clip, so the thumbnail family keeps its key across updates.
+  final opened = <String, StoredClip>{};
+  return ref.watch(libraryDatabaseProvider).watchSessionClips(sessionId).map((entries) {
+    final ids = {for (final e in entries) e.clip.id};
+    opened.removeWhere((id, _) => !ids.contains(id));
+    return [
+      for (final e in entries)
+        sessionClipFromEntry(
+          e,
+          stored: opened.putIfAbsent(e.clip.id, () => ClipStore.openFile(e.clip.id, e.clip.filePath, e.clip.sizeBytes)),
+        ),
+    ];
+  });
+});
+
+/// The live screen's clip list: this run's clips and the session's earlier ones from the library,
+/// newest first. A clip of this run shows once even when it is in the library too (matched by
+/// clip id, which the library has before the request id); the in-memory entry wins.
+final liveClipsProvider = Provider.autoDispose<List<SessionClip>>((ref) {
+  final live = ref.watch(viewerClipsProvider);
+  final stored = ref.watch(activeSessionStoredClipsProvider).value ?? const <SessionClip>[];
+  final pending = ref.watch(pendingClipDeletesProvider);
+  if (stored.isEmpty) return live;
+  final known = {...pending, for (final c in live) ...[c.requestId, ?c.clipId]};
+  final earlier = [
+    for (final c in stored)
+      if (!known.contains(c.requestId) && !known.contains(c.clipId)) c,
+  ];
+  if (earlier.isEmpty) return live;
+  // Both are newest first: merge, this run's clip first on a tie.
+  final merged = <SessionClip>[];
+  var i = 0;
+  var j = 0;
+  while (i < live.length || j < earlier.length) {
+    final takeLive = j >= earlier.length || (i < live.length && !earlier[j].requestedAt.isAfter(live[i].requestedAt));
+    merged.add(takeLive ? live[i++] : earlier[j++]);
+  }
+  return merged;
+});
 
 // endregion
 
@@ -267,23 +345,20 @@ final libraryTemplatesProvider = StreamProvider.autoDispose<List<TemplateRow>>(
   (ref) => ref.watch(libraryDatabaseProvider).watchTemplates(),
 );
 
-/// Every category and tag by id, to label clips of any session.
+/// Every tag by id, to label clips of any session.
 final libraryLabelsProvider = FutureProvider.autoDispose<Map<String, ViewerTag>>((ref) async {
-  // Re-read whenever the template list or the active session's labels change.
+  // Re-read whenever the template list or the active session's tags change.
   ref.watch(libraryTemplatesProvider);
   ref.watch(activeSessionProvider);
-  final (cats, tags) = await ref.watch(libraryDatabaseProvider).allLabels();
-  return {
-    for (final c in cats) c.id: categoryLabel(c),
-    for (final t in tags) t.id: tagLabel(t),
-  };
+  final tags = await ref.watch(libraryDatabaseProvider).allTags();
+  return {for (final t in tags) t.id: tagLabel(t)};
 });
 
 /// `ref.read` of a widget or a container.
 typedef Reader = T Function<T>(ProviderListenable<T> provider);
 
 /// What a clip of session [sessionId] can be tagged with from the library: null for the active
-/// session (the picker follows its live labels, editable), else the categories and tags of the
+/// session (the picker follows its live tags, editable), else the tags of the
 /// session's own template — not the active session's, nor the web tag set when none is active.
 /// Empty when the session's template was deleted.
 Future<ClipLabelChoices?> libraryLabelChoices(Reader read, String sessionId) async {
@@ -293,15 +368,10 @@ Future<ClipLabelChoices?> libraryLabelChoices(Reader read, String sessionId) asy
   // Read the session again: its template may have been deleted since the screen got the row.
   final templateId = (await db.session(sessionId))?.templateId;
   if (templateId == null) return const ClipLabelChoices();
-  // Same template as the live session: its labels may carry edits not yet written.
-  if (active != null && active.templateId == templateId) {
-    return ClipLabelChoices(categories: active.categories, tags: active.tags);
-  }
+  // Same template as the live session: its tags may carry edits not yet written.
+  if (active != null && active.templateId == templateId) return ClipLabelChoices(tags: active.tags);
   final content = await db.templateContent(templateId);
-  return ClipLabelChoices(
-    categories: [for (final c in content?.categories ?? const <CategoryRow>[]) categoryLabel(c)],
-    tags: [for (final t in content?.tags ?? const <TagRow>[]) tagLabel(t)],
-  );
+  return ClipLabelChoices(tags: [for (final t in content?.tags ?? const <TagRow>[]) tagLabel(t)]);
 }
 
 /// Deletes clips and their files.

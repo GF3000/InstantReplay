@@ -1328,36 +1328,6 @@ abstract class AppLocalizations {
   /// **'Delete template'**
   String get libraryTemplateDelete;
 
-  /// No description provided for @libraryTemplateLabelsTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Tags and categories'**
-  String get libraryTemplateLabelsTitle;
-
-  /// No description provided for @libraryCategoriesTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Categories'**
-  String get libraryCategoriesTitle;
-
-  /// No description provided for @libraryCategory.
-  ///
-  /// In en, this message translates to:
-  /// **'Category'**
-  String get libraryCategory;
-
-  /// No description provided for @libraryCategoryAdd.
-  ///
-  /// In en, this message translates to:
-  /// **'Add category'**
-  String get libraryCategoryAdd;
-
-  /// No description provided for @libraryCategoriesEmpty.
-  ///
-  /// In en, this message translates to:
-  /// **'No categories. Add one to group your clips.'**
-  String get libraryCategoriesEmpty;
-
   /// No description provided for @libraryTemplateFootball.
   ///
   /// In en, this message translates to:
@@ -1394,29 +1364,29 @@ abstract class AppLocalizations {
   /// **'My tags'**
   String get libraryTemplateMigrated;
 
-  /// No description provided for @libraryCategoryAttack.
+  /// No description provided for @libraryTagAttack.
   ///
   /// In en, this message translates to:
   /// **'Attack'**
-  String get libraryCategoryAttack;
+  String get libraryTagAttack;
 
-  /// No description provided for @libraryCategoryDefense.
+  /// No description provided for @libraryTagDefense.
   ///
   /// In en, this message translates to:
   /// **'Defence'**
-  String get libraryCategoryDefense;
+  String get libraryTagDefense;
 
-  /// No description provided for @libraryCategoryTransition.
+  /// No description provided for @libraryTagTransition.
   ///
   /// In en, this message translates to:
   /// **'Transition'**
-  String get libraryCategoryTransition;
+  String get libraryTagTransition;
 
-  /// No description provided for @libraryCategorySetPiece.
+  /// No description provided for @libraryTagSetPiece.
   ///
   /// In en, this message translates to:
   /// **'Set piece'**
-  String get libraryCategorySetPiece;
+  String get libraryTagSetPiece;
 
   /// No description provided for @libraryTagGoal.
   ///

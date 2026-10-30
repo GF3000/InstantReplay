@@ -43,7 +43,7 @@ Design consequences:
 |---|---|
 | Live view | As large as the layout allows; reconnects by itself |
 | **Save** | One big button with the default duration (20 s), plus 10 / 30 / 60 s chips next to it (current behaviour kept) |
-| **Post-save tag panel** | Right after saving, a panel slides in from the left over the live view for ~6 s, with large category and tag buttons that wrap freely (no sideways scrolling). One tap on a tag tags the clip and closes it; a category keeps it up a little longer; an X closes it; untouched, it slides away. It never covers Save or the quick chips, so the next save is never blocked |
+| **Post-save tag panel** | Right after saving, a panel slides in from the left over the live view for ~6 s, with one set of large tag buttons that wrap freely (no sideways scrolling). One tap on a tag tags the clip and closes it; an X closes it; untouched, it slides away. It never covers Save or the quick chips, so the next save is never blocked |
 | Camera status | **Minimal**: a REC dot (green = recording, red = problem). **Tap for details** (fps, buffer, pending clips, temperature, battery). Problems surface as a short warning without a tap |
 | Clip list | Compact, newest first (see 3.3) |
 
@@ -66,6 +66,7 @@ Layouts:
 - **Stored per Viewer** (on web: browser storage; it may be lost if the browser data is cleared).
 - **Default set: Bien · Mal · Otros**, editable (add, rename, delete, reorder, colour) from a simple screen reachable from the Viewer menu.
 - No limit on the number of tags; the post-save panel wraps them and scrolls vertically if needed.
+- **One tag per clip.** On Android the tags come from the session's template; there are no separate categories (merged into tags).
 
 ## 4. Visual style
 - Keep **dark + amber/cream** (current), high contrast, touch targets ≥ 56 dp for primary actions.

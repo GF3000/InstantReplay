@@ -787,22 +787,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get libraryTemplateDelete => 'Borrar plantilla';
 
   @override
-  String get libraryTemplateLabelsTitle => 'Etiquetas y categorías';
-
-  @override
-  String get libraryCategoriesTitle => 'Categorías';
-
-  @override
-  String get libraryCategory => 'Categoría';
-
-  @override
-  String get libraryCategoryAdd => 'Añadir categoría';
-
-  @override
-  String get libraryCategoriesEmpty =>
-      'No hay categorías. Añade una para agrupar tus clips.';
-
-  @override
   String get libraryTemplateFootball => 'Fútbol';
 
   @override
@@ -821,16 +805,16 @@ class AppLocalizationsEs extends AppLocalizations {
   String get libraryTemplateMigrated => 'Mis etiquetas';
 
   @override
-  String get libraryCategoryAttack => 'Ataque';
+  String get libraryTagAttack => 'Ataque';
 
   @override
-  String get libraryCategoryDefense => 'Defensa';
+  String get libraryTagDefense => 'Defensa';
 
   @override
-  String get libraryCategoryTransition => 'Transición';
+  String get libraryTagTransition => 'Transición';
 
   @override
-  String get libraryCategorySetPiece => 'Balón parado';
+  String get libraryTagSetPiece => 'Balón parado';
 
   @override
   String get libraryTagGoal => 'Gol';
