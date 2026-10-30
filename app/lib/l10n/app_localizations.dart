@@ -949,6 +949,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Undo'**
   String get viewerTagUndo;
+
+  /// No description provided for @viewerClipSaveToGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Save to gallery'**
+  String get viewerClipSaveToGallery;
+
+  /// No description provided for @viewerClipShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get viewerClipShare;
+
+  /// No description provided for @viewerClipSavedToGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved to the gallery'**
+  String get viewerClipSavedToGallery;
+
+  /// No description provided for @viewerClipGalleryDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'No permission to save to the gallery'**
+  String get viewerClipGalleryDenied;
+
+  /// No description provided for @viewerClipExportNoSpace.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough space on the phone'**
+  String get viewerClipExportNoSpace;
+
+  /// No description provided for @viewerClipExportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t export the clip'**
+  String get viewerClipExportFailed;
 }
 
 class _AppLocalizationsDelegate

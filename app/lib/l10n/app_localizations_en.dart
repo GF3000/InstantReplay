@@ -529,4 +529,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get viewerTagUndo => 'Undo';
+
+  @override
+  String get viewerClipSaveToGallery => 'Save to gallery';
+
+  @override
+  String get viewerClipShare => 'Share';
+
+  @override
+  String get viewerClipSavedToGallery => 'Saved to the gallery';
+
+  @override
+  String get viewerClipGalleryDenied => 'No permission to save to the gallery';
+
+  @override
+  String get viewerClipExportNoSpace => 'Not enough space on the phone';
+
+  @override
+  String get viewerClipExportFailed => 'Couldn\'t export the clip';
 }

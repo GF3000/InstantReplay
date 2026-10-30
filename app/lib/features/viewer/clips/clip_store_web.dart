@@ -35,6 +35,9 @@ class _BlobClip implements StoredClip {
   bool get canDownload => true;
 
   @override
+  String? get filePath => null;
+
+  @override
   Future<void> download(String fileName) async {
     final a = web.HTMLAnchorElement()
       ..href = url

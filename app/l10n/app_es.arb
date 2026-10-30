@@ -141,5 +141,11 @@
   "cameraAdvanced": "Avanzado",
   "cameraHotWarning": "El teléfono está caliente ({level}). Ponlo a la sombra o baja la calidad.",
   "viewerTagDeleted": "\"{name}\" borrada",
-  "viewerTagUndo": "Deshacer"
+  "viewerTagUndo": "Deshacer",
+  "viewerClipSaveToGallery": "Guardar en la galería",
+  "viewerClipShare": "Compartir",
+  "viewerClipSavedToGallery": "Guardado en la galería",
+  "viewerClipGalleryDenied": "Sin permiso para guardar en la galería",
+  "viewerClipExportNoSpace": "No queda espacio en el teléfono",
+  "viewerClipExportFailed": "No se pudo exportar el clip"
 }

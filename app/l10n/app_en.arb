@@ -368,5 +368,11 @@
       }
     }
   },
-  "viewerTagUndo": "Undo"
+  "viewerTagUndo": "Undo",
+  "viewerClipSaveToGallery": "Save to gallery",
+  "viewerClipShare": "Share",
+  "viewerClipSavedToGallery": "Saved to the gallery",
+  "viewerClipGalleryDenied": "No permission to save to the gallery",
+  "viewerClipExportNoSpace": "Not enough space on the phone",
+  "viewerClipExportFailed": "Couldn't export the clip"
 }
