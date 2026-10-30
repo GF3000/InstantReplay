@@ -125,6 +125,59 @@ void main() {
     await eventually(() async => (await db.watchSessionClips(sessionId).first).single.tagIds.isEmpty ? true : null);
   });
 
+  test('a tag change does not write a category the in-memory map does not hold, and back', () async {
+    c.listen(clipLabelWriterProvider, (_, _) {});
+    final session = await db.createSession(name: 'Old', type: SessionType.match, templateId: BuiltInTemplates.football);
+    await db.addClip(ClipsCompanion.insert(
+      id: 'clip-1',
+      sessionId: session.id,
+      requestId: const Value('req-1'),
+      requestedAt: DateTime(2026, 10, 30),
+      filePath: '/f/clip-1.mp4',
+      sizeBytes: 4,
+      createdAt: DateTime(2026, 10, 30),
+      updatedAt: DateTime(2026, 10, 30),
+    ));
+    await db.setClipCategory('clip-1', 'football.cat.attack');
+    await db.setClipTags('clip-1', ['football.tag.goal']);
+
+    // Only the tag reaches memory (the library seeds the tag before the category).
+    c.read(clipTagsProvider.notifier).set('req-1', 'football.tag.shot');
+    var e = await eventually(() async {
+      final e = (await db.watchSessionClips(session.id).first).single;
+      return e.tagIds.contains('football.tag.shot') ? e : null;
+    });
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    e = (await db.watchSessionClips(session.id).first).single;
+    expect(e.clip.categoryId, 'football.cat.attack');
+
+    c.read(clipCategoriesProvider.notifier).set('req-1', 'football.cat.defense');
+    c.read(clipTagsProvider.notifier).set('req-1', null);
+    await eventually(() async {
+      final e = (await db.watchSessionClips(session.id).first).single;
+      return e.clip.categoryId == 'football.cat.defense' && e.tagIds.isEmpty ? e : null;
+    });
+  });
+
+  test("library label choices: the session's template, live labels for the active one", () async {
+    final old = await db.createSession(name: 'Old', type: SessionType.match, templateId: BuiltInTemplates.hockey);
+    final gone = await db.createSession(name: 'Gone', type: SessionType.match, templateId: BuiltInTemplates.handball);
+    await db.deleteTemplate(BuiltInTemplates.handball);
+    await c.read(activeSessionProvider.notifier).start(
+          name: 'Now',
+          type: SessionType.match,
+          templateId: BuiltInTemplates.football,
+        );
+
+    final choices = (await libraryLabelChoices(c.read, old.id))!;
+    expect(choices.tags.first.id, 'hockey.tag.goal');
+    expect(choices.categories, hasLength(4));
+    expect(await libraryLabelChoices(c.read, c.read(activeSessionProvider)!.id), isNull);
+    final none = (await libraryLabelChoices(c.read, gone.id))!;
+    expect(none.tags, isEmpty);
+    expect(none.categories, isEmpty);
+  });
+
   test('the post-save bar: a category keeps it up, a tag closes it', () async {
     await c.read(activeSessionProvider.notifier).start(
           name: 'T',

@@ -35,25 +35,28 @@ class TagButton extends StatelessWidget {
       );
 }
 
-/// Sheet to choose the tag of clip [requestId] (or none).
-Future<void> showClipTagPicker(BuildContext context, String requestId) => showModalBottomSheet<void>(
+/// Sheet to choose the tag of clip [requestId] (or none). [choices] replaces the active session's
+/// labels for a clip of another session (library review); that template is not editable from here.
+Future<void> showClipTagPicker(BuildContext context, String requestId, {ClipLabelChoices? choices}) =>
+    showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
       constraints: const BoxConstraints(maxWidth: 560),
       builder: (context) => Consumer(
         builder: (context, ref, _) {
           final l10n = AppLocalizations.of(context);
-          final tags = ref.watch(tagsProvider);
+          final List<ViewerTag> tags = choices?.tags ?? ref.watch(tagsProvider);
           final current = ref.watch(clipTagsProvider.select((m) => m[requestId]));
-          final categories = ref.watch(categoriesProvider);
+          final List<ViewerTag> categories = choices?.categories ?? ref.watch(categoriesProvider);
           final category = ref.watch(clipCategoriesProvider.select((m) => m[requestId]));
           void set(String? id) {
             ref.read(clipTagsProvider.notifier).set(requestId, id);
             Navigator.of(context).pop();
           }
 
+          // Scrolls when a big template does not fit (a phone in landscape).
           return SafeArea(
-            child: Padding(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -95,18 +98,19 @@ Future<void> showClipTagPicker(BuildContext context, String requestId) => showMo
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton.icon(
-                      onPressed: () {
-                        final navigator = Navigator.of(context);
-                        navigator.pop();
-                        navigator.push(TagEditorPage.route());
-                      },
-                      icon: const Icon(Icons.edit),
-                      label: Text(l10n.viewerTagsEdit),
+                  if (choices == null)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: () {
+                          final navigator = Navigator.of(context);
+                          navigator.pop();
+                          navigator.push(TagEditorPage.route());
+                        },
+                        icon: const Icon(Icons.edit),
+                        label: Text(l10n.viewerTagsEdit),
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),

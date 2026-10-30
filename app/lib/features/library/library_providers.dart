@@ -222,26 +222,30 @@ final liveLibrarySyncProvider = Provider.autoDispose<void>((ref) {
 /// library), by request id.
 final clipLabelWriterProvider = Provider.autoDispose<void>((ref) {
   if (!ref.watch(libraryEnabledProvider)) return;
-  void changed(Map<String, String>? before, Map<String, String> after) {
-    for (final requestId in {...after.keys, ...?before?.keys}) {
-      if (before?[requestId] != after[requestId]) unawaited(writeClipLabels(ref, requestId));
-    }
-  }
+  // Each map writes only its own column: a tag change must not write a category that has not
+  // reached the map yet (the library seeds both when it opens a clip), and the other way round.
+  void Function(Map<String, String>?, Map<String, String>) changed({required bool tags}) => (before, after) {
+        for (final requestId in {...after.keys, ...?before?.keys}) {
+          if (before?[requestId] != after[requestId]) {
+            unawaited(writeClipLabels(ref, requestId, tags: tags, category: !tags));
+          }
+        }
+      };
 
-  ref.listen<Map<String, String>>(clipTagsProvider, changed);
-  ref.listen<Map<String, String>>(clipCategoriesProvider, changed);
+  ref.listen<Map<String, String>>(clipTagsProvider, changed(tags: true));
+  ref.listen<Map<String, String>>(clipCategoriesProvider, changed(tags: false));
 });
 
 /// Copies the in-memory tag and category of request [requestId] to its library clip, if stored.
-Future<void> writeClipLabels(Ref ref, String requestId, {String? clipId}) async {
+Future<void> writeClipLabels(Ref ref, String requestId, {String? clipId, bool tags = true, bool category = true}) async {
   final db = ref.read(libraryDatabaseProvider);
   final tagId = ref.read(clipTagsProvider)[requestId];
   final categoryId = ref.read(clipCategoriesProvider)[requestId];
   try {
     final id = clipId ?? await db.clipIdForRequest(requestId);
     if (id == null) return;
-    await db.setClipTags(id, [?tagId]);
-    await db.setClipCategory(id, categoryId);
+    if (tags) await db.setClipTags(id, [?tagId]);
+    if (category) await db.setClipCategory(id, categoryId);
   } catch (e) {
     debugPrint('Could not save labels of $requestId: $e');
   }
@@ -277,6 +281,28 @@ final libraryLabelsProvider = FutureProvider.autoDispose<Map<String, ViewerTag>>
 
 /// `ref.read` of a widget or a container.
 typedef Reader = T Function<T>(ProviderListenable<T> provider);
+
+/// What a clip of session [sessionId] can be tagged with from the library: null for the active
+/// session (the picker follows its live labels, editable), else the categories and tags of the
+/// session's own template — not the active session's, nor the web tag set when none is active.
+/// Empty when the session's template was deleted.
+Future<ClipLabelChoices?> libraryLabelChoices(Reader read, String sessionId) async {
+  final active = read(activeSessionProvider);
+  if (active?.id == sessionId) return null;
+  final db = read(libraryDatabaseProvider);
+  // Read the session again: its template may have been deleted since the screen got the row.
+  final templateId = (await db.session(sessionId))?.templateId;
+  if (templateId == null) return const ClipLabelChoices();
+  // Same template as the live session: its labels may carry edits not yet written.
+  if (active != null && active.templateId == templateId) {
+    return ClipLabelChoices(categories: active.categories, tags: active.tags);
+  }
+  final content = await db.templateContent(templateId);
+  return ClipLabelChoices(
+    categories: [for (final c in content?.categories ?? const <CategoryRow>[]) categoryLabel(c)],
+    tags: [for (final t in content?.tags ?? const <TagRow>[]) tagLabel(t)],
+  );
+}
 
 /// Deletes clips and their files.
 Future<void> deleteLibraryClips(Reader read, Iterable<String> clipIds) async {

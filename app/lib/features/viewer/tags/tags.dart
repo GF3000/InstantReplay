@@ -151,6 +151,16 @@ class CategoriesNotifier extends TagsNotifier {
 
 final categoriesProvider = NotifierProvider<CategoriesNotifier, List<ViewerTag>>(CategoriesNotifier.new);
 
+/// The categories and tags a clip can be given when it does not belong to the active session:
+/// those of its own session's template (a clip reviewed from the library).
+@immutable
+class ClipLabelChoices {
+  const ClipLabelChoices({this.categories = const [], this.tags = const []});
+
+  final List<ViewerTag> categories;
+  final List<ViewerTag> tags;
+}
+
 /// Labels of clips outside the active template, by id: the library fills it before opening a
 /// clip of another session, so its tag still shows in the review.
 class KnownLabelsNotifier extends Notifier<Map<String, ViewerTag>> {

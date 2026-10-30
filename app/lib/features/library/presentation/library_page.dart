@@ -125,13 +125,19 @@ class _SessionClipsPageState extends ConsumerState<SessionClipsPage> {
   }
 
   /// Opens the review with the clip's labels seeded, so the tag shows and changes are saved back.
-  void _open(ClipEntry e, Map<String, ViewerTag> labels) {
+  /// Its tag picker offers the labels of this session's template.
+  Future<void> _open(ClipEntry e, Map<String, ViewerTag> labels) async {
     final c = e.clip;
     final key = c.requestId ?? c.id;
-    ref.read(knownLabelsProvider.notifier).addAll(labels);
+    final choices = await libraryLabelChoices(ref.read, widget.session.id);
+    if (!mounted) return;
+    ref.read(knownLabelsProvider.notifier).addAll({
+      ...labels,
+      for (final l in [...?choices?.categories, ...?choices?.tags]) l.id: l,
+    });
     ref.read(clipTagsProvider.notifier).set(key, e.tagIds.firstOrNull);
     ref.read(clipCategoriesProvider.notifier).set(key, c.categoryId);
-    Navigator.of(context).push(ReviewPage.route(SessionClip(
+    await Navigator.of(context).push(ReviewPage.route(labelChoices: choices, SessionClip(
       requestId: key,
       seconds: (c.durationMs ?? 0) / 1000,
       requestedAt: c.requestedAt,
