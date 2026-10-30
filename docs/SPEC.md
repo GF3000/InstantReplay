@@ -161,6 +161,7 @@ Besides the clip buffer, the Camera can record the **whole session** (the match,
 - Pause works per fragment: fragments are simply not written while paused, and `decodeTime` stays **continuous** across pauses, so the file plays without a gap or a jump.
 - At finish, an index and a `sidx` are written (seekable in galleries and players, see Phase 0 results) and the item is published.
 - **Parts:** an encoder restart (profile change, thermal fallback) needs a new init segment, so the recording continues in a **new part** (a new file in the gallery); so does every **4 h** of video, to keep files manageable. The Viewer's profile change stays allowed during a recording. The UI shows "part N" when there is more than one.
+- **Names:** `InstantReplay_yyyy-MM-dd_HH-mm.mp4` (the recording's start time), then `…_part2.mp4`, `…_part3.mp4`.
 
 **Space.**
 
