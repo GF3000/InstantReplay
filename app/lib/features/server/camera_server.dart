@@ -61,6 +61,9 @@ class CameraServer implements ApiServer {
   final _subs = <StreamSubscription<Object?>>[];
   CameraStatus? _lastStatus;
   DateTime? _lastStatusSent;
+
+  /// Latest full-session recording state from an event or a command, for stats without one.
+  cap.RecordingStatus? _lastRecording;
   Timer? _sweep;
   HttpServer? _server;
 
@@ -76,7 +79,9 @@ class CameraServer implements ApiServer {
     _subs
       ..add(capture.clipChanges.listen(_onClipChanged))
       ..add(capture.liveIceCandidates.listen(_onLocalIce))
-      ..add(capture.stats.listen(_onStats));
+      ..add(capture.stats.listen(_onStats))
+      ..add(capture.recording.listen(_onRecording))
+      ..add(capture.recordingSaved.listen(_onRecordingSaved));
     final sweepEvery = Duration(milliseconds: max(100, silenceTimeout.inMilliseconds ~/ 3));
     _sweep = Timer.periodic(sweepEvery, (_) => _dropSilent());
     final server = await shelf_io.serve(handler, address ?? InternetAddress.anyIPv4, port);
@@ -373,15 +378,29 @@ compilación que incluya el visor web.</p>
           if (_liveOwners[s.viewerId] == s) {
             await capture.liveAddIceCandidate(s.viewerId!, candidate, sdpMid: sdpMid, sdpMLineIndex: sdpMLineIndex);
           }
-        case RecStart() || RecPause() || RecStop():
-          break; // Full-session recording: wired up next.
+        // Full-session recording (SPEC §3.8): any viewer controls the Camera's one recording, and
+        // the new state goes to every viewer at once (_onRecording). A stop is announced by the
+        // recorder's saved event as RecordingFinished.
+        case RecStart(:final includeSeconds):
+          _onRecording(await capture.recordStart(includeSeconds: includeSeconds));
+        case RecPause():
+          _onRecording(await capture.recordPause());
+        case RecStop():
+          await capture.recordStop();
         case Welcome() || RtcOffer() || ClipChanged() || StatusUpdate() || RecordingFinished() || ErrorMessage() || Pong():
           break; // Camera → Viewer messages; nothing to do.
       }
     } catch (e) {
-      s.send(ErrorMessage(code: message is LiveStart ? 'live_failed' : 'failed', message: _describe(e)));
+      s.send(ErrorMessage(code: _errorCode(message, e), message: _describe(e)));
     }
   }
+
+  static String _errorCode(WsMessage message, Object e) => switch (message) {
+        LiveStart() => 'live_failed',
+        RecStart() || RecPause() || RecStop() =>
+          e is PlatformException && e.code == 'no_space' ? 'no_space' : 'rec_failed',
+        _ => 'failed',
+      };
 
   void _onHello(_ViewerSocket s, Hello hello) {
     if (hello.protocolVersion != protocolVersion) {
@@ -449,13 +468,32 @@ compilación que incluya el visor web.</p>
   void _onClipChanged(cap.ClipInfo c) => _broadcast(ClipChanged(clip: _dto(c)));
 
   void _onStats(cap.CaptureStats stats) {
-    final status = _lastStatus = cameraStatus(stats);
+    if (stats.recording case final r?) _lastRecording = r;
+    final status = _lastStatus = cameraStatus(stats, fallbackRecording: _lastRecording);
     final now = DateTime.now();
     final last = _lastStatusSent;
     if (last != null && now.difference(last) < const Duration(milliseconds: 900)) return;
     _lastStatusSent = now;
     _broadcast(StatusUpdate(status: status));
   }
+
+  /// A recording change goes out at once instead of with the next stats tick, so every viewer's
+  /// buttons follow a press within a frame or two. Unchanged states (the event that follows a
+  /// command's own result) are not sent twice.
+  void _onRecording(cap.RecordingStatus r) {
+    _lastRecording = r;
+    final last = _lastStatus;
+    if (last == null) return; // The first stats tick will carry it.
+    final recording = sessionRecording(r);
+    final before = last.sessionRecording?.toJson();
+    if (before != null && _sameJson(before, recording.toJson())) return;
+    final status = _lastStatus = withSessionRecording(last, recording);
+    _broadcast(StatusUpdate(status: status));
+  }
+
+  void _onRecordingSaved(cap.RecordingSaved saved) => _broadcast(recordingFinished(saved));
+
+  static bool _sameJson(Json a, Json b) => a.length == b.length && a.keys.every((k) => a[k] == b[k]);
 
   void _broadcast(WsMessage message) {
     final encoded = message.encode();

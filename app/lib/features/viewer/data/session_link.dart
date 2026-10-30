@@ -218,6 +218,10 @@ class SessionLink {
             if (isConnected) _set(_state.copyWith(status: status));
           case Ping():
             ch.send(const Pong().encode());
+          case RecordingFinished():
+            // Only forwarded (the live screen tells the coach); the idle state that follows comes
+            // in its own StatusUpdate, so the link state is not touched here.
+            break;
           default:
         }
         if (!_messages.isClosed) _messages.add(msg);
