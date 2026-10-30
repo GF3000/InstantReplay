@@ -413,12 +413,31 @@ class ViewerClipsNotifier extends Notifier<List<SessionClip>> {
     return const [];
   }
 
-  /// Never waits for earlier saves or downloads.
-  void save({int? seconds}) => unawaited(_transfers?.save(seconds: seconds));
+  /// Never waits for earlier saves or downloads. Returns the requestId of the new clip, or null when
+  /// not paired.
+  String? save({int? seconds}) {
+    final transfers = _transfers;
+    if (transfers?.api == null) return null;
+    final requestId = const Uuid().v4();
+    unawaited(transfers!.save(seconds: seconds, requestId: requestId));
+    return requestId;
+  }
 
   void retry(String requestId) => _transfers?.retry(requestId);
 }
 
 final viewerClipsProvider = NotifierProvider.autoDispose<ViewerClipsNotifier, List<SessionClip>>(ViewerClipsNotifier.new);
+
+/// Thumbnail of a stored clip, grabbed once per clip (web); null where unsupported.
+/// Kept while a tile shows it and a few minutes after, so scrolling back doesn't decode the clip
+/// again, but released clips don't pin their thumbnails for the whole session.
+final clipThumbnailProvider = FutureProvider.autoDispose.family<Uint8List?, StoredClip>((ref, clip) {
+  final link = ref.keepAlive();
+  Timer? release;
+  ref.onCancel(() => release = Timer(const Duration(minutes: 5), link.close));
+  ref.onResume(() => release?.cancel());
+  ref.onDispose(() => release?.cancel());
+  return clip.thumbnail();
+});
 
 // endregion

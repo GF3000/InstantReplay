@@ -15,9 +15,12 @@
 .EXAMPLE
   tool/build_apk.ps1            # debug APK
   tool/build_apk.ps1 -Release   # release APK
+  tool/build_apk.ps1 -Release -SplitPerAbi   # one release APK per CPU architecture
 #>
 param(
-  [switch]$Release
+  [switch]$Release,
+  # arm64 alone is less than half the size of the universal APK.
+  [switch]$SplitPerAbi
 )
 
 $ErrorActionPreference = 'Stop'
@@ -68,7 +71,9 @@ try {
   Get-ChildItem -Path $assetsDir -Recurse -File -Filter '*.symbols' | Remove-Item -Force
 
   $mode = if ($Release) { '--release' } else { '--debug' }
-  Invoke-Checked flutter @('build', 'apk', $mode)
+  $buildArgs = @('build', 'apk', $mode)
+  if ($SplitPerAbi) { $buildArgs += '--split-per-abi' }
+  Invoke-Checked flutter $buildArgs
 }
 finally {
   Pop-Location

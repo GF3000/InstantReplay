@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:replay_capture_android/replay_capture_android.dart';
+import 'package:replay_protocol/replay_protocol.dart' show hotThermalStatus;
 
 import '../../core/orientation_lock.dart';
 import '../../l10n/app_localizations.dart';
@@ -12,7 +13,8 @@ import '../server/server_controller.dart';
 import 'camera_session.dart';
 import 'pairing_card.dart';
 
-/// Camera role (SPEC §3.5, D17): setup mode with preview and status, and a black operating mode.
+/// Camera role (SPEC §3.5, D17; UX §2): a setup screen to frame the shot and pair a viewer, and a
+/// black operating mode that starts by itself when the first viewer connects.
 /// Capture starts on entry and stops when this screen goes away.
 class CameraPage extends ConsumerWidget {
   const CameraPage({super.key});
@@ -22,6 +24,17 @@ class CameraPage extends ConsumerWidget {
     final operating = ref.watch(cameraSessionProvider.select((s) => s.operating));
     // Keeps the API server alive across the setup/operating switch; it stops with this screen.
     ref.listen(cameraServerProvider, (_, _) {});
+    // UX §2.2: going from no viewers to one turns the screen black. Waking to setup while viewers
+    // stay connected is respected; so is a recent wake, because a viewer whose phone locks or loses
+    // Wi-Fi reconnects (0 → 1) and must not blank the screen while the coach is reframing.
+    ref.listen(cameraServerProvider.select((s) => s.viewers), (previous, viewers) {
+      if ((previous ?? 0) > 0 || viewers == 0) return;
+      final session = ref.read(cameraSessionProvider.notifier);
+      if (ref.read(cameraSessionProvider).phase != CameraPhase.running) return;
+      final woken = session.lastWokenAt;
+      if (woken != null && DateTime.now().difference(woken) < autoOperatingQuietPeriod) return;
+      session.startOperating();
+    });
     return OrientationLock(child: operating ? const _OperatingView() : const _SetupView());
   }
 }
@@ -37,13 +50,21 @@ class _SetupView extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(child: _Preview(state: state)),
-            SizedBox(width: 360, child: _Panel(state: state)),
-          ],
-        ),
+        child: LayoutBuilder(builder: (context, c) {
+          final preview = _Preview(state: state);
+          final panel = _Panel(state: state);
+          // Portrait only before the landscape lock applies; keep it usable anyway.
+          if (c.maxHeight > c.maxWidth) {
+            return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              SizedBox(height: c.maxHeight * 0.4, child: preview),
+              Expanded(child: panel),
+            ]);
+          }
+          return Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Expanded(child: preview),
+            SizedBox(width: (c.maxWidth * 0.45).clamp(300.0, 420.0), child: panel),
+          ]);
+        }),
       ),
     );
   }
@@ -62,9 +83,21 @@ class _Preview extends ConsumerWidget {
     if (session != null) {
       final profile = state.profile;
       final aspect = profile == null || profile.height == 0 ? 16 / 9 : profile.width / profile.height;
-      return Center(
-        child: AspectRatio(aspectRatio: aspect, child: Texture(textureId: session.textureId)),
-      );
+      return Stack(children: [
+        Center(child: AspectRatio(aspectRatio: aspect, child: Texture(textureId: session.textureId))),
+        // The manual way in; the first viewer also starts operating mode by itself (UX §2.2).
+        PositionedDirectional(
+          start: 12,
+          bottom: 12,
+          child: FilledButton.icon(
+            icon: const Icon(Icons.dark_mode),
+            label: Text(l10n.cameraStartOperating),
+            onPressed: state.phase == CameraPhase.running
+                ? () => ref.read(cameraSessionProvider.notifier).startOperating()
+                : null,
+          ),
+        ),
+      ]);
     }
 
     Widget message(String text, {bool retry = true}) => _Message(text: text, retry: retry);
@@ -113,6 +146,7 @@ class _Message extends ConsumerWidget {
   }
 }
 
+/// Pairing first, warnings only when they need action, everything technical under "Advanced".
 class _Panel extends ConsumerWidget {
   const _Panel({required this.state});
 
@@ -124,12 +158,12 @@ class _Panel extends ConsumerWidget {
     final theme = Theme.of(context);
     final notifier = ref.read(cameraSessionProvider.notifier);
     final stats = state.stats;
-    final running = state.phase == CameraPhase.running;
+    final thermal = state.thermalStatus;
 
     return ColoredBox(
       color: theme.colorScheme.surfaceContainerLowest,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         children: [
           Row(children: [
             Expanded(child: Text(l10n.roleCamera, style: theme.textTheme.titleLarge)),
@@ -143,83 +177,109 @@ class _Panel extends ConsumerWidget {
               },
             ),
           ]),
+          // Pairing first: it is what the coach needs while mounting, even with warnings below it.
+          const PairingCard(),
+          const SizedBox(height: 8),
           if (state.errors.isNotEmpty) ...[
             _ErrorCard(errors: state.errors, onDismiss: notifier.dismissErrors),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
           ],
-          if (state.profiles.isNotEmpty) ...[
-            InputDecorator(
-              decoration: InputDecoration(
-                labelText: l10n.cameraProfile,
-                border: const OutlineInputBorder(),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  key: const Key('camera-profile'),
-                  value: state.profileId,
-                  isExpanded: true,
-                  itemHeight: 56,
-                  items: [
-                    for (final p in state.profiles) DropdownMenuItem(value: p.id, child: Text(_profileLabel(p))),
-                  ],
-                  onChanged: state.phase == CameraPhase.starting || state.phase == CameraPhase.initializing
-                      ? null
-                      : (id) => id == null ? null : notifier.selectProfile(id),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
-          FilledButton.icon(
-            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
-            icon: const Icon(Icons.dark_mode),
-            label: Text(l10n.cameraStartOperating),
-            onPressed: running ? notifier.startOperating : null,
-          ),
-          if (stats != null && !stats.plugged) _Warning(l10n.cameraNotChargingWarning),
-          if (state.notificationsDenied) _Warning(l10n.cameraNotificationsDenied),
-          const SizedBox(height: 12),
-          const PairingCard(),
-          const Divider(height: 24),
-          if (state.cameraState != null) _StatRow(l10n.cameraStatCamera, state.cameraState!),
-          if (stats == null)
-            Text(l10n.cameraWaitingForStats, style: theme.textTheme.bodyMedium)
-          else ...[
-            _StatRow(l10n.cameraStatFps, l10n.cameraFpsValue(stats.fps.toStringAsFixed(1))),
-            _StatRow(
-              l10n.cameraStatGaps,
-              l10n.cameraGapsValue(stats.gaps, stats.cameraGaps, stats.glGaps),
-              alert: stats.gaps > 0,
-            ),
-            _StatRow(l10n.cameraStatBuffer, l10n.cameraBufferValue(stats.bufferMs ~/ 1000, _mb(stats.bufferBytes))),
-            _StatRow(l10n.cameraStatOutbox, l10n.cameraOutboxValue(stats.outboxClips, _mb(stats.outboxBytes))),
-            _StatRow(
-              l10n.cameraStatBattery,
-              l10n.cameraBatteryValue(
-                _temperature(stats.batteryTempC),
-                stats.batteryPercent == null ? '–' : '${stats.batteryPercent} %',
-                stats.plugged ? l10n.cameraCharging : l10n.cameraNotCharging,
-              ),
-            ),
-          ],
-          if (state.thermalStatus != null)
-            _StatRow(
-              l10n.cameraStatThermal,
-              thermalName(l10n, state.thermalStatus!),
-              alert: state.thermalStatus! >= _thermalModerate,
-            ),
-          if (kDebugMode) ...[
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(56)),
-              icon: const Icon(Icons.save_alt),
-              label: Text(l10n.cameraSaveTestClip),
-              onPressed: running ? () => _saveTestClip(context, notifier) : null,
-            ),
-          ],
+          if (thermal != null && thermal >= _thermalModerate)
+            _Warning(Icons.thermostat, l10n.cameraHotWarning(thermalName(l10n, thermal)), error: true),
+          if (stats != null && !stats.plugged) _Warning(Icons.power_off, l10n.cameraNotChargingWarning),
+          if (state.notificationsDenied) _Warning(Icons.notifications_off, l10n.cameraNotificationsDenied),
+          _Advanced(state: state),
         ],
       ),
+    );
+  }
+}
+
+/// UX §2.1: quality profile, live statistics, diagnostics and the test save, collapsed by default.
+class _Advanced extends ConsumerWidget {
+  const _Advanced({required this.state});
+
+  final CameraSessionState state;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final notifier = ref.read(cameraSessionProvider.notifier);
+    final stats = state.stats;
+    final running = state.phase == CameraPhase.running;
+
+    return ExpansionTile(
+      key: const Key('camera-advanced'),
+      leading: const Icon(Icons.tune),
+      title: Text(l10n.cameraAdvanced),
+      minTileHeight: 56,
+      tilePadding: const EdgeInsets.symmetric(horizontal: 4),
+      childrenPadding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+      shape: const Border(),
+      collapsedShape: const Border(),
+      expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (state.profiles.isNotEmpty) ...[
+          InputDecorator(
+            decoration: InputDecoration(
+              labelText: l10n.cameraProfile,
+              border: const OutlineInputBorder(),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                key: const Key('camera-profile'),
+                value: state.profileId,
+                isExpanded: true,
+                itemHeight: 56,
+                items: [
+                  for (final p in state.profiles) DropdownMenuItem(value: p.id, child: Text(_profileLabel(p))),
+                ],
+                onChanged: state.phase == CameraPhase.starting || state.phase == CameraPhase.initializing
+                    ? null
+                    : (id) => id == null ? null : notifier.selectProfile(id),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        if (state.cameraState != null) _StatRow(l10n.cameraStatCamera, state.cameraState!),
+        if (stats == null)
+          Text(l10n.cameraWaitingForStats, style: theme.textTheme.bodyMedium)
+        else ...[
+          _StatRow(l10n.cameraStatFps, l10n.cameraFpsValue(stats.fps.toStringAsFixed(1))),
+          _StatRow(
+            l10n.cameraStatGaps,
+            l10n.cameraGapsValue(stats.gaps, stats.cameraGaps, stats.glGaps),
+            alert: stats.gaps > 0,
+          ),
+          _StatRow(l10n.cameraStatBuffer, l10n.cameraBufferValue(stats.bufferMs ~/ 1000, _mb(stats.bufferBytes))),
+          _StatRow(l10n.cameraStatOutbox, l10n.cameraOutboxValue(stats.outboxClips, _mb(stats.outboxBytes))),
+          _StatRow(
+            l10n.cameraStatBattery,
+            l10n.cameraBatteryValue(
+              _temperature(stats.batteryTempC),
+              stats.batteryPercent == null ? '–' : '${stats.batteryPercent} %',
+              stats.plugged ? l10n.cameraCharging : l10n.cameraNotCharging,
+            ),
+          ),
+        ],
+        if (state.thermalStatus != null)
+          _StatRow(
+            l10n.cameraStatThermal,
+            thermalName(l10n, state.thermalStatus!),
+            alert: state.thermalStatus! >= _thermalModerate,
+          ),
+        if (kDebugMode) ...[
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            icon: const Icon(Icons.save_alt),
+            label: Text(l10n.cameraSaveTestClip),
+            onPressed: running ? () => _saveTestClip(context, notifier) : null,
+          ),
+        ],
+      ],
     );
   }
 
@@ -279,20 +339,24 @@ class _ErrorCard extends StatelessWidget {
   }
 }
 
+/// One compact line: what needs attention, in amber (or red for errors).
 class _Warning extends StatelessWidget {
-  const _Warning(this.text);
+  const _Warning(this.icon, this.text, {this.error = false});
 
+  final IconData icon;
   final String text;
+  final bool error;
 
   @override
   Widget build(BuildContext context) {
-    final color = Theme.of(context).colorScheme.tertiary;
+    final scheme = Theme.of(context).colorScheme;
+    final color = error ? scheme.error : scheme.tertiary;
     return Padding(
-      padding: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(Icons.warning_amber, color: color),
+        Icon(icon, color: color, size: 20),
         const SizedBox(width: 8),
-        Expanded(child: Text(text, style: TextStyle(color: color))),
+        Expanded(child: Text(text, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: color))),
       ]),
     );
   }
@@ -311,7 +375,7 @@ class _StatRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        SizedBox(width: 130, child: Text(label, style: TextStyle(color: scheme.onSurfaceVariant))),
+        SizedBox(width: 116, child: Text(label, style: TextStyle(color: scheme.onSurfaceVariant))),
         Expanded(
           child: Text(
             value,
@@ -338,6 +402,8 @@ class _OperatingView extends ConsumerStatefulWidget {
 class _OperatingViewState extends ConsumerState<_OperatingView> {
   static const _dim = Color(0xFF5A5A5A);
   static const _dimRed = Color(0xFF8A2A2A);
+  static const _style = TextStyle(color: _dim, fontSize: 14);
+  static const _styleRed = TextStyle(color: _dimRed, fontSize: 14);
 
   @override
   void initState() {
@@ -373,22 +439,27 @@ class _OperatingViewState extends ConsumerState<_OperatingView> {
               padding: const EdgeInsets.all(16),
               child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                 for (final e in state.errors.take(2))
-                  Text(e, style: const TextStyle(color: _dimRed, fontSize: 14)),
-                Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text(e, style: _styleRed),
+                // A Wrap, not a Row: the line must never overflow on a small landscape phone.
+                Wrap(spacing: 8, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
                   Icon(Icons.circle, size: 10, color: running ? _dimRed : _dim),
-                  const SizedBox(width: 8),
                   Text(
                     l10n.cameraOperatingStatus(
                       (stats?.bufferMs ?? 0) ~/ 1000,
                       stats?.outboxClips ?? 0,
                       _temperature(stats?.batteryTempC),
                     ),
-                    style: const TextStyle(color: _dim, fontSize: 14),
+                    style: _style,
                   ),
-                  Text(' · ${l10n.cameraOperatingViewers(viewers)}', style: const TextStyle(color: _dim, fontSize: 14)),
+                  const Icon(Icons.people, size: 14, color: _dim),
+                  Text(l10n.cameraOperatingViewers(viewers), style: _style),
                   if (hot) ...[
-                    const SizedBox(width: 8),
-                    Text(thermalName(l10n, state.thermalStatus!), style: const TextStyle(color: _dimRed, fontSize: 14)),
+                    const Icon(Icons.thermostat, size: 14, color: _dimRed),
+                    Text(thermalName(l10n, state.thermalStatus!), style: _styleRed),
+                  ],
+                  if (stats != null && !stats.plugged) ...[
+                    const Icon(Icons.power_off, size: 14, color: _dimRed),
+                    Text(l10n.cameraNotCharging, style: _styleRed),
                   ],
                 ]),
                 Text(l10n.cameraOperatingHint, style: const TextStyle(color: Color(0xFF303030), fontSize: 12)),
@@ -404,7 +475,10 @@ class _OperatingViewState extends ConsumerState<_OperatingView> {
 // endregion
 
 /// `PowerManager.THERMAL_STATUS_MODERATE`: the first level that degrades capture (SPEC §3.6).
-const _thermalModerate = 2;
+/// After a manual wake, a viewer (re)connecting does not switch to operating mode for this long.
+const autoOperatingQuietPeriod = Duration(minutes: 2);
+
+const _thermalModerate = hotThermalStatus;
 
 String thermalName(AppLocalizations l10n, int status) => switch (status) {
       <= 0 => l10n.thermalNone,

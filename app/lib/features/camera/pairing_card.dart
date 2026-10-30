@@ -10,10 +10,15 @@ import '../server/server_controller.dart';
 class PairingCard extends ConsumerWidget {
   const PairingCard({super.key});
 
-  static const _qrSize = 148.0;
+  static const _maxQrSize = 160.0;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context, WidgetRef ref) =>
+      LayoutBuilder(builder: (context, c) => _build(context, ref, c.maxWidth));
+
+  Widget _build(BuildContext context, WidgetRef ref, double width) {
+    // Half the card on a narrow landscape panel, so the code next to it stays large.
+    final qrSize = ((width - 36) * 0.55).clamp(96.0, _maxQrSize);
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final server = ref.watch(cameraServerProvider);
@@ -24,14 +29,14 @@ class PairingCard extends ConsumerWidget {
       qr = QrImageView(
         key: const Key('camera-pairing-qr'),
         data: url,
-        size: _qrSize,
+        size: qrSize,
         padding: const EdgeInsets.all(8),
         backgroundColor: Colors.white,
         semanticsLabel: url,
       );
     } else {
       qr = SizedBox.square(
-        dimension: _qrSize,
+        dimension: qrSize,
         child: Center(
           // No spinner: the server waits for capture, which may never start (permission denied).
           child: Icon(

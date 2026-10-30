@@ -3,6 +3,7 @@
 #
 #   tool/build_apk.sh            # debug APK
 #   tool/build_apk.sh --release  # release APK
+#   tool/build_apk.sh --release --split-per-abi  # one release APK per CPU architecture
 #
 # 1. `flutter build web --release --no-web-resources-cdn`: CanvasKit and the other engine
 #    resources are copied into build/web instead of being loaded from Google's CDN, because
@@ -15,11 +16,14 @@
 set -euo pipefail
 
 mode="--debug"
+split=()
 for arg in "$@"; do
   case "$arg" in
     --release) mode="--release" ;;
     --debug) mode="--debug" ;;
-    *) echo "Unknown argument: $arg (expected --debug or --release)" >&2; exit 2 ;;
+    # One APK per CPU architecture (release only): arm64 alone is less than half the size.
+    --split-per-abi) split=(--split-per-abi) ;;
+    *) echo "Unknown argument: $arg (expected --debug, --release or --split-per-abi)" >&2; exit 2 ;;
   esac
 done
 
@@ -61,5 +65,5 @@ cp -R "$web_out/." "$assets_dir/"
 # CanvasKit debug symbols (~9 MB) are only useful to engine developers.
 find "$assets_dir" -name '*.symbols' -delete
 
-echo "==> flutter build apk $mode"
-flutter build apk "$mode"
+echo "==> flutter build apk $mode ${split[*]:-}"
+flutter build apk "$mode" "${split[@]}"

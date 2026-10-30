@@ -186,8 +186,12 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
     await _setPreview(false);
   }
 
+  /// When the coach last woke the screen to setup; the automatic switch backs off for a while.
+  DateTime? lastWokenAt;
+
   Future<void> stopOperating() async {
     if (!state.operating) return;
+    lastWokenAt = DateTime.now();
     state = state.copyWith(operating: false);
     await _setPreview(true);
   }

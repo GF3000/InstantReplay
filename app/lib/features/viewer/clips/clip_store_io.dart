@@ -40,6 +40,10 @@ class _FileClip implements StoredClip {
   @override
   Future<void> download(String fileName) async => throw UnsupportedError('Download is web only');
 
+  // video_player cannot hand out frames; the list shows a placeholder until the native library.
+  @override
+  Future<Uint8List?> thumbnail() async => null;
+
   @override
   Future<void> release() async {
     if (await file.exists()) await file.delete();
