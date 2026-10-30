@@ -60,25 +60,33 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: bash tool/build_apk.sh --release
+        # Per-architecture APKs: arm64 (almost every phone since 2017) is less than half the size
+        # of a universal APK. The universal one is built too, for older 32-bit phones.
+        run: |
+          bash tool/build_apk.sh --release --split-per-abi
+          mkdir -p dist
+          cp app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk dist/
+          cp app/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk dist/
+          (cd app && flutter build apk --release)
+          cp app/build/app/outputs/flutter-apk/app-release.apk dist/
 
-      - name: Name the APK after the version
-        id: apk
+      - name: Name the APKs after the version
         run: |
           version="${GITHUB_REF_NAME#v}"
           [ "$GITHUB_REF_TYPE" = tag ] || version="$(grep '^version:' app/pubspec.yaml | cut -d' ' -f2)-${GITHUB_SHA::7}"
-          out="instant-replay-$version.apk"
-          cp app/build/app/outputs/flutter-apk/app-release.apk "$out"
-          echo "file=$out" >> "$GITHUB_OUTPUT"
+          mv dist/app-arm64-v8a-release.apk "dist/instant-replay-$version-arm64.apk"
+          mv dist/app-armeabi-v7a-release.apk "dist/instant-replay-$version-arm32.apk"
+          mv dist/app-release.apk "dist/instant-replay-$version-universal.apk"
+          ls -lh dist
 
       - uses: actions/upload-artifact@v4
         with:
-          name: release-apk
-          path: ${{ steps.apk.outputs.file }}
+          name: release-apks
+          path: dist/*.apk
           if-no-files-found: error
 
       - name: Draft GitHub Release
         if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" "${{ steps.apk.outputs.file }}" --draft --generate-notes --title "InstantReplay $GITHUB_REF_NAME"
+        run: gh release create "$GITHUB_REF_NAME" dist/*.apk --draft --generate-notes --title "InstantReplay $GITHUB_REF_NAME"
