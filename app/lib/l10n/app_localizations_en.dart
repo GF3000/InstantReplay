@@ -783,22 +783,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get libraryTemplateDelete => 'Delete template';
 
   @override
-  String get libraryTemplateLabelsTitle => 'Tags and categories';
-
-  @override
-  String get libraryCategoriesTitle => 'Categories';
-
-  @override
-  String get libraryCategory => 'Category';
-
-  @override
-  String get libraryCategoryAdd => 'Add category';
-
-  @override
-  String get libraryCategoriesEmpty =>
-      'No categories. Add one to group your clips.';
-
-  @override
   String get libraryTemplateFootball => 'Football';
 
   @override
@@ -817,16 +801,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get libraryTemplateMigrated => 'My tags';
 
   @override
-  String get libraryCategoryAttack => 'Attack';
+  String get libraryTagAttack => 'Attack';
 
   @override
-  String get libraryCategoryDefense => 'Defence';
+  String get libraryTagDefense => 'Defence';
 
   @override
-  String get libraryCategoryTransition => 'Transition';
+  String get libraryTagTransition => 'Transition';
 
   @override
-  String get libraryCategorySetPiece => 'Set piece';
+  String get libraryTagSetPiece => 'Set piece';
 
   @override
   String get libraryTagGoal => 'Goal';
@@ -942,4 +926,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsStorageUnavailable => 'Could not read the storage used.';
+
+  @override
+  String viewerClipDeleted(String name) {
+    return '$name deleted';
+  }
+
+  @override
+  String get viewerClipUndo => 'Undo';
+
+  @override
+  String get viewerTagPanelTitle => 'Tag this play';
+
+  @override
+  String get viewerTagPanelClose => 'Close';
 }

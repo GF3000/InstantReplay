@@ -3,8 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../l10n/app_localizations.dart';
-import '../../viewer/clips/clip_store.dart';
-import '../../viewer/clips/clip_transfers.dart';
 import '../../viewer/tags/tags.dart';
 import '../../viewer/ui/clip_list.dart';
 import '../../viewer/ui/review_page.dart';
@@ -94,8 +92,8 @@ Future<bool> _confirm(BuildContext context, String message, String action) async
   return ok ?? false;
 }
 
-/// The clips of one session, newest first, with filter chips by category and tag. Long-press
-/// starts selecting for a batch delete.
+/// The clips of one session, newest first, with filter chips by tag. Long-press starts selecting
+/// for a batch delete.
 class SessionClipsPage extends ConsumerStatefulWidget {
   const SessionClipsPage({super.key, required this.session});
 
@@ -109,7 +107,6 @@ class SessionClipsPage extends ConsumerStatefulWidget {
 }
 
 class _SessionClipsPageState extends ConsumerState<SessionClipsPage> {
-  String? _category;
   String? _tag;
   final _selected = <String>{};
 
@@ -124,25 +121,18 @@ class _SessionClipsPageState extends ConsumerState<SessionClipsPage> {
     if (mounted) setState(_selected.clear);
   }
 
-  /// Opens the review with the clip's labels seeded, so the tag shows and changes are saved back.
-  void _open(ClipEntry e, Map<String, ViewerTag> labels) {
-    final c = e.clip;
-    final key = c.requestId ?? c.id;
-    ref.read(knownLabelsProvider.notifier).addAll(labels);
-    ref.read(clipTagsProvider.notifier).set(key, e.tagIds.firstOrNull);
-    ref.read(clipCategoriesProvider.notifier).set(key, c.categoryId);
-    Navigator.of(context).push(ReviewPage.route(SessionClip(
-      requestId: key,
-      seconds: (c.durationMs ?? 0) / 1000,
-      requestedAt: c.requestedAt,
-      phase: SessionClipPhase.ready,
-      clipId: c.id,
-      durationMs: c.durationMs,
-      received: c.sizeBytes,
-      total: c.sizeBytes,
-      stored: ClipStore.openFile(c.id, c.filePath, c.sizeBytes),
-      acked: true,
-    )));
+  /// Opens the review with the clip's tag seeded, so it shows and changes are saved back. Its tag
+  /// picker offers the tags of this session's template.
+  Future<void> _open(ClipEntry e, Map<String, ViewerTag> labels) async {
+    final choices = await libraryLabelChoices(ref.read, widget.session.id);
+    if (!mounted) return;
+    ref.read(knownLabelsProvider.notifier).addAll({
+      ...labels,
+      for (final l in [...?choices?.tags]) l.id: l,
+    });
+    final clip = sessionClipFromEntry(e);
+    ref.read(clipTagsProvider.notifier).set(clip.requestId, e.tagIds.firstOrNull);
+    await Navigator.of(context).push(ReviewPage.route(labelChoices: choices, clip));
   }
 
   @override
@@ -152,13 +142,11 @@ class _SessionClipsPageState extends ConsumerState<SessionClipsPage> {
     ref.watch(clipLabelWriterProvider);
     final clips = ref.watch(sessionClipsProvider(widget.session.id)).value ?? const <ClipEntry>[];
     final labels = ref.watch(libraryLabelsProvider).value ?? const <String, ViewerTag>{};
-    final usedCategories = {for (final e in clips) ?e.clip.categoryId};
     final usedTags = {for (final e in clips) ...e.tagIds};
-    final categories = [for (final id in usedCategories) ?labels[id]];
     final tags = [for (final id in usedTags) ?labels[id]];
     final shown = [
       for (final e in clips)
-        if ((_category == null || e.clip.categoryId == _category) && (_tag == null || e.tagIds.contains(_tag))) e,
+        if (_tag == null || e.tagIds.contains(_tag)) e,
     ];
     final selecting = _selected.isNotEmpty;
 
@@ -205,7 +193,7 @@ class _SessionClipsPageState extends ConsumerState<SessionClipsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (categories.isNotEmpty || tags.isNotEmpty)
+              if (tags.isNotEmpty)
                 SizedBox(
                   height: 52,
                   child: ListView(
@@ -215,20 +203,9 @@ class _SessionClipsPageState extends ConsumerState<SessionClipsPage> {
                       ChoiceChip(
                         key: const ValueKey('library-filter-all'),
                         label: Text(l10n.viewerFilterAll),
-                        selected: _category == null && _tag == null,
-                        onSelected: (_) => setState(() => _category = _tag = null),
+                        selected: _tag == null,
+                        onSelected: (_) => setState(() => _tag = null),
                       ),
-                      for (final c in categories)
-                        Padding(
-                          padding: const EdgeInsetsDirectional.only(start: 8),
-                          child: ChoiceChip(
-                            key: ValueKey('library-filter-${c.id}'),
-                            avatar: Icon(Icons.category, size: 16, color: c.colour),
-                            label: Text(c.label(l10n)),
-                            selected: _category == c.id,
-                            onSelected: (_) => setState(() => _category = _category == c.id ? null : c.id),
-                          ),
-                        ),
                       for (final t in tags)
                         Padding(
                           padding: const EdgeInsetsDirectional.only(start: 8),
@@ -252,7 +229,6 @@ class _SessionClipsPageState extends ConsumerState<SessionClipsPage> {
                           final e = shown[i];
                           final c = e.clip;
                           final tag = e.tagIds.map((id) => labels[id]).nonNulls.firstOrNull;
-                          final category = labels[c.categoryId];
                           final selected = _selected.contains(c.id);
                           final seconds = ((c.durationMs ?? 0) / 1000).round();
                           return ListTile(
@@ -272,7 +248,6 @@ class _SessionClipsPageState extends ConsumerState<SessionClipsPage> {
                             ),
                             subtitle: Text(
                               [
-                                if (category != null) category.label(l10n),
                                 l10n.viewerClipDuration(seconds),
                                 DateFormat.Hms(l10n.localeName).format(c.requestedAt),
                               ].join(' · '),

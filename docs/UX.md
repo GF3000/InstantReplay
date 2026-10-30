@@ -43,13 +43,13 @@ Design consequences:
 |---|---|
 | Live view | As large as the layout allows; reconnects by itself |
 | **Save** | One big button with the default duration (20 s), plus 10 / 30 / 60 s chips next to it (current behaviour kept) |
-| **Post-save tag bar** | Right after saving, a row of tag buttons appears for ~6 s. One tap tags the clip; if nothing is tapped it fades away. It never blocks the live view or the next save. Unlimited tags: the row scrolls horizontally |
+| **Post-save tag panel** | Right after saving, a panel slides in from the left over the live view for ~6 s, with one set of large tag buttons that wrap freely (no sideways scrolling). One tap on a tag tags the clip and closes it; an X closes it; untouched, it slides away. It never covers Save or the quick chips, so the next save is never blocked |
 | Camera status | **Minimal**: a REC dot (green = recording, red = problem). **Tap for details** (fps, buffer, pending clips, temperature, battery). Problems surface as a short warning without a tap |
 | Clip list | Compact, newest first (see 3.3) |
 
 Layouts:
-- **Phone portrait:** live on top, Save + chips below, tag bar over the Save area, clip list underneath (scroll).
-- **Phone landscape / tablet / laptop:** live on the left, a right panel with Save, chips, the tag bar and the clip list.
+- **Phone portrait:** live on top (the tag panel covers it after a save), Save + chips below, clip list underneath (scroll).
+- **Phone landscape / tablet / laptop:** live on the left (the tag panel slides over its left part after a save), a right panel with Save, chips and the clip list.
 
 ### 3.3 Clip list (finding the play in a time-out)
 - Chronological, **newest first**.
@@ -65,7 +65,8 @@ Layouts:
 ### 3.5 Tags
 - **Stored per Viewer** (on web: browser storage; it may be lost if the browser data is cleared).
 - **Default set: Bien · Mal · Otros**, editable (add, rename, delete, reorder, colour) from a simple screen reachable from the Viewer menu.
-- No limit on the number of tags; the post-save bar scrolls.
+- No limit on the number of tags; the post-save panel wraps them and scrolls vertically if needed.
+- **One tag per clip.** On Android the tags come from the session's template; there are no separate categories (merged into tags).
 
 ## 4. Visual style
 - Keep **dark + amber/cream** (current), high contrast, touch targets ≥ 56 dp for primary actions.
@@ -74,7 +75,7 @@ Layouts:
 ## 5. Scope note
 Most of this is presentation and layout. Four items add small features:
 - automatic operating mode on the Camera;
-- the post-save tag bar, tag editing, and tags on clips;
+- the post-save tag panel, tag editing, and tags on clips;
 - thumbnails;
 - tag filters.
 

@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:meta/meta.dart';
 
-/// A category or tag inside a template: what the JSON file and the built-in list carry.
+/// A tag inside a template: what the JSON file and the built-in list carry.
 @immutable
 class LabelSpec {
   const LabelSpec({this.id, this.name, required this.color});
@@ -23,14 +23,13 @@ class LabelSpec {
   int get hashCode => Object.hash(id, name, color);
 }
 
-/// A tag template (SPEC §5.3, D18): categories (one per clip) and tags (many per clip).
+/// A tag template (SPEC §5.3, D18): the tags a clip can be given, one per clip.
 @immutable
 class TemplateSpec {
   const TemplateSpec({
     this.id,
     this.name,
     required this.sport,
-    this.categories = const [],
     this.tags = const [],
   });
 
@@ -45,7 +44,6 @@ class TemplateSpec {
 
   /// `football`, `basketball`, `handball`, `hockey`, `generic`, or anything a user typed.
   final String sport;
-  final List<LabelSpec> categories;
   final List<LabelSpec> tags;
 
   /// The export file. Names must be resolved first ([name] and every label name non-null), so the
@@ -55,13 +53,14 @@ class TemplateSpec {
         'schemaVersion': schemaVersion,
         'name': name,
         'sport': sport,
-        'categories': [for (final c in categories) _labelJson(c)],
         'tags': [for (final t in tags) _labelJson(t)],
       };
 
   String encode() => const JsonEncoder.withIndent('  ').convert(toJson());
 
   /// Parses an export file. Throws [FormatException] with a short reason when it is not one.
+  /// Files from before tags and categories were merged list `categories` too: they become tags,
+  /// first, skipping a tag with the same name.
   factory TemplateSpec.fromJson(Object? json) {
     if (json is! Map<String, dynamic>) throw const FormatException('not a JSON object');
     if (json['format'] != format) throw const FormatException('not an InstantReplay template');
@@ -74,8 +73,7 @@ class TemplateSpec {
     return TemplateSpec(
       name: name.trim(),
       sport: sport is String && sport.trim().isNotEmpty ? sport.trim() : 'generic',
-      categories: _labels(json['categories'], 'categories'),
-      tags: _labels(json['tags'], 'tags'),
+      tags: mergeLabels(_labels(json['categories'], 'categories'), _labels(json['tags'], 'tags')),
     );
   }
 
@@ -87,6 +85,14 @@ class TemplateSpec {
       throw const FormatException('not valid JSON');
     }
     return TemplateSpec.fromJson(json);
+  }
+
+  /// [first] then [second], leaving out a label of [second] whose name (or, for a built-in one,
+  /// whose kind: `football.tag.goal` → `goal`) one of [first] already has.
+  static List<LabelSpec> mergeLabels(List<LabelSpec> first, List<LabelSpec> second) {
+    String key(LabelSpec l) => (l.name ?? l.id?.split('.').last ?? '').trim().toLowerCase();
+    final seen = {for (final l in first) key(l)};
+    return [...first, for (final l in second) if (seen.add(key(l))) l];
   }
 
   static Map<String, dynamic> _labelJson(LabelSpec l) => {'name': l.name, 'color': _hex(l.color)};
@@ -120,7 +126,9 @@ class TemplateSpec {
 
 // region Built-in templates (SPEC §5.3)
 
-/// Ids of the built-in templates; their names, categories and tags are localized by id.
+/// Ids of the built-in templates; their names and tags are localized by id. Each starts with the
+/// four phases (attack, defence, transition, set piece; once categories, which kept their ids so
+/// labelled clips keep their tag), then the sport's own tags.
 abstract final class BuiltInTemplates {
   static const football = 'builtin.football';
   static const basketball = 'builtin.basketball';
@@ -136,7 +144,7 @@ abstract final class BuiltInTemplates {
   static const _transition = 0xFFFFB300;
   static const _setPiece = 0xFF8E24AA;
 
-  static List<LabelSpec> _categories(String sport) => [
+  static List<LabelSpec> _phases(String sport) => [
         LabelSpec(id: '$sport.cat.attack', color: _attack),
         LabelSpec(id: '$sport.cat.defense', color: _defense),
         LabelSpec(id: '$sport.cat.transition', color: _transition),
@@ -145,44 +153,39 @@ abstract final class BuiltInTemplates {
 
   static const _tagColors = [0xFF43A047, 0xFF00ACC1, 0xFFF4511E, 0xFFD81B60, 0xFFFFB300, 0xFF9E9E9E];
 
-  static List<LabelSpec> _tags(String sport, List<String> kinds) => [
+  static List<LabelSpec> _tags(String sport, List<String> kinds) => TemplateSpec.mergeLabels(_phases(sport), [
         for (final (i, k) in kinds.indexed) LabelSpec(id: '$sport.tag.$k', color: _tagColors[i % _tagColors.length]),
-      ];
+      ]);
 
   static final all = <TemplateSpec>[
     TemplateSpec(
       id: football,
       sport: 'football',
-      categories: _categories('football'),
       tags: _tags('football', ['goal', 'shot', 'foul', 'corner', 'freeKick', 'turnover']),
     ),
     TemplateSpec(
       id: basketball,
       sport: 'basketball',
-      categories: _categories('basketball'),
       tags: _tags('basketball', ['basket', 'threePointer', 'rebound', 'steal', 'turnover', 'foul']),
     ),
     TemplateSpec(
       id: handball,
       sport: 'handball',
-      categories: _categories('handball'),
       tags: _tags('handball', ['goal', 'shot', 'save', 'sevenMeters', 'turnover', 'foul']),
     ),
     TemplateSpec(
       id: hockey,
       sport: 'hockey',
-      categories: _categories('hockey'),
       tags: _tags('hockey', ['goal', 'shot', 'save', 'penalty', 'turnover', 'foul']),
     ),
     TemplateSpec(
       id: generic,
       sport: 'generic',
-      categories: _categories('generic'),
-      tags: const [
+      tags: TemplateSpec.mergeLabels(_phases('generic'), const [
         LabelSpec(id: 'generic.tag.good', color: 0xFF43A047),
         LabelSpec(id: 'generic.tag.bad', color: 0xFFE53935),
         LabelSpec(id: 'generic.tag.other', color: 0xFF1E88E5),
-      ],
+      ]),
     ),
   ];
 }

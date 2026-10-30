@@ -17,10 +17,14 @@ import 'clip_list.dart';
 /// Frame stepping is exact: frames come from the clip's own timestamps ([FrameTimeline]) and each
 /// step seeks to a position the platform player resolves to that frame ([SeekRule]).
 class ReviewPage extends ConsumerStatefulWidget {
-  const ReviewPage({super.key, required this.clip, this.playerFactory, this.platformFactory});
+  const ReviewPage({super.key, required this.clip, this.labelChoices, this.playerFactory, this.platformFactory});
 
   /// A ready clip ([SessionClip.stored] set).
   final SessionClip clip;
+
+  /// The labels the tag picker offers for a clip outside the active session (library review);
+  /// null for the active session's own.
+  final ClipLabelChoices? labelChoices;
 
   /// Tests inject a controller; defaults to [StoredClip.createPlayer].
   final VideoPlayerController Function()? playerFactory;
@@ -33,8 +37,10 @@ class ReviewPage extends ConsumerStatefulWidget {
   /// Horizontal drag on the video moves one frame per this many logical pixels.
   static const dragPixelsPerFrame = 6.0;
 
-  static Route<void> route(SessionClip clip) =>
-      MaterialPageRoute<void>(fullscreenDialog: true, builder: (_) => ReviewPage(clip: clip));
+  static Route<void> route(SessionClip clip, {ClipLabelChoices? labelChoices}) => MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => ReviewPage(clip: clip, labelChoices: labelChoices),
+      );
 
   @override
   ConsumerState<ReviewPage> createState() => _ReviewPageState();
@@ -196,7 +202,7 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
         actions: [
           TextButton.icon(
             key: const ValueKey('review-tag'),
-            onPressed: () => showClipTagPicker(context, clip.requestId),
+            onPressed: () => showClipTagPicker(context, clip.requestId, choices: widget.labelChoices),
             icon: Icon(tag == null ? Icons.sell_outlined : Icons.sell, color: tag?.colour),
             label: Text(l10n.viewerClipChangeTag),
           ),

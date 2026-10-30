@@ -2,7 +2,7 @@ import '../../l10n/app_localizations.dart';
 import 'data/library_database.dart';
 import 'data/templates.dart';
 
-/// The localized name of a built-in tag or category (`football.tag.goal`, `hockey.cat.attack`)
+/// The localized name of a built-in tag (`football.tag.goal`, `hockey.cat.attack`)
 /// or of the Viewer's original default tags (`good`, `bad`, `other`); null for any other id.
 String? builtInLabel(AppLocalizations l10n, String id) {
   final kind = id.split('.').last;
@@ -10,10 +10,10 @@ String? builtInLabel(AppLocalizations l10n, String id) {
     'good' => l10n.viewerTagDefaultGood,
     'bad' => l10n.viewerTagDefaultBad,
     'other' => l10n.viewerTagDefaultOther,
-    'attack' => l10n.libraryCategoryAttack,
-    'defense' => l10n.libraryCategoryDefense,
-    'transition' => l10n.libraryCategoryTransition,
-    'setPiece' => l10n.libraryCategorySetPiece,
+    'attack' => l10n.libraryTagAttack,
+    'defense' => l10n.libraryTagDefense,
+    'transition' => l10n.libraryTagTransition,
+    'setPiece' => l10n.libraryTagSetPiece,
     'goal' => l10n.libraryTagGoal,
     'shot' => l10n.libraryTagShot,
     'foul' => l10n.libraryTagFoul,
@@ -56,7 +56,6 @@ TemplateSpec resolveTemplateNames(AppLocalizations l10n, TemplateSpec spec) {
   return TemplateSpec(
     name: spec.name ?? templateIdLabel(l10n, spec.id ?? ''),
     sport: spec.sport,
-    categories: [for (final c in spec.categories) resolve(c)],
     tags: [for (final t in spec.tags) resolve(t)],
   );
 }

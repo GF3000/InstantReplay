@@ -79,20 +79,22 @@ void main() {
     expect((await db.clip('clip-1'))!.sessionId, s.id);
   });
 
-  test("tags and categories follow the session's template; edits are saved to it", () async {
+  test("tags follow the session's template; edits are saved to it", () async {
     await c.read(activeSessionProvider.notifier).start(
           name: 'T',
           type: SessionType.training,
           templateId: BuiltInTemplates.basketball,
         );
-    expect([for (final t in c.read(tagsProvider)) t.id].first, 'basketball.tag.basket');
-    expect(c.read(categoriesProvider), hasLength(4));
+    final ids = [for (final t in c.read(tagsProvider)) t.id];
+    expect(ids.first, 'basketball.cat.attack');
+    expect(ids, contains('basketball.tag.basket'));
+    expect(ids, hasLength(10));
 
     c.read(tagsProvider.notifier).add('Block', 0xFF00ACC1);
-    c.read(categoriesProvider.notifier).remove('basketball.cat.setPiece');
+    c.read(tagsProvider.notifier).remove('basketball.cat.setPiece');
     await eventually(() async {
       final t = (await db.templateContent(BuiltInTemplates.basketball))!;
-      return t.tags.length == 7 && t.categories.length == 3 ? t : null;
+      return t.tags.length == 10 && t.tags.every((t) => t.id != 'basketball.cat.setPiece') ? t : null;
     });
     final t = (await db.templateContent(BuiltInTemplates.basketball))!;
     expect(t.tags.last.name, 'Block');
@@ -113,19 +115,42 @@ void main() {
     await db.updateClip('clip-1', const ClipsCompanion(requestId: Value('req-1')));
 
     c.read(clipTagsProvider.notifier).set('req-1', 'football.tag.goal');
-    c.read(clipCategoriesProvider.notifier).set('req-1', 'football.cat.attack');
     final entry = await eventually(() async {
       final e = (await db.watchSessionClips(sessionId).first).single;
-      return e.tagIds.isNotEmpty && e.clip.categoryId != null ? e : null;
+      return e.tagIds.isNotEmpty ? e : null;
     });
     expect(entry.tagIds, ['football.tag.goal']);
-    expect(entry.clip.categoryId, 'football.cat.attack');
+
+    // One tag per clip: a new one replaces it.
+    c.read(clipTagsProvider.notifier).set('req-1', 'football.cat.attack');
+    await eventually(() async {
+      final e = (await db.watchSessionClips(sessionId).first).single;
+      return e.tagIds.length == 1 && e.tagIds.single == 'football.cat.attack' ? e : null;
+    });
 
     c.read(clipTagsProvider.notifier).set('req-1', null);
     await eventually(() async => (await db.watchSessionClips(sessionId).first).single.tagIds.isEmpty ? true : null);
   });
 
-  test('the post-save bar: a category keeps it up, a tag closes it', () async {
+  test("library label choices: the session's template, live labels for the active one", () async {
+    final old = await db.createSession(name: 'Old', type: SessionType.match, templateId: BuiltInTemplates.hockey);
+    final gone = await db.createSession(name: 'Gone', type: SessionType.match, templateId: BuiltInTemplates.handball);
+    await db.deleteTemplate(BuiltInTemplates.handball);
+    await c.read(activeSessionProvider.notifier).start(
+          name: 'Now',
+          type: SessionType.match,
+          templateId: BuiltInTemplates.football,
+        );
+
+    final choices = (await libraryLabelChoices(c.read, old.id))!;
+    expect(choices.tags.first.id, 'hockey.cat.attack');
+    expect([for (final t in choices.tags) t.id], contains('hockey.tag.goal'));
+    expect(await libraryLabelChoices(c.read, c.read(activeSessionProvider)!.id), isNull);
+    final none = (await libraryLabelChoices(c.read, gone.id))!;
+    expect(none.tags, isEmpty);
+  });
+
+  test('the post-save bar: one tap tags the clip and closes it', () async {
     await c.read(activeSessionProvider.notifier).start(
           name: 'T',
           type: SessionType.match,
@@ -133,9 +158,7 @@ void main() {
         );
     final bar = c.read(postSaveTagBarProvider.notifier);
     bar.show('req-1');
-    bar.pickCategory('handball.cat.defense');
     expect(c.read(postSaveTagBarProvider), 'req-1');
-    expect(c.read(clipCategoryProvider('req-1'))?.id, 'handball.cat.defense');
     bar.pick('handball.tag.save');
     expect(c.read(postSaveTagBarProvider), isNull);
     expect(c.read(clipTagProvider('req-1'))?.id, 'handball.tag.save');

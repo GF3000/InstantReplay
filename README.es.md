@@ -6,7 +6,7 @@
 
 Repeticiones instantáneas para deportes de equipo, sin conexión a Internet. Un móvil Android en un trípode graba de forma continua y guarda el último minuto en un búfer circular. Desde el móvil o la tablet del entrenador se ve el directo y, con un toque, se recuperan los últimos 10–60 segundos para revisarlos a cámara lenta, etiquetarlos y compartirlos. Todo funciona en una red Wi-Fi local (hotspot de un móvil o router de viaje).
 
-> **Estado:** primeras versiones, ya funciona de punta a punta: la Cámara graba y sirve el directo y los clips, y cualquier navegador en la misma Wi-Fi hace de Visor (directo, guardar, etiquetar, revisar). Lo siguiente es probarlo en entrenamientos reales. Diseño (en inglés): [docs/SPEC.md](docs/SPEC.md) · UX: [docs/UX.md](docs/UX.md) · Plan: [docs/PLAN-v0.1.md](docs/PLAN-v0.1.md).
+> **Estado:** MVP ([v0.3.0](https://github.com/GF3000/InstantReplay/releases/latest)): la Cámara graba, sirve el directo y los clips y puede grabar la sesión completa; el Visor (app Android o cualquier navegador en la misma Wi-Fi) ve el directo, guarda, etiqueta y revisa clips, y en Android tiene una biblioteca de clips. Lo siguiente es probarlo en entrenamientos reales. Diseño (en inglés): [docs/SPEC.md](docs/SPEC.md) · UX: [docs/UX.md](docs/UX.md) · Plan: [docs/PLAN-v0.1.md](docs/PLAN-v0.1.md).
 >
 > **Probarlo:** instala el APK en un móvil Android (10 o superior) y sigue la [guía de montaje](docs/guia-de-montaje.md).
 

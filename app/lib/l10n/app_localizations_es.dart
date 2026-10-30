@@ -787,22 +787,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get libraryTemplateDelete => 'Borrar plantilla';
 
   @override
-  String get libraryTemplateLabelsTitle => 'Etiquetas y categorías';
-
-  @override
-  String get libraryCategoriesTitle => 'Categorías';
-
-  @override
-  String get libraryCategory => 'Categoría';
-
-  @override
-  String get libraryCategoryAdd => 'Añadir categoría';
-
-  @override
-  String get libraryCategoriesEmpty =>
-      'No hay categorías. Añade una para agrupar tus clips.';
-
-  @override
   String get libraryTemplateFootball => 'Fútbol';
 
   @override
@@ -821,16 +805,16 @@ class AppLocalizationsEs extends AppLocalizations {
   String get libraryTemplateMigrated => 'Mis etiquetas';
 
   @override
-  String get libraryCategoryAttack => 'Ataque';
+  String get libraryTagAttack => 'Ataque';
 
   @override
-  String get libraryCategoryDefense => 'Defensa';
+  String get libraryTagDefense => 'Defensa';
 
   @override
-  String get libraryCategoryTransition => 'Transición';
+  String get libraryTagTransition => 'Transición';
 
   @override
-  String get libraryCategorySetPiece => 'Balón parado';
+  String get libraryTagSetPiece => 'Balón parado';
 
   @override
   String get libraryTagGoal => 'Gol';
@@ -946,4 +930,18 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get settingsStorageUnavailable => 'No se pudo leer el espacio usado.';
+
+  @override
+  String viewerClipDeleted(String name) {
+    return '$name borrado';
+  }
+
+  @override
+  String get viewerClipUndo => 'Deshacer';
+
+  @override
+  String get viewerTagPanelTitle => 'Etiqueta la jugada';
+
+  @override
+  String get viewerTagPanelClose => 'Cerrar';
 }

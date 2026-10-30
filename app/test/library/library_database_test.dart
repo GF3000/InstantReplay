@@ -29,14 +29,13 @@ Future<void> _clip(LibraryDatabase db, String id, String sessionId, {String? req
 
 void main() {
   group('first creation', () {
-    test('seeds the five built-in templates with their categories and tags in order', () async {
+    test('seeds the five built-in templates with their tags in order', () async {
       final db = _db();
       final templates = await db.templates();
       expect({for (final t in templates) t.id}, {for (final t in BuiltInTemplates.all) t.id});
       expect(templates.every((t) => t.builtIn && t.name == null), isTrue);
       final hockey = (await db.templateContent(BuiltInTemplates.hockey))!;
       final spec = BuiltInTemplates.all.firstWhere((t) => t.id == BuiltInTemplates.hockey);
-      expect([for (final c in hockey.categories) c.id], [for (final c in spec.categories) c.id]);
       expect([for (final t in hockey.tags) t.id], [for (final t in spec.tags) t.id]);
       expect([for (final t in hockey.tags) t.color], [for (final t in spec.tags) t.color]);
     });
@@ -53,7 +52,6 @@ void main() {
         ('good', null, 0xFF43A047),
         ('x1', 'Contra', 0xFF8E24AA),
       ]);
-      expect(migrated.categories, isEmpty);
     });
 
     test('an unreadable or empty legacy tag set is skipped', () async {
@@ -85,7 +83,7 @@ void main() {
       expect((await db.latestSession())!.id, b.id);
     });
 
-    test('clips carry a category and tags, read back newest first', () async {
+    test('clips carry their tag, read back newest first', () async {
       final db = _db();
       final s = await db.createSession(name: 'S', type: SessionType.match, templateId: BuiltInTemplates.football);
       await _clip(db, 'old', s.id, requestId: 'r-old', at: DateTime(2026, 10, 30, 12));
@@ -95,30 +93,28 @@ void main() {
       expect(await db.clipIdForRequest('nope'), isNull);
 
       await db.setClipTags('old', ['football.tag.goal', 'football.tag.shot']);
-      await db.setClipCategory('old', 'football.cat.attack');
       final clips = await db.watchSessionClips(s.id).first;
       expect([for (final c in clips) c.clip.id], ['new', 'old']);
       expect(clips.last.tagIds, unorderedEquals(['football.tag.goal', 'football.tag.shot']));
-      expect(clips.last.clip.categoryId, 'football.cat.attack');
       expect(clips.first.tagIds, isEmpty);
 
       await db.setClipTags('old', ['football.tag.foul']);
       expect((await db.watchSessionClips(s.id).first).last.tagIds, ['football.tag.foul']);
     });
 
-    test('a deleted tag keeps its clip links, so undo gives it back; a deleted category is cleared', () async {
+    test('a deleted tag keeps its clip links, so undo gives it back', () async {
       final db = _db();
       final s = await db.createSession(name: 'S', type: SessionType.match, templateId: BuiltInTemplates.generic);
       await _clip(db, 'c', s.id);
       await db.setClipTags('c', ['generic.tag.good']);
-      await db.setClipCategory('c', 'generic.cat.attack');
       final content = (await db.templateContent(BuiltInTemplates.generic))!;
-      final good = content.tags.first;
+      final good = content.tags.firstWhere((t) => t.id == 'generic.tag.good');
 
       await db.replaceTags(BuiltInTemplates.generic, [
-        for (final t in content.tags.skip(1)) LabelSpec(id: t.id, name: t.name, color: t.color),
+        for (final t in content.tags)
+          if (t.id != good.id) LabelSpec(id: t.id, name: t.name, color: t.color),
       ]);
-      expect((await db.templateContent(BuiltInTemplates.generic))!.tags, hasLength(2));
+      expect((await db.templateContent(BuiltInTemplates.generic))!.tags, hasLength(content.tags.length - 1));
       expect((await db.watchSessionClips(s.id).first).single.tagIds, ['generic.tag.good']);
 
       await db.replaceTags(BuiltInTemplates.generic, [
@@ -126,10 +122,7 @@ void main() {
       ]);
       final again = (await db.templateContent(BuiltInTemplates.generic))!;
       expect([for (final t in again.tags) t.id], [for (final t in content.tags) t.id]);
-      expect(again.tags.first.name, 'Great');
-
-      await db.replaceCategories(BuiltInTemplates.generic, const []);
-      expect((await db.clip('c'))!.categoryId, isNull);
+      expect(again.tags.firstWhere((t) => t.id == good.id).name, 'Great');
     });
 
     test('batch delete removes clips and their tags and returns the files', () async {
@@ -172,14 +165,12 @@ void main() {
       const spec = TemplateSpec(
         name: 'Waterpolo',
         sport: 'waterpolo',
-        categories: [LabelSpec(name: 'Attack', color: 0xFFFF0000), LabelSpec(name: 'Defence', color: 0xFF0000FF)],
         tags: [LabelSpec(name: 'Goal', color: 0xFF00FF00), LabelSpec(name: 'Exclusion', color: 0xFF9E9E9E)],
       );
       final id = await db.importTemplate(spec);
       final out = (await db.exportTemplate(id))!;
       expect(out.name, 'Waterpolo');
       expect(out.sport, 'waterpolo');
-      expect([for (final c in out.categories) (c.name, c.color)], [('Attack', 0xFFFF0000), ('Defence', 0xFF0000FF)]);
       expect([for (final t in out.tags) (t.name, t.color)], [('Goal', 0xFF00FF00), ('Exclusion', 0xFF9E9E9E)]);
       expect(out.tags.every((t) => t.id != null && t.id != id), isTrue);
       // Importing twice gives two templates, not a clash.

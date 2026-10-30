@@ -228,14 +228,14 @@ JSON `{type, id?, payload}`. Shared Dart package `replay_protocol` defines all m
 ### 5.1 Screens
 1. **Role select** (first run; remembered).
 2. **Connect:** discovered cameras list, Scan QR, Enter code, network hint (hotspot/router guide).
-3. **Session picker:** new session (name, type match/training, template) or continue the latest one.
+3. **Session picker:** new session (name, type match/training, template) or continue the latest one. Continuing lists the session's earlier clips on the live screen with their tags (Android; they can be reviewed, retagged and swiped away like new ones). Web keeps the current session in memory only (D15).
 4. **Live control (main screen)**
    - Live video full-bleed; status bar (latency, camera temperature, buffer).
    - Huge **SAVE** button (default duration) + small preset chips 10/30/60 s.
-   - After save: progress toast → clip card with **one-tap tag bar** (category + tags from the session template). Tagging never blocks the next save.
+   - After save: progress toast → clip card with **one-tap tag bar** (the tags of the session template; one tag per clip). Tagging never blocks the next save.
    - Tablet landscape: video + right-side tag rail. Phone portrait: video top, controls bottom (one-hand).
-5. **Clip review (modal):** autoplay loop, speed 0.25/0.5/1x, frame ±1, scrub; title, category, tags, notes. *(v0.2: trim handles, telestrator.)* Export → gallery / share.
-6. **Library:** sessions → clips, filter by category/tag, batch delete.
+5. **Clip review (modal):** autoplay loop, speed 0.25/0.5/1x, frame ±1, scrub; title, tag, notes. *(v0.2: trim handles, telestrator.)* Export → gallery / share.
+6. **Library:** sessions → clips, filter by tag, batch delete.
 7. **Settings:** default duration/presets/post-roll, tag templates (edit/import/export JSON), language, theme, storage usage, camera remote settings.
 
 ### 5.2 Transfer
@@ -247,18 +247,19 @@ JSON `{type, id?, payload}`. Shared Dart package `replay_protocol` defines all m
 ```
 Session(id, name, type[match|training|other], startedAt, templateId)
 Clip(id, sessionId, cameraId, requestedAt, cameraTime, durationMs, filePath,
-     sizeBytes, sha256, title, categoryId?, notes,
+     sizeBytes, sha256, title, notes,
      trimStartMs?, trimEndMs?,            -- v0.2, non-destructive
      createdAt, updatedAt)
-Category(id, templateId, name, color, order)
-Tag(id, templateId, name, order)
-ClipTag(clipId, tagId)
+Tag(id, templateId, name, color, order)
+ClipTag(clipId, tagId)                    -- at most one tag per clip
 Annotation(id, clipId, frameTimeMs, holdMs, strokesJson, createdAt)   -- v0.2
 TagTemplate(id, name, sport, builtIn, schemaVersion)
 ```
 Clip files: `<app files>/clips/<sessionId>/<clipId>.mp4` (fMP4). Storage usage in Settings; no automatic deletion.
 
-Built-in templates: Football, Basketball, Handball, Hockey, Generic (categories: Attack / Defense / Transition / Set piece; tags per sport).
+Built-in templates: Football, Basketball, Handball, Hockey, Generic. Each is one list of tags: Attack / Defense / Transition / Set piece first, then the sport's own.
+
+One label per clip, called a tag: there are no separate categories. Schema v2 merged the v1 categories into the tags of their template (same id, name and colour; built-in templates list them first, user templates last) and gave a clip with a category but no tag that category as its tag. Template files from before the merge still import: their `categories` become the first tags.
 
 ### 5.4 Export pipeline (native, Media3 Transformer)
 - **Plain export:** passthrough remux fMP4 → progressive MP4 (`moov` first), applying trim (keyframe-aligned, with Transformer trim optimization for exact cuts).

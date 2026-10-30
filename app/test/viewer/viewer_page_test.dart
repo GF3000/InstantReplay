@@ -108,6 +108,36 @@ class _RecordingClips extends ViewerClipsNotifier {
   }
 }
 
+/// Clips whose delete/undo/commit only hide and restore entries, recording each call.
+class _DeletableClips extends ViewerClipsNotifier {
+  _DeletableClips(this.all);
+
+  final List<SessionClip> all;
+  final hidden = <String>{};
+  final calls = <String>[];
+
+  @override
+  List<SessionClip> build() => all;
+
+  @override
+  bool delete(String requestId) {
+    calls.add('delete:$requestId');
+    hidden.add(requestId);
+    state = [for (final c in all) if (!hidden.contains(c.requestId)) c];
+    return true;
+  }
+
+  @override
+  void undoDelete(String requestId) {
+    calls.add('undo:$requestId');
+    hidden.remove(requestId);
+    state = [for (final c in all) if (!hidden.contains(c.requestId)) c];
+  }
+
+  @override
+  Future<void> commitDelete(String requestId) async => calls.add('commit:$requestId');
+}
+
 class _PlayingLive extends LiveViewNotifier {
   @override
   LiveViewState build() => const LiveViewState(phase: LivePhase.playing);
@@ -156,15 +186,19 @@ void main() {
     await tester.pump(PostSaveTagBarNotifier.visibleFor);
   });
 
-  testWidgets('after a save the tag bar tags that clip, and a new save replaces the bar', (tester) async {
+  testWidgets('after a save the left panel tags that clip, a new save replaces it, Save stays free', (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     final saved = <int?>[];
     late WidgetRef ref;
     await tester.pumpWidget(_app(Consumer(builder: (context, r, _) {
       ref = r;
-      return const SaveControls();
+      return const LiveControlView();
     }), [
       sharedPreferencesProvider.overrideWithValue(await _prefs()),
       linkStateProvider.overrideWith(_ConnectedLink.new),
+      liveViewProvider.overrideWith(_PlayingLive.new),
       viewerClipsProvider.overrideWith(() => _RecordingClips(saved)),
     ]));
     final bar = find.byKey(const ValueKey('viewer-tag-bar'));
@@ -173,6 +207,10 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('viewer-save'))); // r1
     await _settle(tester);
     expect(bar, findsOneWidget);
+    // On the left, over the live view, clear of the Save button.
+    final panel = tester.getRect(find.byKey(const ValueKey('viewer-tag-panel')));
+    expect(panel.left, 0);
+    expect(panel.overlaps(tester.getRect(find.byKey(const ValueKey('viewer-save')))), isFalse);
     // The chips stay usable while the bar is up.
     await tester.tap(find.text('30 s')); // r2
     await _settle(tester);
@@ -186,6 +224,14 @@ void main() {
     await _settle(tester);
     expect(bar, findsOneWidget);
     await tester.pump(PostSaveTagBarNotifier.visibleFor);
+    await _settle(tester);
+    expect(bar, findsNothing);
+    expect(ref.read(clipTagsProvider), {'r2': TagsNotifier.bad});
+
+    // The close button hides it without tagging.
+    await tester.tap(find.byKey(const ValueKey('viewer-save'))); // r4
+    await _settle(tester);
+    await tester.tap(find.byKey(const ValueKey('viewer-tag-panel-close')));
     await _settle(tester);
     expect(bar, findsNothing);
     expect(ref.read(clipTagsProvider), {'r2': TagsNotifier.bad});
@@ -414,6 +460,47 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Enter the code shown on the camera'), findsOneWidget);
     expect(find.text('Camera at http://192.168.1.20:8080'), findsOneWidget);
+  });
+
+  testWidgets('swipe deletes a finished clip with Undo; clips in progress cannot be swiped', (tester) async {
+    final clips = _DeletableClips([
+      SessionClip(requestId: 'busy', seconds: 20, requestedAt: DateTime(2026, 10, 30, 12, 2), phase: SessionClipPhase.downloading),
+      SessionClip(requestId: 'b', seconds: 20, requestedAt: DateTime(2026, 10, 30, 12, 1), phase: SessionClipPhase.ready),
+      SessionClip(requestId: 'a', seconds: 20, requestedAt: DateTime(2026, 10, 30, 12, 0), phase: SessionClipPhase.failed),
+    ]);
+    await tester.pumpWidget(_app(const ClipList(), [
+      sharedPreferencesProvider.overrideWithValue(await _prefs()),
+      viewerClipsProvider.overrideWith(() => clips),
+    ]));
+
+    // The downloading clip's spinner never settles, so the test steps through the swipe animations.
+    Future<void> step() async {
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 250));
+      }
+    }
+
+    await tester.drag(find.text('Clip · 12:02'), const Offset(-600, 0));
+    await step();
+    expect(find.text('Clip · 12:02'), findsOneWidget, reason: 'still downloading');
+    expect(clips.calls, isEmpty);
+
+    await tester.drag(find.text('Clip · 12:01'), const Offset(-600, 0));
+    await step();
+    expect(find.text('Clip · 12:01'), findsNothing);
+    expect(find.text('Clip · 12:01 deleted'), findsOneWidget);
+    await tester.tap(find.text('Undo'));
+    await step();
+    expect(find.text('Clip · 12:01'), findsOneWidget);
+    expect(clips.calls, ['delete:b', 'undo:b']);
+
+    // A failed clip too; without Undo the deletion stands once the SnackBar goes.
+    await tester.drag(find.text('Clip · 12:00'), const Offset(-600, 0));
+    await step();
+    await tester.pump(const Duration(seconds: 10));
+    await step();
+    expect(find.text('Clip · 12:00'), findsNothing);
+    expect(clips.calls.skip(2), ['delete:a', 'commit:a']);
   });
 }
 

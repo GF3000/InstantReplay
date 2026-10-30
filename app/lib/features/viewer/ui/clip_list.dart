@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../l10n/app_localizations.dart';
+import '../../library/library_providers.dart';
 import '../clips/clip_transfers.dart';
 import '../tags/tag_widgets.dart';
 import '../tags/tags.dart';
@@ -46,14 +47,15 @@ List<SessionClip> filterClips(List<SessionClip> clips, Map<String, String> clipT
           if (clipTags[c.requestId] == filter || c.phase != SessionClipPhase.ready) c,
       ];
 
-/// Newest first, with filter chips by tag on top.
+/// Newest first, with filter chips by tag on top. On Android a resumed session also lists the
+/// clips saved into it before ([liveClipsProvider]).
 class ClipList extends ConsumerWidget {
   const ClipList({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    final clips = ref.watch(viewerClipsProvider);
+    final clips = ref.watch(liveClipsProvider);
     final clipTags = ref.watch(clipTagsProvider);
     final inUse = tagsInUse(clips, clipTags, ref.watch(tagsProvider));
     final selected = ref.watch(clipFilterProvider);
@@ -111,7 +113,7 @@ class ClipList extends ConsumerWidget {
               : ListView.builder(
                   itemCount: shown.length + (kIsWeb ? 1 : 0),
                   itemBuilder: (context, i) => i < shown.length
-                      ? ClipTile(key: ValueKey(shown[i].requestId), clip: shown[i])
+                      ? _Deletable(key: ValueKey(shown[i].requestId), clip: shown[i])
                       : Padding(
                           padding: const EdgeInsets.all(12),
                           child: Text(l10n.viewerSessionOnlyNotice, style: small, textAlign: TextAlign.center),
@@ -121,6 +123,61 @@ class ClipList extends ConsumerWidget {
       ],
     );
   }
+}
+
+/// Swipe a finished clip to delete it; a SnackBar offers Undo before the deletion stands.
+/// Clips still being requested, recorded or downloaded cannot be swiped.
+class _Deletable extends ConsumerWidget {
+  const _Deletable({super.key, required this.clip});
+
+  final SessionClip clip;
+
+  static bool canDelete(SessionClip c) => c.phase == SessionClipPhase.ready || c.phase == SessionClipPhase.failed;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tile = ClipTile(clip: clip);
+    if (!canDelete(clip)) return tile;
+    final scheme = Theme.of(context).colorScheme;
+    return Dismissible(
+      key: ValueKey('clip-delete-${clip.requestId}'),
+      direction: DismissDirection.endToStart,
+      background: ColoredBox(
+        color: scheme.errorContainer,
+        child: Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: Padding(
+            padding: const EdgeInsetsDirectional.only(end: 24),
+            child: Icon(Icons.delete_outline, color: scheme.onErrorContainer),
+          ),
+        ),
+      ),
+      onDismissed: (_) => deleteClipWithUndo(context, ref, clip),
+      child: tile,
+    );
+  }
+}
+
+/// Takes [clip] off the list and offers Undo; the deletion stands when the SnackBar goes away.
+void deleteClipWithUndo(BuildContext context, WidgetRef ref, SessionClip clip) {
+  final l10n = AppLocalizations.of(context);
+  final clips = ref.read(viewerClipsProvider.notifier);
+  if (!clips.delete(clip.requestId)) return;
+  final messenger = ScaffoldMessenger.of(context)..hideCurrentSnackBar();
+  final tag = ref.read(clipTagProvider(clip.requestId));
+  messenger
+      .showSnackBar(SnackBar(
+        content: Text(l10n.viewerClipDeleted(clipName(l10n, tag, clip.requestedAt))),
+        action: SnackBarAction(label: l10n.viewerClipUndo, onPressed: () {}),
+        // A SnackBar with an action stays until dismissed by default; this one must go away so
+        // the deletion stands.
+        persist: false,
+        duration: const Duration(seconds: 5),
+      ))
+      .closed
+      .then((reason) => reason == SnackBarClosedReason.action
+          ? clips.undoDelete(clip.requestId)
+          : clips.commitDelete(clip.requestId));
 }
 
 /// Thumbnail, name (tag + time), duration, tag colour and state. Tap to review; long-press or the

@@ -578,21 +578,16 @@
     }
   },
   "libraryTemplateDelete": "Delete template",
-  "libraryTemplateLabelsTitle": "Tags and categories",
-  "libraryCategoriesTitle": "Categories",
-  "libraryCategory": "Category",
-  "libraryCategoryAdd": "Add category",
-  "libraryCategoriesEmpty": "No categories. Add one to group your clips.",
   "libraryTemplateFootball": "Football",
   "libraryTemplateBasketball": "Basketball",
   "libraryTemplateHandball": "Handball",
   "libraryTemplateHockey": "Hockey",
   "libraryTemplateGeneric": "Generic",
   "libraryTemplateMigrated": "My tags",
-  "libraryCategoryAttack": "Attack",
-  "libraryCategoryDefense": "Defence",
-  "libraryCategoryTransition": "Transition",
-  "libraryCategorySetPiece": "Set piece",
+  "libraryTagAttack": "Attack",
+  "libraryTagDefense": "Defence",
+  "libraryTagTransition": "Transition",
+  "libraryTagSetPiece": "Set piece",
   "libraryTagGoal": "Goal",
   "libraryTagShot": "Shot",
   "libraryTagFoul": "Foul",
@@ -650,5 +645,17 @@
       }
     }
   },
-  "settingsStorageUnavailable": "Could not read the storage used."
+  "settingsStorageUnavailable": "Could not read the storage used.",
+  "viewerClipDeleted": "{name} deleted",
+  "@viewerClipDeleted": {
+    "description": "SnackBar after swiping a clip away; name is the clip name, e.g. 'Good · 12:41'.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "viewerClipUndo": "Undo",
+  "viewerTagPanelTitle": "Tag this play",
+  "viewerTagPanelClose": "Close"
 }

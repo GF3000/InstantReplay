@@ -729,364 +729,6 @@ class SessionsCompanion extends UpdateCompanion<SessionRow> {
   }
 }
 
-class $CategoriesTable extends Categories
-    with TableInfo<$CategoriesTable, CategoryRow> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $CategoriesTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
-  @override
-  late final GeneratedColumn<String> id = GeneratedColumn<String>(
-    'id',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _templateIdMeta = const VerificationMeta(
-    'templateId',
-  );
-  @override
-  late final GeneratedColumn<String> templateId = GeneratedColumn<String>(
-    'template_id',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES tag_templates (id) ON DELETE CASCADE',
-    ),
-  );
-  static const VerificationMeta _nameMeta = const VerificationMeta('name');
-  @override
-  late final GeneratedColumn<String> name = GeneratedColumn<String>(
-    'name',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _colorMeta = const VerificationMeta('color');
-  @override
-  late final GeneratedColumn<int> color = GeneratedColumn<int>(
-    'color',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _positionMeta = const VerificationMeta(
-    'position',
-  );
-  @override
-  late final GeneratedColumn<int> position = GeneratedColumn<int>(
-    'position',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: true,
-  );
-  @override
-  List<GeneratedColumn> get $columns => [id, templateId, name, color, position];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'categories';
-  @override
-  VerificationContext validateIntegrity(
-    Insertable<CategoryRow> instance, {
-    bool isInserting = false,
-  }) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    } else if (isInserting) {
-      context.missing(_idMeta);
-    }
-    if (data.containsKey('template_id')) {
-      context.handle(
-        _templateIdMeta,
-        templateId.isAcceptableOrUnknown(data['template_id']!, _templateIdMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_templateIdMeta);
-    }
-    if (data.containsKey('name')) {
-      context.handle(
-        _nameMeta,
-        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
-      );
-    }
-    if (data.containsKey('color')) {
-      context.handle(
-        _colorMeta,
-        color.isAcceptableOrUnknown(data['color']!, _colorMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_colorMeta);
-    }
-    if (data.containsKey('position')) {
-      context.handle(
-        _positionMeta,
-        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_positionMeta);
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {id};
-  @override
-  CategoryRow map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return CategoryRow(
-      id: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}id'],
-      )!,
-      templateId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}template_id'],
-      )!,
-      name: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}name'],
-      ),
-      color: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}color'],
-      )!,
-      position: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}position'],
-      )!,
-    );
-  }
-
-  @override
-  $CategoriesTable createAlias(String alias) {
-    return $CategoriesTable(attachedDatabase, alias);
-  }
-}
-
-class CategoryRow extends DataClass implements Insertable<CategoryRow> {
-  final String id;
-  final String templateId;
-
-  /// Null for a built-in category (localized by id).
-  final String? name;
-  final int color;
-  final int position;
-  const CategoryRow({
-    required this.id,
-    required this.templateId,
-    this.name,
-    required this.color,
-    required this.position,
-  });
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['id'] = Variable<String>(id);
-    map['template_id'] = Variable<String>(templateId);
-    if (!nullToAbsent || name != null) {
-      map['name'] = Variable<String>(name);
-    }
-    map['color'] = Variable<int>(color);
-    map['position'] = Variable<int>(position);
-    return map;
-  }
-
-  CategoriesCompanion toCompanion(bool nullToAbsent) {
-    return CategoriesCompanion(
-      id: Value(id),
-      templateId: Value(templateId),
-      name: name == null && nullToAbsent ? const Value.absent() : Value(name),
-      color: Value(color),
-      position: Value(position),
-    );
-  }
-
-  factory CategoryRow.fromJson(
-    Map<String, dynamic> json, {
-    ValueSerializer? serializer,
-  }) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return CategoryRow(
-      id: serializer.fromJson<String>(json['id']),
-      templateId: serializer.fromJson<String>(json['templateId']),
-      name: serializer.fromJson<String?>(json['name']),
-      color: serializer.fromJson<int>(json['color']),
-      position: serializer.fromJson<int>(json['position']),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'id': serializer.toJson<String>(id),
-      'templateId': serializer.toJson<String>(templateId),
-      'name': serializer.toJson<String?>(name),
-      'color': serializer.toJson<int>(color),
-      'position': serializer.toJson<int>(position),
-    };
-  }
-
-  CategoryRow copyWith({
-    String? id,
-    String? templateId,
-    Value<String?> name = const Value.absent(),
-    int? color,
-    int? position,
-  }) => CategoryRow(
-    id: id ?? this.id,
-    templateId: templateId ?? this.templateId,
-    name: name.present ? name.value : this.name,
-    color: color ?? this.color,
-    position: position ?? this.position,
-  );
-  CategoryRow copyWithCompanion(CategoriesCompanion data) {
-    return CategoryRow(
-      id: data.id.present ? data.id.value : this.id,
-      templateId: data.templateId.present
-          ? data.templateId.value
-          : this.templateId,
-      name: data.name.present ? data.name.value : this.name,
-      color: data.color.present ? data.color.value : this.color,
-      position: data.position.present ? data.position.value : this.position,
-    );
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('CategoryRow(')
-          ..write('id: $id, ')
-          ..write('templateId: $templateId, ')
-          ..write('name: $name, ')
-          ..write('color: $color, ')
-          ..write('position: $position')
-          ..write(')'))
-        .toString();
-  }
-
-  @override
-  int get hashCode => Object.hash(id, templateId, name, color, position);
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is CategoryRow &&
-          other.id == this.id &&
-          other.templateId == this.templateId &&
-          other.name == this.name &&
-          other.color == this.color &&
-          other.position == this.position);
-}
-
-class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
-  final Value<String> id;
-  final Value<String> templateId;
-  final Value<String?> name;
-  final Value<int> color;
-  final Value<int> position;
-  final Value<int> rowid;
-  const CategoriesCompanion({
-    this.id = const Value.absent(),
-    this.templateId = const Value.absent(),
-    this.name = const Value.absent(),
-    this.color = const Value.absent(),
-    this.position = const Value.absent(),
-    this.rowid = const Value.absent(),
-  });
-  CategoriesCompanion.insert({
-    required String id,
-    required String templateId,
-    this.name = const Value.absent(),
-    required int color,
-    required int position,
-    this.rowid = const Value.absent(),
-  }) : id = Value(id),
-       templateId = Value(templateId),
-       color = Value(color),
-       position = Value(position);
-  static Insertable<CategoryRow> custom({
-    Expression<String>? id,
-    Expression<String>? templateId,
-    Expression<String>? name,
-    Expression<int>? color,
-    Expression<int>? position,
-    Expression<int>? rowid,
-  }) {
-    return RawValuesInsertable({
-      if (id != null) 'id': id,
-      if (templateId != null) 'template_id': templateId,
-      if (name != null) 'name': name,
-      if (color != null) 'color': color,
-      if (position != null) 'position': position,
-      if (rowid != null) 'rowid': rowid,
-    });
-  }
-
-  CategoriesCompanion copyWith({
-    Value<String>? id,
-    Value<String>? templateId,
-    Value<String?>? name,
-    Value<int>? color,
-    Value<int>? position,
-    Value<int>? rowid,
-  }) {
-    return CategoriesCompanion(
-      id: id ?? this.id,
-      templateId: templateId ?? this.templateId,
-      name: name ?? this.name,
-      color: color ?? this.color,
-      position: position ?? this.position,
-      rowid: rowid ?? this.rowid,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (id.present) {
-      map['id'] = Variable<String>(id.value);
-    }
-    if (templateId.present) {
-      map['template_id'] = Variable<String>(templateId.value);
-    }
-    if (name.present) {
-      map['name'] = Variable<String>(name.value);
-    }
-    if (color.present) {
-      map['color'] = Variable<int>(color.value);
-    }
-    if (position.present) {
-      map['position'] = Variable<int>(position.value);
-    }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('CategoriesCompanion(')
-          ..write('id: $id, ')
-          ..write('templateId: $templateId, ')
-          ..write('name: $name, ')
-          ..write('color: $color, ')
-          ..write('position: $position, ')
-          ..write('rowid: $rowid')
-          ..write(')'))
-        .toString();
-  }
-}
-
 class $TagsTable extends Tags with TableInfo<$TagsTable, TagRow> {
   @override
   final GeneratedDatabase attachedDatabase;
@@ -1567,20 +1209,6 @@ class $ClipsTable extends Clips with TableInfo<$ClipsTable, ClipRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _categoryIdMeta = const VerificationMeta(
-    'categoryId',
-  );
-  @override
-  late final GeneratedColumn<String> categoryId = GeneratedColumn<String>(
-    'category_id',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES categories (id) ON DELETE SET NULL',
-    ),
-  );
   static const VerificationMeta _notesMeta = const VerificationMeta('notes');
   @override
   late final GeneratedColumn<String> notes = GeneratedColumn<String>(
@@ -1647,7 +1275,6 @@ class $ClipsTable extends Clips with TableInfo<$ClipsTable, ClipRow> {
     sizeBytes,
     sha256,
     title,
-    categoryId,
     notes,
     trimStartMs,
     trimEndMs,
@@ -1742,12 +1369,6 @@ class $ClipsTable extends Clips with TableInfo<$ClipsTable, ClipRow> {
         title.isAcceptableOrUnknown(data['title']!, _titleMeta),
       );
     }
-    if (data.containsKey('category_id')) {
-      context.handle(
-        _categoryIdMeta,
-        categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
-      );
-    }
     if (data.containsKey('notes')) {
       context.handle(
         _notesMeta,
@@ -1838,10 +1459,6 @@ class $ClipsTable extends Clips with TableInfo<$ClipsTable, ClipRow> {
         DriftSqlType.string,
         data['${effectivePrefix}title'],
       ),
-      categoryId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}category_id'],
-      ),
       notes: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}notes'],
@@ -1888,7 +1505,6 @@ class ClipRow extends DataClass implements Insertable<ClipRow> {
   final int sizeBytes;
   final String? sha256;
   final String? title;
-  final String? categoryId;
   final String? notes;
 
   /// v0.2, non-destructive trim.
@@ -1908,7 +1524,6 @@ class ClipRow extends DataClass implements Insertable<ClipRow> {
     required this.sizeBytes,
     this.sha256,
     this.title,
-    this.categoryId,
     this.notes,
     this.trimStartMs,
     this.trimEndMs,
@@ -1940,9 +1555,6 @@ class ClipRow extends DataClass implements Insertable<ClipRow> {
     }
     if (!nullToAbsent || title != null) {
       map['title'] = Variable<String>(title);
-    }
-    if (!nullToAbsent || categoryId != null) {
-      map['category_id'] = Variable<String>(categoryId);
     }
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
@@ -1983,9 +1595,6 @@ class ClipRow extends DataClass implements Insertable<ClipRow> {
       title: title == null && nullToAbsent
           ? const Value.absent()
           : Value(title),
-      categoryId: categoryId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(categoryId),
       notes: notes == null && nullToAbsent
           ? const Value.absent()
           : Value(notes),
@@ -2017,7 +1626,6 @@ class ClipRow extends DataClass implements Insertable<ClipRow> {
       sizeBytes: serializer.fromJson<int>(json['sizeBytes']),
       sha256: serializer.fromJson<String?>(json['sha256']),
       title: serializer.fromJson<String?>(json['title']),
-      categoryId: serializer.fromJson<String?>(json['categoryId']),
       notes: serializer.fromJson<String?>(json['notes']),
       trimStartMs: serializer.fromJson<int?>(json['trimStartMs']),
       trimEndMs: serializer.fromJson<int?>(json['trimEndMs']),
@@ -2040,7 +1648,6 @@ class ClipRow extends DataClass implements Insertable<ClipRow> {
       'sizeBytes': serializer.toJson<int>(sizeBytes),
       'sha256': serializer.toJson<String?>(sha256),
       'title': serializer.toJson<String?>(title),
-      'categoryId': serializer.toJson<String?>(categoryId),
       'notes': serializer.toJson<String?>(notes),
       'trimStartMs': serializer.toJson<int?>(trimStartMs),
       'trimEndMs': serializer.toJson<int?>(trimEndMs),
@@ -2061,7 +1668,6 @@ class ClipRow extends DataClass implements Insertable<ClipRow> {
     int? sizeBytes,
     Value<String?> sha256 = const Value.absent(),
     Value<String?> title = const Value.absent(),
-    Value<String?> categoryId = const Value.absent(),
     Value<String?> notes = const Value.absent(),
     Value<int?> trimStartMs = const Value.absent(),
     Value<int?> trimEndMs = const Value.absent(),
@@ -2079,7 +1685,6 @@ class ClipRow extends DataClass implements Insertable<ClipRow> {
     sizeBytes: sizeBytes ?? this.sizeBytes,
     sha256: sha256.present ? sha256.value : this.sha256,
     title: title.present ? title.value : this.title,
-    categoryId: categoryId.present ? categoryId.value : this.categoryId,
     notes: notes.present ? notes.value : this.notes,
     trimStartMs: trimStartMs.present ? trimStartMs.value : this.trimStartMs,
     trimEndMs: trimEndMs.present ? trimEndMs.value : this.trimEndMs,
@@ -2105,9 +1710,6 @@ class ClipRow extends DataClass implements Insertable<ClipRow> {
       sizeBytes: data.sizeBytes.present ? data.sizeBytes.value : this.sizeBytes,
       sha256: data.sha256.present ? data.sha256.value : this.sha256,
       title: data.title.present ? data.title.value : this.title,
-      categoryId: data.categoryId.present
-          ? data.categoryId.value
-          : this.categoryId,
       notes: data.notes.present ? data.notes.value : this.notes,
       trimStartMs: data.trimStartMs.present
           ? data.trimStartMs.value
@@ -2132,7 +1734,6 @@ class ClipRow extends DataClass implements Insertable<ClipRow> {
           ..write('sizeBytes: $sizeBytes, ')
           ..write('sha256: $sha256, ')
           ..write('title: $title, ')
-          ..write('categoryId: $categoryId, ')
           ..write('notes: $notes, ')
           ..write('trimStartMs: $trimStartMs, ')
           ..write('trimEndMs: $trimEndMs, ')
@@ -2155,7 +1756,6 @@ class ClipRow extends DataClass implements Insertable<ClipRow> {
     sizeBytes,
     sha256,
     title,
-    categoryId,
     notes,
     trimStartMs,
     trimEndMs,
@@ -2177,7 +1777,6 @@ class ClipRow extends DataClass implements Insertable<ClipRow> {
           other.sizeBytes == this.sizeBytes &&
           other.sha256 == this.sha256 &&
           other.title == this.title &&
-          other.categoryId == this.categoryId &&
           other.notes == this.notes &&
           other.trimStartMs == this.trimStartMs &&
           other.trimEndMs == this.trimEndMs &&
@@ -2197,7 +1796,6 @@ class ClipsCompanion extends UpdateCompanion<ClipRow> {
   final Value<int> sizeBytes;
   final Value<String?> sha256;
   final Value<String?> title;
-  final Value<String?> categoryId;
   final Value<String?> notes;
   final Value<int?> trimStartMs;
   final Value<int?> trimEndMs;
@@ -2216,7 +1814,6 @@ class ClipsCompanion extends UpdateCompanion<ClipRow> {
     this.sizeBytes = const Value.absent(),
     this.sha256 = const Value.absent(),
     this.title = const Value.absent(),
-    this.categoryId = const Value.absent(),
     this.notes = const Value.absent(),
     this.trimStartMs = const Value.absent(),
     this.trimEndMs = const Value.absent(),
@@ -2236,7 +1833,6 @@ class ClipsCompanion extends UpdateCompanion<ClipRow> {
     required int sizeBytes,
     this.sha256 = const Value.absent(),
     this.title = const Value.absent(),
-    this.categoryId = const Value.absent(),
     this.notes = const Value.absent(),
     this.trimStartMs = const Value.absent(),
     this.trimEndMs = const Value.absent(),
@@ -2262,7 +1858,6 @@ class ClipsCompanion extends UpdateCompanion<ClipRow> {
     Expression<int>? sizeBytes,
     Expression<String>? sha256,
     Expression<String>? title,
-    Expression<String>? categoryId,
     Expression<String>? notes,
     Expression<int>? trimStartMs,
     Expression<int>? trimEndMs,
@@ -2282,7 +1877,6 @@ class ClipsCompanion extends UpdateCompanion<ClipRow> {
       if (sizeBytes != null) 'size_bytes': sizeBytes,
       if (sha256 != null) 'sha256': sha256,
       if (title != null) 'title': title,
-      if (categoryId != null) 'category_id': categoryId,
       if (notes != null) 'notes': notes,
       if (trimStartMs != null) 'trim_start_ms': trimStartMs,
       if (trimEndMs != null) 'trim_end_ms': trimEndMs,
@@ -2304,7 +1898,6 @@ class ClipsCompanion extends UpdateCompanion<ClipRow> {
     Value<int>? sizeBytes,
     Value<String?>? sha256,
     Value<String?>? title,
-    Value<String?>? categoryId,
     Value<String?>? notes,
     Value<int?>? trimStartMs,
     Value<int?>? trimEndMs,
@@ -2324,7 +1917,6 @@ class ClipsCompanion extends UpdateCompanion<ClipRow> {
       sizeBytes: sizeBytes ?? this.sizeBytes,
       sha256: sha256 ?? this.sha256,
       title: title ?? this.title,
-      categoryId: categoryId ?? this.categoryId,
       notes: notes ?? this.notes,
       trimStartMs: trimStartMs ?? this.trimStartMs,
       trimEndMs: trimEndMs ?? this.trimEndMs,
@@ -2370,9 +1962,6 @@ class ClipsCompanion extends UpdateCompanion<ClipRow> {
     if (title.present) {
       map['title'] = Variable<String>(title.value);
     }
-    if (categoryId.present) {
-      map['category_id'] = Variable<String>(categoryId.value);
-    }
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
     }
@@ -2408,7 +1997,6 @@ class ClipsCompanion extends UpdateCompanion<ClipRow> {
           ..write('sizeBytes: $sizeBytes, ')
           ..write('sha256: $sha256, ')
           ..write('title: $title, ')
-          ..write('categoryId: $categoryId, ')
           ..write('notes: $notes, ')
           ..write('trimStartMs: $trimStartMs, ')
           ..write('trimEndMs: $trimEndMs, ')
@@ -2636,7 +2224,6 @@ abstract class _$LibraryDatabase extends GeneratedDatabase {
   $LibraryDatabaseManager get managers => $LibraryDatabaseManager(this);
   late final $TagTemplatesTable tagTemplates = $TagTemplatesTable(this);
   late final $SessionsTable sessions = $SessionsTable(this);
-  late final $CategoriesTable categories = $CategoriesTable(this);
   late final $TagsTable tags = $TagsTable(this);
   late final $ClipsTable clips = $ClipsTable(this);
   late final $ClipTagsTable clipTags = $ClipTagsTable(this);
@@ -2647,7 +2234,6 @@ abstract class _$LibraryDatabase extends GeneratedDatabase {
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     tagTemplates,
     sessions,
-    categories,
     tags,
     clips,
     clipTags,
@@ -2666,13 +2252,6 @@ abstract class _$LibraryDatabase extends GeneratedDatabase {
         'tag_templates',
         limitUpdateKind: UpdateKind.delete,
       ),
-      result: [TableUpdate('categories', kind: UpdateKind.delete)],
-    ),
-    WritePropagation(
-      on: TableUpdateQuery.onTableName(
-        'tag_templates',
-        limitUpdateKind: UpdateKind.delete,
-      ),
       result: [TableUpdate('tags', kind: UpdateKind.delete)],
     ),
     WritePropagation(
@@ -2681,13 +2260,6 @@ abstract class _$LibraryDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('clips', kind: UpdateKind.delete)],
-    ),
-    WritePropagation(
-      on: TableUpdateQuery.onTableName(
-        'categories',
-        limitUpdateKind: UpdateKind.delete,
-      ),
-      result: [TableUpdate('clips', kind: UpdateKind.update)],
     ),
     WritePropagation(
       on: TableUpdateQuery.onTableName(
@@ -2735,24 +2307,6 @@ final class $$TagTemplatesTableReferences
     ).filter((f) => f.templateId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_sessionsRefsTable($_db));
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: cache),
-    );
-  }
-
-  static MultiTypedResultKey<$CategoriesTable, List<CategoryRow>>
-  _categoriesRefsTable(_$LibraryDatabase db) => MultiTypedResultKey.fromTable(
-    db.categories,
-    aliasName: 'tag_templates__id__categories__template_id',
-  );
-
-  $$CategoriesTableProcessedTableManager get categoriesRefs {
-    final manager = $$CategoriesTableTableManager(
-      $_db,
-      $_db.categories,
-    ).filter((f) => f.templateId.id.sqlEquals($_itemColumn<String>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(_categoriesRefsTable($_db));
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -2828,31 +2382,6 @@ class $$TagTemplatesTableFilterComposer
           }) => $$SessionsTableFilterComposer(
             $db: $db,
             $table: $db.sessions,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-
-  Expression<bool> categoriesRefs(
-    Expression<bool> Function($$CategoriesTableFilterComposer f) f,
-  ) {
-    final $$CategoriesTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.categories,
-      getReferencedColumn: (t) => t.templateId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$CategoriesTableFilterComposer(
-            $db: $db,
-            $table: $db.categories,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -2974,31 +2503,6 @@ class $$TagTemplatesTableAnnotationComposer
     return f(composer);
   }
 
-  Expression<T> categoriesRefs<T extends Object>(
-    Expression<T> Function($$CategoriesTableAnnotationComposer a) f,
-  ) {
-    final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.categories,
-      getReferencedColumn: (t) => t.templateId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$CategoriesTableAnnotationComposer(
-            $db: $db,
-            $table: $db.categories,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-
   Expression<T> tagsRefs<T extends Object>(
     Expression<T> Function($$TagsTableAnnotationComposer a) f,
   ) {
@@ -3038,11 +2542,7 @@ class $$TagTemplatesTableTableManager
           $$TagTemplatesTableUpdateCompanionBuilder,
           (TemplateRow, $$TagTemplatesTableReferences),
           TemplateRow,
-          PrefetchHooks Function({
-            bool sessionsRefs,
-            bool categoriesRefs,
-            bool tagsRefs,
-          })
+          PrefetchHooks Function({bool sessionsRefs, bool tagsRefs})
         > {
   $$TagTemplatesTableTableManager(
     _$LibraryDatabase db,
@@ -3097,89 +2597,54 @@ class $$TagTemplatesTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback:
-              ({
-                sessionsRefs = false,
-                categoriesRefs = false,
-                tagsRefs = false,
-              }) {
-                return PrefetchHooks(
-                  db: db,
-                  explicitlyWatchedTables: [
-                    if (sessionsRefs) db.sessions,
-                    if (categoriesRefs) db.categories,
-                    if (tagsRefs) db.tags,
-                  ],
-                  addJoins: null,
-                  getPrefetchedDataCallback: (items) async {
-                    return [
-                      if (sessionsRefs)
-                        await $_getPrefetchedData<
-                          TemplateRow,
-                          $TagTemplatesTable,
-                          SessionRow
-                        >(
-                          currentTable: table,
-                          referencedTable: $$TagTemplatesTableReferences
-                              ._sessionsRefsTable(db),
-                          managerFromTypedResult: (p0) =>
-                              $$TagTemplatesTableReferences(
-                                db,
-                                table,
-                                p0,
-                              ).sessionsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.templateId == item.id,
-                              ),
-                          typedResults: items,
-                        ),
-                      if (categoriesRefs)
-                        await $_getPrefetchedData<
-                          TemplateRow,
-                          $TagTemplatesTable,
-                          CategoryRow
-                        >(
-                          currentTable: table,
-                          referencedTable: $$TagTemplatesTableReferences
-                              ._categoriesRefsTable(db),
-                          managerFromTypedResult: (p0) =>
-                              $$TagTemplatesTableReferences(
-                                db,
-                                table,
-                                p0,
-                              ).categoriesRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.templateId == item.id,
-                              ),
-                          typedResults: items,
-                        ),
-                      if (tagsRefs)
-                        await $_getPrefetchedData<
-                          TemplateRow,
-                          $TagTemplatesTable,
-                          TagRow
-                        >(
-                          currentTable: table,
-                          referencedTable: $$TagTemplatesTableReferences
-                              ._tagsRefsTable(db),
-                          managerFromTypedResult: (p0) =>
-                              $$TagTemplatesTableReferences(
-                                db,
-                                table,
-                                p0,
-                              ).tagsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.templateId == item.id,
-                              ),
-                          typedResults: items,
-                        ),
-                    ];
-                  },
-                );
+          prefetchHooksCallback: ({sessionsRefs = false, tagsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (sessionsRefs) db.sessions,
+                if (tagsRefs) db.tags,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (sessionsRefs)
+                    await $_getPrefetchedData<
+                      TemplateRow,
+                      $TagTemplatesTable,
+                      SessionRow
+                    >(
+                      currentTable: table,
+                      referencedTable: $$TagTemplatesTableReferences
+                          ._sessionsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$TagTemplatesTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).sessionsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.templateId == item.id),
+                      typedResults: items,
+                    ),
+                  if (tagsRefs)
+                    await $_getPrefetchedData<
+                      TemplateRow,
+                      $TagTemplatesTable,
+                      TagRow
+                    >(
+                      currentTable: table,
+                      referencedTable: $$TagTemplatesTableReferences
+                          ._tagsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$TagTemplatesTableReferences(db, table, p0).tagsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.templateId == item.id),
+                      typedResults: items,
+                    ),
+                ];
               },
+            );
+          },
         ),
       );
 }
@@ -3196,11 +2661,7 @@ typedef $$TagTemplatesTableProcessedTableManager =
       $$TagTemplatesTableUpdateCompanionBuilder,
       (TemplateRow, $$TagTemplatesTableReferences),
       TemplateRow,
-      PrefetchHooks Function({
-        bool sessionsRefs,
-        bool categoriesRefs,
-        bool tagsRefs,
-      })
+      PrefetchHooks Function({bool sessionsRefs, bool tagsRefs})
     >;
 typedef $$SessionsTableCreateCompanionBuilder =
     SessionsCompanion Function({
@@ -3605,408 +3066,6 @@ typedef $$SessionsTableProcessedTableManager =
       SessionRow,
       PrefetchHooks Function({bool templateId, bool clipsRefs})
     >;
-typedef $$CategoriesTableCreateCompanionBuilder =
-    CategoriesCompanion Function({
-      required String id,
-      required String templateId,
-      Value<String?> name,
-      required int color,
-      required int position,
-      Value<int> rowid,
-    });
-typedef $$CategoriesTableUpdateCompanionBuilder =
-    CategoriesCompanion Function({
-      Value<String> id,
-      Value<String> templateId,
-      Value<String?> name,
-      Value<int> color,
-      Value<int> position,
-      Value<int> rowid,
-    });
-
-final class $$CategoriesTableReferences
-    extends BaseReferences<_$LibraryDatabase, $CategoriesTable, CategoryRow> {
-  $$CategoriesTableReferences(super.$_db, super.$_table, super.$_typedResult);
-
-  static $TagTemplatesTable _templateIdTable(_$LibraryDatabase db) =>
-      db.tagTemplates.createAlias('categories__template_id__tag_templates__id');
-
-  $$TagTemplatesTableProcessedTableManager get templateId {
-    final $_column = $_itemColumn<String>('template_id')!;
-
-    final manager = $$TagTemplatesTableTableManager(
-      $_db,
-      $_db.tagTemplates,
-    ).filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_templateIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: [item]),
-    );
-  }
-
-  static MultiTypedResultKey<$ClipsTable, List<ClipRow>> _clipsRefsTable(
-    _$LibraryDatabase db,
-  ) => MultiTypedResultKey.fromTable(
-    db.clips,
-    aliasName: 'categories__id__clips__category_id',
-  );
-
-  $$ClipsTableProcessedTableManager get clipsRefs {
-    final manager = $$ClipsTableTableManager(
-      $_db,
-      $_db.clips,
-    ).filter((f) => f.categoryId.id.sqlEquals($_itemColumn<String>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(_clipsRefsTable($_db));
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: cache),
-    );
-  }
-}
-
-class $$CategoriesTableFilterComposer
-    extends Composer<_$LibraryDatabase, $CategoriesTable> {
-  $$CategoriesTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<String> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get name => $composableBuilder(
-    column: $table.name,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get color => $composableBuilder(
-    column: $table.color,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get position => $composableBuilder(
-    column: $table.position,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  $$TagTemplatesTableFilterComposer get templateId {
-    final $$TagTemplatesTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.templateId,
-      referencedTable: $db.tagTemplates,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$TagTemplatesTableFilterComposer(
-            $db: $db,
-            $table: $db.tagTemplates,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-
-  Expression<bool> clipsRefs(
-    Expression<bool> Function($$ClipsTableFilterComposer f) f,
-  ) {
-    final $$ClipsTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.clips,
-      getReferencedColumn: (t) => t.categoryId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$ClipsTableFilterComposer(
-            $db: $db,
-            $table: $db.clips,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-}
-
-class $$CategoriesTableOrderingComposer
-    extends Composer<_$LibraryDatabase, $CategoriesTable> {
-  $$CategoriesTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<String> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get name => $composableBuilder(
-    column: $table.name,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get color => $composableBuilder(
-    column: $table.color,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get position => $composableBuilder(
-    column: $table.position,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  $$TagTemplatesTableOrderingComposer get templateId {
-    final $$TagTemplatesTableOrderingComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.templateId,
-      referencedTable: $db.tagTemplates,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$TagTemplatesTableOrderingComposer(
-            $db: $db,
-            $table: $db.tagTemplates,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-}
-
-class $$CategoriesTableAnnotationComposer
-    extends Composer<_$LibraryDatabase, $CategoriesTable> {
-  $$CategoriesTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<String> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get name =>
-      $composableBuilder(column: $table.name, builder: (column) => column);
-
-  GeneratedColumn<int> get color =>
-      $composableBuilder(column: $table.color, builder: (column) => column);
-
-  GeneratedColumn<int> get position =>
-      $composableBuilder(column: $table.position, builder: (column) => column);
-
-  $$TagTemplatesTableAnnotationComposer get templateId {
-    final $$TagTemplatesTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.templateId,
-      referencedTable: $db.tagTemplates,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$TagTemplatesTableAnnotationComposer(
-            $db: $db,
-            $table: $db.tagTemplates,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-
-  Expression<T> clipsRefs<T extends Object>(
-    Expression<T> Function($$ClipsTableAnnotationComposer a) f,
-  ) {
-    final $$ClipsTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.clips,
-      getReferencedColumn: (t) => t.categoryId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$ClipsTableAnnotationComposer(
-            $db: $db,
-            $table: $db.clips,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-}
-
-class $$CategoriesTableTableManager
-    extends
-        RootTableManager<
-          _$LibraryDatabase,
-          $CategoriesTable,
-          CategoryRow,
-          $$CategoriesTableFilterComposer,
-          $$CategoriesTableOrderingComposer,
-          $$CategoriesTableAnnotationComposer,
-          $$CategoriesTableCreateCompanionBuilder,
-          $$CategoriesTableUpdateCompanionBuilder,
-          (CategoryRow, $$CategoriesTableReferences),
-          CategoryRow,
-          PrefetchHooks Function({bool templateId, bool clipsRefs})
-        > {
-  $$CategoriesTableTableManager(_$LibraryDatabase db, $CategoriesTable table)
-    : super(
-        TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$CategoriesTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$CategoriesTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$CategoriesTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback:
-              ({
-                Value<String> id = const Value.absent(),
-                Value<String> templateId = const Value.absent(),
-                Value<String?> name = const Value.absent(),
-                Value<int> color = const Value.absent(),
-                Value<int> position = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
-              }) => CategoriesCompanion(
-                id: id,
-                templateId: templateId,
-                name: name,
-                color: color,
-                position: position,
-                rowid: rowid,
-              ),
-          createCompanionCallback:
-              ({
-                required String id,
-                required String templateId,
-                Value<String?> name = const Value.absent(),
-                required int color,
-                required int position,
-                Value<int> rowid = const Value.absent(),
-              }) => CategoriesCompanion.insert(
-                id: id,
-                templateId: templateId,
-                name: name,
-                color: color,
-                position: position,
-                rowid: rowid,
-              ),
-          withReferenceMapper: (p0) => p0
-              .map(
-                (e) => (
-                  e.readTable(table),
-                  $$CategoriesTableReferences(db, table, e),
-                ),
-              )
-              .toList(),
-          prefetchHooksCallback: ({templateId = false, clipsRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [if (clipsRefs) db.clips],
-              addJoins:
-                  <
-                    T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic
-                    >
-                  >(state) {
-                    if (templateId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.templateId,
-                                referencedTable: $$CategoriesTableReferences
-                                    ._templateIdTable(db),
-                                referencedColumn: $$CategoriesTableReferences
-                                    ._templateIdTable(db)
-                                    .id,
-                              )
-                              as T;
-                    }
-
-                    return state;
-                  },
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (clipsRefs)
-                    await $_getPrefetchedData<
-                      CategoryRow,
-                      $CategoriesTable,
-                      ClipRow
-                    >(
-                      currentTable: table,
-                      referencedTable: $$CategoriesTableReferences
-                          ._clipsRefsTable(db),
-                      managerFromTypedResult: (p0) =>
-                          $$CategoriesTableReferences(db, table, p0).clipsRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where((e) => e.categoryId == item.id),
-                      typedResults: items,
-                    ),
-                ];
-              },
-            );
-          },
-        ),
-      );
-}
-
-typedef $$CategoriesTableProcessedTableManager =
-    ProcessedTableManager<
-      _$LibraryDatabase,
-      $CategoriesTable,
-      CategoryRow,
-      $$CategoriesTableFilterComposer,
-      $$CategoriesTableOrderingComposer,
-      $$CategoriesTableAnnotationComposer,
-      $$CategoriesTableCreateCompanionBuilder,
-      $$CategoriesTableUpdateCompanionBuilder,
-      (CategoryRow, $$CategoriesTableReferences),
-      CategoryRow,
-      PrefetchHooks Function({bool templateId, bool clipsRefs})
-    >;
 typedef $$TagsTableCreateCompanionBuilder =
     TagsCompanion Function({
       required String id,
@@ -4335,7 +3394,6 @@ typedef $$ClipsTableCreateCompanionBuilder =
       required int sizeBytes,
       Value<String?> sha256,
       Value<String?> title,
-      Value<String?> categoryId,
       Value<String?> notes,
       Value<int?> trimStartMs,
       Value<int?> trimEndMs,
@@ -4356,7 +3414,6 @@ typedef $$ClipsTableUpdateCompanionBuilder =
       Value<int> sizeBytes,
       Value<String?> sha256,
       Value<String?> title,
-      Value<String?> categoryId,
       Value<String?> notes,
       Value<int?> trimStartMs,
       Value<int?> trimEndMs,
@@ -4380,23 +3437,6 @@ final class $$ClipsTableReferences
       $_db.sessions,
     ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_sessionIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: [item]),
-    );
-  }
-
-  static $CategoriesTable _categoryIdTable(_$LibraryDatabase db) =>
-      db.categories.createAlias('clips__category_id__categories__id');
-
-  $$CategoriesTableProcessedTableManager? get categoryId {
-    final $_column = $_itemColumn<String>('category_id');
-    if ($_column == null) return null;
-    final manager = $$CategoriesTableTableManager(
-      $_db,
-      $_db.categories,
-    ).filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_categoryIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -4520,29 +3560,6 @@ class $$ClipsTableFilterComposer
           }) => $$SessionsTableFilterComposer(
             $db: $db,
             $table: $db.sessions,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-
-  $$CategoriesTableFilterComposer get categoryId {
-    final $$CategoriesTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.categoryId,
-      referencedTable: $db.categories,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$CategoriesTableFilterComposer(
-            $db: $db,
-            $table: $db.categories,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -4684,29 +3701,6 @@ class $$ClipsTableOrderingComposer
     );
     return composer;
   }
-
-  $$CategoriesTableOrderingComposer get categoryId {
-    final $$CategoriesTableOrderingComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.categoryId,
-      referencedTable: $db.categories,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$CategoriesTableOrderingComposer(
-            $db: $db,
-            $table: $db.categories,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
 }
 
 class $$ClipsTableAnnotationComposer
@@ -4794,29 +3788,6 @@ class $$ClipsTableAnnotationComposer
     return composer;
   }
 
-  $$CategoriesTableAnnotationComposer get categoryId {
-    final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.categoryId,
-      referencedTable: $db.categories,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$CategoriesTableAnnotationComposer(
-            $db: $db,
-            $table: $db.categories,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-
   Expression<T> clipTagsRefs<T extends Object>(
     Expression<T> Function($$ClipTagsTableAnnotationComposer a) f,
   ) {
@@ -4856,11 +3827,7 @@ class $$ClipsTableTableManager
           $$ClipsTableUpdateCompanionBuilder,
           (ClipRow, $$ClipsTableReferences),
           ClipRow,
-          PrefetchHooks Function({
-            bool sessionId,
-            bool categoryId,
-            bool clipTagsRefs,
-          })
+          PrefetchHooks Function({bool sessionId, bool clipTagsRefs})
         > {
   $$ClipsTableTableManager(_$LibraryDatabase db, $ClipsTable table)
     : super(
@@ -4886,7 +3853,6 @@ class $$ClipsTableTableManager
                 Value<int> sizeBytes = const Value.absent(),
                 Value<String?> sha256 = const Value.absent(),
                 Value<String?> title = const Value.absent(),
-                Value<String?> categoryId = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 Value<int?> trimStartMs = const Value.absent(),
                 Value<int?> trimEndMs = const Value.absent(),
@@ -4905,7 +3871,6 @@ class $$ClipsTableTableManager
                 sizeBytes: sizeBytes,
                 sha256: sha256,
                 title: title,
-                categoryId: categoryId,
                 notes: notes,
                 trimStartMs: trimStartMs,
                 trimEndMs: trimEndMs,
@@ -4926,7 +3891,6 @@ class $$ClipsTableTableManager
                 required int sizeBytes,
                 Value<String?> sha256 = const Value.absent(),
                 Value<String?> title = const Value.absent(),
-                Value<String?> categoryId = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 Value<int?> trimStartMs = const Value.absent(),
                 Value<int?> trimEndMs = const Value.absent(),
@@ -4945,7 +3909,6 @@ class $$ClipsTableTableManager
                 sizeBytes: sizeBytes,
                 sha256: sha256,
                 title: title,
-                categoryId: categoryId,
                 notes: notes,
                 trimStartMs: trimStartMs,
                 trimEndMs: trimEndMs,
@@ -4959,83 +3922,59 @@ class $$ClipsTableTableManager
                     (e.readTable(table), $$ClipsTableReferences(db, table, e)),
               )
               .toList(),
-          prefetchHooksCallback:
-              ({sessionId = false, categoryId = false, clipTagsRefs = false}) {
-                return PrefetchHooks(
-                  db: db,
-                  explicitlyWatchedTables: [if (clipTagsRefs) db.clipTags],
-                  addJoins:
-                      <
-                        T extends TableManagerState<
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic
-                        >
-                      >(state) {
-                        if (sessionId) {
-                          state =
-                              state.withJoin(
-                                    currentTable: table,
-                                    currentColumn: table.sessionId,
-                                    referencedTable: $$ClipsTableReferences
-                                        ._sessionIdTable(db),
-                                    referencedColumn: $$ClipsTableReferences
-                                        ._sessionIdTable(db)
-                                        .id,
-                                  )
-                                  as T;
-                        }
-                        if (categoryId) {
-                          state =
-                              state.withJoin(
-                                    currentTable: table,
-                                    currentColumn: table.categoryId,
-                                    referencedTable: $$ClipsTableReferences
-                                        ._categoryIdTable(db),
-                                    referencedColumn: $$ClipsTableReferences
-                                        ._categoryIdTable(db)
-                                        .id,
-                                  )
-                                  as T;
-                        }
+          prefetchHooksCallback: ({sessionId = false, clipTagsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (clipTagsRefs) db.clipTags],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (sessionId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.sessionId,
+                                referencedTable: $$ClipsTableReferences
+                                    ._sessionIdTable(db),
+                                referencedColumn: $$ClipsTableReferences
+                                    ._sessionIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
 
-                        return state;
-                      },
-                  getPrefetchedDataCallback: (items) async {
-                    return [
-                      if (clipTagsRefs)
-                        await $_getPrefetchedData<
-                          ClipRow,
-                          $ClipsTable,
-                          ClipTagRow
-                        >(
-                          currentTable: table,
-                          referencedTable: $$ClipsTableReferences
-                              ._clipTagsRefsTable(db),
-                          managerFromTypedResult: (p0) =>
-                              $$ClipsTableReferences(
-                                db,
-                                table,
-                                p0,
-                              ).clipTagsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.clipId == item.id,
-                              ),
-                          typedResults: items,
-                        ),
-                    ];
+                    return state;
                   },
-                );
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (clipTagsRefs)
+                    await $_getPrefetchedData<ClipRow, $ClipsTable, ClipTagRow>(
+                      currentTable: table,
+                      referencedTable: $$ClipsTableReferences
+                          ._clipTagsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$ClipsTableReferences(db, table, p0).clipTagsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.clipId == item.id),
+                      typedResults: items,
+                    ),
+                ];
               },
+            );
+          },
         ),
       );
 }
@@ -5052,11 +3991,7 @@ typedef $$ClipsTableProcessedTableManager =
       $$ClipsTableUpdateCompanionBuilder,
       (ClipRow, $$ClipsTableReferences),
       ClipRow,
-      PrefetchHooks Function({
-        bool sessionId,
-        bool categoryId,
-        bool clipTagsRefs,
-      })
+      PrefetchHooks Function({bool sessionId, bool clipTagsRefs})
     >;
 typedef $$ClipTagsTableCreateCompanionBuilder =
     ClipTagsCompanion Function({
@@ -5323,8 +4258,6 @@ class $LibraryDatabaseManager {
       $$TagTemplatesTableTableManager(_db, _db.tagTemplates);
   $$SessionsTableTableManager get sessions =>
       $$SessionsTableTableManager(_db, _db.sessions);
-  $$CategoriesTableTableManager get categories =>
-      $$CategoriesTableTableManager(_db, _db.categories);
   $$TagsTableTableManager get tags => $$TagsTableTableManager(_db, _db.tags);
   $$ClipsTableTableManager get clips =>
       $$ClipsTableTableManager(_db, _db.clips);

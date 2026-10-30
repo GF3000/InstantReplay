@@ -7,71 +7,59 @@ import 'tags.dart';
 
 /// One tag as a tappable button with its colour.
 class TagButton extends StatelessWidget {
-  const TagButton({super.key, required this.tag, required this.onPressed, this.selected = false});
+  const TagButton({super.key, required this.tag, required this.onPressed, this.selected = false, this.large = false});
 
   final ViewerTag tag;
   final VoidCallback onPressed;
   final bool selected;
 
+  /// Bigger target and text, for the post-save panel.
+  final bool large;
+
   @override
   Widget build(BuildContext context) => OutlinedButton.icon(
         key: ValueKey('tag-${tag.id}'),
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size(72, 48),
+          minimumSize: large ? const Size(112, 56) : const Size(72, 48),
+          padding: large ? const EdgeInsets.symmetric(horizontal: 20) : null,
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           side: BorderSide(color: tag.colour, width: selected ? 3 : 1.5),
           backgroundColor: selected ? tag.colour.withValues(alpha: 0.25) : null,
         ),
         onPressed: onPressed,
-        icon: Icon(Icons.circle, size: 14, color: tag.colour),
-        label: Text(tag.label(AppLocalizations.of(context)), style: const TextStyle(fontWeight: FontWeight.bold)),
+        icon: Icon(Icons.circle, size: large ? 18 : 14, color: tag.colour),
+        label: Text(
+          tag.label(AppLocalizations.of(context)),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: large ? 18 : null),
+        ),
       );
 }
 
-/// Sheet to choose the tag of clip [requestId] (or none).
-Future<void> showClipTagPicker(BuildContext context, String requestId) => showModalBottomSheet<void>(
+/// Sheet to choose the tag of clip [requestId] (or none). [choices] replaces the active session's
+/// tags for a clip of another session (library review); that template is not editable from here.
+Future<void> showClipTagPicker(BuildContext context, String requestId, {ClipLabelChoices? choices}) =>
+    showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
       constraints: const BoxConstraints(maxWidth: 560),
       builder: (context) => Consumer(
         builder: (context, ref, _) {
           final l10n = AppLocalizations.of(context);
-          final tags = ref.watch(tagsProvider);
+          final List<ViewerTag> tags = choices?.tags ?? ref.watch(tagsProvider);
           final current = ref.watch(clipTagsProvider.select((m) => m[requestId]));
-          final categories = ref.watch(categoriesProvider);
-          final category = ref.watch(clipCategoriesProvider.select((m) => m[requestId]));
           void set(String? id) {
             ref.read(clipTagsProvider.notifier).set(requestId, id);
             Navigator.of(context).pop();
           }
 
+          // Scrolls when a big template does not fit (a phone in landscape).
           return SafeArea(
-            child: Padding(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Android library: the category stays open for a tag to follow.
-                  if (categories.isNotEmpty) ...[
-                    Text(l10n.libraryCategory, style: Theme.of(context).textTheme.titleLarge),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        for (final c in categories)
-                          TagButton(
-                            tag: c,
-                            selected: c.id == category,
-                            onPressed: () => ref
-                                .read(clipCategoriesProvider.notifier)
-                                .set(requestId, c.id == category ? null : c.id),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                  ],
                   Text(l10n.viewerClipChangeTag, style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 12),
                   Wrap(
@@ -88,18 +76,19 @@ Future<void> showClipTagPicker(BuildContext context, String requestId) => showMo
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton.icon(
-                      onPressed: () {
-                        final navigator = Navigator.of(context);
-                        navigator.pop();
-                        navigator.push(TagEditorPage.route());
-                      },
-                      icon: const Icon(Icons.edit),
-                      label: Text(l10n.viewerTagsEdit),
+                  if (choices == null)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: () {
+                          final navigator = Navigator.of(context);
+                          navigator.pop();
+                          navigator.push(TagEditorPage.route());
+                        },
+                        icon: const Icon(Icons.edit),
+                        label: Text(l10n.viewerTagsEdit),
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -108,70 +97,85 @@ Future<void> showClipTagPicker(BuildContext context, String requestId) => showMo
       ),
     );
 
-/// The slot under the save chips: the save hint normally, the tag bar for ~6 s after a save
-/// (UX §3.2). Fixed height, so it never pushes the live view or the Save button around.
-class PostSaveTagBar extends ConsumerWidget {
-  const PostSaveTagBar({super.key, required this.idle});
-
-  static const height = 56.0;
-
-  /// Shown when no save is being offered for tagging.
-  final Widget idle;
+/// After a save, a panel slides in from the left over the live view for [PostSaveTagBarNotifier.visibleFor]
+/// with large buttons for the clip's tag (UX §3.2). The buttons wrap freely over the whole panel,
+/// so long tag sets need no sideways scrolling; Save and the quick chips stay free for the next
+/// play. Picking a tag (or the close button) hides it.
+class PostSaveTagPanel extends ConsumerWidget {
+  const PostSaveTagPanel({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final requestId = ref.watch(postSaveTagBarProvider);
     final tags = ref.watch(tagsProvider);
-    final categories = ref.watch(categoriesProvider);
-    final category = requestId == null ? null : ref.watch(clipCategoriesProvider.select((m) => m[requestId]));
-    final Widget child;
-    if (requestId == null || (tags.isEmpty && categories.isEmpty)) {
-      child = Center(key: const ValueKey('idle'), child: idle);
-    } else {
-      child = Column(
-        key: ValueKey(requestId),
+    final show = requestId != null && tags.isNotEmpty;
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 250),
+      transitionBuilder: (child, animation) => SlideTransition(
+        position: Tween(begin: const Offset(-1, 0), end: Offset.zero)
+            .animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+        child: child,
+      ),
+      layoutBuilder: (current, previous) => Stack(
+        alignment: AlignmentDirectional.topStart,
+        children: [...previous, ?current],
+      ),
+      child: show ? _Panel(key: ValueKey(requestId), tags: tags) : null,
+    );
+  }
+}
+
+class _Panel extends ConsumerWidget {
+  const _Panel({super.key, required this.tags});
+
+  final List<ViewerTag> tags;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final bar = ref.read(postSaveTagBarProvider.notifier);
+    return Material(
+      key: const ValueKey('viewer-tag-panel'),
+      elevation: 8,
+      color: theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.96),
+      borderRadius: const BorderRadiusDirectional.horizontal(end: Radius.circular(16)),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: ListView(
-              key: const ValueKey('viewer-tag-bar'),
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-              children: [
-                // Android library: the template's categories first (one per clip), then its tags.
-                if (categories.isNotEmpty) ...[
-                  const Padding(padding: EdgeInsets.symmetric(horizontal: 4), child: Icon(Icons.category_outlined, size: 20)),
-                  for (final c in categories)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: TagButton(
-                        tag: c,
-                        selected: c.id == category,
-                        onPressed: () => ref.read(postSaveTagBarProvider.notifier).pickCategory(c.id),
-                      ),
-                    ),
-                  const VerticalDivider(width: 16, indent: 8, endIndent: 8),
-                ],
-                const Padding(padding: EdgeInsets.symmetric(horizontal: 4), child: Icon(Icons.sell_outlined, size: 20)),
-                for (final t in tags)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: TagButton(tag: t, onPressed: () => ref.read(postSaveTagBarProvider.notifier).pick(t.id)),
-                  ),
-              ],
-            ),
-          ),
-          // Time left before the bar fades.
+          // Time left before the panel goes away.
           TweenAnimationBuilder<double>(
             tween: Tween(begin: 1, end: 0),
             duration: PostSaveTagBarNotifier.visibleFor,
-            builder: (_, v, _) => LinearProgressIndicator(value: v, minHeight: 2),
+            builder: (_, v, _) => LinearProgressIndicator(value: v, minHeight: 3),
+          ),
+          Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(16, 4, 4, 0),
+            child: Row(children: [
+              Expanded(child: Text(l10n.viewerTagPanelTitle, style: theme.textTheme.titleLarge)),
+              IconButton(
+                key: const ValueKey('viewer-tag-panel-close'),
+                tooltip: l10n.viewerTagPanelClose,
+                icon: const Icon(Icons.close),
+                onPressed: bar.dismiss,
+              ),
+            ]),
+          ),
+          Flexible(
+            child: SingleChildScrollView(
+              key: const ValueKey('viewer-tag-bar'),
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [for (final t in tags) TagButton(tag: t, large: true, onPressed: () => bar.pick(t.id))],
+              ),
+            ),
           ),
         ],
-      );
-    }
-    return SizedBox(
-      height: height,
-      child: AnimatedSwitcher(duration: const Duration(milliseconds: 300), child: child),
+      ),
     );
   }
 }

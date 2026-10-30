@@ -141,8 +141,43 @@ class ClipTransfers {
   bool _pumping = false;
   bool _disposed = false;
 
-  /// Newest first.
-  List<SessionClip> get clips => _clips.values.toList().reversed.toList(growable: false);
+  /// Clips the coach took off the list; kept until [forget] so the deletion can be undone.
+  final _hidden = <String>{};
+
+  /// Deleted for good: the Camera's later events about them are ignored.
+  final _forgotten = <String>{};
+
+  /// Newest first, without hidden clips.
+  List<SessionClip> get clips => [
+        for (final c in _clips.values.toList().reversed)
+          if (!_hidden.contains(c.requestId)) c,
+      ];
+
+  /// Takes a finished clip (ready or failed) off the list, keeping it for [unhide]. False for a
+  /// clip still being requested, recorded or downloaded.
+  bool hide(String requestId) {
+    final c = _clips[requestId];
+    if (c == null || (c.phase != SessionClipPhase.ready && c.phase != SessionClipPhase.failed)) return false;
+    if (_hidden.add(requestId)) onChanged(clips);
+    return true;
+  }
+
+  /// Undoes [hide].
+  void unhide(String requestId) {
+    if (_hidden.remove(requestId) && !_disposed) onChanged(clips);
+  }
+
+  /// Drops a hidden clip for good: frees its bytes and any partial download. Returns the clip so
+  /// the caller can delete it from the library too; null when it was not hidden.
+  Future<SessionClip?> forget(String requestId) async {
+    if (!_hidden.remove(requestId)) return null;
+    _forgotten.add(requestId);
+    final c = _clips.remove(requestId);
+    final dto = _dtos.remove(requestId);
+    if (dto != null && _active != dto.id) await _dropPartial(dto.id);
+    await c?.stored?.release();
+    return c;
+  }
 
   /// Asks the Camera for a clip of [seconds] pre-roll (default preset when null). The caller may
   /// choose the [requestId] to refer to the clip before the Camera answers (e.g. to tag it).
@@ -175,7 +210,7 @@ class ClipTransfers {
 
   /// Handles a `clip_changed` event, a POST /clips response or an outbox listing entry.
   void onClipChanged(ClipDto dto) {
-    if (_disposed) return;
+    if (_disposed || _forgotten.contains(dto.requestId)) return;
     var c = _clips[dto.requestId];
     if (c == null) {
       // Requested by this viewer in an earlier page load or before a reconnect: adopt it.
