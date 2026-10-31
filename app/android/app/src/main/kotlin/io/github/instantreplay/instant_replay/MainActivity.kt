@@ -33,6 +33,24 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, ClipConcat.CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "concat" -> {
+                    val inputs = call.argument<List<String>>("inputs").orEmpty()
+                    val output = call.argument<String>("output")!!
+                    ClipConcat.executor.execute {
+                        try {
+                            ClipConcat.concat(inputs, output)
+                            mainHandler.post { result.success(null) }
+                        } catch (e: Exception) {
+                            Log.e(ClipConcat.TAG, "Concat failed", e)
+                            mainHandler.post { result.error("concat_failed", e.message, null) }
+                        }
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
         // The native Viewer offers its QR scanner only on devices with a camera.
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "instant_replay/device").setMethodCallHandler { call, result ->
             when (call.method) {

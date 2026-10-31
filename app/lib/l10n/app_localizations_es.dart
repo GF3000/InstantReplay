@@ -733,6 +733,21 @@ class AppLocalizationsEs extends AppLocalizations {
   String get librarySelectAll => 'Seleccionar todo';
 
   @override
+  String get libraryExport => 'Exportar';
+
+  @override
+  String get libraryExportJoinedGallery => 'Un solo vídeo → galería';
+
+  @override
+  String get libraryExportJoinedShare => 'Un solo vídeo → compartir';
+
+  @override
+  String get libraryExportZip => 'ZIP con los vídeos por separado';
+
+  @override
+  String get libraryExporting => 'Exportando…';
+
+  @override
   String get libraryDelete => 'Borrar';
 
   @override

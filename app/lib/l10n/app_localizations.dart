@@ -1250,6 +1250,36 @@ abstract class AppLocalizations {
   /// **'Select all'**
   String get librarySelectAll;
 
+  /// No description provided for @libraryExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Export'**
+  String get libraryExport;
+
+  /// No description provided for @libraryExportJoinedGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'One video → gallery'**
+  String get libraryExportJoinedGallery;
+
+  /// No description provided for @libraryExportJoinedShare.
+  ///
+  /// In en, this message translates to:
+  /// **'One video → share'**
+  String get libraryExportJoinedShare;
+
+  /// No description provided for @libraryExportZip.
+  ///
+  /// In en, this message translates to:
+  /// **'ZIP with separate videos'**
+  String get libraryExportZip;
+
+  /// No description provided for @libraryExporting.
+  ///
+  /// In en, this message translates to:
+  /// **'Exporting…'**
+  String get libraryExporting;
+
   /// No description provided for @libraryDelete.
   ///
   /// In en, this message translates to:
