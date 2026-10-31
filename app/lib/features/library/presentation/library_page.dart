@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/capabilities.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../viewer/clips/clip_batch_export.dart';
+import '../../viewer/clips/clip_export.dart';
 import '../../viewer/tags/tags.dart';
 import '../../viewer/ui/clip_list.dart';
 import '../../viewer/ui/review_page.dart';
@@ -36,25 +39,25 @@ class LibraryPage extends ConsumerWidget {
         child: switch (sessions) {
           AsyncData(value: final list) when list.isEmpty => Center(child: Text(l10n.libraryEmpty)),
           AsyncData(value: final list) => ListView.builder(
-              itemCount: list.length,
-              itemBuilder: (context, i) {
-                final s = list[i];
-                return ListTile(
-                  key: ValueKey('session-${s.session.id}'),
-                  minTileHeight: 72,
-                  leading: Icon(switch (s.session.type) {
-                    SessionType.match => Icons.sports,
-                    SessionType.training => Icons.fitness_center,
-                    SessionType.other => Icons.video_library_outlined,
-                  }),
-                  title: Text(s.session.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  subtitle: Text(sessionSubtitle(l10n, s)),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.of(context).push(SessionClipsPage.route(s.session)),
-                  onLongPress: () => _confirmDeleteSession(context, ref, s.session),
-                );
-              },
-            ),
+            itemCount: list.length,
+            itemBuilder: (context, i) {
+              final s = list[i];
+              return ListTile(
+                key: ValueKey('session-${s.session.id}'),
+                minTileHeight: 72,
+                leading: Icon(switch (s.session.type) {
+                  SessionType.match => Icons.sports,
+                  SessionType.training => Icons.fitness_center,
+                  SessionType.other => Icons.video_library_outlined,
+                }),
+                title: Text(s.session.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                subtitle: Text(sessionSubtitle(l10n, s)),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(SessionClipsPage.route(s.session)),
+                onLongPress: () => _confirmDeleteSession(context, ref, s.session),
+              );
+            },
+          ),
           AsyncError(:final error) => Center(child: Text('$error')),
           _ => const Center(child: CircularProgressIndicator()),
         },
@@ -109,6 +112,7 @@ class SessionClipsPage extends ConsumerStatefulWidget {
 class _SessionClipsPageState extends ConsumerState<SessionClipsPage> {
   String? _tag;
   final _selected = <String>{};
+  bool _exporting = false;
 
   void _toggle(String id) => setState(() => _selected.contains(id) ? _selected.remove(id) : _selected.add(id));
 
@@ -119,6 +123,69 @@ class _SessionClipsPageState extends ConsumerState<SessionClipsPage> {
     if (!ok) return;
     await deleteLibraryClips(ref.read, ids);
     if (mounted) setState(_selected.clear);
+  }
+
+  /// Exports the selected clips, oldest first: joined into one video (gallery or share) or as a ZIP.
+  Future<void> _exportSelected(List<ClipEntry> clips, Map<String, ViewerTag> labels) async {
+    final l10n = AppLocalizations.of(context);
+    final choice = await showModalBottomSheet<int>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.movie_outlined),
+              title: Text(l10n.libraryExportJoinedGallery),
+              onTap: () => Navigator.of(context).pop(0),
+            ),
+            ListTile(
+              leading: const Icon(Icons.share),
+              title: Text(l10n.libraryExportJoinedShare),
+              onTap: () => Navigator.of(context).pop(1),
+            ),
+            ListTile(
+              leading: const Icon(Icons.folder_zip_outlined),
+              title: Text(l10n.libraryExportZip),
+              onTap: () => Navigator.of(context).pop(2),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (choice == null || !mounted) return;
+    final picked = [
+      for (final e in clips)
+        if (_selected.contains(e.clip.id)) e,
+    ]..sort((a, b) => a.clip.requestedAt.compareTo(b.clip.requestedAt));
+    if (picked.isEmpty) return;
+    final batch = [
+      for (final e in picked)
+        (
+          path: e.clip.filePath,
+          name:
+              '${_safeName(e.clip.title ?? clipName(l10n, e.tagIds.map((id) => labels[id]).nonNulls.firstOrNull, e.clip.requestedAt))}.mp4',
+        ),
+    ];
+    final base = _safeName(widget.session.name);
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _exporting = true);
+    messenger.showSnackBar(SnackBar(content: Text(l10n.libraryExporting), duration: const Duration(minutes: 5)));
+    final result = await switch (choice) {
+      0 => ClipBatchExport.joined(batch, '$base.mp4', share: false),
+      1 => ClipBatchExport.joined(batch, '$base.mp4', share: true),
+      _ => ClipBatchExport.zip(batch, '$base.zip'),
+    };
+    messenger.hideCurrentSnackBar();
+    if (!mounted) return;
+    setState(() => _exporting = false);
+    final message = switch (result) {
+      ClipExportResult.done => choice == 0 ? l10n.viewerClipSavedToGallery : null,
+      ClipExportResult.denied => l10n.viewerClipGalleryDenied,
+      ClipExportResult.noSpace => l10n.viewerClipExportNoSpace,
+      ClipExportResult.failed => l10n.viewerClipExportFailed,
+    };
+    if (message != null) messenger.showSnackBar(SnackBar(content: Text(message)));
   }
 
   /// Opens the review with the clip's tag seeded, so it shows and changes are saved back. Its tag
@@ -158,7 +225,9 @@ class _SessionClipsPageState extends ConsumerState<SessionClipsPage> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(selecting ? l10n.librarySelected(_selected.length) : widget.session.name),
-          leading: selecting ? IconButton(icon: const Icon(Icons.close), onPressed: () => setState(_selected.clear)) : null,
+          leading: selecting
+              ? IconButton(icon: const Icon(Icons.close), onPressed: () => setState(_selected.clear))
+              : null,
           actions: [
             if (selecting) ...[
               IconButton(
@@ -166,6 +235,15 @@ class _SessionClipsPageState extends ConsumerState<SessionClipsPage> {
                 icon: const Icon(Icons.select_all),
                 onPressed: () => setState(() => _selected.addAll([for (final e in shown) e.clip.id])),
               ),
+              if (ref.watch(capabilitiesProvider).canShare)
+                IconButton(
+                  key: const ValueKey('library-export-selected'),
+                  tooltip: l10n.libraryExport,
+                  icon: _exporting
+                      ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.ios_share),
+                  onPressed: _exporting ? null : () => _exportSelected(clips, labels),
+                ),
               IconButton(
                 key: const ValueKey('library-delete-selected'),
                 tooltip: l10n.libraryDelete,
@@ -237,10 +315,7 @@ class _SessionClipsPageState extends ConsumerState<SessionClipsPage> {
                             selected: selected,
                             leading: selecting
                                 ? Checkbox(value: selected, onChanged: (_) => _toggle(c.id))
-                                : Container(
-                                    width: 6,
-                                    color: tag?.colour ?? Colors.transparent,
-                                  ),
+                                : Container(width: 6, color: tag?.colour ?? Colors.transparent),
                             title: Text(
                               c.title ?? clipName(l10n, tag, c.requestedAt),
                               maxLines: 1,
@@ -267,4 +342,10 @@ class _SessionClipsPageState extends ConsumerState<SessionClipsPage> {
       ),
     );
   }
+}
+
+/// A file name without characters Android or ZIP tools reject.
+String _safeName(String name) {
+  final s = name.replaceAll(RegExp(r'[\\/:*?"<>|\s]+'), ' ').trim();
+  return s.isEmpty ? 'instantreplay' : s;
 }

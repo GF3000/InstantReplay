@@ -537,6 +537,11 @@
     }
   },
   "librarySelectAll": "Select all",
+  "libraryExport": "Export",
+  "libraryExportJoinedGallery": "One video → gallery",
+  "libraryExportJoinedShare": "One video → share",
+  "libraryExportZip": "ZIP with separate videos",
+  "libraryExporting": "Exporting…",
   "libraryDelete": "Delete",
   "libraryDeleteClipsConfirm": "{count, plural, =1{Delete 1 clip? This can't be undone.} other{Delete {count} clips? This can't be undone.}}",
   "@libraryDeleteClipsConfirm": {
