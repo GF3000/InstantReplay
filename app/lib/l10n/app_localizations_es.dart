@@ -343,6 +343,21 @@ class AppLocalizationsEs extends AppLocalizations {
   String get viewerReviewNextFrame => 'Fotograma siguiente';
 
   @override
+  String get viewerDraw => 'Dibujar';
+
+  @override
+  String get viewerDrawColor => 'Color';
+
+  @override
+  String get viewerDrawUndo => 'Deshacer';
+
+  @override
+  String get viewerDrawClear => 'Borrar dibujo';
+
+  @override
+  String get viewerDrawDone => 'Listo';
+
+  @override
   String get viewerReviewPlay => 'Reproducir';
 
   @override
