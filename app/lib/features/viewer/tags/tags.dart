@@ -182,11 +182,14 @@ class ClipTagsNotifier extends Notifier<Map<String, String>> {
 
 final clipTagsProvider = NotifierProvider<ClipTagsNotifier, Map<String, String>>(ClipTagsNotifier.new);
 
-/// The tag of clip [requestId], or null if untagged or its tag was deleted.
+/// The tag of clip [requestId], or null if untagged. A tag deleted from the template still shows
+/// in a library session (Android), where the library keeps it.
 final clipTagProvider = Provider.family<ViewerTag?, String>((ref, requestId) {
   final id = ref.watch(clipTagsProvider.select((m) => m[requestId]));
   if (id == null) return null;
-  return ref.watch(tagsProvider).where((t) => t.id == id).firstOrNull ?? ref.watch(knownLabelsProvider)[id];
+  return ref.watch(tagsProvider).where((t) => t.id == id).firstOrNull ??
+      ref.watch(knownLabelsProvider)[id] ??
+      (ref.watch(activeSessionProvider) != null ? (ref.watch(libraryLabelsProvider).value ?? const {})[id] : null);
 });
 
 /// The post-save tag bar (UX §3.2): offers the tags for the newest save for [visibleFor], then fades.

@@ -49,6 +49,9 @@ class Tags extends Table {
   IntColumn get color => integer()();
   IntColumn get position => integer()();
 
+  /// Deleted from its template: no longer offered, but clips tagged with it keep showing it.
+  BoolColumn get archived => boolean().withDefault(const Constant(false))();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 }
@@ -134,9 +137,10 @@ class LibraryDatabase extends _$LibraryDatabase {
   final String? legacyTagsJson;
   final String Function() _newId;
 
-  /// 1: first library. 2: categories merged into tags (one label per clip).
+  /// 1: first library. 2: categories merged into tags (one label per clip). 3: deleted tags are
+  /// archived instead of removed.
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -152,6 +156,7 @@ class LibraryDatabase extends _$LibraryDatabase {
           // Off while tables are rebuilt, so dropping the old clips table does not cascade.
           await customStatement('PRAGMA foreign_keys = OFF');
           if (from < 2) await _mergeCategoriesIntoTags(m);
+          if (from < 3) await m.addColumn(tags, tags.archived);
         },
         beforeOpen: (details) async {
           await customStatement('PRAGMA foreign_keys = ON');
@@ -170,13 +175,13 @@ class LibraryDatabase extends _$LibraryDatabase {
     final template = await (select(tagTemplates)..where((t) => t.id.equals(id))).getSingleOrNull();
     if (template == null) return null;
     final tgs = await (select(tags)
-          ..where((t) => t.templateId.equals(id))
+          ..where((t) => t.templateId.equals(id) & t.archived.not())
           ..orderBy([(t) => OrderingTerm.asc(t.position)]))
         .get();
     return TemplateContent(template: template, tags: tgs);
   }
 
-  /// Every tag, for showing clips of any session.
+  /// Every tag, archived ones included, for showing clips of any session.
   Future<List<TagRow>> allTags() => select(tags).get();
 
   /// Adds an imported template (new ids) and returns its id.
@@ -209,13 +214,14 @@ class LibraryDatabase extends _$LibraryDatabase {
   /// Sessions keep their clips; they just lose the template.
   Future<void> deleteTemplate(String id) => (delete(tagTemplates)..where((t) => t.id.equals(id))).go();
 
-  /// Makes [labels] the tags of [templateId], in that order. Missing ones are deleted (their clip
-  /// links stay, see [ClipTags]).
+  /// Makes [labels] the tags of [templateId], in that order. Missing ones are archived, so clips
+  /// tagged with them keep their label (see [Tags.archived]).
   Future<void> replaceTags(String templateId, List<LabelSpec> labels) => transaction(() async {
-        await (delete(tags)..where((t) => t.templateId.equals(templateId) & t.id.isNotIn(_ids(labels)))).go();
+        await (update(tags)..where((t) => t.templateId.equals(templateId) & t.id.isNotIn(_ids(labels))))
+            .write(const TagsCompanion(archived: Value(true)));
         for (final (i, l) in labels.indexed) {
           await into(tags).insertOnConflictUpdate(
-            TagRow(id: l.id!, templateId: templateId, name: l.name, color: l.color, position: i),
+            TagRow(id: l.id!, templateId: templateId, name: l.name, color: l.color, position: i, archived: false),
           );
         }
       });

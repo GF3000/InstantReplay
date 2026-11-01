@@ -116,6 +116,8 @@ void main() {
       ]);
       expect((await db.templateContent(BuiltInTemplates.generic))!.tags, hasLength(content.tags.length - 1));
       expect((await db.watchSessionClips(s.id).first).single.tagIds, ['generic.tag.good']);
+      // Archived, not deleted: the library still knows its name and colour for the clips.
+      expect((await db.allTags()).firstWhere((t) => t.id == good.id).archived, isTrue);
 
       await db.replaceTags(BuiltInTemplates.generic, [
         for (final t in content.tags) LabelSpec(id: t.id, name: t.id == good.id ? 'Great' : t.name, color: t.color),
@@ -123,6 +125,7 @@ void main() {
       final again = (await db.templateContent(BuiltInTemplates.generic))!;
       expect([for (final t in again.tags) t.id], [for (final t in content.tags) t.id]);
       expect(again.tags.firstWhere((t) => t.id == good.id).name, 'Great');
+      expect(again.tags.firstWhere((t) => t.id == good.id).archived, isFalse);
     });
 
     test('batch delete removes clips and their tags and returns the files', () async {
