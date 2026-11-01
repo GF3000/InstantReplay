@@ -125,6 +125,14 @@ class _SessionClipsPageState extends ConsumerState<SessionClipsPage> {
     if (mounted) setState(_selected.clear);
   }
 
+  /// Shows only clips tagged [tag] (all when null); a selection keeps only the clips still shown.
+  void _filter(String? tag, List<ClipEntry> clips) => setState(() {
+    _tag = tag;
+    if (tag != null) {
+      _selected.removeWhere((id) => !clips.any((e) => e.clip.id == id && e.tagIds.contains(tag)));
+    }
+  });
+
   /// Exports the selected clips, oldest first: joined into one video (gallery or share) or as a ZIP.
   Future<void> _exportSelected(List<ClipEntry> clips, Map<String, ViewerTag> labels) async {
     final l10n = AppLocalizations.of(context);
@@ -167,7 +175,10 @@ class _SessionClipsPageState extends ConsumerState<SessionClipsPage> {
               '${_safeName(e.clip.title ?? clipName(l10n, e.tagIds.map((id) => labels[id]).nonNulls.firstOrNull, e.clip.requestedAt))}.mp4',
         ),
     ];
-    final base = _safeName(widget.session.name);
+    // All of one tag: name the file after the session and that tag.
+    final pickedTags = {for (final e in picked) e.tagIds.firstOrNull};
+    final onlyTag = pickedTags.length == 1 ? labels[pickedTags.single] : null;
+    final base = _safeName([widget.session.name, ?onlyTag?.label(l10n)].join(' - '));
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _exporting = true);
     messenger.showSnackBar(SnackBar(content: Text(l10n.libraryExporting), duration: const Duration(minutes: 5)));
@@ -233,7 +244,11 @@ class _SessionClipsPageState extends ConsumerState<SessionClipsPage> {
               IconButton(
                 tooltip: l10n.librarySelectAll,
                 icon: const Icon(Icons.select_all),
-                onPressed: () => setState(() => _selected.addAll([for (final e in shown) e.clip.id])),
+                onPressed: () => setState(
+                  () => _selected
+                    ..clear()
+                    ..addAll([for (final e in shown) e.clip.id]),
+                ),
               ),
               if (ref.watch(capabilitiesProvider).canShare)
                 IconButton(
@@ -282,7 +297,7 @@ class _SessionClipsPageState extends ConsumerState<SessionClipsPage> {
                         key: const ValueKey('library-filter-all'),
                         label: Text(l10n.viewerFilterAll),
                         selected: _tag == null,
-                        onSelected: (_) => setState(() => _tag = null),
+                        onSelected: (_) => _filter(null, clips),
                       ),
                       for (final t in tags)
                         Padding(
@@ -292,7 +307,7 @@ class _SessionClipsPageState extends ConsumerState<SessionClipsPage> {
                             avatar: Icon(Icons.circle, size: 14, color: t.colour),
                             label: Text(t.label(l10n)),
                             selected: _tag == t.id,
-                            onSelected: (_) => setState(() => _tag = _tag == t.id ? null : t.id),
+                            onSelected: (_) => _filter(_tag == t.id ? null : t.id, clips),
                           ),
                         ),
                     ],

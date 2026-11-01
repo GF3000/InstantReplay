@@ -3,8 +3,7 @@
 part of 'library_database.dart';
 
 // ignore_for_file: type=lint
-class $TagTemplatesTable extends TagTemplates
-    with TableInfo<$TagTemplatesTable, TemplateRow> {
+class $TagTemplatesTable extends TagTemplates with TableInfo<$TagTemplatesTable, TemplateRow> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -36,9 +35,7 @@ class $TagTemplatesTable extends TagTemplates
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _builtInMeta = const VerificationMeta(
-    'builtIn',
-  );
+  static const VerificationMeta _builtInMeta = const VerificationMeta('builtIn');
   @override
   late final GeneratedColumn<bool> builtIn = GeneratedColumn<bool>(
     'built_in',
@@ -46,14 +43,10 @@ class $TagTemplatesTable extends TagTemplates
     false,
     type: DriftSqlType.bool,
     requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("built_in" IN (0, 1))',
-    ),
+    defaultConstraints: GeneratedColumn.constraintIsAlways('CHECK ("built_in" IN (0, 1))'),
     defaultValue: const Constant(false),
   );
-  static const VerificationMeta _schemaVersionMeta = const VerificationMeta(
-    'schemaVersion',
-  );
+  static const VerificationMeta _schemaVersionMeta = const VerificationMeta('schemaVersion');
   @override
   late final GeneratedColumn<int> schemaVersion = GeneratedColumn<int>(
     'schema_version',
@@ -64,23 +57,14 @@ class $TagTemplatesTable extends TagTemplates
     defaultValue: const Constant(TemplateSpec.schemaVersion),
   );
   @override
-  List<GeneratedColumn> get $columns => [
-    id,
-    name,
-    sport,
-    builtIn,
-    schemaVersion,
-  ];
+  List<GeneratedColumn> get $columns => [id, name, sport, builtIn, schemaVersion];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
   static const String $name = 'tag_templates';
   @override
-  VerificationContext validateIntegrity(
-    Insertable<TemplateRow> instance, {
-    bool isInserting = false,
-  }) {
+  VerificationContext validateIntegrity(Insertable<TemplateRow> instance, {bool isInserting = false}) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
@@ -89,32 +73,20 @@ class $TagTemplatesTable extends TagTemplates
       context.missing(_idMeta);
     }
     if (data.containsKey('name')) {
-      context.handle(
-        _nameMeta,
-        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
-      );
+      context.handle(_nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
     }
     if (data.containsKey('sport')) {
-      context.handle(
-        _sportMeta,
-        sport.isAcceptableOrUnknown(data['sport']!, _sportMeta),
-      );
+      context.handle(_sportMeta, sport.isAcceptableOrUnknown(data['sport']!, _sportMeta));
     } else if (isInserting) {
       context.missing(_sportMeta);
     }
     if (data.containsKey('built_in')) {
-      context.handle(
-        _builtInMeta,
-        builtIn.isAcceptableOrUnknown(data['built_in']!, _builtInMeta),
-      );
+      context.handle(_builtInMeta, builtIn.isAcceptableOrUnknown(data['built_in']!, _builtInMeta));
     }
     if (data.containsKey('schema_version')) {
       context.handle(
         _schemaVersionMeta,
-        schemaVersion.isAcceptableOrUnknown(
-          data['schema_version']!,
-          _schemaVersionMeta,
-        ),
+        schemaVersion.isAcceptableOrUnknown(data['schema_version']!, _schemaVersionMeta),
       );
     }
     return context;
@@ -126,26 +98,11 @@ class $TagTemplatesTable extends TagTemplates
   TemplateRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return TemplateRow(
-      id: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}id'],
-      )!,
-      name: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}name'],
-      ),
-      sport: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}sport'],
-      )!,
-      builtIn: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}built_in'],
-      )!,
-      schemaVersion: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}schema_version'],
-      )!,
+      id: attachedDatabase.typeMapping.read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      name: attachedDatabase.typeMapping.read(DriftSqlType.string, data['${effectivePrefix}name']),
+      sport: attachedDatabase.typeMapping.read(DriftSqlType.string, data['${effectivePrefix}sport'])!,
+      builtIn: attachedDatabase.typeMapping.read(DriftSqlType.bool, data['${effectivePrefix}built_in'])!,
+      schemaVersion: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}schema_version'])!,
     );
   }
 
@@ -193,10 +150,7 @@ class TemplateRow extends DataClass implements Insertable<TemplateRow> {
     );
   }
 
-  factory TemplateRow.fromJson(
-    Map<String, dynamic> json, {
-    ValueSerializer? serializer,
-  }) {
+  factory TemplateRow.fromJson(Map<String, dynamic> json, {ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return TemplateRow(
       id: serializer.fromJson<String>(json['id']),
@@ -237,9 +191,7 @@ class TemplateRow extends DataClass implements Insertable<TemplateRow> {
       name: data.name.present ? data.name.value : this.name,
       sport: data.sport.present ? data.sport.value : this.sport,
       builtIn: data.builtIn.present ? data.builtIn.value : this.builtIn,
-      schemaVersion: data.schemaVersion.present
-          ? data.schemaVersion.value
-          : this.schemaVersion,
+      schemaVersion: data.schemaVersion.present ? data.schemaVersion.value : this.schemaVersion,
     );
   }
 
@@ -366,8 +318,7 @@ class TagTemplatesCompanion extends UpdateCompanion<TemplateRow> {
   }
 }
 
-class $SessionsTable extends Sessions
-    with TableInfo<$SessionsTable, SessionRow> {
+class $SessionsTable extends Sessions with TableInfo<$SessionsTable, SessionRow> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -391,17 +342,14 @@ class $SessionsTable extends Sessions
     requiredDuringInsert: true,
   );
   @override
-  late final GeneratedColumnWithTypeConverter<SessionType, String> type =
-      GeneratedColumn<String>(
-        'type',
-        aliasedName,
-        false,
-        type: DriftSqlType.string,
-        requiredDuringInsert: true,
-      ).withConverter<SessionType>($SessionsTable.$convertertype);
-  static const VerificationMeta _startedAtMeta = const VerificationMeta(
-    'startedAt',
-  );
+  late final GeneratedColumnWithTypeConverter<SessionType, String> type = GeneratedColumn<String>(
+    'type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  ).withConverter<SessionType>($SessionsTable.$convertertype);
+  static const VerificationMeta _startedAtMeta = const VerificationMeta('startedAt');
   @override
   late final GeneratedColumn<DateTime> startedAt = GeneratedColumn<DateTime>(
     'started_at',
@@ -410,9 +358,7 @@ class $SessionsTable extends Sessions
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _templateIdMeta = const VerificationMeta(
-    'templateId',
-  );
+  static const VerificationMeta _templateIdMeta = const VerificationMeta('templateId');
   @override
   late final GeneratedColumn<String> templateId = GeneratedColumn<String>(
     'template_id',
@@ -420,9 +366,7 @@ class $SessionsTable extends Sessions
     true,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES tag_templates (id) ON DELETE SET NULL',
-    ),
+    defaultConstraints: GeneratedColumn.constraintIsAlways('REFERENCES tag_templates (id) ON DELETE SET NULL'),
   );
   @override
   List<GeneratedColumn> get $columns => [id, name, type, startedAt, templateId];
@@ -432,10 +376,7 @@ class $SessionsTable extends Sessions
   String get actualTableName => $name;
   static const String $name = 'sessions';
   @override
-  VerificationContext validateIntegrity(
-    Insertable<SessionRow> instance, {
-    bool isInserting = false,
-  }) {
+  VerificationContext validateIntegrity(Insertable<SessionRow> instance, {bool isInserting = false}) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
@@ -444,26 +385,17 @@ class $SessionsTable extends Sessions
       context.missing(_idMeta);
     }
     if (data.containsKey('name')) {
-      context.handle(
-        _nameMeta,
-        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
-      );
+      context.handle(_nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
     } else if (isInserting) {
       context.missing(_nameMeta);
     }
     if (data.containsKey('started_at')) {
-      context.handle(
-        _startedAtMeta,
-        startedAt.isAcceptableOrUnknown(data['started_at']!, _startedAtMeta),
-      );
+      context.handle(_startedAtMeta, startedAt.isAcceptableOrUnknown(data['started_at']!, _startedAtMeta));
     } else if (isInserting) {
       context.missing(_startedAtMeta);
     }
     if (data.containsKey('template_id')) {
-      context.handle(
-        _templateIdMeta,
-        templateId.isAcceptableOrUnknown(data['template_id']!, _templateIdMeta),
-      );
+      context.handle(_templateIdMeta, templateId.isAcceptableOrUnknown(data['template_id']!, _templateIdMeta));
     }
     return context;
   }
@@ -474,28 +406,13 @@ class $SessionsTable extends Sessions
   SessionRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return SessionRow(
-      id: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}id'],
-      )!,
-      name: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}name'],
-      )!,
+      id: attachedDatabase.typeMapping.read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      name: attachedDatabase.typeMapping.read(DriftSqlType.string, data['${effectivePrefix}name'])!,
       type: $SessionsTable.$convertertype.fromSql(
-        attachedDatabase.typeMapping.read(
-          DriftSqlType.string,
-          data['${effectivePrefix}type'],
-        )!,
+        attachedDatabase.typeMapping.read(DriftSqlType.string, data['${effectivePrefix}type'])!,
       ),
-      startedAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}started_at'],
-      )!,
-      templateId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}template_id'],
-      ),
+      startedAt: attachedDatabase.typeMapping.read(DriftSqlType.dateTime, data['${effectivePrefix}started_at'])!,
+      templateId: attachedDatabase.typeMapping.read(DriftSqlType.string, data['${effectivePrefix}template_id']),
     );
   }
 
@@ -504,8 +421,9 @@ class $SessionsTable extends Sessions
     return $SessionsTable(attachedDatabase, alias);
   }
 
-  static JsonTypeConverter2<SessionType, String, String> $convertertype =
-      const EnumNameConverter<SessionType>(SessionType.values);
+  static JsonTypeConverter2<SessionType, String, String> $convertertype = const EnumNameConverter<SessionType>(
+    SessionType.values,
+  );
 }
 
 class SessionRow extends DataClass implements Insertable<SessionRow> {
@@ -542,23 +460,16 @@ class SessionRow extends DataClass implements Insertable<SessionRow> {
       name: Value(name),
       type: Value(type),
       startedAt: Value(startedAt),
-      templateId: templateId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(templateId),
+      templateId: templateId == null && nullToAbsent ? const Value.absent() : Value(templateId),
     );
   }
 
-  factory SessionRow.fromJson(
-    Map<String, dynamic> json, {
-    ValueSerializer? serializer,
-  }) {
+  factory SessionRow.fromJson(Map<String, dynamic> json, {ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return SessionRow(
       id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
-      type: $SessionsTable.$convertertype.fromJson(
-        serializer.fromJson<String>(json['type']),
-      ),
+      type: $SessionsTable.$convertertype.fromJson(serializer.fromJson<String>(json['type'])),
       startedAt: serializer.fromJson<DateTime>(json['startedAt']),
       templateId: serializer.fromJson<String?>(json['templateId']),
     );
@@ -569,9 +480,7 @@ class SessionRow extends DataClass implements Insertable<SessionRow> {
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String>(name),
-      'type': serializer.toJson<String>(
-        $SessionsTable.$convertertype.toJson(type),
-      ),
+      'type': serializer.toJson<String>($SessionsTable.$convertertype.toJson(type)),
       'startedAt': serializer.toJson<DateTime>(startedAt),
       'templateId': serializer.toJson<String?>(templateId),
     };
@@ -596,9 +505,7 @@ class SessionRow extends DataClass implements Insertable<SessionRow> {
       name: data.name.present ? data.name.value : this.name,
       type: data.type.present ? data.type.value : this.type,
       startedAt: data.startedAt.present ? data.startedAt.value : this.startedAt,
-      templateId: data.templateId.present
-          ? data.templateId.value
-          : this.templateId,
+      templateId: data.templateId.present ? data.templateId.value : this.templateId,
     );
   }
 
@@ -699,9 +606,7 @@ class SessionsCompanion extends UpdateCompanion<SessionRow> {
       map['name'] = Variable<String>(name.value);
     }
     if (type.present) {
-      map['type'] = Variable<String>(
-        $SessionsTable.$convertertype.toSql(type.value),
-      );
+      map['type'] = Variable<String>($SessionsTable.$convertertype.toSql(type.value));
     }
     if (startedAt.present) {
       map['started_at'] = Variable<DateTime>(startedAt.value);
@@ -743,9 +648,7 @@ class $TagsTable extends Tags with TableInfo<$TagsTable, TagRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _templateIdMeta = const VerificationMeta(
-    'templateId',
-  );
+  static const VerificationMeta _templateIdMeta = const VerificationMeta('templateId');
   @override
   late final GeneratedColumn<String> templateId = GeneratedColumn<String>(
     'template_id',
@@ -753,9 +656,7 @@ class $TagsTable extends Tags with TableInfo<$TagsTable, TagRow> {
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES tag_templates (id) ON DELETE CASCADE',
-    ),
+    defaultConstraints: GeneratedColumn.constraintIsAlways('REFERENCES tag_templates (id) ON DELETE CASCADE'),
   );
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
@@ -775,9 +676,7 @@ class $TagsTable extends Tags with TableInfo<$TagsTable, TagRow> {
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _positionMeta = const VerificationMeta(
-    'position',
-  );
+  static const VerificationMeta _positionMeta = const VerificationMeta('position');
   @override
   late final GeneratedColumn<int> position = GeneratedColumn<int>(
     'position',
@@ -786,18 +685,26 @@ class $TagsTable extends Tags with TableInfo<$TagsTable, TagRow> {
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _archivedMeta = const VerificationMeta('archived');
   @override
-  List<GeneratedColumn> get $columns => [id, templateId, name, color, position];
+  late final GeneratedColumn<bool> archived = GeneratedColumn<bool>(
+    'archived',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('CHECK ("archived" IN (0, 1))'),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, templateId, name, color, position, archived];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
   static const String $name = 'tags';
   @override
-  VerificationContext validateIntegrity(
-    Insertable<TagRow> instance, {
-    bool isInserting = false,
-  }) {
+  VerificationContext validateIntegrity(Insertable<TagRow> instance, {bool isInserting = false}) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
@@ -806,34 +713,25 @@ class $TagsTable extends Tags with TableInfo<$TagsTable, TagRow> {
       context.missing(_idMeta);
     }
     if (data.containsKey('template_id')) {
-      context.handle(
-        _templateIdMeta,
-        templateId.isAcceptableOrUnknown(data['template_id']!, _templateIdMeta),
-      );
+      context.handle(_templateIdMeta, templateId.isAcceptableOrUnknown(data['template_id']!, _templateIdMeta));
     } else if (isInserting) {
       context.missing(_templateIdMeta);
     }
     if (data.containsKey('name')) {
-      context.handle(
-        _nameMeta,
-        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
-      );
+      context.handle(_nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
     }
     if (data.containsKey('color')) {
-      context.handle(
-        _colorMeta,
-        color.isAcceptableOrUnknown(data['color']!, _colorMeta),
-      );
+      context.handle(_colorMeta, color.isAcceptableOrUnknown(data['color']!, _colorMeta));
     } else if (isInserting) {
       context.missing(_colorMeta);
     }
     if (data.containsKey('position')) {
-      context.handle(
-        _positionMeta,
-        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
-      );
+      context.handle(_positionMeta, position.isAcceptableOrUnknown(data['position']!, _positionMeta));
     } else if (isInserting) {
       context.missing(_positionMeta);
+    }
+    if (data.containsKey('archived')) {
+      context.handle(_archivedMeta, archived.isAcceptableOrUnknown(data['archived']!, _archivedMeta));
     }
     return context;
   }
@@ -844,26 +742,12 @@ class $TagsTable extends Tags with TableInfo<$TagsTable, TagRow> {
   TagRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return TagRow(
-      id: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}id'],
-      )!,
-      templateId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}template_id'],
-      )!,
-      name: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}name'],
-      ),
-      color: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}color'],
-      )!,
-      position: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}position'],
-      )!,
+      id: attachedDatabase.typeMapping.read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      templateId: attachedDatabase.typeMapping.read(DriftSqlType.string, data['${effectivePrefix}template_id'])!,
+      name: attachedDatabase.typeMapping.read(DriftSqlType.string, data['${effectivePrefix}name']),
+      color: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}color'])!,
+      position: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}position'])!,
+      archived: attachedDatabase.typeMapping.read(DriftSqlType.bool, data['${effectivePrefix}archived'])!,
     );
   }
 
@@ -881,12 +765,16 @@ class TagRow extends DataClass implements Insertable<TagRow> {
   final String? name;
   final int color;
   final int position;
+
+  /// Deleted from its template: no longer offered, but clips tagged with it keep showing it.
+  final bool archived;
   const TagRow({
     required this.id,
     required this.templateId,
     this.name,
     required this.color,
     required this.position,
+    required this.archived,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -898,6 +786,7 @@ class TagRow extends DataClass implements Insertable<TagRow> {
     }
     map['color'] = Variable<int>(color);
     map['position'] = Variable<int>(position);
+    map['archived'] = Variable<bool>(archived);
     return map;
   }
 
@@ -908,13 +797,11 @@ class TagRow extends DataClass implements Insertable<TagRow> {
       name: name == null && nullToAbsent ? const Value.absent() : Value(name),
       color: Value(color),
       position: Value(position),
+      archived: Value(archived),
     );
   }
 
-  factory TagRow.fromJson(
-    Map<String, dynamic> json, {
-    ValueSerializer? serializer,
-  }) {
+  factory TagRow.fromJson(Map<String, dynamic> json, {ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return TagRow(
       id: serializer.fromJson<String>(json['id']),
@@ -922,6 +809,7 @@ class TagRow extends DataClass implements Insertable<TagRow> {
       name: serializer.fromJson<String?>(json['name']),
       color: serializer.fromJson<int>(json['color']),
       position: serializer.fromJson<int>(json['position']),
+      archived: serializer.fromJson<bool>(json['archived']),
     );
   }
   @override
@@ -933,6 +821,7 @@ class TagRow extends DataClass implements Insertable<TagRow> {
       'name': serializer.toJson<String?>(name),
       'color': serializer.toJson<int>(color),
       'position': serializer.toJson<int>(position),
+      'archived': serializer.toJson<bool>(archived),
     };
   }
 
@@ -942,22 +831,23 @@ class TagRow extends DataClass implements Insertable<TagRow> {
     Value<String?> name = const Value.absent(),
     int? color,
     int? position,
+    bool? archived,
   }) => TagRow(
     id: id ?? this.id,
     templateId: templateId ?? this.templateId,
     name: name.present ? name.value : this.name,
     color: color ?? this.color,
     position: position ?? this.position,
+    archived: archived ?? this.archived,
   );
   TagRow copyWithCompanion(TagsCompanion data) {
     return TagRow(
       id: data.id.present ? data.id.value : this.id,
-      templateId: data.templateId.present
-          ? data.templateId.value
-          : this.templateId,
+      templateId: data.templateId.present ? data.templateId.value : this.templateId,
       name: data.name.present ? data.name.value : this.name,
       color: data.color.present ? data.color.value : this.color,
       position: data.position.present ? data.position.value : this.position,
+      archived: data.archived.present ? data.archived.value : this.archived,
     );
   }
 
@@ -968,13 +858,14 @@ class TagRow extends DataClass implements Insertable<TagRow> {
           ..write('templateId: $templateId, ')
           ..write('name: $name, ')
           ..write('color: $color, ')
-          ..write('position: $position')
+          ..write('position: $position, ')
+          ..write('archived: $archived')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, templateId, name, color, position);
+  int get hashCode => Object.hash(id, templateId, name, color, position, archived);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -983,7 +874,8 @@ class TagRow extends DataClass implements Insertable<TagRow> {
           other.templateId == this.templateId &&
           other.name == this.name &&
           other.color == this.color &&
-          other.position == this.position);
+          other.position == this.position &&
+          other.archived == this.archived);
 }
 
 class TagsCompanion extends UpdateCompanion<TagRow> {
@@ -992,6 +884,7 @@ class TagsCompanion extends UpdateCompanion<TagRow> {
   final Value<String?> name;
   final Value<int> color;
   final Value<int> position;
+  final Value<bool> archived;
   final Value<int> rowid;
   const TagsCompanion({
     this.id = const Value.absent(),
@@ -999,6 +892,7 @@ class TagsCompanion extends UpdateCompanion<TagRow> {
     this.name = const Value.absent(),
     this.color = const Value.absent(),
     this.position = const Value.absent(),
+    this.archived = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   TagsCompanion.insert({
@@ -1007,6 +901,7 @@ class TagsCompanion extends UpdateCompanion<TagRow> {
     this.name = const Value.absent(),
     required int color,
     required int position,
+    this.archived = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        templateId = Value(templateId),
@@ -1018,6 +913,7 @@ class TagsCompanion extends UpdateCompanion<TagRow> {
     Expression<String>? name,
     Expression<int>? color,
     Expression<int>? position,
+    Expression<bool>? archived,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1026,6 +922,7 @@ class TagsCompanion extends UpdateCompanion<TagRow> {
       if (name != null) 'name': name,
       if (color != null) 'color': color,
       if (position != null) 'position': position,
+      if (archived != null) 'archived': archived,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1036,6 +933,7 @@ class TagsCompanion extends UpdateCompanion<TagRow> {
     Value<String?>? name,
     Value<int>? color,
     Value<int>? position,
+    Value<bool>? archived,
     Value<int>? rowid,
   }) {
     return TagsCompanion(
@@ -1044,6 +942,7 @@ class TagsCompanion extends UpdateCompanion<TagRow> {
       name: name ?? this.name,
       color: color ?? this.color,
       position: position ?? this.position,
+      archived: archived ?? this.archived,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1066,6 +965,9 @@ class TagsCompanion extends UpdateCompanion<TagRow> {
     if (position.present) {
       map['position'] = Variable<int>(position.value);
     }
+    if (archived.present) {
+      map['archived'] = Variable<bool>(archived.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1080,6 +982,7 @@ class TagsCompanion extends UpdateCompanion<TagRow> {
           ..write('name: $name, ')
           ..write('color: $color, ')
           ..write('position: $position, ')
+          ..write('archived: $archived, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1100,9 +1003,7 @@ class $ClipsTable extends Clips with TableInfo<$ClipsTable, ClipRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _sessionIdMeta = const VerificationMeta(
-    'sessionId',
-  );
+  static const VerificationMeta _sessionIdMeta = const VerificationMeta('sessionId');
   @override
   late final GeneratedColumn<String> sessionId = GeneratedColumn<String>(
     'session_id',
@@ -1110,13 +1011,9 @@ class $ClipsTable extends Clips with TableInfo<$ClipsTable, ClipRow> {
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES sessions (id) ON DELETE CASCADE',
-    ),
+    defaultConstraints: GeneratedColumn.constraintIsAlways('REFERENCES sessions (id) ON DELETE CASCADE'),
   );
-  static const VerificationMeta _requestIdMeta = const VerificationMeta(
-    'requestId',
-  );
+  static const VerificationMeta _requestIdMeta = const VerificationMeta('requestId');
   @override
   late final GeneratedColumn<String> requestId = GeneratedColumn<String>(
     'request_id',
@@ -1125,9 +1022,7 @@ class $ClipsTable extends Clips with TableInfo<$ClipsTable, ClipRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _cameraIdMeta = const VerificationMeta(
-    'cameraId',
-  );
+  static const VerificationMeta _cameraIdMeta = const VerificationMeta('cameraId');
   @override
   late final GeneratedColumn<String> cameraId = GeneratedColumn<String>(
     'camera_id',
@@ -1136,9 +1031,7 @@ class $ClipsTable extends Clips with TableInfo<$ClipsTable, ClipRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _requestedAtMeta = const VerificationMeta(
-    'requestedAt',
-  );
+  static const VerificationMeta _requestedAtMeta = const VerificationMeta('requestedAt');
   @override
   late final GeneratedColumn<DateTime> requestedAt = GeneratedColumn<DateTime>(
     'requested_at',
@@ -1147,9 +1040,7 @@ class $ClipsTable extends Clips with TableInfo<$ClipsTable, ClipRow> {
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _cameraTimeMeta = const VerificationMeta(
-    'cameraTime',
-  );
+  static const VerificationMeta _cameraTimeMeta = const VerificationMeta('cameraTime');
   @override
   late final GeneratedColumn<DateTime> cameraTime = GeneratedColumn<DateTime>(
     'camera_time',
@@ -1158,9 +1049,7 @@ class $ClipsTable extends Clips with TableInfo<$ClipsTable, ClipRow> {
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _durationMsMeta = const VerificationMeta(
-    'durationMs',
-  );
+  static const VerificationMeta _durationMsMeta = const VerificationMeta('durationMs');
   @override
   late final GeneratedColumn<int> durationMs = GeneratedColumn<int>(
     'duration_ms',
@@ -1169,9 +1058,7 @@ class $ClipsTable extends Clips with TableInfo<$ClipsTable, ClipRow> {
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _filePathMeta = const VerificationMeta(
-    'filePath',
-  );
+  static const VerificationMeta _filePathMeta = const VerificationMeta('filePath');
   @override
   late final GeneratedColumn<String> filePath = GeneratedColumn<String>(
     'file_path',
@@ -1180,9 +1067,7 @@ class $ClipsTable extends Clips with TableInfo<$ClipsTable, ClipRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _sizeBytesMeta = const VerificationMeta(
-    'sizeBytes',
-  );
+  static const VerificationMeta _sizeBytesMeta = const VerificationMeta('sizeBytes');
   @override
   late final GeneratedColumn<int> sizeBytes = GeneratedColumn<int>(
     'size_bytes',
@@ -1218,9 +1103,7 @@ class $ClipsTable extends Clips with TableInfo<$ClipsTable, ClipRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _trimStartMsMeta = const VerificationMeta(
-    'trimStartMs',
-  );
+  static const VerificationMeta _trimStartMsMeta = const VerificationMeta('trimStartMs');
   @override
   late final GeneratedColumn<int> trimStartMs = GeneratedColumn<int>(
     'trim_start_ms',
@@ -1229,9 +1112,7 @@ class $ClipsTable extends Clips with TableInfo<$ClipsTable, ClipRow> {
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _trimEndMsMeta = const VerificationMeta(
-    'trimEndMs',
-  );
+  static const VerificationMeta _trimEndMsMeta = const VerificationMeta('trimEndMs');
   @override
   late final GeneratedColumn<int> trimEndMs = GeneratedColumn<int>(
     'trim_end_ms',
@@ -1240,9 +1121,7 @@ class $ClipsTable extends Clips with TableInfo<$ClipsTable, ClipRow> {
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _createdAtMeta = const VerificationMeta(
-    'createdAt',
-  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta('createdAt');
   @override
   late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
     'created_at',
@@ -1251,9 +1130,7 @@ class $ClipsTable extends Clips with TableInfo<$ClipsTable, ClipRow> {
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
-    'updatedAt',
-  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta('updatedAt');
   @override
   late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
     'updated_at',
@@ -1287,10 +1164,7 @@ class $ClipsTable extends Clips with TableInfo<$ClipsTable, ClipRow> {
   String get actualTableName => $name;
   static const String $name = 'clips';
   @override
-  VerificationContext validateIntegrity(
-    Insertable<ClipRow> instance, {
-    bool isInserting = false,
-  }) {
+  VerificationContext validateIntegrity(Insertable<ClipRow> instance, {bool isInserting = false}) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
@@ -1299,110 +1173,59 @@ class $ClipsTable extends Clips with TableInfo<$ClipsTable, ClipRow> {
       context.missing(_idMeta);
     }
     if (data.containsKey('session_id')) {
-      context.handle(
-        _sessionIdMeta,
-        sessionId.isAcceptableOrUnknown(data['session_id']!, _sessionIdMeta),
-      );
+      context.handle(_sessionIdMeta, sessionId.isAcceptableOrUnknown(data['session_id']!, _sessionIdMeta));
     } else if (isInserting) {
       context.missing(_sessionIdMeta);
     }
     if (data.containsKey('request_id')) {
-      context.handle(
-        _requestIdMeta,
-        requestId.isAcceptableOrUnknown(data['request_id']!, _requestIdMeta),
-      );
+      context.handle(_requestIdMeta, requestId.isAcceptableOrUnknown(data['request_id']!, _requestIdMeta));
     }
     if (data.containsKey('camera_id')) {
-      context.handle(
-        _cameraIdMeta,
-        cameraId.isAcceptableOrUnknown(data['camera_id']!, _cameraIdMeta),
-      );
+      context.handle(_cameraIdMeta, cameraId.isAcceptableOrUnknown(data['camera_id']!, _cameraIdMeta));
     }
     if (data.containsKey('requested_at')) {
-      context.handle(
-        _requestedAtMeta,
-        requestedAt.isAcceptableOrUnknown(
-          data['requested_at']!,
-          _requestedAtMeta,
-        ),
-      );
+      context.handle(_requestedAtMeta, requestedAt.isAcceptableOrUnknown(data['requested_at']!, _requestedAtMeta));
     } else if (isInserting) {
       context.missing(_requestedAtMeta);
     }
     if (data.containsKey('camera_time')) {
-      context.handle(
-        _cameraTimeMeta,
-        cameraTime.isAcceptableOrUnknown(data['camera_time']!, _cameraTimeMeta),
-      );
+      context.handle(_cameraTimeMeta, cameraTime.isAcceptableOrUnknown(data['camera_time']!, _cameraTimeMeta));
     }
     if (data.containsKey('duration_ms')) {
-      context.handle(
-        _durationMsMeta,
-        durationMs.isAcceptableOrUnknown(data['duration_ms']!, _durationMsMeta),
-      );
+      context.handle(_durationMsMeta, durationMs.isAcceptableOrUnknown(data['duration_ms']!, _durationMsMeta));
     }
     if (data.containsKey('file_path')) {
-      context.handle(
-        _filePathMeta,
-        filePath.isAcceptableOrUnknown(data['file_path']!, _filePathMeta),
-      );
+      context.handle(_filePathMeta, filePath.isAcceptableOrUnknown(data['file_path']!, _filePathMeta));
     } else if (isInserting) {
       context.missing(_filePathMeta);
     }
     if (data.containsKey('size_bytes')) {
-      context.handle(
-        _sizeBytesMeta,
-        sizeBytes.isAcceptableOrUnknown(data['size_bytes']!, _sizeBytesMeta),
-      );
+      context.handle(_sizeBytesMeta, sizeBytes.isAcceptableOrUnknown(data['size_bytes']!, _sizeBytesMeta));
     } else if (isInserting) {
       context.missing(_sizeBytesMeta);
     }
     if (data.containsKey('sha256')) {
-      context.handle(
-        _sha256Meta,
-        sha256.isAcceptableOrUnknown(data['sha256']!, _sha256Meta),
-      );
+      context.handle(_sha256Meta, sha256.isAcceptableOrUnknown(data['sha256']!, _sha256Meta));
     }
     if (data.containsKey('title')) {
-      context.handle(
-        _titleMeta,
-        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
-      );
+      context.handle(_titleMeta, title.isAcceptableOrUnknown(data['title']!, _titleMeta));
     }
     if (data.containsKey('notes')) {
-      context.handle(
-        _notesMeta,
-        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
-      );
+      context.handle(_notesMeta, notes.isAcceptableOrUnknown(data['notes']!, _notesMeta));
     }
     if (data.containsKey('trim_start_ms')) {
-      context.handle(
-        _trimStartMsMeta,
-        trimStartMs.isAcceptableOrUnknown(
-          data['trim_start_ms']!,
-          _trimStartMsMeta,
-        ),
-      );
+      context.handle(_trimStartMsMeta, trimStartMs.isAcceptableOrUnknown(data['trim_start_ms']!, _trimStartMsMeta));
     }
     if (data.containsKey('trim_end_ms')) {
-      context.handle(
-        _trimEndMsMeta,
-        trimEndMs.isAcceptableOrUnknown(data['trim_end_ms']!, _trimEndMsMeta),
-      );
+      context.handle(_trimEndMsMeta, trimEndMs.isAcceptableOrUnknown(data['trim_end_ms']!, _trimEndMsMeta));
     }
     if (data.containsKey('created_at')) {
-      context.handle(
-        _createdAtMeta,
-        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
-      );
+      context.handle(_createdAtMeta, createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
     } else if (isInserting) {
       context.missing(_createdAtMeta);
     }
     if (data.containsKey('updated_at')) {
-      context.handle(
-        _updatedAtMeta,
-        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
-      );
+      context.handle(_updatedAtMeta, updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
     } else if (isInserting) {
       context.missing(_updatedAtMeta);
     }
@@ -1415,70 +1238,22 @@ class $ClipsTable extends Clips with TableInfo<$ClipsTable, ClipRow> {
   ClipRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return ClipRow(
-      id: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}id'],
-      )!,
-      sessionId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}session_id'],
-      )!,
-      requestId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}request_id'],
-      ),
-      cameraId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}camera_id'],
-      ),
-      requestedAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}requested_at'],
-      )!,
-      cameraTime: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}camera_time'],
-      ),
-      durationMs: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}duration_ms'],
-      ),
-      filePath: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}file_path'],
-      )!,
-      sizeBytes: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}size_bytes'],
-      )!,
-      sha256: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}sha256'],
-      ),
-      title: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}title'],
-      ),
-      notes: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}notes'],
-      ),
-      trimStartMs: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}trim_start_ms'],
-      ),
-      trimEndMs: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}trim_end_ms'],
-      ),
-      createdAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}created_at'],
-      )!,
-      updatedAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}updated_at'],
-      )!,
+      id: attachedDatabase.typeMapping.read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      sessionId: attachedDatabase.typeMapping.read(DriftSqlType.string, data['${effectivePrefix}session_id'])!,
+      requestId: attachedDatabase.typeMapping.read(DriftSqlType.string, data['${effectivePrefix}request_id']),
+      cameraId: attachedDatabase.typeMapping.read(DriftSqlType.string, data['${effectivePrefix}camera_id']),
+      requestedAt: attachedDatabase.typeMapping.read(DriftSqlType.dateTime, data['${effectivePrefix}requested_at'])!,
+      cameraTime: attachedDatabase.typeMapping.read(DriftSqlType.dateTime, data['${effectivePrefix}camera_time']),
+      durationMs: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}duration_ms']),
+      filePath: attachedDatabase.typeMapping.read(DriftSqlType.string, data['${effectivePrefix}file_path'])!,
+      sizeBytes: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}size_bytes'])!,
+      sha256: attachedDatabase.typeMapping.read(DriftSqlType.string, data['${effectivePrefix}sha256']),
+      title: attachedDatabase.typeMapping.read(DriftSqlType.string, data['${effectivePrefix}title']),
+      notes: attachedDatabase.typeMapping.read(DriftSqlType.string, data['${effectivePrefix}notes']),
+      trimStartMs: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}trim_start_ms']),
+      trimEndMs: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}trim_end_ms']),
+      createdAt: attachedDatabase.typeMapping.read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping.read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
     );
   }
 
@@ -1574,45 +1349,24 @@ class ClipRow extends DataClass implements Insertable<ClipRow> {
     return ClipsCompanion(
       id: Value(id),
       sessionId: Value(sessionId),
-      requestId: requestId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(requestId),
-      cameraId: cameraId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(cameraId),
+      requestId: requestId == null && nullToAbsent ? const Value.absent() : Value(requestId),
+      cameraId: cameraId == null && nullToAbsent ? const Value.absent() : Value(cameraId),
       requestedAt: Value(requestedAt),
-      cameraTime: cameraTime == null && nullToAbsent
-          ? const Value.absent()
-          : Value(cameraTime),
-      durationMs: durationMs == null && nullToAbsent
-          ? const Value.absent()
-          : Value(durationMs),
+      cameraTime: cameraTime == null && nullToAbsent ? const Value.absent() : Value(cameraTime),
+      durationMs: durationMs == null && nullToAbsent ? const Value.absent() : Value(durationMs),
       filePath: Value(filePath),
       sizeBytes: Value(sizeBytes),
-      sha256: sha256 == null && nullToAbsent
-          ? const Value.absent()
-          : Value(sha256),
-      title: title == null && nullToAbsent
-          ? const Value.absent()
-          : Value(title),
-      notes: notes == null && nullToAbsent
-          ? const Value.absent()
-          : Value(notes),
-      trimStartMs: trimStartMs == null && nullToAbsent
-          ? const Value.absent()
-          : Value(trimStartMs),
-      trimEndMs: trimEndMs == null && nullToAbsent
-          ? const Value.absent()
-          : Value(trimEndMs),
+      sha256: sha256 == null && nullToAbsent ? const Value.absent() : Value(sha256),
+      title: title == null && nullToAbsent ? const Value.absent() : Value(title),
+      notes: notes == null && nullToAbsent ? const Value.absent() : Value(notes),
+      trimStartMs: trimStartMs == null && nullToAbsent ? const Value.absent() : Value(trimStartMs),
+      trimEndMs: trimEndMs == null && nullToAbsent ? const Value.absent() : Value(trimEndMs),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
   }
 
-  factory ClipRow.fromJson(
-    Map<String, dynamic> json, {
-    ValueSerializer? serializer,
-  }) {
+  factory ClipRow.fromJson(Map<String, dynamic> json, {ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return ClipRow(
       id: serializer.fromJson<String>(json['id']),
@@ -1697,23 +1451,15 @@ class ClipRow extends DataClass implements Insertable<ClipRow> {
       sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
       requestId: data.requestId.present ? data.requestId.value : this.requestId,
       cameraId: data.cameraId.present ? data.cameraId.value : this.cameraId,
-      requestedAt: data.requestedAt.present
-          ? data.requestedAt.value
-          : this.requestedAt,
-      cameraTime: data.cameraTime.present
-          ? data.cameraTime.value
-          : this.cameraTime,
-      durationMs: data.durationMs.present
-          ? data.durationMs.value
-          : this.durationMs,
+      requestedAt: data.requestedAt.present ? data.requestedAt.value : this.requestedAt,
+      cameraTime: data.cameraTime.present ? data.cameraTime.value : this.cameraTime,
+      durationMs: data.durationMs.present ? data.durationMs.value : this.durationMs,
       filePath: data.filePath.present ? data.filePath.value : this.filePath,
       sizeBytes: data.sizeBytes.present ? data.sizeBytes.value : this.sizeBytes,
       sha256: data.sha256.present ? data.sha256.value : this.sha256,
       title: data.title.present ? data.title.value : this.title,
       notes: data.notes.present ? data.notes.value : this.notes,
-      trimStartMs: data.trimStartMs.present
-          ? data.trimStartMs.value
-          : this.trimStartMs,
+      trimStartMs: data.trimStartMs.present ? data.trimStartMs.value : this.trimStartMs,
       trimEndMs: data.trimEndMs.present ? data.trimEndMs.value : this.trimEndMs,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -2008,8 +1754,7 @@ class ClipsCompanion extends UpdateCompanion<ClipRow> {
   }
 }
 
-class $ClipTagsTable extends ClipTags
-    with TableInfo<$ClipTagsTable, ClipTagRow> {
+class $ClipTagsTable extends ClipTags with TableInfo<$ClipTagsTable, ClipTagRow> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -2022,9 +1767,7 @@ class $ClipTagsTable extends ClipTags
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES clips (id) ON DELETE CASCADE',
-    ),
+    defaultConstraints: GeneratedColumn.constraintIsAlways('REFERENCES clips (id) ON DELETE CASCADE'),
   );
   static const VerificationMeta _tagIdMeta = const VerificationMeta('tagId');
   @override
@@ -2043,25 +1786,16 @@ class $ClipTagsTable extends ClipTags
   String get actualTableName => $name;
   static const String $name = 'clip_tags';
   @override
-  VerificationContext validateIntegrity(
-    Insertable<ClipTagRow> instance, {
-    bool isInserting = false,
-  }) {
+  VerificationContext validateIntegrity(Insertable<ClipTagRow> instance, {bool isInserting = false}) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
     if (data.containsKey('clip_id')) {
-      context.handle(
-        _clipIdMeta,
-        clipId.isAcceptableOrUnknown(data['clip_id']!, _clipIdMeta),
-      );
+      context.handle(_clipIdMeta, clipId.isAcceptableOrUnknown(data['clip_id']!, _clipIdMeta));
     } else if (isInserting) {
       context.missing(_clipIdMeta);
     }
     if (data.containsKey('tag_id')) {
-      context.handle(
-        _tagIdMeta,
-        tagId.isAcceptableOrUnknown(data['tag_id']!, _tagIdMeta),
-      );
+      context.handle(_tagIdMeta, tagId.isAcceptableOrUnknown(data['tag_id']!, _tagIdMeta));
     } else if (isInserting) {
       context.missing(_tagIdMeta);
     }
@@ -2074,14 +1808,8 @@ class $ClipTagsTable extends ClipTags
   ClipTagRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return ClipTagRow(
-      clipId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}clip_id'],
-      )!,
-      tagId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}tag_id'],
-      )!,
+      clipId: attachedDatabase.typeMapping.read(DriftSqlType.string, data['${effectivePrefix}clip_id'])!,
+      tagId: attachedDatabase.typeMapping.read(DriftSqlType.string, data['${effectivePrefix}tag_id'])!,
     );
   }
 
@@ -2107,10 +1835,7 @@ class ClipTagRow extends DataClass implements Insertable<ClipTagRow> {
     return ClipTagsCompanion(clipId: Value(clipId), tagId: Value(tagId));
   }
 
-  factory ClipTagRow.fromJson(
-    Map<String, dynamic> json, {
-    ValueSerializer? serializer,
-  }) {
+  factory ClipTagRow.fromJson(Map<String, dynamic> json, {ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return ClipTagRow(
       clipId: serializer.fromJson<String>(json['clipId']),
@@ -2120,10 +1845,7 @@ class ClipTagRow extends DataClass implements Insertable<ClipTagRow> {
   @override
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'clipId': serializer.toJson<String>(clipId),
-      'tagId': serializer.toJson<String>(tagId),
-    };
+    return <String, dynamic>{'clipId': serializer.toJson<String>(clipId), 'tagId': serializer.toJson<String>(tagId)};
   }
 
   ClipTagRow copyWith({String? clipId, String? tagId}) =>
@@ -2148,10 +1870,7 @@ class ClipTagRow extends DataClass implements Insertable<ClipTagRow> {
   int get hashCode => Object.hash(clipId, tagId);
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is ClipTagRow &&
-          other.clipId == this.clipId &&
-          other.tagId == this.tagId);
+      identical(this, other) || (other is ClipTagRow && other.clipId == this.clipId && other.tagId == this.tagId);
 }
 
 class ClipTagsCompanion extends UpdateCompanion<ClipTagRow> {
@@ -2163,12 +1882,9 @@ class ClipTagsCompanion extends UpdateCompanion<ClipTagRow> {
     this.tagId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
-  ClipTagsCompanion.insert({
-    required String clipId,
-    required String tagId,
-    this.rowid = const Value.absent(),
-  }) : clipId = Value(clipId),
-       tagId = Value(tagId);
+  ClipTagsCompanion.insert({required String clipId, required String tagId, this.rowid = const Value.absent()})
+    : clipId = Value(clipId),
+      tagId = Value(tagId);
   static Insertable<ClipTagRow> custom({
     Expression<String>? clipId,
     Expression<String>? tagId,
@@ -2181,16 +1897,8 @@ class ClipTagsCompanion extends UpdateCompanion<ClipTagRow> {
     });
   }
 
-  ClipTagsCompanion copyWith({
-    Value<String>? clipId,
-    Value<String>? tagId,
-    Value<int>? rowid,
-  }) {
-    return ClipTagsCompanion(
-      clipId: clipId ?? this.clipId,
-      tagId: tagId ?? this.tagId,
-      rowid: rowid ?? this.rowid,
-    );
+  ClipTagsCompanion copyWith({Value<String>? clipId, Value<String>? tagId, Value<int>? rowid}) {
+    return ClipTagsCompanion(clipId: clipId ?? this.clipId, tagId: tagId ?? this.tagId, rowid: rowid ?? this.rowid);
   }
 
   @override
@@ -2228,44 +1936,25 @@ abstract class _$LibraryDatabase extends GeneratedDatabase {
   late final $ClipsTable clips = $ClipsTable(this);
   late final $ClipTagsTable clipTags = $ClipTagsTable(this);
   @override
-  Iterable<TableInfo<Table, Object?>> get allTables =>
-      allSchemaEntities.whereType<TableInfo<Table, Object?>>();
+  Iterable<TableInfo<Table, Object?>> get allTables => allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities => [
-    tagTemplates,
-    sessions,
-    tags,
-    clips,
-    clipTags,
-  ];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [tagTemplates, sessions, tags, clips, clipTags];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
     WritePropagation(
-      on: TableUpdateQuery.onTableName(
-        'tag_templates',
-        limitUpdateKind: UpdateKind.delete,
-      ),
+      on: TableUpdateQuery.onTableName('tag_templates', limitUpdateKind: UpdateKind.delete),
       result: [TableUpdate('sessions', kind: UpdateKind.update)],
     ),
     WritePropagation(
-      on: TableUpdateQuery.onTableName(
-        'tag_templates',
-        limitUpdateKind: UpdateKind.delete,
-      ),
+      on: TableUpdateQuery.onTableName('tag_templates', limitUpdateKind: UpdateKind.delete),
       result: [TableUpdate('tags', kind: UpdateKind.delete)],
     ),
     WritePropagation(
-      on: TableUpdateQuery.onTableName(
-        'sessions',
-        limitUpdateKind: UpdateKind.delete,
-      ),
+      on: TableUpdateQuery.onTableName('sessions', limitUpdateKind: UpdateKind.delete),
       result: [TableUpdate('clips', kind: UpdateKind.delete)],
     ),
     WritePropagation(
-      on: TableUpdateQuery.onTableName(
-        'clips',
-        limitUpdateKind: UpdateKind.delete,
-      ),
+      on: TableUpdateQuery.onTableName('clips', limitUpdateKind: UpdateKind.delete),
       result: [TableUpdate('clip_tags', kind: UpdateKind.delete)],
     ),
   ]);
@@ -2290,15 +1979,11 @@ typedef $$TagTemplatesTableUpdateCompanionBuilder =
       Value<int> rowid,
     });
 
-final class $$TagTemplatesTableReferences
-    extends BaseReferences<_$LibraryDatabase, $TagTemplatesTable, TemplateRow> {
+final class $$TagTemplatesTableReferences extends BaseReferences<_$LibraryDatabase, $TagTemplatesTable, TemplateRow> {
   $$TagTemplatesTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
-  static MultiTypedResultKey<$SessionsTable, List<SessionRow>>
-  _sessionsRefsTable(_$LibraryDatabase db) => MultiTypedResultKey.fromTable(
-    db.sessions,
-    aliasName: 'tag_templates__id__sessions__template_id',
-  );
+  static MultiTypedResultKey<$SessionsTable, List<SessionRow>> _sessionsRefsTable(_$LibraryDatabase db) =>
+      MultiTypedResultKey.fromTable(db.sessions, aliasName: 'tag_templates__id__sessions__template_id');
 
   $$SessionsTableProcessedTableManager get sessionsRefs {
     final manager = $$SessionsTableTableManager(
@@ -2307,17 +1992,11 @@ final class $$TagTemplatesTableReferences
     ).filter((f) => f.templateId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_sessionsRefsTable($_db));
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: cache),
-    );
+    return ProcessedTableManager(manager.$state.copyWith(prefetchedData: cache));
   }
 
-  static MultiTypedResultKey<$TagsTable, List<TagRow>> _tagsRefsTable(
-    _$LibraryDatabase db,
-  ) => MultiTypedResultKey.fromTable(
-    db.tags,
-    aliasName: 'tag_templates__id__tags__template_id',
-  );
+  static MultiTypedResultKey<$TagsTable, List<TagRow>> _tagsRefsTable(_$LibraryDatabase db) =>
+      MultiTypedResultKey.fromTable(db.tags, aliasName: 'tag_templates__id__tags__template_id');
 
   $$TagsTableProcessedTableManager get tagsRefs {
     final manager = $$TagsTableTableManager(
@@ -2326,14 +2005,11 @@ final class $$TagTemplatesTableReferences
     ).filter((f) => f.templateId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_tagsRefsTable($_db));
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: cache),
-    );
+    return ProcessedTableManager(manager.$state.copyWith(prefetchedData: cache));
   }
 }
 
-class $$TagTemplatesTableFilterComposer
-    extends Composer<_$LibraryDatabase, $TagTemplatesTable> {
+class $$TagTemplatesTableFilterComposer extends Composer<_$LibraryDatabase, $TagTemplatesTable> {
   $$TagTemplatesTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -2341,84 +2017,57 @@ class $$TagTemplatesTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<String> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<String> get id => $composableBuilder(column: $table.id, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get name => $composableBuilder(
-    column: $table.name,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<String> get name => $composableBuilder(column: $table.name, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get sport => $composableBuilder(
-    column: $table.sport,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<String> get sport =>
+      $composableBuilder(column: $table.sport, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<bool> get builtIn => $composableBuilder(
-    column: $table.builtIn,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<bool> get builtIn =>
+      $composableBuilder(column: $table.builtIn, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<int> get schemaVersion => $composableBuilder(
-    column: $table.schemaVersion,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<int> get schemaVersion =>
+      $composableBuilder(column: $table.schemaVersion, builder: (column) => ColumnFilters(column));
 
-  Expression<bool> sessionsRefs(
-    Expression<bool> Function($$SessionsTableFilterComposer f) f,
-  ) {
+  Expression<bool> sessionsRefs(Expression<bool> Function($$SessionsTableFilterComposer f) f) {
     final $$SessionsTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
       referencedTable: $db.sessions,
       getReferencedColumn: (t) => t.templateId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$SessionsTableFilterComposer(
+      builder: (joinBuilder, {$addJoinBuilderToRootComposer, $removeJoinBuilderFromRootComposer}) =>
+          $$SessionsTableFilterComposer(
             $db: $db,
             $table: $db.sessions,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return f(composer);
   }
 
-  Expression<bool> tagsRefs(
-    Expression<bool> Function($$TagsTableFilterComposer f) f,
-  ) {
+  Expression<bool> tagsRefs(Expression<bool> Function($$TagsTableFilterComposer f) f) {
     final $$TagsTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
       referencedTable: $db.tags,
       getReferencedColumn: (t) => t.templateId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$TagsTableFilterComposer(
+      builder: (joinBuilder, {$addJoinBuilderToRootComposer, $removeJoinBuilderFromRootComposer}) =>
+          $$TagsTableFilterComposer(
             $db: $db,
             $table: $db.tags,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return f(composer);
   }
 }
 
-class $$TagTemplatesTableOrderingComposer
-    extends Composer<_$LibraryDatabase, $TagTemplatesTable> {
+class $$TagTemplatesTableOrderingComposer extends Composer<_$LibraryDatabase, $TagTemplatesTable> {
   $$TagTemplatesTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -2426,34 +2075,22 @@ class $$TagTemplatesTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<String> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<String> get id => $composableBuilder(column: $table.id, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get name => $composableBuilder(
-    column: $table.name,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get sport => $composableBuilder(
-    column: $table.sport,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<String> get sport =>
+      $composableBuilder(column: $table.sport, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<bool> get builtIn => $composableBuilder(
-    column: $table.builtIn,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<bool> get builtIn =>
+      $composableBuilder(column: $table.builtIn, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<int> get schemaVersion => $composableBuilder(
-    column: $table.schemaVersion,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<int> get schemaVersion =>
+      $composableBuilder(column: $table.schemaVersion, builder: (column) => ColumnOrderings(column));
 }
 
-class $$TagTemplatesTableAnnotationComposer
-    extends Composer<_$LibraryDatabase, $TagTemplatesTable> {
+class $$TagTemplatesTableAnnotationComposer extends Composer<_$LibraryDatabase, $TagTemplatesTable> {
   $$TagTemplatesTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -2461,68 +2098,48 @@ class $$TagTemplatesTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
+  GeneratedColumn<String> get id => $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<String> get name =>
-      $composableBuilder(column: $table.name, builder: (column) => column);
+  GeneratedColumn<String> get name => $composableBuilder(column: $table.name, builder: (column) => column);
 
-  GeneratedColumn<String> get sport =>
-      $composableBuilder(column: $table.sport, builder: (column) => column);
+  GeneratedColumn<String> get sport => $composableBuilder(column: $table.sport, builder: (column) => column);
 
-  GeneratedColumn<bool> get builtIn =>
-      $composableBuilder(column: $table.builtIn, builder: (column) => column);
+  GeneratedColumn<bool> get builtIn => $composableBuilder(column: $table.builtIn, builder: (column) => column);
 
-  GeneratedColumn<int> get schemaVersion => $composableBuilder(
-    column: $table.schemaVersion,
-    builder: (column) => column,
-  );
+  GeneratedColumn<int> get schemaVersion =>
+      $composableBuilder(column: $table.schemaVersion, builder: (column) => column);
 
-  Expression<T> sessionsRefs<T extends Object>(
-    Expression<T> Function($$SessionsTableAnnotationComposer a) f,
-  ) {
+  Expression<T> sessionsRefs<T extends Object>(Expression<T> Function($$SessionsTableAnnotationComposer a) f) {
     final $$SessionsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
       referencedTable: $db.sessions,
       getReferencedColumn: (t) => t.templateId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$SessionsTableAnnotationComposer(
+      builder: (joinBuilder, {$addJoinBuilderToRootComposer, $removeJoinBuilderFromRootComposer}) =>
+          $$SessionsTableAnnotationComposer(
             $db: $db,
             $table: $db.sessions,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return f(composer);
   }
 
-  Expression<T> tagsRefs<T extends Object>(
-    Expression<T> Function($$TagsTableAnnotationComposer a) f,
-  ) {
+  Expression<T> tagsRefs<T extends Object>(Expression<T> Function($$TagsTableAnnotationComposer a) f) {
     final $$TagsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
       referencedTable: $db.tags,
       getReferencedColumn: (t) => t.templateId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$TagsTableAnnotationComposer(
+      builder: (joinBuilder, {$addJoinBuilderToRootComposer, $removeJoinBuilderFromRootComposer}) =>
+          $$TagsTableAnnotationComposer(
             $db: $db,
             $table: $db.tags,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return f(composer);
@@ -2544,19 +2161,14 @@ class $$TagTemplatesTableTableManager
           TemplateRow,
           PrefetchHooks Function({bool sessionsRefs, bool tagsRefs})
         > {
-  $$TagTemplatesTableTableManager(
-    _$LibraryDatabase db,
-    $TagTemplatesTable table,
-  ) : super(
+  $$TagTemplatesTableTableManager(_$LibraryDatabase db, $TagTemplatesTable table)
+    : super(
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () =>
-              $$TagTemplatesTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$TagTemplatesTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$TagTemplatesTableAnnotationComposer($db: db, $table: table),
+          createFilteringComposer: () => $$TagTemplatesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () => $$TagTemplatesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () => $$TagTemplatesTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
@@ -2589,54 +2201,29 @@ class $$TagTemplatesTableTableManager
                 schemaVersion: schemaVersion,
                 rowid: rowid,
               ),
-          withReferenceMapper: (p0) => p0
-              .map(
-                (e) => (
-                  e.readTable(table),
-                  $$TagTemplatesTableReferences(db, table, e),
-                ),
-              )
-              .toList(),
+          withReferenceMapper: (p0) =>
+              p0.map((e) => (e.readTable(table), $$TagTemplatesTableReferences(db, table, e))).toList(),
           prefetchHooksCallback: ({sessionsRefs = false, tagsRefs = false}) {
             return PrefetchHooks(
               db: db,
-              explicitlyWatchedTables: [
-                if (sessionsRefs) db.sessions,
-                if (tagsRefs) db.tags,
-              ],
+              explicitlyWatchedTables: [if (sessionsRefs) db.sessions, if (tagsRefs) db.tags],
               addJoins: null,
               getPrefetchedDataCallback: (items) async {
                 return [
                   if (sessionsRefs)
-                    await $_getPrefetchedData<
-                      TemplateRow,
-                      $TagTemplatesTable,
-                      SessionRow
-                    >(
+                    await $_getPrefetchedData<TemplateRow, $TagTemplatesTable, SessionRow>(
                       currentTable: table,
-                      referencedTable: $$TagTemplatesTableReferences
-                          ._sessionsRefsTable(db),
-                      managerFromTypedResult: (p0) =>
-                          $$TagTemplatesTableReferences(
-                            db,
-                            table,
-                            p0,
-                          ).sessionsRefs,
+                      referencedTable: $$TagTemplatesTableReferences._sessionsRefsTable(db),
+                      managerFromTypedResult: (p0) => $$TagTemplatesTableReferences(db, table, p0).sessionsRefs,
                       referencedItemsForCurrentItem: (item, referencedItems) =>
                           referencedItems.where((e) => e.templateId == item.id),
                       typedResults: items,
                     ),
                   if (tagsRefs)
-                    await $_getPrefetchedData<
-                      TemplateRow,
-                      $TagTemplatesTable,
-                      TagRow
-                    >(
+                    await $_getPrefetchedData<TemplateRow, $TagTemplatesTable, TagRow>(
                       currentTable: table,
-                      referencedTable: $$TagTemplatesTableReferences
-                          ._tagsRefsTable(db),
-                      managerFromTypedResult: (p0) =>
-                          $$TagTemplatesTableReferences(db, table, p0).tagsRefs,
+                      referencedTable: $$TagTemplatesTableReferences._tagsRefsTable(db),
+                      managerFromTypedResult: (p0) => $$TagTemplatesTableReferences(db, table, p0).tagsRefs,
                       referencedItemsForCurrentItem: (item, referencedItems) =>
                           referencedItems.where((e) => e.templateId == item.id),
                       typedResults: items,
@@ -2682,8 +2269,7 @@ typedef $$SessionsTableUpdateCompanionBuilder =
       Value<int> rowid,
     });
 
-final class $$SessionsTableReferences
-    extends BaseReferences<_$LibraryDatabase, $SessionsTable, SessionRow> {
+final class $$SessionsTableReferences extends BaseReferences<_$LibraryDatabase, $SessionsTable, SessionRow> {
   $$SessionsTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
   static $TagTemplatesTable _templateIdTable(_$LibraryDatabase db) =>
@@ -2692,23 +2278,14 @@ final class $$SessionsTableReferences
   $$TagTemplatesTableProcessedTableManager? get templateId {
     final $_column = $_itemColumn<String>('template_id');
     if ($_column == null) return null;
-    final manager = $$TagTemplatesTableTableManager(
-      $_db,
-      $_db.tagTemplates,
-    ).filter((f) => f.id.sqlEquals($_column));
+    final manager = $$TagTemplatesTableTableManager($_db, $_db.tagTemplates).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_templateIdTable($_db));
     if (item == null) return manager;
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: [item]),
-    );
+    return ProcessedTableManager(manager.$state.copyWith(prefetchedData: [item]));
   }
 
-  static MultiTypedResultKey<$ClipsTable, List<ClipRow>> _clipsRefsTable(
-    _$LibraryDatabase db,
-  ) => MultiTypedResultKey.fromTable(
-    db.clips,
-    aliasName: 'sessions__id__clips__session_id',
-  );
+  static MultiTypedResultKey<$ClipsTable, List<ClipRow>> _clipsRefsTable(_$LibraryDatabase db) =>
+      MultiTypedResultKey.fromTable(db.clips, aliasName: 'sessions__id__clips__session_id');
 
   $$ClipsTableProcessedTableManager get clipsRefs {
     final manager = $$ClipsTableTableManager(
@@ -2717,14 +2294,11 @@ final class $$SessionsTableReferences
     ).filter((f) => f.sessionId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_clipsRefsTable($_db));
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: cache),
-    );
+    return ProcessedTableManager(manager.$state.copyWith(prefetchedData: cache));
   }
 }
 
-class $$SessionsTableFilterComposer
-    extends Composer<_$LibraryDatabase, $SessionsTable> {
+class $$SessionsTableFilterComposer extends Composer<_$LibraryDatabase, $SessionsTable> {
   $$SessionsTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -2732,26 +2306,15 @@ class $$SessionsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<String> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<String> get id => $composableBuilder(column: $table.id, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get name => $composableBuilder(
-    column: $table.name,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<String> get name => $composableBuilder(column: $table.name, builder: (column) => ColumnFilters(column));
 
   ColumnWithTypeConverterFilters<SessionType, SessionType, String> get type =>
-      $composableBuilder(
-        column: $table.type,
-        builder: (column) => ColumnWithTypeConverterFilters(column),
-      );
+      $composableBuilder(column: $table.type, builder: (column) => ColumnWithTypeConverterFilters(column));
 
-  ColumnFilters<DateTime> get startedAt => $composableBuilder(
-    column: $table.startedAt,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<DateTime> get startedAt =>
+      $composableBuilder(column: $table.startedAt, builder: (column) => ColumnFilters(column));
 
   $$TagTemplatesTableFilterComposer get templateId {
     final $$TagTemplatesTableFilterComposer composer = $composerBuilder(
@@ -2759,51 +2322,38 @@ class $$SessionsTableFilterComposer
       getCurrentColumn: (t) => t.templateId,
       referencedTable: $db.tagTemplates,
       getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$TagTemplatesTableFilterComposer(
+      builder: (joinBuilder, {$addJoinBuilderToRootComposer, $removeJoinBuilderFromRootComposer}) =>
+          $$TagTemplatesTableFilterComposer(
             $db: $db,
             $table: $db.tagTemplates,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
   }
 
-  Expression<bool> clipsRefs(
-    Expression<bool> Function($$ClipsTableFilterComposer f) f,
-  ) {
+  Expression<bool> clipsRefs(Expression<bool> Function($$ClipsTableFilterComposer f) f) {
     final $$ClipsTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
       referencedTable: $db.clips,
       getReferencedColumn: (t) => t.sessionId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$ClipsTableFilterComposer(
+      builder: (joinBuilder, {$addJoinBuilderToRootComposer, $removeJoinBuilderFromRootComposer}) =>
+          $$ClipsTableFilterComposer(
             $db: $db,
             $table: $db.clips,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return f(composer);
   }
 }
 
-class $$SessionsTableOrderingComposer
-    extends Composer<_$LibraryDatabase, $SessionsTable> {
+class $$SessionsTableOrderingComposer extends Composer<_$LibraryDatabase, $SessionsTable> {
   $$SessionsTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -2811,25 +2361,16 @@ class $$SessionsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<String> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<String> get id => $composableBuilder(column: $table.id, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get name => $composableBuilder(
-    column: $table.name,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get type => $composableBuilder(
-    column: $table.type,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<DateTime> get startedAt => $composableBuilder(
-    column: $table.startedAt,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<DateTime> get startedAt =>
+      $composableBuilder(column: $table.startedAt, builder: (column) => ColumnOrderings(column));
 
   $$TagTemplatesTableOrderingComposer get templateId {
     final $$TagTemplatesTableOrderingComposer composer = $composerBuilder(
@@ -2837,26 +2378,20 @@ class $$SessionsTableOrderingComposer
       getCurrentColumn: (t) => t.templateId,
       referencedTable: $db.tagTemplates,
       getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$TagTemplatesTableOrderingComposer(
+      builder: (joinBuilder, {$addJoinBuilderToRootComposer, $removeJoinBuilderFromRootComposer}) =>
+          $$TagTemplatesTableOrderingComposer(
             $db: $db,
             $table: $db.tagTemplates,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
   }
 }
 
-class $$SessionsTableAnnotationComposer
-    extends Composer<_$LibraryDatabase, $SessionsTable> {
+class $$SessionsTableAnnotationComposer extends Composer<_$LibraryDatabase, $SessionsTable> {
   $$SessionsTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -2864,17 +2399,14 @@ class $$SessionsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
+  GeneratedColumn<String> get id => $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<String> get name =>
-      $composableBuilder(column: $table.name, builder: (column) => column);
+  GeneratedColumn<String> get name => $composableBuilder(column: $table.name, builder: (column) => column);
 
   GeneratedColumnWithTypeConverter<SessionType, String> get type =>
       $composableBuilder(column: $table.type, builder: (column) => column);
 
-  GeneratedColumn<DateTime> get startedAt =>
-      $composableBuilder(column: $table.startedAt, builder: (column) => column);
+  GeneratedColumn<DateTime> get startedAt => $composableBuilder(column: $table.startedAt, builder: (column) => column);
 
   $$TagTemplatesTableAnnotationComposer get templateId {
     final $$TagTemplatesTableAnnotationComposer composer = $composerBuilder(
@@ -2882,43 +2414,31 @@ class $$SessionsTableAnnotationComposer
       getCurrentColumn: (t) => t.templateId,
       referencedTable: $db.tagTemplates,
       getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$TagTemplatesTableAnnotationComposer(
+      builder: (joinBuilder, {$addJoinBuilderToRootComposer, $removeJoinBuilderFromRootComposer}) =>
+          $$TagTemplatesTableAnnotationComposer(
             $db: $db,
             $table: $db.tagTemplates,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
   }
 
-  Expression<T> clipsRefs<T extends Object>(
-    Expression<T> Function($$ClipsTableAnnotationComposer a) f,
-  ) {
+  Expression<T> clipsRefs<T extends Object>(Expression<T> Function($$ClipsTableAnnotationComposer a) f) {
     final $$ClipsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
       referencedTable: $db.clips,
       getReferencedColumn: (t) => t.sessionId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$ClipsTableAnnotationComposer(
+      builder: (joinBuilder, {$addJoinBuilderToRootComposer, $removeJoinBuilderFromRootComposer}) =>
+          $$ClipsTableAnnotationComposer(
             $db: $db,
             $table: $db.clips,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return f(composer);
@@ -2945,12 +2465,9 @@ class $$SessionsTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () =>
-              $$SessionsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$SessionsTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$SessionsTableAnnotationComposer($db: db, $table: table),
+          createFilteringComposer: () => $$SessionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () => $$SessionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () => $$SessionsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
@@ -2983,14 +2500,8 @@ class $$SessionsTableTableManager
                 templateId: templateId,
                 rowid: rowid,
               ),
-          withReferenceMapper: (p0) => p0
-              .map(
-                (e) => (
-                  e.readTable(table),
-                  $$SessionsTableReferences(db, table, e),
-                ),
-              )
-              .toList(),
+          withReferenceMapper: (p0) =>
+              p0.map((e) => (e.readTable(table), $$SessionsTableReferences(db, table, e))).toList(),
           prefetchHooksCallback: ({templateId = false, clipsRefs = false}) {
             return PrefetchHooks(
               db: db,
@@ -3016,11 +2527,8 @@ class $$SessionsTableTableManager
                           state.withJoin(
                                 currentTable: table,
                                 currentColumn: table.templateId,
-                                referencedTable: $$SessionsTableReferences
-                                    ._templateIdTable(db),
-                                referencedColumn: $$SessionsTableReferences
-                                    ._templateIdTable(db)
-                                    .id,
+                                referencedTable: $$SessionsTableReferences._templateIdTable(db),
+                                referencedColumn: $$SessionsTableReferences._templateIdTable(db).id,
                               )
                               as T;
                     }
@@ -3030,16 +2538,10 @@ class $$SessionsTableTableManager
               getPrefetchedDataCallback: (items) async {
                 return [
                   if (clipsRefs)
-                    await $_getPrefetchedData<
-                      SessionRow,
-                      $SessionsTable,
-                      ClipRow
-                    >(
+                    await $_getPrefetchedData<SessionRow, $SessionsTable, ClipRow>(
                       currentTable: table,
-                      referencedTable: $$SessionsTableReferences
-                          ._clipsRefsTable(db),
-                      managerFromTypedResult: (p0) =>
-                          $$SessionsTableReferences(db, table, p0).clipsRefs,
+                      referencedTable: $$SessionsTableReferences._clipsRefsTable(db),
+                      managerFromTypedResult: (p0) => $$SessionsTableReferences(db, table, p0).clipsRefs,
                       referencedItemsForCurrentItem: (item, referencedItems) =>
                           referencedItems.where((e) => e.sessionId == item.id),
                       typedResults: items,
@@ -3073,6 +2575,7 @@ typedef $$TagsTableCreateCompanionBuilder =
       Value<String?> name,
       required int color,
       required int position,
+      Value<bool> archived,
       Value<int> rowid,
     });
 typedef $$TagsTableUpdateCompanionBuilder =
@@ -3082,11 +2585,11 @@ typedef $$TagsTableUpdateCompanionBuilder =
       Value<String?> name,
       Value<int> color,
       Value<int> position,
+      Value<bool> archived,
       Value<int> rowid,
     });
 
-final class $$TagsTableReferences
-    extends BaseReferences<_$LibraryDatabase, $TagsTable, TagRow> {
+final class $$TagsTableReferences extends BaseReferences<_$LibraryDatabase, $TagsTable, TagRow> {
   $$TagsTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
   static $TagTemplatesTable _templateIdTable(_$LibraryDatabase db) =>
@@ -3095,20 +2598,14 @@ final class $$TagsTableReferences
   $$TagTemplatesTableProcessedTableManager get templateId {
     final $_column = $_itemColumn<String>('template_id')!;
 
-    final manager = $$TagTemplatesTableTableManager(
-      $_db,
-      $_db.tagTemplates,
-    ).filter((f) => f.id.sqlEquals($_column));
+    final manager = $$TagTemplatesTableTableManager($_db, $_db.tagTemplates).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_templateIdTable($_db));
     if (item == null) return manager;
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: [item]),
-    );
+    return ProcessedTableManager(manager.$state.copyWith(prefetchedData: [item]));
   }
 }
 
-class $$TagsTableFilterComposer
-    extends Composer<_$LibraryDatabase, $TagsTable> {
+class $$TagsTableFilterComposer extends Composer<_$LibraryDatabase, $TagsTable> {
   $$TagsTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -3116,25 +2613,17 @@ class $$TagsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<String> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<String> get id => $composableBuilder(column: $table.id, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get name => $composableBuilder(
-    column: $table.name,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<String> get name => $composableBuilder(column: $table.name, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<int> get color => $composableBuilder(
-    column: $table.color,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<int> get color => $composableBuilder(column: $table.color, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<int> get position => $composableBuilder(
-    column: $table.position,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<int> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get archived =>
+      $composableBuilder(column: $table.archived, builder: (column) => ColumnFilters(column));
 
   $$TagTemplatesTableFilterComposer get templateId {
     final $$TagTemplatesTableFilterComposer composer = $composerBuilder(
@@ -3142,26 +2631,20 @@ class $$TagsTableFilterComposer
       getCurrentColumn: (t) => t.templateId,
       referencedTable: $db.tagTemplates,
       getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$TagTemplatesTableFilterComposer(
+      builder: (joinBuilder, {$addJoinBuilderToRootComposer, $removeJoinBuilderFromRootComposer}) =>
+          $$TagTemplatesTableFilterComposer(
             $db: $db,
             $table: $db.tagTemplates,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
   }
 }
 
-class $$TagsTableOrderingComposer
-    extends Composer<_$LibraryDatabase, $TagsTable> {
+class $$TagsTableOrderingComposer extends Composer<_$LibraryDatabase, $TagsTable> {
   $$TagsTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -3169,25 +2652,19 @@ class $$TagsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<String> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<String> get id => $composableBuilder(column: $table.id, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get name => $composableBuilder(
-    column: $table.name,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<int> get color => $composableBuilder(
-    column: $table.color,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<int> get color =>
+      $composableBuilder(column: $table.color, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<int> get position => $composableBuilder(
-    column: $table.position,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<int> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get archived =>
+      $composableBuilder(column: $table.archived, builder: (column) => ColumnOrderings(column));
 
   $$TagTemplatesTableOrderingComposer get templateId {
     final $$TagTemplatesTableOrderingComposer composer = $composerBuilder(
@@ -3195,26 +2672,20 @@ class $$TagsTableOrderingComposer
       getCurrentColumn: (t) => t.templateId,
       referencedTable: $db.tagTemplates,
       getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$TagTemplatesTableOrderingComposer(
+      builder: (joinBuilder, {$addJoinBuilderToRootComposer, $removeJoinBuilderFromRootComposer}) =>
+          $$TagTemplatesTableOrderingComposer(
             $db: $db,
             $table: $db.tagTemplates,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
   }
 }
 
-class $$TagsTableAnnotationComposer
-    extends Composer<_$LibraryDatabase, $TagsTable> {
+class $$TagsTableAnnotationComposer extends Composer<_$LibraryDatabase, $TagsTable> {
   $$TagsTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -3222,17 +2693,15 @@ class $$TagsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
+  GeneratedColumn<String> get id => $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<String> get name =>
-      $composableBuilder(column: $table.name, builder: (column) => column);
+  GeneratedColumn<String> get name => $composableBuilder(column: $table.name, builder: (column) => column);
 
-  GeneratedColumn<int> get color =>
-      $composableBuilder(column: $table.color, builder: (column) => column);
+  GeneratedColumn<int> get color => $composableBuilder(column: $table.color, builder: (column) => column);
 
-  GeneratedColumn<int> get position =>
-      $composableBuilder(column: $table.position, builder: (column) => column);
+  GeneratedColumn<int> get position => $composableBuilder(column: $table.position, builder: (column) => column);
+
+  GeneratedColumn<bool> get archived => $composableBuilder(column: $table.archived, builder: (column) => column);
 
   $$TagTemplatesTableAnnotationComposer get templateId {
     final $$TagTemplatesTableAnnotationComposer composer = $composerBuilder(
@@ -3240,18 +2709,13 @@ class $$TagsTableAnnotationComposer
       getCurrentColumn: (t) => t.templateId,
       referencedTable: $db.tagTemplates,
       getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$TagTemplatesTableAnnotationComposer(
+      builder: (joinBuilder, {$addJoinBuilderToRootComposer, $removeJoinBuilderFromRootComposer}) =>
+          $$TagTemplatesTableAnnotationComposer(
             $db: $db,
             $table: $db.tagTemplates,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
@@ -3278,12 +2742,9 @@ class $$TagsTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () =>
-              $$TagsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$TagsTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$TagsTableAnnotationComposer($db: db, $table: table),
+          createFilteringComposer: () => $$TagsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () => $$TagsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () => $$TagsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
@@ -3291,6 +2752,7 @@ class $$TagsTableTableManager
                 Value<String?> name = const Value.absent(),
                 Value<int> color = const Value.absent(),
                 Value<int> position = const Value.absent(),
+                Value<bool> archived = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TagsCompanion(
                 id: id,
@@ -3298,6 +2760,7 @@ class $$TagsTableTableManager
                 name: name,
                 color: color,
                 position: position,
+                archived: archived,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -3307,6 +2770,7 @@ class $$TagsTableTableManager
                 Value<String?> name = const Value.absent(),
                 required int color,
                 required int position,
+                Value<bool> archived = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TagsCompanion.insert(
                 id: id,
@@ -3314,14 +2778,11 @@ class $$TagsTableTableManager
                 name: name,
                 color: color,
                 position: position,
+                archived: archived,
                 rowid: rowid,
               ),
-          withReferenceMapper: (p0) => p0
-              .map(
-                (e) =>
-                    (e.readTable(table), $$TagsTableReferences(db, table, e)),
-              )
-              .toList(),
+          withReferenceMapper: (p0) =>
+              p0.map((e) => (e.readTable(table), $$TagsTableReferences(db, table, e))).toList(),
           prefetchHooksCallback: ({templateId = false}) {
             return PrefetchHooks(
               db: db,
@@ -3347,11 +2808,8 @@ class $$TagsTableTableManager
                           state.withJoin(
                                 currentTable: table,
                                 currentColumn: table.templateId,
-                                referencedTable: $$TagsTableReferences
-                                    ._templateIdTable(db),
-                                referencedColumn: $$TagsTableReferences
-                                    ._templateIdTable(db)
-                                    .id,
+                                referencedTable: $$TagsTableReferences._templateIdTable(db),
+                                referencedColumn: $$TagsTableReferences._templateIdTable(db).id,
                               )
                               as T;
                     }
@@ -3422,8 +2880,7 @@ typedef $$ClipsTableUpdateCompanionBuilder =
       Value<int> rowid,
     });
 
-final class $$ClipsTableReferences
-    extends BaseReferences<_$LibraryDatabase, $ClipsTable, ClipRow> {
+final class $$ClipsTableReferences extends BaseReferences<_$LibraryDatabase, $ClipsTable, ClipRow> {
   $$ClipsTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
   static $SessionsTable _sessionIdTable(_$LibraryDatabase db) =>
@@ -3432,22 +2889,14 @@ final class $$ClipsTableReferences
   $$SessionsTableProcessedTableManager get sessionId {
     final $_column = $_itemColumn<String>('session_id')!;
 
-    final manager = $$SessionsTableTableManager(
-      $_db,
-      $_db.sessions,
-    ).filter((f) => f.id.sqlEquals($_column));
+    final manager = $$SessionsTableTableManager($_db, $_db.sessions).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_sessionIdTable($_db));
     if (item == null) return manager;
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: [item]),
-    );
+    return ProcessedTableManager(manager.$state.copyWith(prefetchedData: [item]));
   }
 
-  static MultiTypedResultKey<$ClipTagsTable, List<ClipTagRow>>
-  _clipTagsRefsTable(_$LibraryDatabase db) => MultiTypedResultKey.fromTable(
-    db.clipTags,
-    aliasName: 'clips__id__clip_tags__clip_id',
-  );
+  static MultiTypedResultKey<$ClipTagsTable, List<ClipTagRow>> _clipTagsRefsTable(_$LibraryDatabase db) =>
+      MultiTypedResultKey.fromTable(db.clipTags, aliasName: 'clips__id__clip_tags__clip_id');
 
   $$ClipTagsTableProcessedTableManager get clipTagsRefs {
     final manager = $$ClipTagsTableTableManager(
@@ -3456,14 +2905,11 @@ final class $$ClipsTableReferences
     ).filter((f) => f.clipId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_clipTagsRefsTable($_db));
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: cache),
-    );
+    return ProcessedTableManager(manager.$state.copyWith(prefetchedData: cache));
   }
 }
 
-class $$ClipsTableFilterComposer
-    extends Composer<_$LibraryDatabase, $ClipsTable> {
+class $$ClipsTableFilterComposer extends Composer<_$LibraryDatabase, $ClipsTable> {
   $$ClipsTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -3471,80 +2917,49 @@ class $$ClipsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<String> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<String> get id => $composableBuilder(column: $table.id, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get requestId => $composableBuilder(
-    column: $table.requestId,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<String> get requestId =>
+      $composableBuilder(column: $table.requestId, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get cameraId => $composableBuilder(
-    column: $table.cameraId,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<String> get cameraId =>
+      $composableBuilder(column: $table.cameraId, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<DateTime> get requestedAt => $composableBuilder(
-    column: $table.requestedAt,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<DateTime> get requestedAt =>
+      $composableBuilder(column: $table.requestedAt, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<DateTime> get cameraTime => $composableBuilder(
-    column: $table.cameraTime,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<DateTime> get cameraTime =>
+      $composableBuilder(column: $table.cameraTime, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<int> get durationMs => $composableBuilder(
-    column: $table.durationMs,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<int> get durationMs =>
+      $composableBuilder(column: $table.durationMs, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get filePath => $composableBuilder(
-    column: $table.filePath,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<String> get filePath =>
+      $composableBuilder(column: $table.filePath, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<int> get sizeBytes => $composableBuilder(
-    column: $table.sizeBytes,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<int> get sizeBytes =>
+      $composableBuilder(column: $table.sizeBytes, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get sha256 => $composableBuilder(
-    column: $table.sha256,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<String> get sha256 =>
+      $composableBuilder(column: $table.sha256, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get title => $composableBuilder(
-    column: $table.title,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get notes => $composableBuilder(
-    column: $table.notes,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<int> get trimStartMs => $composableBuilder(
-    column: $table.trimStartMs,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<int> get trimStartMs =>
+      $composableBuilder(column: $table.trimStartMs, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<int> get trimEndMs => $composableBuilder(
-    column: $table.trimEndMs,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<int> get trimEndMs =>
+      $composableBuilder(column: $table.trimEndMs, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<DateTime> get createdAt => $composableBuilder(
-    column: $table.createdAt,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
-    column: $table.updatedAt,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => ColumnFilters(column));
 
   $$SessionsTableFilterComposer get sessionId {
     final $$SessionsTableFilterComposer composer = $composerBuilder(
@@ -3552,51 +2967,38 @@ class $$ClipsTableFilterComposer
       getCurrentColumn: (t) => t.sessionId,
       referencedTable: $db.sessions,
       getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$SessionsTableFilterComposer(
+      builder: (joinBuilder, {$addJoinBuilderToRootComposer, $removeJoinBuilderFromRootComposer}) =>
+          $$SessionsTableFilterComposer(
             $db: $db,
             $table: $db.sessions,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
   }
 
-  Expression<bool> clipTagsRefs(
-    Expression<bool> Function($$ClipTagsTableFilterComposer f) f,
-  ) {
+  Expression<bool> clipTagsRefs(Expression<bool> Function($$ClipTagsTableFilterComposer f) f) {
     final $$ClipTagsTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
       referencedTable: $db.clipTags,
       getReferencedColumn: (t) => t.clipId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$ClipTagsTableFilterComposer(
+      builder: (joinBuilder, {$addJoinBuilderToRootComposer, $removeJoinBuilderFromRootComposer}) =>
+          $$ClipTagsTableFilterComposer(
             $db: $db,
             $table: $db.clipTags,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return f(composer);
   }
 }
 
-class $$ClipsTableOrderingComposer
-    extends Composer<_$LibraryDatabase, $ClipsTable> {
+class $$ClipsTableOrderingComposer extends Composer<_$LibraryDatabase, $ClipsTable> {
   $$ClipsTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -3604,80 +3006,49 @@ class $$ClipsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<String> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<String> get id => $composableBuilder(column: $table.id, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get requestId => $composableBuilder(
-    column: $table.requestId,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<String> get requestId =>
+      $composableBuilder(column: $table.requestId, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get cameraId => $composableBuilder(
-    column: $table.cameraId,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<String> get cameraId =>
+      $composableBuilder(column: $table.cameraId, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<DateTime> get requestedAt => $composableBuilder(
-    column: $table.requestedAt,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<DateTime> get requestedAt =>
+      $composableBuilder(column: $table.requestedAt, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<DateTime> get cameraTime => $composableBuilder(
-    column: $table.cameraTime,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<DateTime> get cameraTime =>
+      $composableBuilder(column: $table.cameraTime, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<int> get durationMs => $composableBuilder(
-    column: $table.durationMs,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<int> get durationMs =>
+      $composableBuilder(column: $table.durationMs, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get filePath => $composableBuilder(
-    column: $table.filePath,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<String> get filePath =>
+      $composableBuilder(column: $table.filePath, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<int> get sizeBytes => $composableBuilder(
-    column: $table.sizeBytes,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<int> get sizeBytes =>
+      $composableBuilder(column: $table.sizeBytes, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get sha256 => $composableBuilder(
-    column: $table.sha256,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<String> get sha256 =>
+      $composableBuilder(column: $table.sha256, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get title => $composableBuilder(
-    column: $table.title,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get notes => $composableBuilder(
-    column: $table.notes,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<int> get trimStartMs => $composableBuilder(
-    column: $table.trimStartMs,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<int> get trimStartMs =>
+      $composableBuilder(column: $table.trimStartMs, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<int> get trimEndMs => $composableBuilder(
-    column: $table.trimEndMs,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<int> get trimEndMs =>
+      $composableBuilder(column: $table.trimEndMs, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
-    column: $table.createdAt,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
-    column: $table.updatedAt,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
 
   $$SessionsTableOrderingComposer get sessionId {
     final $$SessionsTableOrderingComposer composer = $composerBuilder(
@@ -3685,26 +3056,20 @@ class $$ClipsTableOrderingComposer
       getCurrentColumn: (t) => t.sessionId,
       referencedTable: $db.sessions,
       getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$SessionsTableOrderingComposer(
+      builder: (joinBuilder, {$addJoinBuilderToRootComposer, $removeJoinBuilderFromRootComposer}) =>
+          $$SessionsTableOrderingComposer(
             $db: $db,
             $table: $db.sessions,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
   }
 }
 
-class $$ClipsTableAnnotationComposer
-    extends Composer<_$LibraryDatabase, $ClipsTable> {
+class $$ClipsTableAnnotationComposer extends Composer<_$LibraryDatabase, $ClipsTable> {
   $$ClipsTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -3712,58 +3077,37 @@ class $$ClipsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
+  GeneratedColumn<String> get id => $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<String> get requestId =>
-      $composableBuilder(column: $table.requestId, builder: (column) => column);
+  GeneratedColumn<String> get requestId => $composableBuilder(column: $table.requestId, builder: (column) => column);
 
-  GeneratedColumn<String> get cameraId =>
-      $composableBuilder(column: $table.cameraId, builder: (column) => column);
+  GeneratedColumn<String> get cameraId => $composableBuilder(column: $table.cameraId, builder: (column) => column);
 
-  GeneratedColumn<DateTime> get requestedAt => $composableBuilder(
-    column: $table.requestedAt,
-    builder: (column) => column,
-  );
+  GeneratedColumn<DateTime> get requestedAt =>
+      $composableBuilder(column: $table.requestedAt, builder: (column) => column);
 
-  GeneratedColumn<DateTime> get cameraTime => $composableBuilder(
-    column: $table.cameraTime,
-    builder: (column) => column,
-  );
+  GeneratedColumn<DateTime> get cameraTime =>
+      $composableBuilder(column: $table.cameraTime, builder: (column) => column);
 
-  GeneratedColumn<int> get durationMs => $composableBuilder(
-    column: $table.durationMs,
-    builder: (column) => column,
-  );
+  GeneratedColumn<int> get durationMs => $composableBuilder(column: $table.durationMs, builder: (column) => column);
 
-  GeneratedColumn<String> get filePath =>
-      $composableBuilder(column: $table.filePath, builder: (column) => column);
+  GeneratedColumn<String> get filePath => $composableBuilder(column: $table.filePath, builder: (column) => column);
 
-  GeneratedColumn<int> get sizeBytes =>
-      $composableBuilder(column: $table.sizeBytes, builder: (column) => column);
+  GeneratedColumn<int> get sizeBytes => $composableBuilder(column: $table.sizeBytes, builder: (column) => column);
 
-  GeneratedColumn<String> get sha256 =>
-      $composableBuilder(column: $table.sha256, builder: (column) => column);
+  GeneratedColumn<String> get sha256 => $composableBuilder(column: $table.sha256, builder: (column) => column);
 
-  GeneratedColumn<String> get title =>
-      $composableBuilder(column: $table.title, builder: (column) => column);
+  GeneratedColumn<String> get title => $composableBuilder(column: $table.title, builder: (column) => column);
 
-  GeneratedColumn<String> get notes =>
-      $composableBuilder(column: $table.notes, builder: (column) => column);
+  GeneratedColumn<String> get notes => $composableBuilder(column: $table.notes, builder: (column) => column);
 
-  GeneratedColumn<int> get trimStartMs => $composableBuilder(
-    column: $table.trimStartMs,
-    builder: (column) => column,
-  );
+  GeneratedColumn<int> get trimStartMs => $composableBuilder(column: $table.trimStartMs, builder: (column) => column);
 
-  GeneratedColumn<int> get trimEndMs =>
-      $composableBuilder(column: $table.trimEndMs, builder: (column) => column);
+  GeneratedColumn<int> get trimEndMs => $composableBuilder(column: $table.trimEndMs, builder: (column) => column);
 
-  GeneratedColumn<DateTime> get createdAt =>
-      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+  GeneratedColumn<DateTime> get createdAt => $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
-  GeneratedColumn<DateTime> get updatedAt =>
-      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+  GeneratedColumn<DateTime> get updatedAt => $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 
   $$SessionsTableAnnotationComposer get sessionId {
     final $$SessionsTableAnnotationComposer composer = $composerBuilder(
@@ -3771,43 +3115,31 @@ class $$ClipsTableAnnotationComposer
       getCurrentColumn: (t) => t.sessionId,
       referencedTable: $db.sessions,
       getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$SessionsTableAnnotationComposer(
+      builder: (joinBuilder, {$addJoinBuilderToRootComposer, $removeJoinBuilderFromRootComposer}) =>
+          $$SessionsTableAnnotationComposer(
             $db: $db,
             $table: $db.sessions,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
   }
 
-  Expression<T> clipTagsRefs<T extends Object>(
-    Expression<T> Function($$ClipTagsTableAnnotationComposer a) f,
-  ) {
+  Expression<T> clipTagsRefs<T extends Object>(Expression<T> Function($$ClipTagsTableAnnotationComposer a) f) {
     final $$ClipTagsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
       referencedTable: $db.clipTags,
       getReferencedColumn: (t) => t.clipId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$ClipTagsTableAnnotationComposer(
+      builder: (joinBuilder, {$addJoinBuilderToRootComposer, $removeJoinBuilderFromRootComposer}) =>
+          $$ClipTagsTableAnnotationComposer(
             $db: $db,
             $table: $db.clipTags,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return f(composer);
@@ -3834,12 +3166,9 @@ class $$ClipsTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () =>
-              $$ClipsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$ClipsTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$ClipsTableAnnotationComposer($db: db, $table: table),
+          createFilteringComposer: () => $$ClipsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () => $$ClipsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () => $$ClipsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
@@ -3916,12 +3245,8 @@ class $$ClipsTableTableManager
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),
-          withReferenceMapper: (p0) => p0
-              .map(
-                (e) =>
-                    (e.readTable(table), $$ClipsTableReferences(db, table, e)),
-              )
-              .toList(),
+          withReferenceMapper: (p0) =>
+              p0.map((e) => (e.readTable(table), $$ClipsTableReferences(db, table, e))).toList(),
           prefetchHooksCallback: ({sessionId = false, clipTagsRefs = false}) {
             return PrefetchHooks(
               db: db,
@@ -3947,11 +3272,8 @@ class $$ClipsTableTableManager
                           state.withJoin(
                                 currentTable: table,
                                 currentColumn: table.sessionId,
-                                referencedTable: $$ClipsTableReferences
-                                    ._sessionIdTable(db),
-                                referencedColumn: $$ClipsTableReferences
-                                    ._sessionIdTable(db)
-                                    .id,
+                                referencedTable: $$ClipsTableReferences._sessionIdTable(db),
+                                referencedColumn: $$ClipsTableReferences._sessionIdTable(db).id,
                               )
                               as T;
                     }
@@ -3963,10 +3285,8 @@ class $$ClipsTableTableManager
                   if (clipTagsRefs)
                     await $_getPrefetchedData<ClipRow, $ClipsTable, ClipTagRow>(
                       currentTable: table,
-                      referencedTable: $$ClipsTableReferences
-                          ._clipTagsRefsTable(db),
-                      managerFromTypedResult: (p0) =>
-                          $$ClipsTableReferences(db, table, p0).clipTagsRefs,
+                      referencedTable: $$ClipsTableReferences._clipTagsRefsTable(db),
+                      managerFromTypedResult: (p0) => $$ClipsTableReferences(db, table, p0).clipTagsRefs,
                       referencedItemsForCurrentItem: (item, referencedItems) =>
                           referencedItems.where((e) => e.clipId == item.id),
                       typedResults: items,
@@ -3994,42 +3314,26 @@ typedef $$ClipsTableProcessedTableManager =
       PrefetchHooks Function({bool sessionId, bool clipTagsRefs})
     >;
 typedef $$ClipTagsTableCreateCompanionBuilder =
-    ClipTagsCompanion Function({
-      required String clipId,
-      required String tagId,
-      Value<int> rowid,
-    });
+    ClipTagsCompanion Function({required String clipId, required String tagId, Value<int> rowid});
 typedef $$ClipTagsTableUpdateCompanionBuilder =
-    ClipTagsCompanion Function({
-      Value<String> clipId,
-      Value<String> tagId,
-      Value<int> rowid,
-    });
+    ClipTagsCompanion Function({Value<String> clipId, Value<String> tagId, Value<int> rowid});
 
-final class $$ClipTagsTableReferences
-    extends BaseReferences<_$LibraryDatabase, $ClipTagsTable, ClipTagRow> {
+final class $$ClipTagsTableReferences extends BaseReferences<_$LibraryDatabase, $ClipTagsTable, ClipTagRow> {
   $$ClipTagsTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
-  static $ClipsTable _clipIdTable(_$LibraryDatabase db) =>
-      db.clips.createAlias('clip_tags__clip_id__clips__id');
+  static $ClipsTable _clipIdTable(_$LibraryDatabase db) => db.clips.createAlias('clip_tags__clip_id__clips__id');
 
   $$ClipsTableProcessedTableManager get clipId {
     final $_column = $_itemColumn<String>('clip_id')!;
 
-    final manager = $$ClipsTableTableManager(
-      $_db,
-      $_db.clips,
-    ).filter((f) => f.id.sqlEquals($_column));
+    final manager = $$ClipsTableTableManager($_db, $_db.clips).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_clipIdTable($_db));
     if (item == null) return manager;
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: [item]),
-    );
+    return ProcessedTableManager(manager.$state.copyWith(prefetchedData: [item]));
   }
 }
 
-class $$ClipTagsTableFilterComposer
-    extends Composer<_$LibraryDatabase, $ClipTagsTable> {
+class $$ClipTagsTableFilterComposer extends Composer<_$LibraryDatabase, $ClipTagsTable> {
   $$ClipTagsTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -4037,10 +3341,8 @@ class $$ClipTagsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<String> get tagId => $composableBuilder(
-    column: $table.tagId,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<String> get tagId =>
+      $composableBuilder(column: $table.tagId, builder: (column) => ColumnFilters(column));
 
   $$ClipsTableFilterComposer get clipId {
     final $$ClipsTableFilterComposer composer = $composerBuilder(
@@ -4048,26 +3350,20 @@ class $$ClipTagsTableFilterComposer
       getCurrentColumn: (t) => t.clipId,
       referencedTable: $db.clips,
       getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$ClipsTableFilterComposer(
+      builder: (joinBuilder, {$addJoinBuilderToRootComposer, $removeJoinBuilderFromRootComposer}) =>
+          $$ClipsTableFilterComposer(
             $db: $db,
             $table: $db.clips,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
   }
 }
 
-class $$ClipTagsTableOrderingComposer
-    extends Composer<_$LibraryDatabase, $ClipTagsTable> {
+class $$ClipTagsTableOrderingComposer extends Composer<_$LibraryDatabase, $ClipTagsTable> {
   $$ClipTagsTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -4075,10 +3371,8 @@ class $$ClipTagsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<String> get tagId => $composableBuilder(
-    column: $table.tagId,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<String> get tagId =>
+      $composableBuilder(column: $table.tagId, builder: (column) => ColumnOrderings(column));
 
   $$ClipsTableOrderingComposer get clipId {
     final $$ClipsTableOrderingComposer composer = $composerBuilder(
@@ -4086,26 +3380,20 @@ class $$ClipTagsTableOrderingComposer
       getCurrentColumn: (t) => t.clipId,
       referencedTable: $db.clips,
       getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$ClipsTableOrderingComposer(
+      builder: (joinBuilder, {$addJoinBuilderToRootComposer, $removeJoinBuilderFromRootComposer}) =>
+          $$ClipsTableOrderingComposer(
             $db: $db,
             $table: $db.clips,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
   }
 }
 
-class $$ClipTagsTableAnnotationComposer
-    extends Composer<_$LibraryDatabase, $ClipTagsTable> {
+class $$ClipTagsTableAnnotationComposer extends Composer<_$LibraryDatabase, $ClipTagsTable> {
   $$ClipTagsTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -4113,8 +3401,7 @@ class $$ClipTagsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get tagId =>
-      $composableBuilder(column: $table.tagId, builder: (column) => column);
+  GeneratedColumn<String> get tagId => $composableBuilder(column: $table.tagId, builder: (column) => column);
 
   $$ClipsTableAnnotationComposer get clipId {
     final $$ClipsTableAnnotationComposer composer = $composerBuilder(
@@ -4122,18 +3409,13 @@ class $$ClipTagsTableAnnotationComposer
       getCurrentColumn: (t) => t.clipId,
       referencedTable: $db.clips,
       getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$ClipsTableAnnotationComposer(
+      builder: (joinBuilder, {$addJoinBuilderToRootComposer, $removeJoinBuilderFromRootComposer}) =>
+          $$ClipsTableAnnotationComposer(
             $db: $db,
             $table: $db.clips,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
@@ -4160,37 +3442,20 @@ class $$ClipTagsTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () =>
-              $$ClipTagsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$ClipTagsTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$ClipTagsTableAnnotationComposer($db: db, $table: table),
+          createFilteringComposer: () => $$ClipTagsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () => $$ClipTagsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () => $$ClipTagsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
                 Value<String> clipId = const Value.absent(),
                 Value<String> tagId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
-              }) =>
-                  ClipTagsCompanion(clipId: clipId, tagId: tagId, rowid: rowid),
+              }) => ClipTagsCompanion(clipId: clipId, tagId: tagId, rowid: rowid),
           createCompanionCallback:
-              ({
-                required String clipId,
-                required String tagId,
-                Value<int> rowid = const Value.absent(),
-              }) => ClipTagsCompanion.insert(
-                clipId: clipId,
-                tagId: tagId,
-                rowid: rowid,
-              ),
-          withReferenceMapper: (p0) => p0
-              .map(
-                (e) => (
-                  e.readTable(table),
-                  $$ClipTagsTableReferences(db, table, e),
-                ),
-              )
-              .toList(),
+              ({required String clipId, required String tagId, Value<int> rowid = const Value.absent()}) =>
+                  ClipTagsCompanion.insert(clipId: clipId, tagId: tagId, rowid: rowid),
+          withReferenceMapper: (p0) =>
+              p0.map((e) => (e.readTable(table), $$ClipTagsTableReferences(db, table, e))).toList(),
           prefetchHooksCallback: ({clipId = false}) {
             return PrefetchHooks(
               db: db,
@@ -4216,11 +3481,8 @@ class $$ClipTagsTableTableManager
                           state.withJoin(
                                 currentTable: table,
                                 currentColumn: table.clipId,
-                                referencedTable: $$ClipTagsTableReferences
-                                    ._clipIdTable(db),
-                                referencedColumn: $$ClipTagsTableReferences
-                                    ._clipIdTable(db)
-                                    .id,
+                                referencedTable: $$ClipTagsTableReferences._clipIdTable(db),
+                                referencedColumn: $$ClipTagsTableReferences._clipIdTable(db).id,
                               )
                               as T;
                     }
@@ -4254,13 +3516,9 @@ typedef $$ClipTagsTableProcessedTableManager =
 class $LibraryDatabaseManager {
   final _$LibraryDatabase _db;
   $LibraryDatabaseManager(this._db);
-  $$TagTemplatesTableTableManager get tagTemplates =>
-      $$TagTemplatesTableTableManager(_db, _db.tagTemplates);
-  $$SessionsTableTableManager get sessions =>
-      $$SessionsTableTableManager(_db, _db.sessions);
+  $$TagTemplatesTableTableManager get tagTemplates => $$TagTemplatesTableTableManager(_db, _db.tagTemplates);
+  $$SessionsTableTableManager get sessions => $$SessionsTableTableManager(_db, _db.sessions);
   $$TagsTableTableManager get tags => $$TagsTableTableManager(_db, _db.tags);
-  $$ClipsTableTableManager get clips =>
-      $$ClipsTableTableManager(_db, _db.clips);
-  $$ClipTagsTableTableManager get clipTags =>
-      $$ClipTagsTableTableManager(_db, _db.clipTags);
+  $$ClipsTableTableManager get clips => $$ClipsTableTableManager(_db, _db.clips);
+  $$ClipTagsTableTableManager get clipTags => $$ClipTagsTableTableManager(_db, _db.clipTags);
 }

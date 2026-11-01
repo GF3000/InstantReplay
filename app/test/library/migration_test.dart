@@ -82,7 +82,7 @@ void main() {
 
     final db = LibraryDatabase(schema.newConnection());
     addTearDown(db.close);
-    await verifier.migrateAndValidate(db, 2);
+    await verifier.migrateAndValidate(db, db.schemaVersion);
 
     // Built-in template: the categories first, then the tags, ids, names and colours kept.
     final football = (await db.templateContent('builtin.football'))!;
