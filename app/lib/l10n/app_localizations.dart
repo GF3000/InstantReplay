@@ -656,6 +656,36 @@ abstract class AppLocalizations {
   /// **'Next frame'**
   String get viewerReviewNextFrame;
 
+  /// No description provided for @viewerDraw.
+  ///
+  /// In en, this message translates to:
+  /// **'Draw'**
+  String get viewerDraw;
+
+  /// No description provided for @viewerDrawColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Colour'**
+  String get viewerDrawColor;
+
+  /// No description provided for @viewerDrawUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get viewerDrawUndo;
+
+  /// No description provided for @viewerDrawClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear drawing'**
+  String get viewerDrawClear;
+
+  /// No description provided for @viewerDrawDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get viewerDrawDone;
+
   /// No description provided for @viewerReviewPlay.
   ///
   /// In en, this message translates to:

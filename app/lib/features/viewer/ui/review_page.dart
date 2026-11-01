@@ -10,9 +10,13 @@ import '../tags/tag_widgets.dart';
 import '../tags/tags.dart';
 import 'clip_export_actions.dart';
 import 'clip_list.dart';
+import 'telestrator.dart';
 
 /// Clip review (SPEC §5.1.5, §5.5, §6, UX §3.4): full screen, autoplay loop, 0.25×/0.5×/1×, ±1 frame,
 /// scrub, change tag, and Download on web or Save to gallery / Share on Android.
+///
+/// Draw mode pauses on the frame and lets the coach draw over it ([TelestratorCanvas]). The drawing
+/// is not kept: Done, Play or a frame step clears it.
 ///
 /// Frame stepping is exact: frames come from the clip's own timestamps ([FrameTimeline]) and each
 /// step seeks to a position the platform player resolves to that frame ([SeekRule]).
@@ -65,6 +69,9 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
   bool? _wasPlaying;
   double _dragPixels = 0;
 
+  final _drawing = TelestratorController();
+  bool _drawMode = false;
+
   @override
   void initState() {
     super.initState();
@@ -99,6 +106,7 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
     _player.removeListener(_onPlayer);
     _platform.dispose();
     _player.dispose();
+    _drawing.dispose();
     super.dispose();
   }
 
@@ -109,7 +117,21 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
     await _player.setPlaybackSpeed(speed);
   }
 
+  /// Pauses on the frame on screen and starts drawing over it.
+  Future<void> _startDrawing() => _serial(() async {
+        await _pause();
+        if (mounted) setState(() => _drawMode = true);
+      });
+
+  /// Leaves draw mode; the drawing goes with it.
+  void _endDrawing() {
+    if (!_drawMode) return;
+    _drawing.clear();
+    if (mounted) setState(() => _drawMode = false);
+  }
+
   Future<void> _play() async {
+    _endDrawing();
     _frame = null;
     _platform.keepAwake(false);
     await _player.play();
@@ -134,6 +156,7 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
   }
 
   Future<void> _step(int frames) => _serial(() async {
+        _endDrawing(); // The drawing belongs to the frame it was made on.
         final from = await _pause();
         await _show(_timeline!.step(from, frames));
       });
@@ -200,6 +223,14 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
       appBar: AppBar(
         title: Text(clipName(l10n, tag, clip.requestedAt), overflow: TextOverflow.ellipsis),
         actions: [
+          IconButton(
+            key: const ValueKey('review-draw'),
+            tooltip: l10n.viewerDraw,
+            isSelected: _drawMode,
+            icon: const Icon(Icons.draw_outlined),
+            selectedIcon: const Icon(Icons.draw),
+            onPressed: _failed ? null : (_drawMode ? _endDrawing : _startDrawing),
+          ),
           TextButton.icon(
             key: const ValueKey('review-tag'),
             onPressed: () => showClipTagPicker(context, clip.requestId, choices: widget.labelChoices),
@@ -220,26 +251,36 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
             ? Center(child: Text(l10n.viewerReviewError, style: Theme.of(context).textTheme.titleMedium))
             : ValueListenableBuilder<VideoPlayerValue>(
                 valueListenable: _player,
-                builder: (context, v, _) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                builder: (context, v, _) {
+                  // While drawing, the finger draws instead of toggling play or scrubbing.
+                  final gestures = v.isInitialized && !_drawMode;
+                  return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   Expanded(
                     child: GestureDetector(
                       key: const ValueKey('review-video'),
                       behavior: HitTestBehavior.opaque,
-                      onTap: v.isInitialized ? _togglePlay : null,
-                      onHorizontalDragStart: v.isInitialized ? (_) => _scrubStart() : null,
-                      onHorizontalDragUpdate: v.isInitialized ? (d) => _dragBy(d.delta.dx) : null,
-                      onHorizontalDragEnd: v.isInitialized ? (_) => _scrubEnd() : null,
-                      onHorizontalDragCancel: v.isInitialized ? _scrubEnd : null,
+                      onTap: gestures ? _togglePlay : null,
+                      onHorizontalDragStart: gestures ? (_) => _scrubStart() : null,
+                      onHorizontalDragUpdate: gestures ? (d) => _dragBy(d.delta.dx) : null,
+                      onHorizontalDragEnd: gestures ? (_) => _scrubEnd() : null,
+                      onHorizontalDragCancel: gestures ? _scrubEnd : null,
                       child: Center(
                         child: v.isInitialized
-                            ? AspectRatio(aspectRatio: v.aspectRatio, child: VideoPlayer(_player))
+                            ? AspectRatio(
+                                aspectRatio: v.aspectRatio,
+                                child: Stack(fit: StackFit.expand, children: [
+                                  VideoPlayer(_player),
+                                  if (_drawMode) TelestratorCanvas(controller: _drawing, enabled: true),
+                                ]),
+                              )
                             : const CircularProgressIndicator(),
                       ),
                     ),
                   ),
-                  _scrubBar(v),
+                  if (_drawMode) TelestratorToolbar(controller: _drawing, onDone: _endDrawing) else _scrubBar(v),
                   _controls(l10n, v),
-                ]),
+                  ]);
+                },
               ),
       ),
     );

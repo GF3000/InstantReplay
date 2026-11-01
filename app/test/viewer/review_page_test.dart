@@ -9,6 +9,7 @@ import 'package:instant_replay/features/viewer/player/frame_timeline.dart';
 import 'package:instant_replay/features/viewer/player/player_platform.dart';
 import 'package:instant_replay/features/viewer/tags/tags.dart';
 import 'package:instant_replay/features/viewer/ui/review_page.dart';
+import 'package:instant_replay/features/viewer/ui/telestrator.dart';
 import 'package:instant_replay/l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player/video_player.dart';
@@ -138,6 +139,65 @@ void main() {
     await tester.tap(find.textContaining('0.25'));
     await tester.pumpAndSettle();
     expect(video.value.playbackSpeed, 0.25);
+  });
+  group('draw mode', () {
+    TelestratorController drawing(WidgetTester tester) =>
+        (tester.widget(find.byType(TelestratorToolbar)) as TelestratorToolbar).controller;
+
+    Future<void> stroke(WidgetTester tester) async {
+      final canvas = find.byKey(const ValueKey('review-canvas'));
+      await tester.dragFrom(tester.getCenter(canvas), const Offset(60, 40));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('pauses, draws in the chosen colour, undo and clear', (tester) async {
+      await pump(tester);
+      await tester.tap(find.byKey(const ValueKey('review-draw')));
+      await tester.pumpAndSettle();
+      expect(video.value.isPlaying, isFalse);
+      expect(find.byType(TelestratorToolbar), findsOneWidget);
+      expect(find.byType(Slider), findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('draw-color-1')));
+      await stroke(tester);
+      await stroke(tester);
+      final c = drawing(tester);
+      expect(c.strokes, hasLength(2));
+      expect(c.strokes.first.color, TelestratorController.colors[1]);
+      // A drag while drawing does not scrub.
+      expect(video.value.isPlaying, isFalse);
+
+      await tapTooltip(tester, 'Undo');
+      expect(c.strokes, hasLength(1));
+      await tapTooltip(tester, 'Clear drawing');
+      expect(c.isEmpty, isTrue);
+    });
+
+    testWidgets('play leaves draw mode and drops the drawing', (tester) async {
+      await pump(tester);
+      await tester.tap(find.byKey(const ValueKey('review-draw')));
+      await tester.pumpAndSettle();
+      await stroke(tester);
+      await tapTooltip(tester, 'Play');
+      expect(video.value.isPlaying, isTrue);
+      expect(find.byType(TelestratorToolbar), findsNothing);
+      expect(find.byKey(const ValueKey('review-canvas')), findsNothing);
+    });
+
+    testWidgets('a frame step leaves draw mode; Done keeps the video paused', (tester) async {
+      await pump(tester);
+      await tester.tap(find.byKey(const ValueKey('review-draw')));
+      await tester.pumpAndSettle();
+      await tapTooltip(tester, 'Next frame');
+      expect(find.byType(TelestratorToolbar), findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('review-draw')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('draw-done')));
+      await tester.pumpAndSettle();
+      expect(find.byType(TelestratorToolbar), findsNothing);
+      expect(video.value.isPlaying, isFalse);
+    });
   });
 }
 
