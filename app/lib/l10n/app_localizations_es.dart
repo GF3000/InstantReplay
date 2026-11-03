@@ -370,6 +370,15 @@ class AppLocalizationsEs extends AppLocalizations {
   String get viewerDrawPen => 'Mano alzada';
 
   @override
+  String get viewerDrawSelect => 'Seleccionar y mover';
+
+  @override
+  String get viewerDrawEraser => 'Goma';
+
+  @override
+  String get viewerDrawDelete => 'Borrar elemento';
+
+  @override
   String get viewerDrawThick => 'Trazo grueso';
 
   @override

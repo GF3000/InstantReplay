@@ -368,6 +368,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get viewerDrawPen => 'Freehand';
 
   @override
+  String get viewerDrawSelect => 'Select and move';
+
+  @override
+  String get viewerDrawEraser => 'Eraser';
+
+  @override
+  String get viewerDrawDelete => 'Delete mark';
+
+  @override
   String get viewerDrawThick => 'Thick line';
 
   @override
