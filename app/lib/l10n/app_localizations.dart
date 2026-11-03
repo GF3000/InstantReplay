@@ -716,6 +716,30 @@ abstract class AppLocalizations {
   /// **'Thick line'**
   String get viewerDrawThick;
 
+  /// No description provided for @viewerReviewPrevClip.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous clip'**
+  String get viewerReviewPrevClip;
+
+  /// No description provided for @viewerReviewNextClip.
+  ///
+  /// In en, this message translates to:
+  /// **'Next clip'**
+  String get viewerReviewNextClip;
+
+  /// No description provided for @viewerReviewPlaylistRestart.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch all again'**
+  String get viewerReviewPlaylistRestart;
+
+  /// No description provided for @viewerReviewPlaylistPosition.
+  ///
+  /// In en, this message translates to:
+  /// **'{index} / {count}'**
+  String viewerReviewPlaylistPosition(int index, int count);
+
   /// No description provided for @viewerReviewPlay.
   ///
   /// In en, this message translates to:
@@ -1339,6 +1363,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Exporting…'**
   String get libraryExporting;
+
+  /// No description provided for @libraryWatchAll.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Watch 1 clip} other{Watch all ({count})}}'**
+  String libraryWatchAll(int count);
 
   /// No description provided for @libraryDelete.
   ///

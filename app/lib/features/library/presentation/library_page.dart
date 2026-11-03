@@ -8,6 +8,7 @@ import '../../viewer/clips/clip_batch_export.dart';
 import '../../viewer/clips/clip_export.dart';
 import '../../viewer/tags/tags.dart';
 import '../../viewer/ui/clip_list.dart';
+import '../../viewer/ui/playlist_page.dart';
 import '../../viewer/ui/review_page.dart';
 import '../data/library_database.dart';
 import '../library_providers.dart';
@@ -199,6 +200,24 @@ class _SessionClipsPageState extends ConsumerState<SessionClipsPage> {
     if (message != null) messenger.showSnackBar(SnackBar(content: Text(message)));
   }
 
+  /// Plays [entries] one after another, oldest first, with their tags seeded as in [_open].
+  Future<void> _watchAll(List<ClipEntry> entries, Map<String, ViewerTag> labels) async {
+    if (entries.isEmpty) return;
+    final choices = await libraryLabelChoices(ref.read, widget.session.id);
+    if (!mounted) return;
+    ref.read(knownLabelsProvider.notifier).addAll({
+      ...labels,
+      for (final l in [...?choices?.tags]) l.id: l,
+    });
+    final ordered = [...entries]..sort((a, b) => a.clip.requestedAt.compareTo(b.clip.requestedAt));
+    final clips = [for (final e in ordered) sessionClipFromEntry(e)];
+    final tags = ref.read(clipTagsProvider.notifier);
+    for (final (i, e) in ordered.indexed) {
+      tags.set(clips[i].requestId, e.tagIds.firstOrNull);
+    }
+    await Navigator.of(context).push(PlaylistPage.route(clips, labelChoices: choices));
+  }
+
   /// Opens the review with the clip's tag seeded, so it shows and changes are saved back. Its tag
   /// picker offers the tags of this session's template.
   Future<void> _open(ClipEntry e, Map<String, ViewerTag> labels) async {
@@ -240,6 +259,17 @@ class _SessionClipsPageState extends ConsumerState<SessionClipsPage> {
               ? IconButton(icon: const Icon(Icons.close), onPressed: () => setState(_selected.clear))
               : null,
           actions: [
+            // Watch all: exactly what the list shows (the tag filter applies), or the selection.
+            if (shown.isNotEmpty)
+              IconButton(
+                key: const ValueKey('library-watch-all'),
+                tooltip: l10n.libraryWatchAll(selecting ? _selected.length : shown.length),
+                icon: const Icon(Icons.playlist_play),
+                onPressed: () => _watchAll([
+                  for (final e in shown)
+                    if (!selecting || _selected.contains(e.clip.id)) e,
+                ], labels),
+              ),
             if (selecting) ...[
               IconButton(
                 tooltip: l10n.librarySelectAll,

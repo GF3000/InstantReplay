@@ -11,6 +11,7 @@ import 'package:instant_replay/features/library/data/library_database.dart';
 import 'package:instant_replay/features/library/data/templates.dart';
 import 'package:instant_replay/features/library/library_providers.dart';
 import 'package:instant_replay/features/library/presentation/library_page.dart';
+import 'package:instant_replay/features/viewer/ui/playlist_page.dart';
 import 'package:instant_replay/features/viewer/tags/tag_widgets.dart';
 import 'package:instant_replay/l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -80,9 +81,21 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('library-filter-football.tag.goal')));
     await tester.pump();
     expect(shown(), ['c2']);
+    // Watch all plays only what the filter shows, oldest first.
+    await tester.tap(find.byKey(const ValueKey('library-filter-football.tag.shot')));
+    await tester.pump();
+    expect(find.byTooltip('Watch 1 clip'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('library-filter-all')));
     await tester.pump();
     expect(shown(), ['c2', 'c1', 'c0']);
+    expect(find.byTooltip('Watch all (3)'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('library-watch-all')));
+    await settle();
+    expect([for (final c in tester.widget<PlaylistPage>(find.byType(PlaylistPage)).clips) c.requestId], ['c0', 'c1', 'c2']);
+    Navigator.of(tester.element(find.byType(PlaylistPage))).pop();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(PlaylistPage), findsNothing);
 
     await tester.longPress(find.byKey(const ValueKey('library-clip-c2')));
     await tester.pump();
