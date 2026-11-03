@@ -15,13 +15,51 @@ import 'telestrator.dart';
 /// Clip review (SPEC §5.1.5, §5.5, §6, UX §3.4): full screen, autoplay loop, 0.25×/0.5×/1×, ±1 frame,
 /// scrub, change tag, and Download on web or Save to gallery / Share on Android.
 ///
+/// In a playlist ([ReviewPlaylist], the library's "Watch all") each clip plays once and the next one
+/// follows; otherwise the clip loops.
+///
 /// Draw mode pauses on the frame and lets the coach draw over it ([TelestratorCanvas]). The drawing
 /// is not kept: Done, Play or a frame step clears it.
 ///
 /// Frame stepping is exact: frames come from the clip's own timestamps ([FrameTimeline]) and each
 /// step seeks to a position the platform player resolves to that frame ([SeekRule]).
+/// Where a clip sits in a "Watch all" run, and how to move on.
+@immutable
+class ReviewPlaylist {
+  const ReviewPlaylist({
+    required this.index,
+    required this.length,
+    required this.onPrevious,
+    required this.onNext,
+    required this.speed,
+    required this.onSpeed,
+  });
+
+  final int index;
+  final int length;
+
+  /// Null on the first clip.
+  final VoidCallback? onPrevious;
+
+  /// The next clip; on the last one, back to the first.
+  final VoidCallback onNext;
+
+  /// Playback speed, kept from clip to clip.
+  final double speed;
+  final ValueChanged<double> onSpeed;
+
+  bool get isLast => index == length - 1;
+}
+
 class ReviewPage extends ConsumerStatefulWidget {
-  const ReviewPage({super.key, required this.clip, this.labelChoices, this.playerFactory, this.platformFactory});
+  const ReviewPage({
+    super.key,
+    required this.clip,
+    this.labelChoices,
+    this.playlist,
+    this.playerFactory,
+    this.platformFactory,
+  });
 
   /// A ready clip ([SessionClip.stored] set).
   final SessionClip clip;
@@ -29,6 +67,9 @@ class ReviewPage extends ConsumerStatefulWidget {
   /// The labels the tag picker offers for a clip outside the active session (library review);
   /// null for the active session's own.
   final ClipLabelChoices? labelChoices;
+
+  /// Set when this clip is one of several played in a row.
+  final ReviewPlaylist? playlist;
 
   /// Tests inject a controller; defaults to [StoredClip.createPlayer].
   final VideoPlayerController Function()? playerFactory;
@@ -54,7 +95,10 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
   late final VideoPlayerController _player;
   late final PlayerPlatform _platform;
   bool _failed = false;
-  double _speed = 1;
+  late double _speed = widget.playlist?.speed ?? 1;
+
+  /// The playlist moved on from this clip already (completion is reported more than once).
+  bool _advanced = false;
 
   /// The clip's frames; a 30 fps grid until the real timestamps are read.
   FrameTimeline? _timeline;
@@ -86,8 +130,9 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
     try {
       await _player.initialize();
       _timeline = FrameTimeline.uniform(_player.value.duration);
-      await _player.setLooping(true);
+      await _player.setLooping(widget.playlist == null);
       await _player.setVolume(0); // No audio (D7); also lets browsers autoplay.
+      if (_speed != 1) await _player.setPlaybackSpeed(_speed);
       await _player.play();
     } catch (_) {
       if (mounted) setState(() => _failed = true);
@@ -99,6 +144,12 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
 
   void _onPlayer() {
     if (_player.value.hasError && !_failed) setState(() => _failed = true);
+    // Watch all: the next clip follows when this one ends; the last one stays on its end.
+    final playlist = widget.playlist;
+    if (playlist != null && _player.value.isCompleted && !_advanced && !_drawMode && !playlist.isLast) {
+      _advanced = true;
+      playlist.onNext();
+    }
   }
 
   @override
@@ -114,6 +165,7 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
 
   Future<void> _setSpeed(double speed) async {
     setState(() => _speed = speed);
+    widget.playlist?.onSpeed(speed);
     await _player.setPlaybackSpeed(speed);
   }
 
@@ -132,6 +184,8 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
 
   Future<void> _play() async {
     _endDrawing();
+    // A playlist clip that ended stays on its last frame: Play starts it again.
+    if (_player.value.isCompleted) await _player.seekTo(Duration.zero);
     _frame = null;
     _platform.keepAwake(false);
     await _player.play();
@@ -221,7 +275,13 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: Text(clipName(l10n, tag, clip.requestedAt), overflow: TextOverflow.ellipsis),
+        title: Text(
+          [
+            if (widget.playlist case final p?) l10n.viewerReviewPlaylistPosition(p.index + 1, p.length),
+            clipName(l10n, tag, clip.requestedAt),
+          ].join(' · '),
+          overflow: TextOverflow.ellipsis,
+        ),
         actions: [
           IconButton(
             key: const ValueKey('review-draw'),
@@ -315,6 +375,14 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
           spacing: 8,
           runSpacing: 8,
           children: [
+            if (widget.playlist case final p?)
+              IconButton(
+                key: const ValueKey('review-prev-clip'),
+                iconSize: 32,
+                tooltip: l10n.viewerReviewPrevClip,
+                onPressed: p.onPrevious,
+                icon: const Icon(Icons.keyboard_double_arrow_left),
+              ),
             IconButton.filledTonal(
               iconSize: 32,
               tooltip: l10n.viewerReviewPrevFrame,
@@ -333,6 +401,14 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
               onPressed: v.isInitialized ? () => _step(1) : null,
               icon: const Icon(Icons.skip_next),
             ),
+            if (widget.playlist case final p?)
+              IconButton(
+                key: const ValueKey('review-next-clip'),
+                iconSize: 32,
+                tooltip: p.isLast ? l10n.viewerReviewPlaylistRestart : l10n.viewerReviewNextClip,
+                onPressed: p.onNext,
+                icon: Icon(p.isLast ? Icons.replay : Icons.keyboard_double_arrow_right),
+              ),
             const SizedBox(width: 16),
             SegmentedButton<double>(
               segments: [

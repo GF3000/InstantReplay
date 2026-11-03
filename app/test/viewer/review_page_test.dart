@@ -20,7 +20,12 @@ void main() {
   late FakeVideo video;
   late FakePlatform platform;
 
-  Future<void> pump(WidgetTester tester, {FrameTimeline? timeline, SeekRule rule = SeekRule.atOrAfter}) async {
+  Future<void> pump(
+    WidgetTester tester, {
+    FrameTimeline? timeline,
+    SeekRule rule = SeekRule.atOrAfter,
+    ReviewPlaylist? playlist,
+  }) async {
     video = FakeVideo();
     platform = FakePlatform(video, timeline, rule);
     final clip = SessionClip(
@@ -39,7 +44,12 @@ void main() {
           locale: const Locale('en'),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: ReviewPage(clip: clip, playerFactory: () => video, platformFactory: (_) => platform),
+          home: ReviewPage(
+            clip: clip,
+            playlist: playlist,
+            playerFactory: () => video,
+            platformFactory: (_) => platform,
+          ),
         ),
       ),
     );
@@ -140,6 +150,57 @@ void main() {
     await tester.pumpAndSettle();
     expect(video.value.playbackSpeed, 0.25);
   });
+
+  group('watch all', () {
+    ReviewPlaylist playlist(int index, List<String> log, {int length = 3}) => ReviewPlaylist(
+      index: index,
+      length: length,
+      onPrevious: index == 0 ? null : () => log.add('previous'),
+      onNext: () => log.add('next'),
+      speed: 0.5,
+      onSpeed: (s) => log.add('speed $s'),
+    );
+
+    void finish() => video.value = video.value.copyWith(isPlaying: false, isCompleted: true);
+
+    testWidgets('plays once at the kept speed and moves on when the clip ends', (tester) async {
+      final log = <String>[];
+      await pump(tester, playlist: playlist(1, log));
+      expect(video.value.isLooping, isFalse);
+      expect(video.value.playbackSpeed, 0.5);
+      expect(find.textContaining('2 / 3 · '), findsOneWidget);
+      finish();
+      await tester.pump();
+      finish(); // reported again: still one move
+      await tester.pump();
+      expect(log, ['next']);
+
+      await tester.tap(find.byKey(const ValueKey('review-prev-clip')));
+      await tester.tap(find.byKey(const ValueKey('review-next-clip')));
+      await tester.tap(find.textContaining('0.25'));
+      await tester.pumpAndSettle();
+      expect(log, ['next', 'previous', 'next', 'speed 0.25']);
+    });
+
+    testWidgets('the last clip stays on its end; its button watches all again', (tester) async {
+      final log = <String>[];
+      await pump(tester, playlist: playlist(2, log));
+      finish();
+      await tester.pump();
+      expect(log, isEmpty);
+      expect(find.byTooltip('Watch all again'), findsOneWidget);
+      await tapTooltip(tester, 'Play');
+      expect(video.seeks.last, Duration.zero);
+      expect(video.value.isPlaying, isTrue);
+    });
+
+    testWidgets('a clip on its own loops', (tester) async {
+      await pump(tester);
+      expect(video.value.isLooping, isTrue);
+      expect(find.byKey(const ValueKey('review-next-clip')), findsNothing);
+    });
+  });
+
   group('draw mode', () {
     TelestratorController drawing(WidgetTester tester) =>
         (tester.widget(find.byType(TelestratorToolbar)) as TelestratorToolbar).controller;

@@ -371,6 +371,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get viewerDrawThick => 'Thick line';
 
   @override
+  String get viewerReviewPrevClip => 'Previous clip';
+
+  @override
+  String get viewerReviewNextClip => 'Next clip';
+
+  @override
+  String get viewerReviewPlaylistRestart => 'Watch all again';
+
+  @override
+  String viewerReviewPlaylistPosition(int index, int count) {
+    return '$index / $count';
+  }
+
+  @override
   String get viewerReviewPlay => 'Play';
 
   @override
@@ -772,6 +786,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get libraryExporting => 'Exporting…';
+
+  @override
+  String libraryWatchAll(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Watch all ($count)',
+      one: 'Watch 1 clip',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get libraryDelete => 'Delete';
