@@ -356,6 +356,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get viewerDrawDone => 'Done';
 
   @override
+  String get viewerDrawArrow => 'Arrow';
+
+  @override
+  String get viewerDrawCircle => 'Circle';
+
+  @override
+  String get viewerDrawLine => 'Straight line';
+
+  @override
+  String get viewerDrawPen => 'Freehand';
+
+  @override
+  String get viewerDrawThick => 'Thick line';
+
+  @override
   String get viewerReviewPlay => 'Play';
 
   @override

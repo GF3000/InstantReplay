@@ -158,6 +158,7 @@ void main() {
       expect(find.byType(TelestratorToolbar), findsOneWidget);
       expect(find.byType(Slider), findsNothing);
 
+      await tester.tap(find.byKey(const ValueKey('draw-tool-pen')));
       await tester.tap(find.byKey(const ValueKey('draw-color-1')));
       await stroke(tester);
       await stroke(tester);
@@ -171,6 +172,30 @@ void main() {
       expect(c.strokes, hasLength(1));
       await tapTooltip(tester, 'Clear drawing');
       expect(c.isEmpty, isTrue);
+    });
+
+    testWidgets('arrow, circle and line keep two points; thickness and a tap without a drag', (tester) async {
+      await pump(tester);
+      await tester.tap(find.byKey(const ValueKey('review-draw')));
+      await tester.pumpAndSettle();
+      final c = drawing(tester);
+      expect(c.tool, TelestratorTool.arrow);
+
+      await stroke(tester);
+      await tester.tap(find.byKey(const ValueKey('draw-tool-circle')));
+      await tester.tap(find.byKey(const ValueKey('draw-thick')));
+      await stroke(tester);
+      await tester.tap(find.byKey(const ValueKey('draw-tool-line')));
+      await stroke(tester);
+      await tester.pump();
+      expect([for (final s in c.strokes) s.tool], [TelestratorTool.arrow, TelestratorTool.circle, TelestratorTool.line]);
+      expect([for (final s in c.strokes) s.points.length], [2, 2, 2]);
+      expect([for (final s in c.strokes) s.thick], [false, true, true]);
+
+      // A shape needs a drag: a tap leaves nothing behind.
+      await tester.tap(find.byKey(const ValueKey('review-canvas')));
+      await tester.pumpAndSettle();
+      expect(c.strokes, hasLength(3));
     });
 
     testWidgets('play leaves draw mode and drops the drawing', (tester) async {
