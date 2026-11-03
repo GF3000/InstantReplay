@@ -358,6 +358,21 @@ class AppLocalizationsEs extends AppLocalizations {
   String get viewerDrawDone => 'Listo';
 
   @override
+  String get viewerDrawArrow => 'Flecha';
+
+  @override
+  String get viewerDrawCircle => 'Círculo';
+
+  @override
+  String get viewerDrawLine => 'Línea recta';
+
+  @override
+  String get viewerDrawPen => 'Mano alzada';
+
+  @override
+  String get viewerDrawThick => 'Trazo grueso';
+
+  @override
   String get viewerReviewPlay => 'Reproducir';
 
   @override

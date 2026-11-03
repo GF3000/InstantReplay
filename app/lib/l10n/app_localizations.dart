@@ -686,6 +686,36 @@ abstract class AppLocalizations {
   /// **'Done'**
   String get viewerDrawDone;
 
+  /// No description provided for @viewerDrawArrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrow'**
+  String get viewerDrawArrow;
+
+  /// No description provided for @viewerDrawCircle.
+  ///
+  /// In en, this message translates to:
+  /// **'Circle'**
+  String get viewerDrawCircle;
+
+  /// No description provided for @viewerDrawLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Straight line'**
+  String get viewerDrawLine;
+
+  /// No description provided for @viewerDrawPen.
+  ///
+  /// In en, this message translates to:
+  /// **'Freehand'**
+  String get viewerDrawPen;
+
+  /// No description provided for @viewerDrawThick.
+  ///
+  /// In en, this message translates to:
+  /// **'Thick line'**
+  String get viewerDrawThick;
+
   /// No description provided for @viewerReviewPlay.
   ///
   /// In en, this message translates to:
