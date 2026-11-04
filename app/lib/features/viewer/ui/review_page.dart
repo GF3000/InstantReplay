@@ -178,7 +178,7 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
   /// Leaves draw mode; the drawing goes with it.
   void _endDrawing() {
     if (!_drawMode) return;
-    _drawing.clear();
+    _drawing.reset();
     if (mounted) setState(() => _drawMode = false);
   }
 

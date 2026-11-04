@@ -710,6 +710,24 @@ abstract class AppLocalizations {
   /// **'Freehand'**
   String get viewerDrawPen;
 
+  /// No description provided for @viewerDrawSelect.
+  ///
+  /// In en, this message translates to:
+  /// **'Select and move'**
+  String get viewerDrawSelect;
+
+  /// No description provided for @viewerDrawEraser.
+  ///
+  /// In en, this message translates to:
+  /// **'Eraser'**
+  String get viewerDrawEraser;
+
+  /// No description provided for @viewerDrawDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete mark'**
+  String get viewerDrawDelete;
+
   /// No description provided for @viewerDrawThick.
   ///
   /// In en, this message translates to:

@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -257,6 +258,83 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('review-canvas')));
       await tester.pumpAndSettle();
       expect(c.strokes, hasLength(3));
+    });
+
+    testWidgets('select a mark, move it, recolour it, delete it; Undo takes each back', (tester) async {
+      await pump(tester);
+      await tester.tap(find.byKey(const ValueKey('review-draw')));
+      await tester.pumpAndSettle();
+      final c = drawing(tester);
+      final canvas = find.byKey(const ValueKey('review-canvas'));
+      final width = tester.getSize(canvas).width;
+      final onArrow = tester.getCenter(canvas) + const Offset(30, 20);
+      await stroke(tester);
+      final start = c.strokes.single.points.first;
+
+      await tester.tap(find.byKey(const ValueKey('draw-tool-select')));
+      await tester.tapAt(onArrow);
+      await tester.pumpAndSettle(kDoubleTapTimeout);
+      expect(c.selected, same(c.strokes.single));
+      expect(find.byKey(const ValueKey('draw-delete')), findsOneWidget);
+
+      await tester.dragFrom(onArrow, const Offset(100, 0));
+      await tester.pumpAndSettle();
+      expect(c.strokes.single.points.first.dx, greaterThan(start.dx + 50 / width));
+      await tapTooltip(tester, 'Undo');
+      expect(c.strokes.single.points.first, start);
+
+      await tester.tapAt(onArrow);
+      await tester.pumpAndSettle(kDoubleTapTimeout);
+      await tester.tap(find.byKey(const ValueKey('draw-color-3')));
+      await tester.pump();
+      expect(c.strokes.single.color, TelestratorController.colors[3]);
+      await tester.tap(find.byKey(const ValueKey('draw-delete')));
+      await tester.pump();
+      expect(c.isEmpty, isTrue);
+      expect(find.byKey(const ValueKey('draw-delete')), findsNothing);
+      await tapTooltip(tester, 'Undo');
+      expect(c.strokes.single.color, TelestratorController.colors[3]);
+
+      // A tap away from every mark selects nothing.
+      await tester.tapAt(tester.getTopLeft(canvas) + const Offset(10, 10));
+      await tester.pumpAndSettle(kDoubleTapTimeout);
+      expect(c.selected, isNull);
+    });
+
+    testWidgets('a double tap removes a mark with any tool; the eraser removes what it touches', (tester) async {
+      await pump(tester);
+      await tester.tap(find.byKey(const ValueKey('review-draw')));
+      await tester.pumpAndSettle();
+      final c = drawing(tester);
+      final center = tester.getCenter(find.byKey(const ValueKey('review-canvas')));
+      await tester.dragFrom(center, const Offset(80, 0));
+      await tester.dragFrom(center + const Offset(0, 100), const Offset(80, 0));
+      await tester.pumpAndSettle();
+      expect(c.strokes, hasLength(2));
+
+      Future<void> doubleTap(Offset at) async {
+        await tester.tapAt(at);
+        await tester.pump(const Duration(milliseconds: 50));
+        await tester.tapAt(at);
+        await tester.pumpAndSettle();
+      }
+
+      await doubleTap(center + const Offset(40, 0));
+      expect(c.strokes, hasLength(1));
+      expect(c.strokes.single.points.first.dy, greaterThan(0.5));
+      // Away from the marks a double tap does nothing.
+      await doubleTap(center + const Offset(40, -100));
+      expect(c.strokes, hasLength(1));
+
+      await tester.tap(find.byKey(const ValueKey('draw-tool-eraser')));
+      await tester.dragFrom(center + const Offset(40, 60), const Offset(0, 80));
+      await tester.pumpAndSettle();
+      expect(c.isEmpty, isTrue);
+      // An eraser drag adds nothing, and Undo brings back what it removed.
+      await tapTooltip(tester, 'Undo');
+      expect(c.strokes, hasLength(1));
+      await tapTooltip(tester, 'Undo');
+      expect(c.strokes, hasLength(2));
     });
 
     testWidgets('play leaves draw mode and drops the drawing', (tester) async {
