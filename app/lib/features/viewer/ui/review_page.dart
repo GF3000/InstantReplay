@@ -11,18 +11,8 @@ import '../tags/tags.dart';
 import 'clip_export_actions.dart';
 import 'clip_list.dart';
 import 'telestrator.dart';
+import 'video_zoom.dart';
 
-/// Clip review (SPEC §5.1.5, §5.5, §6, UX §3.4): full screen, autoplay loop, 0.25×/0.5×/1×, ±1 frame,
-/// scrub, change tag, and Download on web or Save to gallery / Share on Android.
-///
-/// In a playlist ([ReviewPlaylist], the library's "Watch all") each clip plays once and the next one
-/// follows; otherwise the clip loops.
-///
-/// Draw mode pauses on the frame and lets the coach draw over it ([TelestratorCanvas]). The drawing
-/// is not kept: Done, Play or a frame step clears it.
-///
-/// Frame stepping is exact: frames come from the clip's own timestamps ([FrameTimeline]) and each
-/// step seeks to a position the platform player resolves to that frame ([SeekRule]).
 /// Where a clip sits in a "Watch all" run, and how to move on.
 @immutable
 class ReviewPlaylist {
@@ -51,6 +41,20 @@ class ReviewPlaylist {
   bool get isLast => index == length - 1;
 }
 
+/// Clip review (SPEC §5.1.5, §5.5, §6, UX §3.4): full screen, autoplay loop, 0.25×/0.5×/1×, ±1 frame,
+/// scrub, change tag, and Download on web or Save to gallery / Share on Android.
+///
+/// In a playlist ([ReviewPlaylist], the library's "Watch all") each clip plays once and the next one
+/// follows; otherwise the clip loops.
+///
+/// Draw mode pauses on the frame and lets the coach draw over it ([TelestratorCanvas]). The drawing
+/// is not kept: Done, Play or a frame step clears it.
+///
+/// Two fingers zoom the video and pan it, playing, paused or drawing (the drawing zooms with it);
+/// one finger still scrubs, or draws.
+///
+/// Frame stepping is exact: frames come from the clip's own timestamps ([FrameTimeline]) and each
+/// step seeks to a position the platform player resolves to that frame ([SeekRule]).
 class ReviewPage extends ConsumerStatefulWidget {
   const ReviewPage({
     super.key,
@@ -116,6 +120,17 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
   final _drawing = TelestratorController();
   bool _drawMode = false;
 
+  final _zoom = VideoZoomController();
+
+  /// The video's box, unzoomed: pinch points are taken in it.
+  final _videoBox = GlobalKey();
+
+  /// What the current gesture on the video does, once known; [_multiTouch] once two fingers were
+  /// down (the finger left after a pinch does not scrub).
+  _VideoGesture? _gesture;
+  bool _multiTouch = false;
+  int _fingers = 0;
+
   @override
   void initState() {
     super.initState();
@@ -158,6 +173,7 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
     _platform.dispose();
     _player.dispose();
     _drawing.dispose();
+    _zoom.dispose();
     super.dispose();
   }
 
@@ -246,6 +262,53 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
     _seekCoalesced((from) => _timeline!.step(previous?.call(from) ?? from, frames));
   }
 
+  RenderBox? get _videoRender => _videoBox.currentContext?.findRenderObject() as RenderBox?;
+
+  void _zoomStart(Offset global) {
+    if (_videoRender case final box?) _zoom.begin(box.globalToLocal(global));
+  }
+
+  void _zoomUpdate(Offset global, double scale) {
+    if (_videoRender case final box?) _zoom.update(box.globalToLocal(global), scale, box.size);
+  }
+
+  /// One finger scrubs (once it moves sideways); two zoom.
+  void _gestureStart(ScaleStartDetails d) {
+    if (d.pointerCount > 1) {
+      _multiTouch = true;
+      _gesture = _VideoGesture.zoom;
+      _zoomStart(d.focalPoint);
+    } else {
+      _gesture = _multiTouch ? _VideoGesture.none : _VideoGesture.undecided;
+    }
+  }
+
+  void _gestureUpdate(ScaleUpdateDetails d) {
+    switch (_gesture) {
+      case _VideoGesture.undecided:
+        final m = d.focalPointDelta;
+        if (m == Offset.zero) return;
+        if (m.dx.abs() >= m.dy.abs()) {
+          _gesture = _VideoGesture.scrub;
+          _scrubStart();
+          _dragBy(m.dx);
+        } else {
+          _gesture = _VideoGesture.none;
+        }
+      case _VideoGesture.scrub:
+        _dragBy(d.focalPointDelta.dx);
+      case _VideoGesture.zoom:
+        _zoomUpdate(d.focalPoint, d.scale);
+      case _VideoGesture.none || null:
+        break;
+    }
+  }
+
+  void _gestureEnd(ScaleEndDetails d) {
+    if (_gesture == _VideoGesture.scrub) _scrubEnd();
+    _gesture = null;
+  }
+
   /// Scrub events arrive faster than seeks finish: only the latest target is shown.
   int Function(int from)? _scrubTarget;
 
@@ -316,24 +379,65 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
                   final gestures = v.isInitialized && !_drawMode;
                   return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   Expanded(
-                    child: GestureDetector(
-                      key: const ValueKey('review-video'),
-                      behavior: HitTestBehavior.opaque,
-                      onTap: gestures ? _togglePlay : null,
-                      onHorizontalDragStart: gestures ? (_) => _scrubStart() : null,
-                      onHorizontalDragUpdate: gestures ? (d) => _dragBy(d.delta.dx) : null,
-                      onHorizontalDragEnd: gestures ? (_) => _scrubEnd() : null,
-                      onHorizontalDragCancel: gestures ? _scrubEnd : null,
-                      child: Center(
-                        child: v.isInitialized
-                            ? AspectRatio(
-                                aspectRatio: v.aspectRatio,
-                                child: Stack(fit: StackFit.expand, children: [
-                                  VideoPlayer(_player),
-                                  if (_drawMode) TelestratorCanvas(controller: _drawing, enabled: true),
-                                ]),
-                              )
-                            : const CircularProgressIndicator(),
+                    child: Listener(
+                      onPointerDown: (_) {
+                        if (_fingers++ == 0) _multiTouch = false;
+                      },
+                      onPointerUp: (_) => _fingers--,
+                      onPointerCancel: (_) => _fingers--,
+                      child: GestureDetector(
+                        key: const ValueKey('review-video'),
+                        behavior: HitTestBehavior.opaque,
+                        onTap: gestures ? _togglePlay : null,
+                        onScaleStart: gestures ? _gestureStart : null,
+                        onScaleUpdate: gestures ? _gestureUpdate : null,
+                        onScaleEnd: gestures ? _gestureEnd : null,
+                        child: Center(
+                          child: v.isInitialized
+                              ? AspectRatio(
+                                  key: _videoBox,
+                                  aspectRatio: v.aspectRatio,
+                                  child: Stack(fit: StackFit.expand, children: [
+                                    ClipRect(
+                                      child: ListenableBuilder(
+                                        listenable: _zoom,
+                                        builder: (context, child) => Transform(transform: _zoom.matrix, child: child),
+                                        child: Stack(fit: StackFit.expand, children: [
+                                          VideoPlayer(_player),
+                                          if (_drawMode)
+                                            TelestratorCanvas(
+                                              controller: _drawing,
+                                              enabled: true,
+                                              onZoomStart: _zoomStart,
+                                              onZoomUpdate: _zoomUpdate,
+                                            ),
+                                        ]),
+                                      ),
+                                    ),
+                                    ListenableBuilder(
+                                      listenable: _zoom,
+                                      builder: (context, _) => !_zoom.zoomed
+                                          ? const SizedBox.shrink()
+                                          : Align(
+                                              alignment: Alignment.topRight,
+                                              child: Padding(
+                                                padding: const EdgeInsets.all(8),
+                                                child: Tooltip(
+                                                  message: l10n.viewerReviewZoomReset,
+                                                  child: FilledButton.tonalIcon(
+                                                    key: const ValueKey('review-zoom-reset'),
+                                                    onPressed: _zoom.reset,
+                                                    icon: const Icon(Icons.zoom_out_map),
+                                                    label: Text('×${_zoom.scale.toStringAsFixed(1)}'),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                    ),
+                                  ]),
+                                )
+                              : const CircularProgressIndicator(),
+                        ),
                       ),
                     ),
                   ),
@@ -427,3 +531,5 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
     return s.toStringAsFixed(1);
   }
 }
+
+enum _VideoGesture { undecided, scrub, zoom, none }

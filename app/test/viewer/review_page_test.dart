@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/gestures.dart';
@@ -150,6 +151,63 @@ void main() {
     await tester.tap(find.textContaining('0.25'));
     await tester.pumpAndSettle();
     expect(video.value.playbackSpeed, 0.25);
+  });
+
+  group('zoom', () {
+    /// Two fingers from 40 px apart to 120 px apart about [at] (the zoom counts from where the
+    /// pinch got past the slop, so it ends between ×1 and ×3).
+    Future<void> pinchOut(WidgetTester tester, Offset at) async {
+      final a = await tester.startGesture(at - const Offset(20, 0), pointer: 1);
+      final b = await tester.startGesture(at + const Offset(20, 0), pointer: 2);
+      for (var i = 1; i <= 10; i++) {
+        await a.moveTo(at - Offset(20 + 4.0 * i, 0));
+        await b.moveTo(at + Offset(20 + 4.0 * i, 0));
+        await tester.pump();
+      }
+      await a.up();
+      await b.up();
+      await tester.pumpAndSettle();
+    }
+
+    double zoom(WidgetTester tester) => double.parse(
+      tester
+          .widget<Text>(
+            find.descendant(of: find.byKey(const ValueKey('review-zoom-reset')), matching: find.byType(Text)),
+          )
+          .data!
+          .substring(1),
+    );
+
+    testWidgets('a pinch zooms the playing video without scrubbing; the button resets it', (tester) async {
+      await pump(tester);
+      expect(find.byKey(const ValueKey('review-zoom-reset')), findsNothing);
+      final seeks = video.seeks.length;
+      await pinchOut(tester, tester.getCenter(find.byKey(const ValueKey('review-video'))));
+      expect(zoom(tester), inInclusiveRange(1.4, 3));
+      expect(video.value.isPlaying, isTrue);
+      expect(video.seeks, hasLength(seeks));
+
+      await tester.tap(find.byKey(const ValueKey('review-zoom-reset')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('review-zoom-reset')), findsNothing);
+    });
+
+    testWidgets('while drawing, a pinch with nothing selected zooms, and draws nothing', (tester) async {
+      await pump(tester);
+      await tester.tap(find.byKey(const ValueKey('review-draw')));
+      await tester.pumpAndSettle();
+      await pinchOut(tester, tester.getCenter(find.byKey(const ValueKey('review-canvas'))));
+      final zoomed = zoom(tester);
+      expect(zoomed, inInclusiveRange(1.4, 3));
+      final toolbar = tester.widget<TelestratorToolbar>(find.byType(TelestratorToolbar));
+      expect(toolbar.controller.isEmpty, isTrue);
+      expect(toolbar.controller.canUndo, isFalse);
+
+      // The zoom stays when draw mode ends.
+      await tester.tap(find.byKey(const ValueKey('draw-done')));
+      await tester.pumpAndSettle();
+      expect(zoom(tester), zoomed);
+    });
   });
 
   group('watch all', () {
@@ -335,6 +393,70 @@ void main() {
       expect(c.strokes, hasLength(1));
       await tapTooltip(tester, 'Undo');
       expect(c.strokes, hasLength(2));
+    });
+
+    testWidgets('a pinch scales and turns the selected mark; handles move an end or a corner', (tester) async {
+      await pump(tester);
+      await tester.tap(find.byKey(const ValueKey('review-draw')));
+      await tester.pumpAndSettle();
+      final c = drawing(tester);
+      final canvas = find.byKey(const ValueKey('review-canvas'));
+      final size = tester.getSize(canvas);
+      final center = tester.getCenter(canvas);
+      Offset px(Offset rel) => Offset(rel.dx * size.width, rel.dy * size.height);
+
+      // A horizontal arrow, 100 px long, from the centre.
+      await tester.dragFrom(center, const Offset(100, 0));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('draw-tool-select')));
+      await tester.tapAt(center + const Offset(50, 0));
+      await tester.pumpAndSettle(kDoubleTapTimeout);
+      expect(c.selected, isNotNull);
+
+      // Fingers 40 px apart turn a quarter clockwise and end 80 px apart.
+      final mid = center + const Offset(50, 0);
+      final a = await tester.startGesture(mid - const Offset(20, 0), pointer: 1);
+      final b = await tester.startGesture(mid + const Offset(20, 0), pointer: 2);
+      for (var i = 1; i <= 10; i++) {
+        final t = i / 10, angle = t * math.pi / 2, r = 20 + 20 * t;
+        final v = Offset(math.cos(angle), math.sin(angle)) * r;
+        await a.moveTo(mid - v);
+        await b.moveTo(mid + v);
+        await tester.pump();
+      }
+      await a.up();
+      await b.up();
+      await tester.pumpAndSettle();
+      final arrow = c.strokes.single;
+      final d = px(arrow.points.last) - px(arrow.points.first);
+      expect(d.distance, greaterThan(130));
+      expect(math.atan2(d.dy, d.dx), greaterThan(math.pi / 4)); // Turned clockwise, towards down.
+      expect(arrow.points.length, 2);
+      await tapTooltip(tester, 'Undo');
+      expect(px(c.strokes.single.points.last) - px(c.strokes.single.points.first), const Offset(100, 0));
+
+      // The arrow's tip handle: only the tip moves.
+      await tester.tapAt(center + const Offset(50, 0));
+      await tester.pumpAndSettle(kDoubleTapTimeout);
+      await tester.dragFrom(center + const Offset(100, 0), const Offset(0, 60));
+      await tester.pumpAndSettle();
+      expect(px(c.strokes.single.points.first), offsetMoreOrLessEquals(center - tester.getTopLeft(canvas)));
+      expect(px(c.strokes.single.points.last), offsetMoreOrLessEquals(center - tester.getTopLeft(canvas) + const Offset(100, 60)));
+
+      // A circle's corner handle: the opposite corner stays.
+      await tester.tap(find.byKey(const ValueKey('draw-tool-circle')));
+      await tester.dragFrom(center - const Offset(150, 100), const Offset(60, 40));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('draw-tool-select')));
+      await tester.tapAt(center - const Offset(120, 100));
+      await tester.pumpAndSettle(kDoubleTapTimeout);
+      expect(c.selected?.tool, TelestratorTool.circle);
+      await tester.dragFrom(center - const Offset(90, 60), const Offset(40, 20));
+      await tester.pumpAndSettle();
+      final circle = c.strokes.last;
+      final origin = center - tester.getTopLeft(canvas);
+      expect(px(circle.points.first), offsetMoreOrLessEquals(origin - const Offset(150, 100)));
+      expect(px(circle.points.last), offsetMoreOrLessEquals(origin - const Offset(50, 40)));
     });
 
     testWidgets('play leaves draw mode and drops the drawing', (tester) async {

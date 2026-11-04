@@ -92,6 +92,7 @@
   "viewerClipRetry": "Reintentar",
   "viewerClipDownload": "Descargar",
   "viewerReviewPrevFrame": "Fotograma anterior",
+  "viewerReviewZoomReset": "Quitar zoom",
   "viewerReviewNextFrame": "Fotograma siguiente",
   "viewerDraw": "Dibujar",
   "viewerDrawColor": "Color",
