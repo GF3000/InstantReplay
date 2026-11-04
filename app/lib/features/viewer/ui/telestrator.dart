@@ -20,16 +20,19 @@ enum TelestratorTool {
 
 /// One mark. Points are fractions of the video's width and height, so a mark stays on the same
 /// spot of the picture when the screen rotates or the layout changes. Shapes keep two points:
-/// start and end (the ellipse fits the box between them).
+/// start and end (the ellipse fits the box between them, turned by [angle] about its centre).
 class TelestratorStroke {
-  TelestratorStroke(this.color, this.points, {this.tool = TelestratorTool.pen, this.thick = false});
+  TelestratorStroke(this.color, this.points, {this.tool = TelestratorTool.pen, this.thick = false, this.angle = 0});
 
   Color color;
   final TelestratorTool tool;
   bool thick;
   final List<Offset> points;
 
-  TelestratorStroke copy() => TelestratorStroke(color, [...points], tool: tool, thick: thick);
+  /// Radians, clockwise on screen; ellipses only (other marks turn their points).
+  double angle;
+
+  TelestratorStroke copy() => TelestratorStroke(color, [...points], tool: tool, thick: thick, angle: angle);
 }
 
 /// The drawing on the paused frame (simple telestrator, v0.3.3): not saved and not exported, gone
@@ -101,6 +104,14 @@ class TelestratorController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// The mark being drawn is dropped (a second finger turned the drag into a pinch).
+  void cancel() {
+    if (_strokes.isEmpty || _history.isEmpty) return;
+    _strokes.removeLast();
+    _history.removeLast();
+    notifyListeners();
+  }
+
   /// The finger lifted: a shape that never got a size is dropped.
   void end() {
     if (_strokes.isEmpty) return;
@@ -118,7 +129,7 @@ class TelestratorController extends ChangeNotifier {
     for (final s in _strokes.reversed) {
       final pts = [for (final q in s.points) Offset(q.dx * size.width, q.dy * size.height)];
       final outline = switch (s.tool) {
-        TelestratorTool.circle when pts.length > 1 => _ellipse(Rect.fromPoints(pts.first, pts.last)),
+        TelestratorTool.circle when pts.length > 1 => _ellipse(s, size),
         _ => pts,
       };
       // Generous: a finger is wide and a thin arrow is easy to miss.
@@ -164,6 +175,87 @@ class TelestratorController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// The selected mark's handles (pixels on a video [size] big): both ends of a line or arrow, the
+  /// corner of an ellipse's box; none for a freehand line.
+  List<Offset> handles(Size size) {
+    final s = _selected;
+    if (s == null || s.points.length < 2) return const [];
+    return switch (s.tool) {
+      TelestratorTool.line || TelestratorTool.arrow => [_px(s.points.first, size), _px(s.points.last, size)],
+      TelestratorTool.circle => [_box(s, size).corner],
+      _ => const [],
+    };
+  }
+
+  /// The handle within reach of [point] (a fraction of [size]), as an index into [handles].
+  int? handleAt(Offset point, Size size) {
+    final p = _px(point, size);
+    final hs = handles(size);
+    for (var i = hs.length - 1; i >= 0; i--) {
+      if ((hs[i] - p).distance <= 24) return i;
+    }
+    return null;
+  }
+
+  /// Drags handle [index] of the selected mark to [point]: a line or arrow end goes there; an
+  /// ellipse's corner goes there with the opposite corner kept in place. [first] starts the drag.
+  void dragHandle(int index, Offset point, Size size, {bool first = false}) {
+    final s = _selected;
+    if (s == null || s.points.length < 2) return;
+    if (first) _save();
+    if (s.tool == TelestratorTool.circle) {
+      final b = _box(s, size);
+      final fixed = b.center * 2 - b.corner;
+      final q = _px(point, size);
+      final center = (fixed + q) / 2;
+      final half = _turn((q - fixed) / 2, -s.angle);
+      _setBox(s, center, half, size);
+    } else if (index == 0) {
+      s.points.first = point;
+    } else {
+      s.points.last = point;
+    }
+    notifyListeners();
+  }
+
+  /// Pinch on the selected mark: the fingers moved from [from] to [to] (fractions of [size]), [scale]
+  /// times further apart and turned by [rotation] radians since the last update. [first] starts it.
+  void transformSelected(Offset from, Offset to, double scale, double rotation, Size size, {bool first = false}) {
+    final s = _selected;
+    if (s == null) return;
+    if (first) _save();
+    final f0 = _px(from, size), f1 = _px(to, size);
+    Offset map(Offset px) => f1 + _turn(px - f0, rotation) * scale;
+    if (s.tool == TelestratorTool.circle && s.points.length > 1) {
+      final b = _box(s, size);
+      s.angle += rotation;
+      _setBox(s, map(b.center), b.half * scale, size);
+    } else {
+      for (var i = 0; i < s.points.length; i++) {
+        s.points[i] = _rel(map(_px(s.points[i], size)), size);
+      }
+    }
+    notifyListeners();
+  }
+
+  static Offset _px(Offset rel, Size size) => Offset(rel.dx * size.width, rel.dy * size.height);
+  static Offset _rel(Offset px, Size size) => Offset(px.dx / size.width, px.dy / size.height);
+  static Offset _turn(Offset v, double a) =>
+      Offset(v.dx * math.cos(a) - v.dy * math.sin(a), v.dx * math.sin(a) + v.dy * math.cos(a));
+
+  /// An ellipse's box in pixels: centre, half size before turning, and the end corner after it.
+  static ({Offset center, Offset half, Offset corner}) _box(TelestratorStroke s, Size size) {
+    final a = _px(s.points.first, size), b = _px(s.points.last, size);
+    final center = (a + b) / 2, half = (b - a) / 2;
+    return (center: center, half: half, corner: center + _turn(half, s.angle));
+  }
+
+  static void _setBox(TelestratorStroke s, Offset center, Offset half, Size size) {
+    s.points
+      ..first = _rel(center - half, size)
+      ..last = _rel(center + half, size);
+  }
+
   void deleteSelected() {
     final s = _selected;
     if (s == null) return;
@@ -205,10 +297,14 @@ class TelestratorController extends ChangeNotifier {
     return thick ? thin * 2 : thin;
   }
 
-  static List<Offset> _ellipse(Rect r) => [
-    for (var i = 0; i <= 48; i++)
-      r.center + Offset(math.cos(i * math.pi / 24) * r.width / 2, math.sin(i * math.pi / 24) * r.height / 2),
-  ];
+  static List<Offset> _ellipse(TelestratorStroke s, Size size) {
+    final b = _box(s, size);
+    return [
+      for (var i = 0; i <= 48; i++)
+        b.center +
+            _turn(Offset(math.cos(i * math.pi / 24) * b.half.dx, math.sin(i * math.pi / 24) * b.half.dy), s.angle),
+    ];
+  }
 
   /// From [p] to the nearest point of the polyline [pts].
   static double _distance(Offset p, List<Offset> pts) {
@@ -225,22 +321,44 @@ class TelestratorController extends ChangeNotifier {
 }
 
 /// Draws [controller]'s strokes over the video and, when [enabled], works on them with a finger:
-/// draws, selects and moves, or erases (by tool); a double tap removes a mark with any tool.
+/// draws, selects and moves (or drags a handle), or erases, by tool; a double tap removes a mark
+/// with any tool. Two fingers pinch the selected mark (scale, turn, move) or, with none selected,
+/// zoom the video ([onZoomStart], [onZoomUpdate], in global coordinates).
 /// Sized to the video itself (inside its AspectRatio).
 class TelestratorCanvas extends StatefulWidget {
-  const TelestratorCanvas({super.key, required this.controller, required this.enabled});
+  const TelestratorCanvas({
+    super.key,
+    required this.controller,
+    required this.enabled,
+    this.onZoomStart,
+    this.onZoomUpdate,
+  });
 
   final TelestratorController controller;
   final bool enabled;
+  final ValueChanged<Offset>? onZoomStart;
+  final void Function(Offset focal, double scale)? onZoomUpdate;
 
   @override
   State<TelestratorCanvas> createState() => _TelestratorCanvasState();
 }
 
+enum _Gesture { draw, move, handle, erase, pinch, zoom, none }
+
 class _TelestratorCanvasState extends State<TelestratorCanvas> {
-  /// A select drag that started on a mark: it carries it.
-  bool _moving = false;
+  _Gesture? _gesture;
+
+  /// Two fingers were down since the first one touched: the finger left after a pinch does nothing.
+  bool _multi = false;
+  int _fingers = 0;
+  int _handle = 0;
+  Offset _last = Offset.zero;
+  double _lastScale = 1;
+  double _lastRotation = 0;
   Offset? _doubleTapAt;
+
+  /// Where the finger went down: a drag only starts past the slop, and should act from here.
+  Offset? _down;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -249,45 +367,106 @@ class _TelestratorCanvasState extends State<TelestratorCanvas> {
       final size = box.biggest;
       final paint = CustomPaint(painter: _StrokePainter(c), size: size);
       if (!widget.enabled) return paint;
-      Offset rel(Offset p) => Offset((p.dx / size.width).clamp(0, 1), (p.dy / size.height).clamp(0, 1));
-      return GestureDetector(
-        key: const ValueKey('review-canvas'),
-        behavior: HitTestBehavior.opaque,
-        onPanStart: (d) {
-          final p = rel(d.localPosition);
-          switch (c.tool) {
-            case TelestratorTool.select:
-              _moving = c.select(p, size);
-              if (_moving) c.moveSelected(Offset.zero, first: true);
-            case TelestratorTool.eraser:
-              c.eraseAt(p, size, first: true);
-            case _:
-              c.begin(p);
+      Offset rel(Offset p) => Offset(p.dx / size.width, p.dy / size.height);
+      Offset inside(Offset p) => Offset((p.dx / size.width).clamp(0, 1), (p.dy / size.height).clamp(0, 1));
+      return Listener(
+        onPointerDown: (e) {
+          if (_fingers++ == 0) {
+            _multi = false;
+            _down = e.localPosition;
           }
         },
-        onPanUpdate: (d) {
-          switch (c.tool) {
-            case TelestratorTool.select:
-              if (_moving) c.moveSelected(Offset(d.delta.dx / size.width, d.delta.dy / size.height));
-            case TelestratorTool.eraser:
-              c.eraseAt(rel(d.localPosition), size);
-            case _:
-              c.extend(rel(d.localPosition));
-          }
-        },
-        onPanEnd: (_) {
-          _moving = false;
-          if (c.tool.draws) c.end();
-        },
-        onTapUp: (d) {
-          if (c.tool == TelestratorTool.select) c.select(rel(d.localPosition), size);
-          if (c.tool == TelestratorTool.eraser) c.eraseAt(rel(d.localPosition), size, first: true);
-        },
-        onDoubleTapDown: (d) => _doubleTapAt = rel(d.localPosition),
-        onDoubleTap: () {
-          if (_doubleTapAt case final p?) c.eraseAt(p, size, first: true);
-        },
-        child: paint,
+        onPointerUp: (_) => _fingers--,
+        onPointerCancel: (_) => _fingers--,
+        child: GestureDetector(
+          key: const ValueKey('review-canvas'),
+          behavior: HitTestBehavior.opaque,
+          onScaleStart: (d) {
+            final p = d.localFocalPoint;
+            _last = p;
+            _lastScale = 1;
+            _lastRotation = 0;
+            if (d.pointerCount > 1) {
+              _multi = true;
+              if (c.selected != null) {
+                _gesture = _Gesture.pinch;
+                c.transformSelected(rel(p), rel(p), 1, 0, size, first: true);
+              } else if (widget.onZoomStart case final start?) {
+                _gesture = _Gesture.zoom;
+                start(d.focalPoint);
+              } else {
+                _gesture = _Gesture.none;
+              }
+              return;
+            }
+            if (_multi) {
+              _gesture = _Gesture.none;
+              return;
+            }
+            final down = _down ?? p;
+            switch (c.tool) {
+              case TelestratorTool.select:
+                if (c.handleAt(rel(down), size) case final h?) {
+                  _gesture = _Gesture.handle;
+                  _handle = h;
+                  c.dragHandle(h, rel(p), size, first: true);
+                } else if (c.select(rel(down), size)) {
+                  // A drag picks up the mark under the finger and carries it.
+                  _gesture = _Gesture.move;
+                  c.moveSelected(rel(p - down), first: true);
+                } else {
+                  _gesture = _Gesture.none;
+                }
+              case TelestratorTool.eraser:
+                _gesture = _Gesture.erase;
+                c
+                  ..eraseAt(inside(down), size, first: true)
+                  ..eraseAt(inside(p), size);
+              case _:
+                _gesture = _Gesture.draw;
+                c
+                  ..begin(inside(down))
+                  ..extend(inside(p));
+            }
+          },
+          onScaleUpdate: (d) {
+            final p = d.localFocalPoint;
+            switch (_gesture) {
+              case _Gesture.draw:
+                c.extend(inside(p));
+              case _Gesture.move:
+                c.moveSelected(rel(p - _last));
+              case _Gesture.handle:
+                c.dragHandle(_handle, rel(p), size);
+              case _Gesture.erase:
+                c.eraseAt(inside(p), size);
+              case _Gesture.pinch:
+                c.transformSelected(rel(_last), rel(p), d.scale / _lastScale, d.rotation - _lastRotation, size);
+              case _Gesture.zoom:
+                widget.onZoomUpdate?.call(d.focalPoint, d.scale);
+              case _Gesture.none || null:
+                break;
+            }
+            _last = p;
+            _lastScale = d.scale;
+            _lastRotation = d.rotation;
+          },
+          onScaleEnd: (d) {
+            // Fingers still down: a second one arrived (the mark being drawn was not meant) or one of
+            // two lifted.
+            if (_gesture == _Gesture.draw) d.pointerCount > 0 ? c.cancel() : c.end();
+            _gesture = null;
+          },
+          onTapUp: (d) {
+            if (c.tool == TelestratorTool.select) c.select(inside(d.localPosition), size);
+            if (c.tool == TelestratorTool.eraser) c.eraseAt(inside(d.localPosition), size, first: true);
+          },
+          onDoubleTapDown: (d) => _doubleTapAt = inside(d.localPosition),
+          onDoubleTap: () {
+            if (_doubleTapAt case final p?) c.eraseAt(p, size, first: true);
+          },
+          child: paint,
+        ),
       );
     },
   );
@@ -306,13 +485,26 @@ class _StrokePainter extends CustomPainter {
       // The selected mark sits on a halo that stands out from its own colour.
       if (identical(s, controller.selected)) {
         final halo = s.color.computeLuminance() > 0.5 ? Colors.black : Colors.white;
-        _mark(canvas, s.tool, pts, width + 10, halo.withValues(alpha: 0.6));
+        _mark(canvas, s, pts, width + 10, halo.withValues(alpha: 0.6));
       }
-      _mark(canvas, s.tool, pts, width, s.color);
+      _mark(canvas, s, pts, width, s.color);
+    }
+    // Handles to drag: white dots with a dark rim, readable on any picture.
+    for (final h in controller.handles(size)) {
+      canvas
+        ..drawCircle(h, 10, Paint()..color = Colors.white)
+        ..drawCircle(
+          h,
+          10,
+          Paint()
+            ..color = Colors.black87
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2,
+        );
     }
   }
 
-  static void _mark(Canvas canvas, TelestratorTool tool, List<Offset> pts, double width, Color color) {
+  static void _mark(Canvas canvas, TelestratorStroke s, List<Offset> pts, double width, Color color) {
     final paint = Paint()
       ..color = color
       ..strokeWidth = width
@@ -323,14 +515,20 @@ class _StrokePainter extends CustomPainter {
       canvas.drawCircle(pts.single, width / 2, paint..style = PaintingStyle.fill);
       return;
     }
-    switch (tool) {
+    switch (s.tool) {
       case TelestratorTool.line:
         canvas.drawLine(pts.first, pts.last, paint);
       case TelestratorTool.arrow:
         canvas.drawLine(pts.first, pts.last, paint);
         _arrowHead(canvas, pts.first, pts.last, width, paint);
       case TelestratorTool.circle:
-        canvas.drawOval(Rect.fromPoints(pts.first, pts.last), paint);
+        final box = Rect.fromPoints(pts.first, pts.last);
+        canvas
+          ..save()
+          ..translate(box.center.dx, box.center.dy)
+          ..rotate(s.angle)
+          ..drawOval(Rect.fromCenter(center: Offset.zero, width: box.width, height: box.height), paint)
+          ..restore();
       case _:
         final path = Path()..moveTo(pts.first.dx, pts.first.dy);
         for (final p in pts.skip(1)) {

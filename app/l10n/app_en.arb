@@ -231,6 +231,7 @@
   "viewerClipRetry": "Retry",
   "viewerClipDownload": "Download",
   "viewerReviewPrevFrame": "Previous frame",
+  "viewerReviewZoomReset": "Reset zoom",
   "viewerReviewNextFrame": "Next frame",
   "viewerDraw": "Draw",
   "viewerDrawColor": "Colour",

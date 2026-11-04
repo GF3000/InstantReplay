@@ -340,6 +340,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get viewerReviewPrevFrame => 'Fotograma anterior';
 
   @override
+  String get viewerReviewZoomReset => 'Quitar zoom';
+
+  @override
   String get viewerReviewNextFrame => 'Fotograma siguiente';
 
   @override

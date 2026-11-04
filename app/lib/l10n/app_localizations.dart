@@ -650,6 +650,12 @@ abstract class AppLocalizations {
   /// **'Previous frame'**
   String get viewerReviewPrevFrame;
 
+  /// No description provided for @viewerReviewZoomReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset zoom'**
+  String get viewerReviewZoomReset;
+
   /// No description provided for @viewerReviewNextFrame.
   ///
   /// In en, this message translates to:
