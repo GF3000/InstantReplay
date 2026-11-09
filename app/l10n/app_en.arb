@@ -843,6 +843,18 @@
       "count": {"type": "int"}
     }
   },
+  "clipReserveTitle": "Replay reserve",
+  "clipReserveOff": "Off: the camera deletes each clip once it is on the tablet.",
+  "clipReserveHint": "{count, plural, =1{The camera keeps the last clip so it can go on air.} other{The camera keeps the last {count} clips so they can go on air.}}",
+  "clipReserveLess": "Fewer",
+  "clipReserveMore": "More",
+  "clipReserveDone": "Done",
+  "clipOnCamera": "On the camera",
+  "@clipReserveHint": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
   "scoreboardSet": "Set",
   "scoreboardVisible": "On screen",
   "scoreboardReset": "Reset",

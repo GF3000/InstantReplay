@@ -2174,6 +2174,48 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{A viewer is connected. Switching role stops the camera and disconnects it.} other{{count} viewers are connected. Switching role stops the camera and disconnects them.}}'**
   String switchRoleViewersBody(int count);
 
+  /// No description provided for @clipReserveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Replay reserve'**
+  String get clipReserveTitle;
+
+  /// No description provided for @clipReserveOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off: the camera deletes each clip once it is on the tablet.'**
+  String get clipReserveOff;
+
+  /// No description provided for @clipReserveHint.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{The camera keeps the last clip so it can go on air.} other{The camera keeps the last {count} clips so they can go on air.}}'**
+  String clipReserveHint(int count);
+
+  /// No description provided for @clipReserveLess.
+  ///
+  /// In en, this message translates to:
+  /// **'Fewer'**
+  String get clipReserveLess;
+
+  /// No description provided for @clipReserveMore.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get clipReserveMore;
+
+  /// No description provided for @clipReserveDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get clipReserveDone;
+
+  /// No description provided for @clipOnCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'On the camera'**
+  String get clipOnCamera;
+
   /// No description provided for @scoreboardSet.
   ///
   /// In en, this message translates to:

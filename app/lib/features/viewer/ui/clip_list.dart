@@ -242,12 +242,29 @@ class ClipTile extends ConsumerWidget {
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
                       ),
-                      Text(
-                        '${l10n.viewerClipDuration(clipSeconds(clip))} · $state',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: stateColor),
-                      ),
+                      Row(children: [
+                        Flexible(
+                          child: Text(
+                            '${l10n.viewerClipDuration(clipSeconds(clip))} · $state',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: stateColor),
+                          ),
+                        ),
+                        // Still on the Camera: it can go on air (SPEC §12.6).
+                        if (clip.onCamera && clip.phase == SessionClipPhase.ready) ...[
+                          const SizedBox(width: 6),
+                          Tooltip(
+                            message: l10n.clipOnCamera,
+                            child: Icon(
+                              Icons.videocam_outlined,
+                              key: ValueKey('clip-on-camera-${clip.requestId}'),
+                              size: 16,
+                              color: scheme.primary,
+                            ),
+                          ),
+                        ],
+                      ]),
                     ],
                   ),
                 ),

@@ -11,6 +11,8 @@ import java.nio.file.StandardCopyOption
  *
  * `id  requestId  state  createdAtMs  bytes  durationMs  fragments  assemblyMs  extraPreRollMs  sha256`
  *
+ * An `ACKED` line is a clip in the replay reserve (SPEC §3.4); other acked clips are deleted.
+ *
  * Empty field = null. `\`, tab, CR and LF inside fields are backslash-escaped. The clip path is not
  * stored; it is always `<dir>/<id>.mp4`. Written to a temp file and atomically renamed.
  * (Hand-written because `org.json` is a stub in JVM unit tests.)
@@ -60,6 +62,7 @@ internal class OutboxIndex(private val file: File) {
             assemblyMs = long(7),
             extraPreRollMs = long(8),
             sha256 = f[9].takeIf { it.isNotEmpty() },
+            reserved = if (f[2] == ClipState.ACKED.name) true else null,
         )
     }
 

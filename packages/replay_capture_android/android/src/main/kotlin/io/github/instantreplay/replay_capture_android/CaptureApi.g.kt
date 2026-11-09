@@ -488,7 +488,9 @@ data class ClipInfo (
   val fragments: Long? = null,
   val assemblyMs: Long? = null,
   val extraPreRollMs: Long? = null,
-  val sha256: String? = null
+  val sha256: String? = null,
+  /** Acknowledged but kept in the replay reserve (SPEC §3.4): still downloadable and airable. */
+  val reserved: Boolean? = null
 )
  {
   companion object {
@@ -504,7 +506,8 @@ data class ClipInfo (
       val assemblyMs = pigeonVar_list[8] as Long?
       val extraPreRollMs = pigeonVar_list[9] as Long?
       val sha256 = pigeonVar_list[10] as String?
-      return ClipInfo(id, requestId, state, createdAtMs, path, bytes, durationMs, fragments, assemblyMs, extraPreRollMs, sha256)
+      val reserved = pigeonVar_list[11] as Boolean?
+      return ClipInfo(id, requestId, state, createdAtMs, path, bytes, durationMs, fragments, assemblyMs, extraPreRollMs, sha256, reserved)
     }
   }
   fun toList(): List<Any?> {
@@ -520,6 +523,7 @@ data class ClipInfo (
       assemblyMs,
       extraPreRollMs,
       sha256,
+      reserved,
     )
   }
   override fun equals(other: Any?): Boolean {
@@ -530,7 +534,7 @@ data class ClipInfo (
       return true
     }
     val other = other as ClipInfo
-    return CaptureApiPigeonUtils.deepEquals(this.id, other.id) && CaptureApiPigeonUtils.deepEquals(this.requestId, other.requestId) && CaptureApiPigeonUtils.deepEquals(this.state, other.state) && CaptureApiPigeonUtils.deepEquals(this.createdAtMs, other.createdAtMs) && CaptureApiPigeonUtils.deepEquals(this.path, other.path) && CaptureApiPigeonUtils.deepEquals(this.bytes, other.bytes) && CaptureApiPigeonUtils.deepEquals(this.durationMs, other.durationMs) && CaptureApiPigeonUtils.deepEquals(this.fragments, other.fragments) && CaptureApiPigeonUtils.deepEquals(this.assemblyMs, other.assemblyMs) && CaptureApiPigeonUtils.deepEquals(this.extraPreRollMs, other.extraPreRollMs) && CaptureApiPigeonUtils.deepEquals(this.sha256, other.sha256)
+    return CaptureApiPigeonUtils.deepEquals(this.id, other.id) && CaptureApiPigeonUtils.deepEquals(this.requestId, other.requestId) && CaptureApiPigeonUtils.deepEquals(this.state, other.state) && CaptureApiPigeonUtils.deepEquals(this.createdAtMs, other.createdAtMs) && CaptureApiPigeonUtils.deepEquals(this.path, other.path) && CaptureApiPigeonUtils.deepEquals(this.bytes, other.bytes) && CaptureApiPigeonUtils.deepEquals(this.durationMs, other.durationMs) && CaptureApiPigeonUtils.deepEquals(this.fragments, other.fragments) && CaptureApiPigeonUtils.deepEquals(this.assemblyMs, other.assemblyMs) && CaptureApiPigeonUtils.deepEquals(this.extraPreRollMs, other.extraPreRollMs) && CaptureApiPigeonUtils.deepEquals(this.sha256, other.sha256) && CaptureApiPigeonUtils.deepEquals(this.reserved, other.reserved)
   }
 
   override fun hashCode(): Int {
@@ -546,10 +550,11 @@ data class ClipInfo (
     result = 31 * result + CaptureApiPigeonUtils.deepHash(this.assemblyMs)
     result = 31 * result + CaptureApiPigeonUtils.deepHash(this.extraPreRollMs)
     result = 31 * result + CaptureApiPigeonUtils.deepHash(this.sha256)
+    result = 31 * result + CaptureApiPigeonUtils.deepHash(this.reserved)
     return result
   }
   override fun toString(): String {
-    return "ClipInfo(id=$id, requestId=$requestId, state=$state, createdAtMs=$createdAtMs, path=$path, bytes=$bytes, durationMs=$durationMs, fragments=$fragments, assemblyMs=$assemblyMs, extraPreRollMs=$extraPreRollMs, sha256=$sha256)"
+    return "ClipInfo(id=$id, requestId=$requestId, state=$state, createdAtMs=$createdAtMs, path=$path, bytes=$bytes, durationMs=$durationMs, fragments=$fragments, assemblyMs=$assemblyMs, extraPreRollMs=$extraPreRollMs, sha256=$sha256, reserved=$reserved)"
   }
 }
 
@@ -1298,8 +1303,13 @@ interface CaptureHostApi {
   /** Clips currently in the outbox (recording or ready). */
   fun listClips(): List<ClipInfo>
   fun getClip(id: String): ClipInfo?
-  /** Releases a clip after the Viewer verified it. Returns false if the hash does not match. */
+  /**
+   * Releases a clip after the Viewer verified it. Returns false if the hash does not match.
+   * With a replay reserve (SPEC §3.4) the clip is kept among the N most recent instead.
+   */
   fun ackClip(id: String, sha256: String): Boolean
+  /** Size of the replay reserve (0 = delete on ACK). Trims the reserve at once. */
+  fun setClipReserve(size: Long)
   /**
    * Send-only WebRTC offer for [viewerId]. Returned as soon as it is created; ICE candidates
    * follow through [CaptureEventsApi.onLiveIceCandidate] (trickle ICE).
@@ -1524,6 +1534,24 @@ interface CaptureHostApi {
             val sha256Arg = args[1] as String
             val wrapped: List<Any?> = try {
               listOf(api.ackClip(idArg, sha256Arg))
+            } catch (exception: Throwable) {
+              CaptureApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.replay_capture_android.CaptureHostApi.setClipReserve$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val sizeArg = args[0] as Long
+            val wrapped: List<Any?> = try {
+              api.setClipReserve(sizeArg)
+              listOf(null)
             } catch (exception: Throwable) {
               CaptureApiPigeonUtils.wrapError(exception)
             }

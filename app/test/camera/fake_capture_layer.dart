@@ -100,6 +100,15 @@ class FakeCaptureLayer implements CaptureLayer {
   Future<void> setZoom(double ratio) async => calls.add('zoom:$ratio');
 
   @override
+  Future<void> setClipReserve(int size) async {
+    calls.add('reserve:$size');
+    reserveSize = size;
+  }
+
+  /// Replay reserve (SPEC §3.4): acked clips keep their file while > 0.
+  int reserveSize = 0;
+
+  @override
   Future<ClipInfo> saveClip({required String requestId, required double preSeconds, double postSeconds = 0}) {
     calls.add('save:$preSeconds');
     final existing = outbox.values.where((c) => c.requestId == requestId).firstOrNull;
@@ -171,9 +180,11 @@ class FakeCaptureLayer implements CaptureLayer {
       requestId: clip.requestId,
       state: ClipState.acked,
       createdAtMs: clip.createdAtMs,
+      path: reserveSize > 0 ? clip.path : null,
       bytes: clip.bytes,
       durationMs: clip.durationMs,
       sha256: clip.sha256,
+      reserved: reserveSize > 0 ? true : null,
     );
     outbox[id] = acked;
     clipChangesController.add(acked);

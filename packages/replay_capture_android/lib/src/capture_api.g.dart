@@ -409,6 +409,7 @@ class ClipInfo {
     this.assemblyMs,
     this.extraPreRollMs,
     this.sha256,
+    this.reserved,
   });
 
   String id;
@@ -434,6 +435,9 @@ class ClipInfo {
 
   String? sha256;
 
+  /// Acknowledged but kept in the replay reserve (SPEC §3.4): still downloadable and airable.
+  bool? reserved;
+
   List<Object?> _toList() {
     return <Object?>[
       id,
@@ -447,6 +451,7 @@ class ClipInfo {
       assemblyMs,
       extraPreRollMs,
       sha256,
+      reserved,
     ];
   }
 
@@ -467,6 +472,7 @@ class ClipInfo {
       assemblyMs: result[8] as int?,
       extraPreRollMs: result[9] as int?,
       sha256: result[10] as String?,
+      reserved: result[11] as bool?,
     );
   }
 
@@ -479,7 +485,7 @@ class ClipInfo {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(id, other.id) && _deepEquals(requestId, other.requestId) && _deepEquals(state, other.state) && _deepEquals(createdAtMs, other.createdAtMs) && _deepEquals(path, other.path) && _deepEquals(bytes, other.bytes) && _deepEquals(durationMs, other.durationMs) && _deepEquals(fragments, other.fragments) && _deepEquals(assemblyMs, other.assemblyMs) && _deepEquals(extraPreRollMs, other.extraPreRollMs) && _deepEquals(sha256, other.sha256);
+    return _deepEquals(id, other.id) && _deepEquals(requestId, other.requestId) && _deepEquals(state, other.state) && _deepEquals(createdAtMs, other.createdAtMs) && _deepEquals(path, other.path) && _deepEquals(bytes, other.bytes) && _deepEquals(durationMs, other.durationMs) && _deepEquals(fragments, other.fragments) && _deepEquals(assemblyMs, other.assemblyMs) && _deepEquals(extraPreRollMs, other.extraPreRollMs) && _deepEquals(sha256, other.sha256) && _deepEquals(reserved, other.reserved);
   }
 
   @override
@@ -488,7 +494,7 @@ class ClipInfo {
 
   @override
   String toString() {
-    return 'ClipInfo(id: $id, requestId: $requestId, state: $state, createdAtMs: $createdAtMs, path: $path, bytes: $bytes, durationMs: $durationMs, fragments: $fragments, assemblyMs: $assemblyMs, extraPreRollMs: $extraPreRollMs, sha256: $sha256)';
+    return 'ClipInfo(id: $id, requestId: $requestId, state: $state, createdAtMs: $createdAtMs, path: $path, bytes: $bytes, durationMs: $durationMs, fragments: $fragments, assemblyMs: $assemblyMs, extraPreRollMs: $extraPreRollMs, sha256: $sha256, reserved: $reserved)';
   }
 }
 
@@ -1473,6 +1479,7 @@ class CaptureHostApi {
   }
 
   /// Releases a clip after the Viewer verified it. Returns false if the hash does not match.
+  /// With a replay reserve (SPEC §3.4) the clip is kept among the N most recent instead.
   Future<bool> ackClip(String id, String sha256) async {
     final pigeonVar_channelName = 'dev.flutter.pigeon.replay_capture_android.CaptureHostApi.ackClip$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
@@ -1490,6 +1497,25 @@ class CaptureHostApi {
     )
     ;
     return pigeonVar_replyValue! as bool;
+  }
+
+  /// Size of the replay reserve (0 = delete on ACK). Trims the reserve at once.
+  Future<void> setClipReserve(int size) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.replay_capture_android.CaptureHostApi.setClipReserve$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[size]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
   }
 
   /// Send-only WebRTC offer for [viewerId]. Returned as soon as it is created; ICE candidates

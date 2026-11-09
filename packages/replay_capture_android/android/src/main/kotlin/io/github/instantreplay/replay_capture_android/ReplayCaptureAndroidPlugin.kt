@@ -221,6 +221,8 @@ class ReplayCaptureAndroidPlugin :
 
     override fun ackClip(id: String, sha256: String): Boolean = outbox.ack(id, sha256)
 
+    override fun setClipReserve(size: Long) = outbox.setReserveSize(size.toInt())
+
     override fun liveOffer(viewerId: String, codec: String, callback: (Result<String>) -> Unit) {
         val streamer = live ?: return callback(Result.failure(FlutterError("not_running", "Capture is not running")))
         updateLiveOutput(attach = true)

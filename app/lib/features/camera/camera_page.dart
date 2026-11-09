@@ -23,6 +23,7 @@ import '../server/protocol_mapping.dart' show sessionRecording;
 import '../server/server_controller.dart';
 import 'camera_session.dart';
 import 'capture_layer.dart';
+import 'clip_reserve_widgets.dart';
 import 'pairing_card.dart';
 import 'zoom_widgets.dart';
 
@@ -422,6 +423,14 @@ class _Advanced extends ConsumerWidget {
       expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _ModeChoice(state: state),
+        const SizedBox(height: 12),
+        ClipReserveStepper(
+          keyPrefix: 'camera-clip-reserve',
+          size: state.clipReserve,
+          max: CameraSessionNotifier.maxClipReserve,
+          enabled: true,
+          onChanged: notifier.setClipReserve,
+        ),
         const SizedBox(height: 12),
         if (state.profiles.isNotEmpty) ...[
           InputDecorator(

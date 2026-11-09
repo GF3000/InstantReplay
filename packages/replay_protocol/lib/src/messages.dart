@@ -60,6 +60,7 @@ sealed class WsMessage {
       BroadcastStart.typeName => const BroadcastStart(),
       BroadcastStop.typeName => const BroadcastStop(),
       CameraZoom.typeName => CameraZoom(ratio: (j['ratio']! as num).toDouble()),
+      ClipReserve.typeName => ClipReserve(size: j['size']! as int),
       Ping.typeName => const Ping(),
       Pong.typeName => const Pong(),
       _ => null,
@@ -359,6 +360,21 @@ final class CameraZoom extends WsMessage {
 
   @override
   Json fields() => {'ratio': ratio};
+}
+
+/// Viewer → Camera: keep the [size] most recent acknowledged clips for replays on air (SPEC §3.4);
+/// 0 deletes clips on ACK. The new size arrives in the next [StatusUpdate].
+final class ClipReserve extends WsMessage {
+  const ClipReserve({required this.size});
+
+  static const typeName = 'clip_reserve';
+  final int size;
+
+  @override
+  String get type => typeName;
+
+  @override
+  Json fields() => {'size': size};
 }
 
 /// Keep-alive: the Viewer pings every 5 s; the Camera drops a viewer silent for 15 s.

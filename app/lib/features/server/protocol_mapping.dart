@@ -11,6 +11,7 @@ ClipDto clipDto(cap.ClipInfo c, {String? requestedBy}) => ClipDto(
       bytes: c.bytes,
       durationMs: c.durationMs,
       sha256: c.sha256,
+      reserved: c.reserved,
     );
 
 /// Native stats → the status pushed to viewers. [fallbackRecording] stands in when the stats carry
@@ -55,6 +56,7 @@ CameraStatus withSessionRecording(CameraStatus status, SessionRecording? recordi
       scoreboard: status.scoreboard,
       broadcast: status.broadcast,
       zoom: status.zoom,
+      reserve: status.reserve,
     );
 
 /// [status] with broadcast mode's scoreboard and stream (both null in replay mode).
@@ -72,6 +74,7 @@ CameraStatus withBroadcast(CameraStatus status, {ScoreboardState? scoreboard, Br
       scoreboard: scoreboard,
       broadcast: broadcast,
       zoom: status.zoom,
+      reserve: status.reserve,
     );
 
 /// A saved recording → the message every viewer gets.

@@ -92,6 +92,9 @@ class ReplayCapture implements CaptureEventsApi {
 
   Future<bool> ackClip(String id, String sha256) => _host.ackClip(id, sha256);
 
+  /// Replay reserve size (SPEC §3.4); 0 deletes clips on ACK.
+  Future<void> setClipReserve(int size) => _host.setClipReserve(size);
+
   /// The offer comes back right away; candidates follow on [liveIceCandidates].
   Future<String> liveOffer(String viewerId, {String codec = 'H264'}) => _host.liveOffer(viewerId, codec);
 

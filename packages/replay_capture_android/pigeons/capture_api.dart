@@ -84,6 +84,7 @@ class ClipInfo {
     this.assemblyMs,
     this.extraPreRollMs,
     this.sha256,
+    this.reserved,
   });
 
   String id;
@@ -101,6 +102,9 @@ class ClipInfo {
   int? assemblyMs;
   int? extraPreRollMs;
   String? sha256;
+
+  /// Acknowledged but kept in the replay reserve (SPEC §3.4): still downloadable and airable.
+  bool? reserved;
 }
 
 class CaptureStats {
@@ -365,7 +369,11 @@ abstract class CaptureHostApi {
   ClipInfo? getClip(String id);
 
   /// Releases a clip after the Viewer verified it. Returns false if the hash does not match.
+  /// With a replay reserve (SPEC §3.4) the clip is kept among the N most recent instead.
   bool ackClip(String id, String sha256);
+
+  /// Size of the replay reserve (0 = delete on ACK). Trims the reserve at once.
+  void setClipReserve(int size);
 
   /// Send-only WebRTC offer for [viewerId]. Returned as soon as it is created; ICE candidates
   /// follow through [CaptureEventsApi.onLiveIceCandidate] (trickle ICE).

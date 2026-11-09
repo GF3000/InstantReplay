@@ -74,7 +74,8 @@ void main() {
     final fake = FakeCaptureLayer();
     await _pumpCamera(tester, fake);
 
-    expect(fake.calls.take(2), ['cameraPermission', 'notificationPermission']);
+    // The replay reserve size goes to the outbox on entry (SPEC §3.4), before anything else.
+    expect(fake.calls.take(3), ['reserve:3', 'cameraPermission', 'notificationPermission']);
     expect(fake.starts, ['1080p30']);
     expect(find.byType(Texture), findsOneWidget);
   });
@@ -602,6 +603,20 @@ void main() {
       await _tapNow(tester, find.byKey(const Key('camera-scoreboard-toggle')));
       expect(find.byKey(const Key('camera-scoreboard')), findsNothing);
       expect(find.byKey(const Key('camera-score')), findsOneWidget, reason: 'the score on air instead');
+    });
+
+    testWidgets('the replay reserve is set from Advanced and remembered', (tester) async {
+      final fake = FakeCaptureLayer();
+      final prefs = await _pumpCamera(tester, fake, height: 2400);
+      await _openAdvanced(tester);
+      await _tapVisible(tester, find.byKey(const ValueKey('camera-clip-reserve-plus')));
+      expect(fake.calls.last, 'reserve:4');
+      expect(prefs.getInt('camera.clipReserve'), 4);
+      for (var i = 0; i < 4; i++) {
+        await _tapVisible(tester, find.byKey(const ValueKey('camera-clip-reserve-minus')));
+      }
+      expect(fake.calls.last, 'reserve:0');
+      expect(find.text('Off: the camera deletes each clip once it is on the tablet.'), findsOneWidget);
     });
 
     testWidgets('zoom: the buttons step it, remembered for the next start; 1× resets', (tester) async {

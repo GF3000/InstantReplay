@@ -1278,6 +1278,36 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get clipReserveTitle => 'Reserva de repeticiones';
+
+  @override
+  String get clipReserveOff =>
+      'Desactivada: la cámara borra cada clip en cuanto está en la tablet.';
+
+  @override
+  String clipReserveHint(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'La cámara guarda los últimos $count clips para poder emitirlos.',
+      one: 'La cámara guarda el último clip para poder emitirlo.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get clipReserveLess => 'Menos';
+
+  @override
+  String get clipReserveMore => 'Más';
+
+  @override
+  String get clipReserveDone => 'Hecho';
+
+  @override
+  String get clipOnCamera => 'En la cámara';
+
+  @override
   String get scoreboardSet => 'Ajustar';
 
   @override

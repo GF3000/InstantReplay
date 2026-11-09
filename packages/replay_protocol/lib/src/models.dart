@@ -18,6 +18,7 @@ class ClipDto {
     this.bytes,
     this.durationMs,
     this.sha256,
+    this.reserved,
   });
 
   factory ClipDto.fromJson(Json j) => ClipDto(
@@ -29,6 +30,7 @@ class ClipDto {
         bytes: j['bytes'] as int?,
         durationMs: j['durationMs'] as int?,
         sha256: j['sha256'] as String?,
+        reserved: j['reserved'] as bool?,
       );
 
   final String id;
@@ -44,6 +46,13 @@ class ClipDto {
   final int? durationMs;
   final String? sha256;
 
+  /// Acknowledged but kept on the Camera in the replay reserve (SPEC §3.4): still downloadable,
+  /// and it can go on air (§12.6). `false` when it leaves the reserve (with state `expired`).
+  final bool? reserved;
+
+  /// The file is still on the Camera.
+  bool get onCamera => state == ClipState.ready || (state == ClipState.acked && reserved == true);
+
   Json toJson() => {
         'id': id,
         'requestId': requestId,
@@ -53,6 +62,7 @@ class ClipDto {
         if (bytes != null) 'bytes': bytes,
         if (durationMs != null) 'durationMs': durationMs,
         if (sha256 != null) 'sha256': sha256,
+        if (reserved != null) 'reserved': reserved,
       };
 
   @override
@@ -173,6 +183,7 @@ class CameraStatus {
     this.scoreboard,
     this.broadcast,
     this.zoom,
+    this.reserve,
   });
 
   factory CameraStatus.fromJson(Json j) => CameraStatus(
@@ -198,6 +209,10 @@ class CameraStatus {
         },
         zoom: switch (j['zoom']) {
           final Json z => ZoomInfo.fromJson(z),
+          _ => null,
+        },
+        reserve: switch (j['reserve']) {
+          {'size': final int size} => size,
           _ => null,
         },
       );
@@ -226,8 +241,11 @@ class CameraStatus {
   /// Camera zoom; null from a Camera without it (viewers then hide the zoom controls).
   final ZoomInfo? zoom;
 
-  /// This status with another [zoom]; every other field kept.
-  CameraStatus withZoom(ZoomInfo? zoom) => CameraStatus(
+  /// Size of the Camera's replay reserve (SPEC §3.4); null from a Camera without it.
+  final int? reserve;
+
+  /// This status with another [zoom] and [reserve]; every other field kept.
+  CameraStatus withControls({ZoomInfo? zoom, int? reserve}) => CameraStatus(
         recording: recording,
         fps: fps,
         bufferMs: bufferMs,
@@ -240,6 +258,7 @@ class CameraStatus {
         scoreboard: scoreboard,
         broadcast: broadcast,
         zoom: zoom,
+        reserve: reserve,
       );
 
   Json toJson() => {
@@ -255,6 +274,7 @@ class CameraStatus {
         if (scoreboard != null) 'scoreboard': scoreboard!.toJson(),
         if (broadcast != null) 'broadcast': broadcast!.toJson(),
         if (zoom != null) 'zoom': zoom!.toJson(),
+        if (reserve != null) 'reserve': {'size': reserve},
       };
 }
 

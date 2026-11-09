@@ -41,6 +41,7 @@ class CameraSessionState {
     this.lastSaved,
     this.broadcast = false,
     this.zoom = 1,
+    this.clipReserve = CameraSessionNotifier.defaultClipReserve,
   });
 
   final CameraPhase phase;
@@ -79,6 +80,9 @@ class CameraSessionState {
   /// Sensor zoom target (SPEC §3.1), remembered so the framing survives a restart.
   final double zoom;
 
+  /// How many acknowledged clips the Camera keeps for replays on air (SPEC §3.4); 0 = none.
+  final int clipReserve;
+
   /// Highest zoom offered: what the sensor allows, capped where a 1080p crop still looks sharp.
   double get maxZoom => min(session?.maxZoom ?? 1, CameraSessionNotifier.zoomCap);
 
@@ -101,6 +105,7 @@ class CameraSessionState {
     RecordingSavedNotice? lastSaved,
     bool? broadcast,
     double? zoom,
+    int? clipReserve,
   }) =>
       CameraSessionState(
         phase: phase ?? this.phase,
@@ -119,6 +124,7 @@ class CameraSessionState {
         lastSaved: lastSaved ?? this.lastSaved,
         broadcast: broadcast ?? this.broadcast,
         zoom: zoom ?? this.zoom,
+        clipReserve: clipReserve ?? this.clipReserve,
       );
 }
 
@@ -135,6 +141,9 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
   static const defaultProfileId = '1080p30';
   static const _profileKey = 'camera.profile';
   static const _zoomKey = 'camera.zoom';
+  static const _reserveKey = 'camera.clipReserve';
+  static const defaultClipReserve = 3;
+  static const maxClipReserve = 10;
 
   /// Above this the sensor crop gets soft; the UI offers up to here.
   static const zoomCap = 4.0;
@@ -185,8 +194,12 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
     });
     Future.microtask(enter);
     _broadcastMode = ref.read(sharedPreferencesProvider).getString(modeKey) == broadcastMode;
-    final zoom = ref.read(sharedPreferencesProvider).getDouble(_zoomKey) ?? 1;
-    return CameraSessionState(broadcast: _broadcastMode, zoom: zoom);
+    final prefs = ref.read(sharedPreferencesProvider);
+    final zoom = prefs.getDouble(_zoomKey) ?? 1;
+    final reserve = prefs.getInt(_reserveKey) ?? defaultClipReserve;
+    // The outbox outlives capture: its reserve size is set once on entry.
+    unawaited(_capture.setClipReserve(reserve).catchError((Object _) {}));
+    return CameraSessionState(broadcast: _broadcastMode, zoom: zoom, clipReserve: reserve);
   }
 
   /// Permissions → profiles → start the default profile. Also the "try again" action.
@@ -294,6 +307,15 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
     state = state.copyWith(zoom: zoom);
     unawaited(_capture.setZoom(zoom).catchError((Object _) {}));
     unawaited(ref.read(sharedPreferencesProvider).setDouble(_zoomKey, zoom));
+  }
+
+  /// Replay reserve size (SPEC §3.4), from this screen or any viewer; remembered.
+  void setClipReserve(int size) {
+    final n = size.clamp(0, maxClipReserve);
+    if (n == state.clipReserve) return;
+    state = state.copyWith(clipReserve: n);
+    unawaited(_capture.setClipReserve(n).catchError((Object _) {}));
+    unawaited(ref.read(sharedPreferencesProvider).setInt(_reserveKey, n));
   }
 
   Future<void> startOperating() async {

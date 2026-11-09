@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:instant_replay/features/broadcast/broadcast_controller.dart';
 import 'package:instant_replay/features/broadcast/broadcast_providers.dart' show CameraBroadcast;
 import 'package:instant_replay/features/broadcast/scoreboard_controller.dart';
+import 'package:instant_replay/features/server/api_server.dart' show CameraControls;
 import 'package:instant_replay/features/server/camera_server.dart';
 import 'package:instant_replay/features/server/pairing.dart';
 import 'package:replay_capture_android/replay_capture_android.dart' show RecordingEnd, RecordingSaved, RecordingState;
@@ -81,9 +82,11 @@ void main() {
     String? webRoot,
     Duration silence = const Duration(seconds: 15),
     CameraBroadcast? broadcast,
+    CameraControls? controls,
   }) async {
     server = CameraServer(
       broadcast: broadcast,
+      controls: controls,
       capture: capture,
       secrets: PairingSecrets(code: _code, token: _token),
       cameraInfo: () => const CameraInfo(protocolVersion: 1, cameraId: 'cam-1', name: 'Test Phone', profileId: '1080p30'),
@@ -220,6 +223,16 @@ void main() {
       final list = [for (final j in decode(r)! as List) ClipDto.fromJson(j as Json)];
       expect(list.single.requestedBy, 'v');
       expect(list.single.state, ClipState.recording);
+    });
+
+    test('a clip in the replay reserve stays downloadable after the ack', () async {
+      capture.reserveSize = 3;
+      final r = await call('POST', Api.clips, json: const SaveClipRequest(requestId: 'r1', preSeconds: 10).toJson());
+      final id = ClipDto.fromJson(decode(r)! as Json).id;
+      final file = File('${temp.path}/clip.mp4')..writeAsBytesSync(List.filled(10, 7));
+      capture.finishClip(id, path: file.path, bytes: 10);
+      expect((await call('POST', Api.ack(id), json: AckRequest(sha256: capture.acceptedSha256).toJson())).status, 204);
+      expect((await call('GET', Api.clip(id))).status, 200);
     });
 
     test('download supports Range and is 404 until ready', () async {
@@ -498,6 +511,24 @@ void main() {
     });
   });
 
+  group('camera controls', () {
+    test('zoom and replay reserve ride on status; any viewer changes them, all see it at once', () async {
+      final controls = _FakeControls();
+      await startServer(controls: controls);
+      final a = await _Viewer.connect(port);
+      await a.hello('viewer-a');
+      capture.statsController.add(stats());
+      final first = (await a.next<StatusUpdate>()).status;
+      expect((first.reserve, first.zoom?.max), (3, 4.0));
+
+      a.send(const ClipReserve(size: 5));
+      expect((await a.next<StatusUpdate>()).status.reserve, 5);
+      a.send(const CameraZoom(ratio: 2));
+      expect((await a.next<StatusUpdate>()).status.zoom?.ratio, 2.0);
+      expect(controls.reserve, 5);
+    });
+  });
+
   group('broadcast mode', () {
     late bool active;
     late CameraBroadcast host;
@@ -658,4 +689,30 @@ Future<void> _eventually(bool Function() condition) async {
     if (DateTime.now().isAfter(deadline)) fail('condition not met in time');
     await Future<void>.delayed(const Duration(milliseconds: 20));
   }
+}
+
+/// [CameraControls] for tests: records what viewers set.
+class _FakeControls implements CameraControls {
+  final changesController = StreamController<void>.broadcast();
+
+  @override
+  ZoomInfo? zoom = const ZoomInfo(ratio: 1, max: 4);
+
+  @override
+  int reserve = 3;
+
+  @override
+  void setZoom(double ratio) {
+    zoom = ZoomInfo(ratio: ratio, max: 4);
+    changesController.add(null);
+  }
+
+  @override
+  void setReserve(int size) {
+    reserve = size;
+    changesController.add(null);
+  }
+
+  @override
+  Stream<void> get changes => changesController.stream;
 }

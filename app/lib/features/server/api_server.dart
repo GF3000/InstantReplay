@@ -23,12 +23,18 @@ abstract interface class ApiServer {
   void captureRestarted();
 }
 
-/// The Camera's zoom as the server sees it: rides on `status`, any viewer can change it.
-abstract interface class ZoomHost {
+/// Camera settings any viewer can see and change, riding on `status`: the zoom and the size of
+/// the replay reserve.
+abstract interface class CameraControls {
   /// Null while capture is not running.
-  ZoomInfo? get info;
+  ZoomInfo? get zoom;
 
-  void set(double ratio);
+  void setZoom(double ratio);
+
+  /// Replay reserve size (SPEC §3.4).
+  int get reserve;
+
+  void setReserve(int size);
 
   /// After every change, so the server pushes a status at once.
   Stream<void> get changes;
@@ -40,7 +46,7 @@ class ApiServerConfig {
     required this.secrets,
     required this.cameraInfo,
     this.broadcast,
-    this.zoom,
+    this.controls,
   });
 
   final CaptureLayer capture;
@@ -50,8 +56,8 @@ class ApiServerConfig {
   /// Broadcast mode (SPEC §12): the scoreboard and the stream; null leaves it out.
   final BroadcastHost? broadcast;
 
-  /// Camera zoom; null leaves it out of `status`.
-  final ZoomHost? zoom;
+  /// Zoom and replay reserve; null leaves them out of `status`.
+  final CameraControls? controls;
 }
 
 /// Platform pieces of the server, injectable for tests. Web gets a stub that never runs (the

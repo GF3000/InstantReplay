@@ -30,7 +30,7 @@ class CameraServer implements ApiServer {
     required this.cameraInfo,
     this.webRoot,
     this.broadcast,
-    this.zoom,
+    this.controls,
     this.saveTimeout = const Duration(seconds: 5),
     this.silenceTimeout = const Duration(seconds: 15),
     AttemptLimiter? pairLimiter,
@@ -48,8 +48,8 @@ class CameraServer implements ApiServer {
   /// Broadcast mode (SPEC §12): the scoreboard and the stream; null leaves it out.
   final BroadcastHost? broadcast;
 
-  /// Camera zoom; null leaves it out of `status`.
-  final ZoomHost? zoom;
+  /// Zoom and replay reserve; null leaves them out of `status`.
+  final CameraControls? controls;
 
   /// How long `POST /clips` waits for the outbox to register the clip.
   final Duration saveTimeout;
@@ -92,7 +92,7 @@ class CameraServer implements ApiServer {
       ..add(capture.recording.listen(_onRecording))
       ..add(capture.recordingSaved.listen(_onRecordingSaved));
     if (broadcast case final b?) _subs.add(b.changes.listen((_) => _onBroadcastChanged()));
-    if (zoom case final z?) _subs.add(z.changes.listen((_) => _onBroadcastChanged()));
+    if (controls case final c?) _subs.add(c.changes.listen((_) => _onBroadcastChanged()));
     final sweepEvery = Duration(milliseconds: max(100, silenceTimeout.inMilliseconds ~/ 3));
     _sweep = Timer.periodic(sweepEvery, (_) => _dropSilent());
     final server = await shelf_io.serve(handler, address ?? InternetAddress.anyIPv4, port);
@@ -237,7 +237,9 @@ class CameraServer implements ApiServer {
   Future<Response> _download(Request request, String id) async {
     final clip = await capture.getClip(id);
     final path = clip?.path;
-    if (clip == null || clip.state != cap.ClipState.ready || path == null) return _error(HttpStatus.notFound, 'not_found');
+    // Ready, or acknowledged but kept in the replay reserve (SPEC §3.4).
+    final onCamera = clip != null && (clip.state == cap.ClipState.ready || clip.reserved == true);
+    if (!onCamera || path == null) return _error(HttpStatus.notFound, 'not_found');
     final file = File(path);
     if (!file.existsSync()) return _error(HttpStatus.notFound, 'not_found');
     final length = await file.length();
@@ -402,7 +404,9 @@ compilación que incluya el visor web.</p>
         // state goes to every viewer at once (_onBroadcastChanged).
         // Zoom (SPEC §3.1): any viewer, every viewer sees it at once.
         case CameraZoom(:final ratio):
-          zoom?.set(ratio);
+          controls?.setZoom(ratio);
+        case ClipReserve(:final size):
+          controls?.setReserve(size);
         case ScoreboardCmd(:final command):
           _broadcastHost().scoreboardCommand(command);
         case BroadcastConfigure(:final server, :final key, :final targetKbps, :final audio):
@@ -535,7 +539,8 @@ compilación que incluya el visor web.</p>
     final withHost = host == null || !host.active
         ? (status.scoreboard == null && status.broadcast == null ? status : withBroadcast(status))
         : withBroadcast(status, scoreboard: host.scoreboard, broadcast: host.info);
-    return withHost.withZoom(zoom?.info);
+    final c = controls;
+    return c == null ? withHost : withHost.withControls(zoom: c.zoom, reserve: c.reserve);
   }
 
   /// A scoreboard or stream change (or a mode switch) goes out at once, like a recording change.

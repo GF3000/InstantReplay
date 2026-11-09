@@ -303,6 +303,10 @@ final viewerBroadcastProvider = Provider.autoDispose<BroadcastInfo?>(
 final viewerZoomProvider =
     Provider.autoDispose<ZoomInfo?>((ref) => ref.watch(linkStateProvider.select((s) => s?.status?.zoom)));
 
+/// Size of the Camera's replay reserve; null from a Camera without it.
+final viewerClipReserveProvider =
+    Provider.autoDispose<int?>((ref) => ref.watch(linkStateProvider.select((s) => s?.status?.reserve)));
+
 /// A broadcast command the Camera refused (or a start without the microphone). A new object every
 /// time, so the same error twice is shown twice.
 final class BroadcastNotice {
@@ -344,6 +348,9 @@ class ViewerBroadcastNotifier extends Notifier<BroadcastNotice?> {
 
   /// Zooms the Camera; not only for broadcast mode.
   bool zoom(double ratio) => _send(CameraZoom(ratio: ratio));
+
+  /// Sets the Camera's replay reserve (SPEC §3.4).
+  bool reserve(int size) => _send(ClipReserve(size: size));
 
   bool stop() => _send(const BroadcastStop());
 

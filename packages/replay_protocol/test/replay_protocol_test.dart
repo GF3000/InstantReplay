@@ -147,6 +147,10 @@ void main() {
       const BroadcastStart(),
       const BroadcastStop(),
       const CameraZoom(ratio: 1.5),
+      const ClipReserve(size: 3),
+      const ClipChanged(
+        clip: ClipDto(id: 'c', requestId: 'r', state: ClipState.acked, createdAtMs: 1, reserved: true),
+      ),
       const StatusUpdate(
         status: CameraStatus(
           recording: true,
@@ -155,6 +159,7 @@ void main() {
           outboxClips: 0,
           thermalStatus: 0,
           zoom: ZoomInfo(ratio: 1.5, max: 4),
+          reserve: 3,
         ),
       ),
       const Ping(),
@@ -208,6 +213,15 @@ void main() {
       expect(minimal.period, 1);
       expect(minimal.clockRunning, isFalse);
       expect(minimal.visible, isTrue);
+    });
+
+    test('ClipDto.onCamera: ready, or acked in the reserve', () {
+      ClipDto clip(ClipState s, [bool? reserved]) => ClipDto(id: 'c', requestId: 'r', state: s, createdAtMs: 1, reserved: reserved);
+      expect(clip(ClipState.ready).onCamera, isTrue);
+      expect(clip(ClipState.acked, true).onCamera, isTrue);
+      expect(clip(ClipState.acked).onCamera, isFalse);
+      expect(clip(ClipState.expired, false).onCamera, isFalse);
+      expect(clip(ClipState.recording).onCamera, isFalse);
     });
 
     test('a status from an older Camera has no scoreboard or broadcast', () {
