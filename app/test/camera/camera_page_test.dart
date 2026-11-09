@@ -537,4 +537,72 @@ void main() {
       expect(server.last!.closed, isTrue);
     });
   });
+
+  group('broadcast mode', () {
+    testWidgets('choosing Broadcast restarts capture in broadcast mode, remembered; viewers renegotiate', (tester) async {
+      final server = FakeServerPlatform();
+      final fake = FakeCaptureLayer();
+      final prefs = await _pumpCamera(tester, fake, server: server, height: 2400);
+      expect(fake.startModes, [false]);
+      expect(find.byKey(const Key('camera-broadcast-card')), findsNothing);
+
+      await _openAdvanced(tester);
+      await _tapVisible(tester, find.text('Broadcast (beta)'));
+
+      expect(fake.startModes, [false, true]);
+      expect(fake.calls.where((c) => c == 'stop' || c.startsWith('start:')), ['start:1080p30', 'stop', 'start:1080p30']);
+      expect(prefs.getString('camera.mode'), 'broadcast');
+      expect(server.last!.restarts, 1);
+      expect(server.last!.config.broadcast!.active, isTrue);
+      // Asked while someone is at the Camera; the overlay goes out once capture runs.
+      expect(fake.calls, contains('micPermission'));
+      expect(fake.overlays, isNotEmpty);
+      expect(fake.overlays.last.homeName, 'LOC');
+      expect(find.byKey(const Key('camera-broadcast-card')), findsOneWidget);
+      expect(find.text('Enter the stream key first'), findsOneWidget);
+    });
+
+    testWidgets('a remembered Broadcast mode starts in it; the Camera configures and goes live', (tester) async {
+      final fake = FakeCaptureLayer();
+      await _pumpCamera(tester, fake, height: 2400, saved: {'camera.mode': 'broadcast'});
+      expect(fake.startModes, [true]);
+
+      await _tapVisible(tester, find.byKey(const ValueKey('camera-broadcast-settings')));
+      await tester.enterText(find.byKey(const ValueKey('broadcast-key')), 'abcd-efgh-WXYZ');
+      await tester.tap(find.byKey(const ValueKey('broadcast-config-save')));
+      await tester.pumpAndSettle();
+      expect(find.text('Ready · 4500 kbps'), findsOneWidget);
+
+      await _tapNow(tester, find.byKey(const ValueKey('camera-broadcast-start')));
+      expect(fake.broadcastConfigs.single.url, 'rtmp://a.rtmp.youtube.com/live2/abcd-efgh-WXYZ');
+      expect(find.text('Connecting…'), findsOneWidget);
+
+      // While streaming, the mode and the profile cannot change (it would cut the stream).
+      await _openAdvanced(tester);
+      final choice = tester.widget<SegmentedButton<bool>>(find.byKey(const Key('camera-mode-choice')));
+      expect(choice.onSelectionChanged, isNull);
+
+      await _tapVisible(tester, find.byKey(const ValueKey('camera-broadcast-stop')));
+      await _tapNow(tester, find.byKey(const ValueKey('broadcast-stop-confirm')));
+      expect(fake.calls.last, 'broadcastStop');
+    });
+
+    testWidgets('the operating screen shows the score and the stream', (tester) async {
+      final fake = FakeCaptureLayer();
+      await _pumpCamera(tester, fake, saved: {'camera.mode': 'broadcast'});
+      await _tapNow(tester, find.text('Start operating'));
+      expect(_operating(tester), isTrue);
+      expect(find.byKey(const Key('camera-score')), findsOneWidget);
+      expect(find.text('0 – 0'), findsOneWidget);
+      expect(find.text('Off air'), findsOneWidget);
+    });
+
+    testWidgets('a thermal profile fallback does not restart capture while broadcasting', (tester) async {
+      final fake = FakeCaptureLayer();
+      await _pumpCamera(tester, fake, saved: {'camera.mode': 'broadcast', 'camera.profile': '1080p60'});
+      fake.thermalController.add(ThermalEvent(status: 3, action: ThermalAction.reduceFps));
+      await tester.pumpAndSettle();
+      expect(fake.starts, ['1080p60']);
+    });
+  });
 }

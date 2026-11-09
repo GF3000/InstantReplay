@@ -78,9 +78,13 @@ class FakeCaptureLayer implements CaptureLayer {
   @override
   Future<List<CaptureProfile>> supportedProfiles() async => profiles;
 
+  /// The `broadcast` flag of every start, in order.
+  final startModes = <bool>[];
+
   @override
-  Future<StartResult> start(String profileId) async {
+  Future<StartResult> start(String profileId, {bool broadcast = false}) async {
     calls.add('start:$profileId');
+    startModes.add(broadcast);
     final error = startError;
     if (error != null) throw error;
     return StartResult(textureId: 7, encoder: 'fake', highProfile: true, sensorOrientation: 90);
@@ -258,6 +262,52 @@ class FakeCaptureLayer implements CaptureLayer {
     toRecover = [];
     return found;
   }
+
+  // endregion
+
+  // region Broadcast
+
+  bool micGranted = true;
+  final overlays = <OverlayState>[];
+  final broadcastConfigs = <BroadcastConfig>[];
+  final broadcastController = StreamController<BroadcastStatus>.broadcast();
+  BroadcastStatus broadcastState = BroadcastStatus(state: BroadcastState.idle, targetKbps: 4500, droppedFrames: 0, audio: true);
+
+  /// Thrown by [broadcastStart] when set.
+  Object? broadcastStartError;
+
+  @override
+  Future<bool> requestMicPermission() async {
+    calls.add('micPermission');
+    return micGranted;
+  }
+
+  @override
+  Future<void> setOverlay(OverlayState overlay) async => overlays.add(overlay);
+
+  @override
+  Future<BroadcastStatus> broadcastStart(BroadcastConfig config) async {
+    calls.add('broadcastStart');
+    if (broadcastStartError case final e?) throw e;
+    broadcastConfigs.add(config);
+    broadcastState = BroadcastStatus(
+        state: BroadcastState.connecting, targetKbps: config.targetKbps, droppedFrames: 0, audio: config.audio);
+    broadcastController.add(broadcastState);
+    return broadcastState;
+  }
+
+  @override
+  Future<void> broadcastStop() async {
+    calls.add('broadcastStop');
+    broadcastState = BroadcastStatus(state: BroadcastState.idle, targetKbps: 4500, droppedFrames: 0, audio: true);
+    broadcastController.add(broadcastState);
+  }
+
+  @override
+  Future<BroadcastStatus> broadcastStatus() async => broadcastState;
+
+  @override
+  Stream<BroadcastStatus> get broadcast => broadcastController.stream;
 
   // endregion
 }

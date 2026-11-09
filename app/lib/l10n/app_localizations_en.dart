@@ -1022,4 +1022,208 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get viewerTagPanelClose => 'Close';
+
+  @override
+  String get cameraMode => 'Mode';
+
+  @override
+  String get cameraModeReplay => 'Replay';
+
+  @override
+  String get cameraModeBroadcast => 'Broadcast (beta)';
+
+  @override
+  String get cameraModeBroadcastHint =>
+      'Experimental: streams to YouTube Live with a scoreboard that viewers control. Clips keep working.';
+
+  @override
+  String get cameraModeLocked =>
+      'Stop the stream to change the mode or the profile.';
+
+  @override
+  String get broadcastTitle => 'YouTube stream';
+
+  @override
+  String get broadcastStateIdle => 'Off air';
+
+  @override
+  String get broadcastStateConnecting => 'Connecting…';
+
+  @override
+  String get broadcastStateLive => 'Live';
+
+  @override
+  String get broadcastStateReconnecting => 'Reconnecting…';
+
+  @override
+  String get broadcastStateFailed => 'Failed';
+
+  @override
+  String get broadcastNotConfigured => 'Enter the stream key first';
+
+  @override
+  String broadcastReady(int kbps) {
+    return 'Ready · $kbps kbps';
+  }
+
+  @override
+  String broadcastBitrate(String mbps) {
+    return '$mbps Mbps';
+  }
+
+  @override
+  String get broadcastStart => 'Go live';
+
+  @override
+  String get broadcastStop => 'Stop';
+
+  @override
+  String get broadcastStopTitle => 'Stop the stream?';
+
+  @override
+  String get broadcastStopBody =>
+      'The YouTube stream ends for everyone watching it.';
+
+  @override
+  String get broadcastStopKeep => 'Keep streaming';
+
+  @override
+  String get broadcastSettings => 'Stream settings';
+
+  @override
+  String get broadcastServer => 'Server';
+
+  @override
+  String get broadcastKey => 'Stream key';
+
+  @override
+  String broadcastKeyKeep(String hint) {
+    return 'Leave empty to keep •••• $hint';
+  }
+
+  @override
+  String get broadcastKeyHelp =>
+      'In YouTube Studio: Create → Go live → Stream key.';
+
+  @override
+  String get broadcastKeyShow => 'Show the key';
+
+  @override
+  String get broadcastKeyHide => 'Hide the key';
+
+  @override
+  String get broadcastPaste => 'Paste';
+
+  @override
+  String broadcastBitrateLabel(int kbps) {
+    return 'Video bitrate: $kbps kbps';
+  }
+
+  @override
+  String get broadcastAudio => 'Sound from the microphone';
+
+  @override
+  String get broadcastCancel => 'Cancel';
+
+  @override
+  String get broadcastSave => 'Save';
+
+  @override
+  String broadcastFailed(String message) {
+    return 'Could not stream: $message';
+  }
+
+  @override
+  String get broadcastMicDenied =>
+      'Microphone not allowed: streaming without sound';
+
+  @override
+  String get broadcastNotBroadcastMode => 'The camera is not in broadcast mode';
+
+  @override
+  String get scoreboardTitle => 'Scoreboard';
+
+  @override
+  String scoreboardHalf(int period) {
+    return '${period}H';
+  }
+
+  @override
+  String scoreboardPlus(String team) {
+    return 'Add a point to $team';
+  }
+
+  @override
+  String scoreboardMinus(String team) {
+    return 'Take a point from $team';
+  }
+
+  @override
+  String get scoreboardStartClock => 'Start the clock';
+
+  @override
+  String get scoreboardPauseClock => 'Stop the clock';
+
+  @override
+  String get scoreboardSetClock => 'Set the clock';
+
+  @override
+  String get scoreboardSetClockHint => 'mm:ss';
+
+  @override
+  String get scoreboardInvalidTime => 'Use minutes:seconds, e.g. 12:30';
+
+  @override
+  String get scoreboardSet => 'Set';
+
+  @override
+  String get scoreboardPeriodPrev => 'Previous period';
+
+  @override
+  String get scoreboardPeriodNext => 'Next period';
+
+  @override
+  String get scoreboardVisible => 'On screen';
+
+  @override
+  String get scoreboardReset => 'Reset';
+
+  @override
+  String get scoreboardResetTitle => 'Reset the scoreboard?';
+
+  @override
+  String get scoreboardResetBody =>
+      'Scores back to 0, first period and the clock reset. Team names and settings stay.';
+
+  @override
+  String get scoreboardSettings => 'Scoreboard settings';
+
+  @override
+  String get scoreboardHome => 'Home';
+
+  @override
+  String get scoreboardAway => 'Away';
+
+  @override
+  String get scoreboardTeamName => 'Name (up to 5 letters)';
+
+  @override
+  String scoreboardTeamColor(String team) {
+    return 'Color of $team';
+  }
+
+  @override
+  String get scoreboardPeriods => 'Periods';
+
+  @override
+  String get scoreboardPeriodMinutes => 'Minutes per period';
+
+  @override
+  String get scoreboardClockDirection => 'Clock';
+
+  @override
+  String get scoreboardCountUp => 'Counts up';
+
+  @override
+  String get scoreboardCountDown => 'Counts down';
 }

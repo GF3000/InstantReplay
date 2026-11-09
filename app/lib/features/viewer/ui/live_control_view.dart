@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../l10n/app_localizations.dart';
+import '../../broadcast/broadcast_widgets.dart';
 import '../../recording/recording_widgets.dart';
 import '../data/session_link.dart';
 import '../tags/tag_widgets.dart';
@@ -14,6 +15,9 @@ import 'clip_list.dart';
 /// Portrait: live on top, Save + chips + tag bar below, clip list underneath. Landscape (phone,
 /// tablet, laptop): live on the left, a right panel with Save, chips, tag bar and clip list. The
 /// full-session recording row sits right above Save in both, one line high.
+///
+/// In broadcast mode (SPEC §12) the scoreboard controls go right under the live view and the
+/// stream row above the recording row; saving clips works as usual.
 class LiveControlView extends ConsumerWidget {
   const LiveControlView({super.key});
 
@@ -34,20 +38,34 @@ class LiveControlView extends ConsumerWidget {
       };
       if (text != null) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
     });
-    return _layout();
+    ref.listen(viewerBroadcastNoticeProvider, (_, notice) {
+      if (notice == null) return;
+      final text = broadcastErrorMessage(AppLocalizations.of(context), notice.code, notice.message);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+    });
+    final scoreboard = ref.watch(viewerScoreboardProvider.select((s) => s != null));
+    return _layout(scoreboard: scoreboard);
   }
 
-  Widget _layout() => LayoutBuilder(builder: (context, c) {
+  Widget _layout({required bool scoreboard}) => LayoutBuilder(builder: (context, c) {
         final wide = c.maxWidth > c.maxHeight && c.maxWidth >= 560;
         if (wide) {
           final panel = c.maxWidth >= 1000 ? 400.0 : (c.maxWidth * 0.42).clamp(260.0, 360.0);
           return Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            const Expanded(child: _LiveWithTagPanel()),
+            Expanded(
+              child: scoreboard
+                  ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      const Expanded(child: _LiveWithTagPanel()),
+                      ViewerScoreboardPanel(compact: c.maxHeight < 700),
+                    ])
+                  : const _LiveWithTagPanel(),
+            ),
             SizedBox(
               width: panel,
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                const ViewerBroadcastBar(),
                 const ViewerRecordingBar(),
-                SaveControls(compact: c.maxHeight < 480, tight: c.maxHeight < 400),
+                SaveControls(compact: scoreboard || c.maxHeight < 480, tight: c.maxHeight < 400),
                 const Divider(height: 1),
                 const Expanded(child: ClipList()),
               ]),
@@ -55,9 +73,14 @@ class LiveControlView extends ConsumerWidget {
           ]);
         }
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          SizedBox(height: (c.maxWidth * 9 / 16).clamp(120.0, c.maxHeight * 0.42), child: const _LiveWithTagPanel()),
+          SizedBox(
+            height: (c.maxWidth * 9 / 16).clamp(120.0, c.maxHeight * (scoreboard ? 0.3 : 0.42)),
+            child: const _LiveWithTagPanel(),
+          ),
+          if (scoreboard) ViewerScoreboardPanel(compact: c.maxHeight < 900),
+          const ViewerBroadcastBar(),
           const ViewerRecordingBar(),
-          SaveControls(compact: c.maxHeight < 760),
+          SaveControls(compact: scoreboard || c.maxHeight < 760, tight: scoreboard && c.maxHeight < 760),
           const Divider(height: 1),
           const Expanded(child: ClipList()),
         ]);
@@ -149,6 +172,59 @@ class ViewerRecordingBar extends ConsumerWidget {
         onRecord: (seconds) => remote.record(includeSeconds: seconds),
         onPause: remote.pause,
         onFinish: remote.finish,
+      ),
+    );
+  }
+}
+
+/// The scoreboard controls (SPEC §12.2) in broadcast mode; nothing otherwise.
+class ViewerScoreboardPanel extends ConsumerWidget {
+  const ViewerScoreboardPanel({super.key, this.compact = false});
+
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scoreboard = ref.watch(viewerScoreboardProvider);
+    if (scoreboard == null) return const SizedBox.shrink();
+    final connected = ref.watch(linkStateProvider.select((s) => s?.phase == LinkPhase.connected));
+    final remote = ref.read(viewerBroadcastNoticeProvider.notifier);
+    return Material(
+      key: const ValueKey('viewer-scoreboard'),
+      color: Theme.of(context).colorScheme.surfaceContainer,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+        child: ScoreboardPanel(state: scoreboard, enabled: connected, compact: compact, onCommand: remote.command),
+      ),
+    );
+  }
+}
+
+/// The YouTube stream's state with Go live / Stop and its settings (SPEC §12); nothing outside
+/// broadcast mode.
+class ViewerBroadcastBar extends ConsumerWidget {
+  const ViewerBroadcastBar({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final info = ref.watch(viewerBroadcastProvider);
+    if (info == null) return const SizedBox.shrink();
+    final connected = ref.watch(linkStateProvider.select((s) => s?.phase == LinkPhase.connected));
+    final remote = ref.read(viewerBroadcastNoticeProvider.notifier);
+    return Padding(
+      key: const ValueKey('viewer-broadcast'),
+      padding: const EdgeInsets.fromLTRB(12, 6, 8, 0),
+      child: BroadcastBar(
+        info: info,
+        enabled: connected,
+        keyPrefix: 'viewer-broadcast',
+        onStart: remote.start,
+        onStop: remote.stop,
+        onConfigure: () async {
+          final result = await showBroadcastConfigDialog(context, info);
+          if (result == null) return;
+          remote.configure(server: result.server, key: result.key, targetKbps: result.targetKbps, audio: result.audio);
+        },
       ),
     );
   }

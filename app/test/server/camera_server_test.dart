@@ -3,11 +3,17 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/services.dart' show PlatformException;
+import 'package:flutter/widgets.dart' show Locale;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:instant_replay/features/broadcast/broadcast_controller.dart';
+import 'package:instant_replay/features/broadcast/broadcast_providers.dart' show CameraBroadcast;
+import 'package:instant_replay/features/broadcast/scoreboard_controller.dart';
 import 'package:instant_replay/features/server/camera_server.dart';
 import 'package:instant_replay/features/server/pairing.dart';
 import 'package:replay_capture_android/replay_capture_android.dart' show RecordingEnd, RecordingSaved, RecordingState;
+import 'package:instant_replay/l10n/app_localizations.dart';
 import 'package:replay_protocol/replay_protocol.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../camera/fake_capture_layer.dart';
 
@@ -71,8 +77,13 @@ void main() {
   late Directory temp;
   final client = HttpClient();
 
-  Future<void> startServer({String? webRoot, Duration silence = const Duration(seconds: 15)}) async {
+  Future<void> startServer({
+    String? webRoot,
+    Duration silence = const Duration(seconds: 15),
+    CameraBroadcast? broadcast,
+  }) async {
     server = CameraServer(
+      broadcast: broadcast,
       capture: capture,
       secrets: PairingSecrets(code: _code, token: _token),
       cameraInfo: () => const CameraInfo(protocolVersion: 1, cameraId: 'cam-1', name: 'Test Phone', profileId: '1080p30'),
@@ -483,6 +494,135 @@ void main() {
       v.send(const RecStart());
       expect((await v.next<ErrorMessage>()).code, 'hello_required');
       expect(capture.calls.where((c) => c.startsWith('record')), isEmpty);
+      await v.close();
+    });
+  });
+
+  group('broadcast mode', () {
+    late bool active;
+    late CameraBroadcast host;
+
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      active = true;
+      final scoreboard = ScoreboardController(
+        prefs: prefs,
+        clockMs: () => 0,
+        setOverlay: (_) async {},
+        l10n: () => lookupAppLocalizations(const Locale('en')),
+      );
+      final stream = BroadcastController(prefs: prefs, capture: capture);
+      final changes = StreamController<void>.broadcast();
+      scoreboard.changes.listen((_) => changes.add(null));
+      stream.stateChanges.listen((_) => changes.add(null));
+      host = CameraBroadcast(scoreboard: scoreboard, stream: stream, isActive: () => active, changes: changes.stream);
+      await startServer(broadcast: host);
+    });
+
+    Future<_Viewer> greeted(String id) async {
+      final v = await _Viewer.connect(port);
+      await v.hello(id);
+      return v;
+    }
+
+    test('replay mode: no scoreboard in the status and commands are refused', () async {
+      active = false;
+      final v = await greeted('viewer-a');
+      capture.statsController.add(stats());
+      final status = (await v.next<StatusUpdate>()).status;
+      expect(status.scoreboard, isNull);
+      expect(status.broadcast, isNull);
+
+      v.send(const ScoreboardCmd(ScoreCommand(team: Team.home, delta: 1)));
+      expect((await v.next<ErrorMessage>()).code, 'not_broadcast_mode');
+      v.send(const BroadcastStart());
+      expect((await v.next<ErrorMessage>()).code, 'not_broadcast_mode');
+      expect(host.scoreboard.home.score, 0);
+      await v.close();
+    });
+
+    test('the status carries the scoreboard and the stream; a command reaches every viewer at once', () async {
+      final a = await greeted('viewer-a');
+      final b = await greeted('viewer-b');
+      capture.statsController.add(stats());
+      for (final v in [a, b]) {
+        final s = (await v.next<StatusUpdate>()).status;
+        expect(s.scoreboard, ScoreboardState.initial);
+        expect(s.broadcast!.state, BroadcastStreamState.idle);
+        expect(s.broadcast!.configured, isFalse);
+      }
+
+      // Well inside the 1 s stats throttle: the update must not wait for the next tick.
+      a.send(const ScoreboardCmd(ScoreCommand(team: Team.home, delta: 1)));
+      for (final v in [a, b]) {
+        final s = (await v.next<StatusUpdate>()).status;
+        expect(s.scoreboard!.home.score, 1);
+        expect((s.bufferMs, s.outboxClips), (42000, 3), reason: 'the rest is the last stats');
+      }
+      b.send(const ScoreboardCmd(ClockStartCommand()));
+      expect((await a.next<StatusUpdate>()).status.scoreboard!.clockRunning, isTrue);
+      await a.close();
+      await b.close();
+    });
+
+    test('a viewer joining later gets the scoreboard at once', () async {
+      host.scoreboardCommand(const ScoreCommand(team: Team.away, delta: 1));
+      capture.statsController.add(stats());
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      final v = await greeted('viewer-a');
+      expect((await v.next<StatusUpdate>()).status.scoreboard!.away.score, 1);
+      await v.close();
+    });
+
+    test('broadcast_start needs a key; config, start without the microphone, stop', () async {
+      final v = await greeted('viewer-a');
+      capture.statsController.add(stats());
+      await v.next<StatusUpdate>();
+
+      v.send(const BroadcastStart());
+      expect((await v.next<ErrorMessage>()).code, 'not_configured');
+
+      v.send(const BroadcastConfigure(server: 'rtmp://a.rtmp.youtube.com/live2', key: 'abcd-efgh-1234', targetKbps: 5000));
+      final configured = (await v.next<StatusUpdate>()).status.broadcast!;
+      expect((configured.configured, configured.keyHint, configured.targetKbps), (true, '1234', 5000));
+
+      capture.micGranted = false;
+      v.send(const BroadcastStart());
+      final notice = await v.next<ErrorMessage>();
+      expect(notice.code, 'mic_permission');
+      expect(capture.broadcastConfigs.single.url, 'rtmp://a.rtmp.youtube.com/live2/abcd-efgh-1234');
+      expect(capture.broadcastConfigs.single.audio, isFalse);
+      await _eventually(() => host.info.state == BroadcastStreamState.connecting);
+
+      v.send(const BroadcastStop());
+      await _eventually(() => capture.calls.contains('broadcastStop'));
+      await _eventually(() => host.info.state == BroadcastStreamState.idle);
+      await v.close();
+    });
+
+    test('the stream key never goes back to viewers', () async {
+      final raw = <String>[];
+      final ws = await WebSocket.connect('ws://127.0.0.1:$port${Api.ws}?${Api.tokenParam}=$_token');
+      ws.listen((m) => raw.add(m as String));
+      ws.add(Hello(protocolVersion: protocolVersion, viewerId: 'viewer-a').encode());
+      ws.add(const BroadcastConfigure(key: 'super-secret-key').encode());
+      capture.statsController.add(stats());
+      await _eventually(() => raw.where((m) => m.contains('keyHint')).isNotEmpty);
+      expect(raw.join(), isNot(contains('super-secret')));
+      await ws.close();
+    });
+
+    test('a failing start is broadcast_failed', () async {
+      final v = await greeted('viewer-a');
+      capture.statsController.add(stats());
+      await v.next<StatusUpdate>();
+      v.send(const BroadcastConfigure(key: 'abcd'));
+      await v.next<StatusUpdate>();
+      capture.broadcastStartError = PlatformException(code: 'rtmp', message: 'no route');
+      v.send(const BroadcastStart());
+      final e = await v.next<ErrorMessage>();
+      expect((e.code, e.message), ('broadcast_failed', 'no route'));
       await v.close();
     });
   });

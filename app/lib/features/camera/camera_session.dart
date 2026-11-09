@@ -38,6 +38,7 @@ class CameraSessionState {
     this.recording,
     this.recovered = const [],
     this.lastSaved,
+    this.broadcast = false,
   });
 
   final CameraPhase phase;
@@ -69,6 +70,10 @@ class CameraSessionState {
   /// The last recording that ended while this screen was open, for a one-off message.
   final RecordingSavedNotice? lastSaved;
 
+  /// Broadcast mode (SPEC §12): capture runs with `broadcast: true`, the scoreboard and the
+  /// YouTube stream are offered. Replay mode (false) is the default.
+  final bool broadcast;
+
   CaptureProfile? get profile => profiles.where((p) => p.id == profileId).firstOrNull;
 
   CameraSessionState copyWith({
@@ -86,6 +91,7 @@ class CameraSessionState {
     RecordingStatus? recording,
     List<RecordingSaved>? recovered,
     RecordingSavedNotice? lastSaved,
+    bool? broadcast,
   }) =>
       CameraSessionState(
         phase: phase ?? this.phase,
@@ -102,6 +108,7 @@ class CameraSessionState {
         recording: recording ?? this.recording,
         recovered: recovered ?? this.recovered,
         lastSaved: lastSaved ?? this.lastSaved,
+        broadcast: broadcast ?? this.broadcast,
       );
 }
 
@@ -117,10 +124,15 @@ final class RecordingSavedNotice {
 class CameraSessionNotifier extends Notifier<CameraSessionState> {
   static const defaultProfileId = '1080p30';
   static const _profileKey = 'camera.profile';
+  static const modeKey = 'camera.mode';
+  static const broadcastMode = 'broadcast';
   static const _maxErrors = 5;
 
   late CaptureLayer _capture;
   bool _running = false;
+
+  /// [CameraSessionState.broadcast], readable while disposing.
+  bool _broadcastMode = false;
 
   /// Crash recovery runs once per screen, before the first start (the recorder needs it first).
   bool _recoveryDone = false;
@@ -144,8 +156,11 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
       // Leaving the Camera finishes the recording first, so it reaches the gallery, then stops
       // capture. Always asked: the recorder may hold a recording this screen has not heard of yet.
       final running = _running;
+      final broadcast = _broadcastMode;
       _running = false;
       unawaited(() async {
+        // A stream ends with the Camera screen; the plugin would release it with capture anyway.
+        if (broadcast) await _capture.broadcastStop().catchError((Object _) {});
         try {
           await _capture.recordStop();
         } catch (_) {
@@ -155,7 +170,8 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
       }());
     });
     Future.microtask(enter);
-    return const CameraSessionState();
+    _broadcastMode = ref.read(sharedPreferencesProvider).getString(modeKey) == broadcastMode;
+    return CameraSessionState(broadcast: _broadcastMode);
   }
 
   /// Permissions → profiles → start the default profile. Also the "try again" action.
@@ -221,6 +237,17 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
     await _start(id);
   }
 
+  /// Switches between replay and broadcast mode (SPEC §12), remembered for the next session.
+  /// Capture restarts like on a profile change.
+  Future<void> setBroadcastMode(bool broadcast) async {
+    if (broadcast == state.broadcast) return;
+    _broadcastMode = broadcast;
+    state = state.copyWith(broadcast: broadcast);
+    unawaited(ref.read(sharedPreferencesProvider).setString(modeKey, broadcast ? broadcastMode : 'replay'));
+    final id = state.profileId;
+    if (id != null && state.phase != CameraPhase.initializing) await _start(id);
+  }
+
   Future<void> _start(String id) async {
     state = state.copyWith(phase: CameraPhase.starting, session: () => null, stats: () => null, startError: () => null);
     try {
@@ -228,7 +255,7 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
         _running = false;
         await _capture.stop();
       }
-      final session = await _capture.start(id);
+      final session = await _capture.start(id, broadcast: state.broadcast);
       if (!ref.mounted) {
         unawaited(_capture.stop());
         return;
@@ -274,7 +301,11 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
     }
     final current = state.profile;
     final fallback = current == null ? null : thermalFallback(state.profiles, current, event.action);
-    if (fallback != null && state.phase == CameraPhase.running) unawaited(selectProfile(fallback.id));
+    // In broadcast mode a restart would cut the stream, which is never degraded automatically
+    // (SPEC §12.1); the plugin's own steps (preview off, live view down) still apply.
+    if (fallback != null && state.phase == CameraPhase.running && !state.broadcast) {
+      unawaited(selectProfile(fallback.id));
+    }
   }
 
   /// A cooler profile for [action], or null if [current] already satisfies it.
