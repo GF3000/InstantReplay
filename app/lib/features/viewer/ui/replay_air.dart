@@ -17,15 +17,24 @@ bool canGoOnAir(SessionClip clip, {required bool streaming}) =>
 
 /// Opens [clip] for review. When it can go on air, first asks "Only on this tablet" or "Also on
 /// air"; the latter also puts it on air. Dismissing the question opens nothing.
-Future<void> openClipReview(BuildContext context, WidgetRef ref, SessionClip clip, Route<void> Function() route) async {
+///
+/// [route] gets whether the clip went on air: the review page then mirrors the stream (one speed
+/// for both, and leaving it goes back to live).
+Future<void> openClipReview(
+  BuildContext context,
+  WidgetRef ref,
+  SessionClip clip,
+  Route<void> Function({required bool onAir}) route,
+) async {
   final streaming = ref.read(viewerBroadcastProvider)?.active ?? false;
-  final onAir = canGoOnAir(clip, streaming: streaming);
-  if (onAir) {
-    final air = await askReplayOnAir(context);
-    if (air == null || !context.mounted) return;
+  var air = false;
+  if (canGoOnAir(clip, streaming: streaming)) {
+    final choice = await askReplayOnAir(context);
+    if (choice == null || !context.mounted) return;
+    air = choice;
     if (air) ref.read(viewerBroadcastNoticeProvider.notifier).replayAir(clip.clipId!);
   }
-  await Navigator.of(context).push(route());
+  await Navigator.of(context).push(route(onAir: air));
 }
 
 /// "Only on this tablet" (false) or "Also on air" (true); null when dismissed.
@@ -80,9 +89,15 @@ class _Choice extends StatelessWidget {
 /// Speed and Back to live while a clip is on air, for every viewer; nothing otherwise. With
 /// [clipId], only while that clip is on air (the review page).
 class ViewerReplayBar extends ConsumerWidget {
-  const ViewerReplayBar({super.key, this.clipId});
+  const ViewerReplayBar({super.key, this.clipId, this.speed = true, this.onStop});
 
   final String? clipId;
+
+  /// False on the review page, whose own speed control drives the stream too.
+  final bool speed;
+
+  /// Instead of just sending replay_stop (the review page also closes itself).
+  final VoidCallback? onStop;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -96,8 +111,8 @@ class ViewerReplayBar extends ConsumerWidget {
         keyPrefix: 'viewer-replay',
         replay: replay,
         enabled: connected,
-        onSpeed: remote.replaySpeed,
-        onStop: remote.replayStop,
+        onSpeed: speed ? remote.replaySpeed : null,
+        onStop: onStop ?? remote.replayStop,
       ),
     );
   }

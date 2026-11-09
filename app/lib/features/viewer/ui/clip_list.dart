@@ -222,7 +222,12 @@ class ClipTile extends ConsumerWidget {
           // While streaming, a clip still on the Camera can also go on air (SPEC §12.6).
           onTap: stored == null
               ? null
-              : () => openClipReview(context, ref, clip, () => ReviewPage.route(clip, replayBar: true)),
+              : () => openClipReview(
+                    context,
+                    ref,
+                    clip,
+                    ({required onAir}) => ReviewPage.route(clip, replayBar: true, onAir: onAir),
+                  ),
           onLongPress: changeTag,
           child: Container(
             height: 72,

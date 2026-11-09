@@ -58,7 +58,10 @@ class _Link extends LinkStateNotifier {
 
 /// Records what the replay controls send.
 class _Remote extends ViewerBroadcastNotifier {
-  final sent = <Object>[];
+  _Remote([List<Object>? sent]) : sent = sent ?? [];
+
+  /// Shared by every instance the (auto-disposed) provider creates during a test.
+  final List<Object> sent;
 
   @override
   BroadcastNotice? build() => null;
@@ -121,6 +124,8 @@ Future<_Remote> _pump(
   addTearDown(tester.view.reset);
   SharedPreferences.setMockInitialValues({});
   final remote = _Remote();
+  // The provider is auto-disposed between screens: each rebuild gets a fresh notifier that
+  // records into the same list.
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
@@ -128,7 +133,7 @@ Future<_Remote> _pump(
         linkStateProvider.overrideWith(link ?? _Link.new),
         liveViewProvider.overrideWith(_NoLive.new),
         viewerClipsProvider.overrideWith(_NoClips.new),
-        viewerBroadcastNoticeProvider.overrideWith(() => remote),
+        viewerBroadcastNoticeProvider.overrideWith(() => _Remote(remote.sent)),
       ],
       child: MaterialApp(
         locale: const Locale('en'),
@@ -258,5 +263,53 @@ void main() {
         expect(tester.getRect(_key('viewer-replay-stop')).height, greaterThanOrEqualTo(47.9));
       });
     }
+  });
+
+  testWidgets('on air from the review page: one speed for tablet and stream, leaving goes back to live', (tester) async {
+    const onAir = ReplayInfo(clipId: 'c1', speed: 1, positionMs: 0, durationMs: 20000);
+    final remote = await _pump(
+      tester,
+      Builder(
+        builder: (context) => TextButton(
+          onPressed: () => Navigator.of(context).push(ReviewPage.route(_clip(), replayBar: true, onAir: true)),
+          child: const Text('open'),
+        ),
+      ),
+      link: () => _Link(replay: onAir),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    // The on-air bar has no speed of its own: the review page's control drives both.
+    expect(_key('viewer-replay-stop'), findsOneWidget);
+    expect(_key('viewer-replay-speed'), findsNothing);
+    await tester.tap(find.text('0.5×'));
+    await tester.pumpAndSettle();
+    expect(remote.sent, [const ReplaySpeed(speed: 0.5).encode()]);
+
+    // Leaving the page cuts back to live.
+    tester.state<NavigatorState>(find.byType(Navigator)).pop();
+    await tester.pumpAndSettle();
+    expect(find.byType(ReviewPage), findsNothing);
+    expect(remote.sent.last, const ReplayStop().encode());
+  });
+
+  testWidgets('Back to live on the review page stops the replay and closes the page', (tester) async {
+    const onAir = ReplayInfo(clipId: 'c1', speed: 1, positionMs: 0, durationMs: 20000);
+    final remote = await _pump(
+      tester,
+      Builder(
+        builder: (context) => TextButton(
+          onPressed: () => Navigator.of(context).push(ReviewPage.route(_clip(), replayBar: true, onAir: true)),
+          child: const Text('open'),
+        ),
+      ),
+      link: () => _Link(replay: onAir),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    await tester.tap(_key('viewer-replay-stop'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ReviewPage), findsNothing);
+    expect(remote.sent.where((m) => m == const ReplayStop().encode()), hasLength(1), reason: 'not twice');
   });
 }

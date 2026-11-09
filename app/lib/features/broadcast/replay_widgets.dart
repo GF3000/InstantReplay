@@ -38,7 +38,9 @@ class ReplayBar extends StatefulWidget {
 
   /// False while the Camera is not reachable.
   final bool enabled;
-  final ValueChanged<double> onSpeed;
+  /// Null hides the speed control: the review page drives the speed with its own (one control
+  /// for what the tablet and the stream show).
+  final ValueChanged<double>? onSpeed;
   final VoidCallback onStop;
 
   /// Prefix of the keys, e.g. `viewer-replay` → `viewer-replay-stop`, `viewer-replay-speed-0.5`.
@@ -123,8 +125,9 @@ class _ReplayBarState extends State<ReplayBar> {
           ),
       ],
       selected: {?selected},
-      onSelectionChanged: widget.enabled ? (s) => s.isEmpty ? null : widget.onSpeed(s.first) : null,
+      onSelectionChanged: widget.enabled ? (s) => s.isEmpty ? null : widget.onSpeed?.call(s.first) : null,
     );
+    final showSpeed = widget.onSpeed != null;
     final back = FilledButton.icon(
       key: ValueKey('$prefix-stop'),
       style: FilledButton.styleFrom(
@@ -179,8 +182,7 @@ class _ReplayBarState extends State<ReplayBar> {
                   Expanded(
                     child: Column(mainAxisSize: MainAxisSize.min, children: [header, const SizedBox(height: 4), bar]),
                   ),
-                  const SizedBox(width: 8),
-                  speed,
+                  if (showSpeed) ...[const SizedBox(width: 8), speed],
                   const SizedBox(width: 8),
                   back,
                 ],
@@ -196,7 +198,7 @@ class _ReplayBarState extends State<ReplayBar> {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    speed,
+                    if (showSpeed) speed,
                     const SizedBox(width: 4),
                     Expanded(child: back),
                   ],
