@@ -6,6 +6,7 @@ library;
 
 import 'dart:convert';
 
+import 'broadcast.dart';
 import 'models.dart';
 
 sealed class WsMessage {
@@ -46,6 +47,18 @@ sealed class WsMessage {
           durationMs: j['durationMs']! as int,
           reason: RecordingEndReason.values.asNameMap()[j['reason']] ?? RecordingEndReason.user,
         ),
+      ScoreboardCmd.typeName => switch (ScoreboardCommand.fromJson(j)) {
+          final c? => ScoreboardCmd(c),
+          null => null,
+        },
+      BroadcastConfigure.typeName => BroadcastConfigure(
+          server: j['server'] as String? ?? BroadcastInfo.defaultServer,
+          key: j['key'] as String?,
+          targetKbps: j['targetKbps'] as int? ?? BroadcastInfo.defaultKbps,
+          audio: j['audio'] as bool? ?? true,
+        ),
+      BroadcastStart.typeName => const BroadcastStart(),
+      BroadcastStop.typeName => const BroadcastStop(),
       Ping.typeName => const Ping(),
       Pong.typeName => const Pong(),
       _ => null,
@@ -261,6 +274,75 @@ final class RecordingFinished extends WsMessage {
 
   @override
   Json fields() => {'name': name, 'parts': parts, 'durationMs': durationMs, 'reason': reason.name};
+}
+
+/// Viewer → Camera: change the scoreboard (SPEC §12.3). The new state arrives in the next
+/// [StatusUpdate], sent at once.
+final class ScoreboardCmd extends WsMessage {
+  const ScoreboardCmd(this.command);
+
+  static const typeName = 'scoreboard_cmd';
+  final ScoreboardCommand command;
+
+  @override
+  String get type => typeName;
+
+  @override
+  Json fields() => command.toJson();
+}
+
+/// Viewer → Camera: where to stream. [key] null keeps the stored stream key.
+final class BroadcastConfigure extends WsMessage {
+  const BroadcastConfigure({
+    this.server = BroadcastInfo.defaultServer,
+    this.key,
+    this.targetKbps = BroadcastInfo.defaultKbps,
+    this.audio = true,
+  });
+
+  static const typeName = 'broadcast_config';
+  final String server;
+  final String? key;
+  final int targetKbps;
+  final bool audio;
+
+  @override
+  String get type => typeName;
+
+  @override
+  Json fields() => {
+        'server': server,
+        if (key != null) 'key': key,
+        'targetKbps': targetKbps,
+        'audio': audio,
+      };
+}
+
+/// Viewer → Camera: go live. Failures come back as [ErrorMessage] `broadcast_failed`,
+/// `not_configured` or `mic_permission`.
+final class BroadcastStart extends WsMessage {
+  const BroadcastStart();
+
+  static const typeName = 'broadcast_start';
+
+  @override
+  String get type => typeName;
+
+  @override
+  Json fields() => const {};
+}
+
+/// Viewer → Camera: end the stream.
+final class BroadcastStop extends WsMessage {
+  const BroadcastStop();
+
+  static const typeName = 'broadcast_stop';
+
+  @override
+  String get type => typeName;
+
+  @override
+  Json fields() => const {};
 }
 
 /// Keep-alive: the Viewer pings every 5 s; the Camera drops a viewer silent for 15 s.

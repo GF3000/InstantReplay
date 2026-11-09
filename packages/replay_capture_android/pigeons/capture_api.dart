@@ -28,12 +28,16 @@ class CaptureProfile {
 }
 
 class StartRequest {
-  StartRequest({required this.profileId, required this.windowSeconds});
+  StartRequest({required this.profileId, required this.windowSeconds, this.broadcast});
 
   String profileId;
 
   /// Ring-buffer window: longest preset + post-roll + margin (SPEC §3.2).
   int windowSeconds;
+
+  /// Broadcast mode (SPEC §12): full-size camera texture so a program encoder with the scoreboard
+  /// can be fed by GL. Null or false = replay mode.
+  bool? broadcast;
 }
 
 class StartResult {
@@ -137,6 +141,98 @@ class CaptureStats {
   /// Full-session recording, idle until someone presses Record. Viewers show their controls when
   /// it is present.
   RecordingStatus? recording;
+
+  /// Present only in broadcast mode (SPEC §12).
+  BroadcastStatus? broadcast;
+}
+
+/// What the scoreboard overlay shows (SPEC §12.2). Dart owns the state; native only draws it and
+/// advances a running clock from [clockMs] by its own monotonic clock, starting when received.
+class OverlayState {
+  OverlayState({
+    required this.visible,
+    required this.homeName,
+    required this.awayName,
+    required this.homeScore,
+    required this.awayScore,
+    required this.homeColor,
+    required this.awayColor,
+    required this.periodLabel,
+    required this.clockMs,
+    required this.clockRunning,
+    required this.countDown,
+  });
+
+  bool visible;
+
+  /// Already upper-case, 1–5 characters.
+  String homeName;
+  String awayName;
+  int homeScore;
+  int awayScore;
+
+  /// ARGB.
+  int homeColor;
+  int awayColor;
+
+  /// Localized by Dart, e.g. `1T`, `2H`, `Q3`; empty = not shown.
+  String periodLabel;
+
+  /// Clock value when this state was sent.
+  int clockMs;
+  bool clockRunning;
+
+  /// A running count-down clock stops at 0 on screen.
+  bool countDown;
+}
+
+class BroadcastConfig {
+  BroadcastConfig({required this.url, required this.targetKbps, required this.audio});
+
+  /// Full RTMP(S) URL including the stream key, e.g. `rtmp://a.rtmp.youtube.com/live2/<key>`.
+  String url;
+
+  /// Video target bitrate (2500–6000); adaptive bitrate may go lower on congestion.
+  int targetKbps;
+
+  /// Microphone on; false sends a silent AAC track.
+  bool audio;
+}
+
+enum BroadcastState { idle, connecting, live, reconnecting, failed }
+
+class BroadcastStatus {
+  BroadcastStatus({
+    required this.state,
+    required this.targetKbps,
+    required this.droppedFrames,
+    required this.audio,
+    this.bitrateKbps,
+    this.uptimeMs,
+    this.fps,
+    this.message,
+  });
+
+  BroadcastState state;
+
+  /// Current video target (after adaptive changes).
+  int targetKbps;
+
+  /// Measured outgoing bitrate (video + audio); null when not live.
+  int? bitrateKbps;
+
+  /// Time since the stream first went live; pauses for reconnections are included.
+  int? uptimeMs;
+
+  /// Program encoder output frames per second.
+  double? fps;
+
+  /// Frames the RTMP client dropped because its queue was full.
+  int droppedFrames;
+  bool audio;
+
+  /// Last error or disconnection reason.
+  String? message;
 }
 
 /// Full-session recording (SPEC D8, §3.8): idle, recording, or paused between plays.
@@ -233,6 +329,10 @@ abstract class CaptureHostApi {
   @async
   bool requestPermission();
 
+  /// RECORD_AUDIO, asked only before a broadcast with audio (SPEC §12.1).
+  @async
+  bool requestMicPermission();
+
   /// Profiles the back camera supports in a regular session, best first.
   List<CaptureProfile> supportedProfiles();
 
@@ -291,6 +391,23 @@ abstract class CaptureHostApi {
   /// Finishes recordings left open by a crash or a kill. Call before the first start.
   @async
   List<RecordingSaved> recoverRecordings();
+
+  // Broadcast mode (SPEC §12). Only while capture runs with `broadcast: true`.
+
+  /// Replaces what the scoreboard overlay shows. Cheap; call on every change.
+  void setOverlay(OverlayState overlay);
+
+  /// Starts the program encoder, audio and the RTMP connection. Returns once connecting has
+  /// started (state `connecting`); progress arrives through [CaptureEventsApi.onBroadcast]. Fails
+  /// with `not_broadcast_mode` when capture is not in broadcast mode.
+  @async
+  BroadcastStatus broadcastStart(BroadcastConfig config);
+
+  /// Disconnects and releases the program encoder and audio. No-op when idle.
+  @async
+  void broadcastStop();
+
+  BroadcastStatus broadcastStatus();
 }
 
 @FlutterApi()
@@ -317,4 +434,8 @@ abstract class CaptureEventsApi {
 
   /// A recording finished: by the user, by low space or an error, or recovered after a crash.
   void onRecordingSaved(RecordingSaved saved);
+
+  /// The broadcast state changed (connecting, live, reconnecting, failed, idle). Ongoing numbers
+  /// also ride on [CaptureStats.broadcast].
+  void onBroadcast(BroadcastStatus status);
 }

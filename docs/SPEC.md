@@ -33,6 +33,7 @@
 | D22 | Hosting | GitHub monorepo, GitHub Actions, APK + web bundle in Releases. |
 | D23 | Team | Solo developer with AI assistance → small, verifiable phases; minimize custom native code. |
 | D24 | MVP scope | Core replay + live view WebRTC + web build. Trim/telestrator in v0.2. |
+| D25 | Broadcast (experimental) | The **Camera** can also stream to YouTube Live (RTMP) at 1080p30 with a scoreboard burned in and the phone's microphone; any Viewer controls the scoreboard (§12). The Camera stays the single place where video is composed and encoded, so replays to the stream can be added later without moving the stream to another device. Audio exists only in the broadcast; clips and recordings stay video-only (D7). |
 
 ---
 
@@ -422,3 +423,65 @@ Multiple cameras (clock offset via WS ping, `cameraId` already in model), iOS vi
 - Default post-roll value (proposal: 2 s).
 - Default telestrator hold duration (proposal: 3 s) and drawing tools set (arrow, line, circle, freehand, color, undo).
 - Whether the Viewer should also keep a low-quality local buffer of the live stream for instant preview while the HQ clip downloads (deferred; measure N3 first).
+
+---
+
+## 12. Broadcast mode (experimental, MVP)
+
+Goal: a club streams a match to **YouTube Live** from the same tripod phone, with a basic scoreboard on the picture, controlled from a tablet or phone at the bench. Replays on the stream are out of scope for the MVP but the design leaves room for them (D25). The first real match doubles as the thermal test of "everything on the Camera".
+
+### 12.1 Pipeline
+
+```mermaid
+flowchart LR
+  CAM[Camera2] -->|direct| HQ[HQ encoder<br/>clean, ring buffer]
+  CAM --> ST[SurfaceTexture<br/>1080p in broadcast mode]
+  ST --> GL[GL thread]
+  OV[Scoreboard bitmap<br/>Canvas → texture] --> GL
+  GL --> PGM[Program encoder<br/>H.264 1080p30 + overlay]
+  GL --> HO[Handoff 720p + overlay] --> LIVE[WebRTC live view / preview]
+  MIC[AudioRecord] --> AAC[AAC encoder]
+  PGM --> RTMP[RTMP client<br/>RootEncoder]
+  AAC --> RTMP
+  RTMP -->|Wi-Fi with Internet or mobile data| YT[YouTube Live]
+```
+
+- **Mode.** Chosen on the Camera before starting capture: *Replay* (default, unchanged) or *Broadcast*. Broadcast passes `broadcast: true` in `StartRequest`; the camera texture is then 1080p instead of 720p. The HQ encoder stays on the direct path, so the clean ring buffer, clip saving and full-session recording keep working in broadcast mode.
+- **Program encoder.** Created when streaming starts, released when it stops. Fed by the GL thread every frame: camera texture + scoreboard quad (alpha-blended). H.264 High (fallback Main), 1080p30, CBR when supported (else VBR), **GOP 2 s**, target bitrate configurable (default **4500 kbps**, range 2500–6000).
+- **Overlay.** Drawn with Android `Canvas` into a bitmap only when its content changes (at most once per second while the clock runs), uploaded as a GL texture, drawn top-left with a safe margin. The same overlay is drawn on the 720p handoff, so the Viewer's live view shows what goes on air.
+- **Audio.** Phone microphone → `AudioRecord` 48 kHz mono → AAC-LC 128 kbps. With the microphone off (or no permission) a **silent** AAC track is sent, because YouTube expects audio. `RECORD_AUDIO` is requested only when a broadcast with audio starts; the foreground service adds the `microphone` type.
+- **Timestamps.** Video (SurfaceTexture, `CLOCK_MONOTONIC`) and audio (`System.nanoTime` at read) share one clock, rebased to the stream start.
+- **RTMP.** RootEncoder `rtmp` module (Apache-2.0, JitPack). URL = server + `/` + stream key, e.g. `rtmp://a.rtmp.youtube.com/live2/<key>`; `rtmps://` also accepted. The encoded H.264 (Annex-B, straight from MediaCodec) and AAC are handed to the client; no re-muxing.
+- **Resilience.** A connection loss never stops the program encoder: the client retries every 3 s until the user stops; after reconnecting it requests a keyframe. Adaptive bitrate: on congestion the target drops 15% (floor 1500 kbps); after 10 s without congestion it rises 10% back towards the configured target.
+- **Thermal policy in broadcast mode.** The program stream is never degraded automatically: preview off, then WebRTC live bitrate down, then live view stopped. The broadcast continues until the user stops it.
+- **Field log.** While broadcasting, the Camera appends one CSV row every 5 s to `Android/data/<app>/files/broadcast/broadcast_<yyyy-MM-dd_HH-mm>.csv`: time, thermal status and headroom, battery temperature/level/plugged, camera and program fps, target and measured bitrate, dropped frames, RTMP state. Readable over USB after the match.
+- **Network.** Option 1: Camera and Viewer on a router with Internet (the Camera streams over Wi-Fi). Option 2: the Camera's own hotspot, the Viewer joins it; the Camera streams over its mobile data. Both need no extra routing code.
+
+### 12.2 Scoreboard
+
+State lives on the **Camera** (Dart, persisted in preferences so an app restart keeps the score); the clock ticks there. Viewers send commands and see the state in `status`.
+
+| Field | Notes |
+|---|---|
+| `home`, `away` | `{name, score, color}`: name 1–5 characters (shown upper-case), score ≥ 0, color ARGB int |
+| `period`, `periods` | Current period (1-based) and number of periods (1–4) |
+| `periodMs` | Length of a period (e.g. 45 min, 20 min, 10 min) |
+| `countDown` | Clock counts down from `periodMs` and stops at 0; otherwise counts up from 0 and keeps going past `periodMs` (added time) |
+| `clock` | `{ms, running}`: value when the status was built; a running clock advances locally on viewers |
+| `visible` | Overlay on/off |
+
+Period label on air: 2 periods → `1T`/`2T` (es) or `1H`/`2H` (en); 4 periods → `Q1`…`Q4`; 1 period → none. Changing period pauses the clock and resets it (0, or `periodMs` when counting down).
+
+### 12.3 Protocol additions (API v1, backwards compatible)
+
+- `status` gains `scoreboard` and `broadcast`, both absent outside broadcast mode (viewers hide the controls, as with `sessionRecording`).
+- `broadcast`: `{state: idle|connecting|live|reconnecting|failed, configured, server, keyHint?, targetKbps, bitrateKbps?, uptimeMs?, audio, message?}`. The stream key is never sent back; `keyHint` is its last 4 characters.
+- Viewer → Camera:
+  - `scoreboard_cmd {action, …}`: `score {team: home|away, delta: ±1}`, `clock_start`, `clock_pause`, `clock_set {ms}`, `period {delta: ±1}`, `settings {settings}` (names, colors, periods, periodMs, countDown), `visible {visible}`, `reset` (scores 0, period 1, clock reset; teams and settings kept).
+  - `broadcast_config {server, key?, targetKbps, audio}`: `key` omitted = keep the stored one. Stored on the Camera.
+  - `broadcast_start`, `broadcast_stop`. Failures come back as `error` with `broadcast_failed`, `not_configured` or `mic_permission`.
+- The Camera screen shows the broadcast state and can start/stop it too; the stream key can be entered on either device.
+
+### 12.4 MVP acceptance (first real match)
+- 90 min streamed at 1080p30 to YouTube with the scoreboard updating from the tablet; at most a few seconds of interruption after a network drop, recovered automatically.
+- The field log shows whether the phone stayed below `THERMAL_STATUS_SEVERE`; this decides whether replays on the stream can also run on the Camera.

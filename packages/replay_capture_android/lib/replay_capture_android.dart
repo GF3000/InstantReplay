@@ -4,11 +4,15 @@ import 'src/capture_api.g.dart';
 
 export 'src/capture_api.g.dart'
     show
+        BroadcastConfig,
+        BroadcastState,
+        BroadcastStatus,
         CaptureProfile,
         CaptureStats,
         ClipInfo,
         ClipState,
         LiveViewerStats,
+        OverlayState,
         RecordingEnd,
         RecordingSaved,
         RecordingState,
@@ -37,6 +41,7 @@ class ReplayCapture implements CaptureEventsApi {
   final _liveState = StreamController<({String viewerId, String state})>.broadcast();
   final _recording = StreamController<RecordingStatus>.broadcast();
   final _recordingSaved = StreamController<RecordingSaved>.broadcast();
+  final _broadcast = StreamController<BroadcastStatus>.broadcast();
 
   /// About once per second while capturing.
   Stream<CaptureStats> get stats => _stats.stream;
@@ -58,12 +63,18 @@ class ReplayCapture implements CaptureEventsApi {
 
   Stream<RecordingSaved> get recordingSaved => _recordingSaved.stream;
 
+  /// Broadcast state changes (SPEC §12); the latest numbers also ride on every [stats] event.
+  Stream<BroadcastStatus> get broadcast => _broadcast.stream;
+
   Future<bool> requestPermission() => _host.requestPermission();
 
   Future<List<CaptureProfile>> supportedProfiles() => _host.supportedProfiles();
 
-  Future<StartResult> start(String profileId, {int windowSeconds = 80}) =>
-      _host.start(StartRequest(profileId: profileId, windowSeconds: windowSeconds));
+  Future<bool> requestMicPermission() => _host.requestMicPermission();
+
+  /// [broadcast] starts in broadcast mode (SPEC §12): the program encoder can then be started.
+  Future<StartResult> start(String profileId, {int windowSeconds = 80, bool broadcast = false}) =>
+      _host.start(StartRequest(profileId: profileId, windowSeconds: windowSeconds, broadcast: broadcast));
 
   Future<void> stop() => _host.stop();
 
@@ -101,6 +112,16 @@ class ReplayCapture implements CaptureEventsApi {
 
   Future<List<RecordingSaved>> recoverRecordings() => _host.recoverRecordings();
 
+  /// What the scoreboard overlay shows; call on every change (broadcast mode only).
+  Future<void> setOverlay(OverlayState overlay) => _host.setOverlay(overlay);
+
+  /// Returns once connecting has started; progress arrives on [broadcast].
+  Future<BroadcastStatus> broadcastStart(BroadcastConfig config) => _host.broadcastStart(config);
+
+  Future<void> broadcastStop() => _host.broadcastStop();
+
+  Future<BroadcastStatus> broadcastStatus() => _host.broadcastStatus();
+
   @override
   void onStats(CaptureStats stats) => _stats.add(stats);
 
@@ -128,6 +149,9 @@ class ReplayCapture implements CaptureEventsApi {
 
   @override
   void onRecordingSaved(RecordingSaved saved) => _recordingSaved.add(saved);
+
+  @override
+  void onBroadcast(BroadcastStatus status) => _broadcast.add(status);
 }
 
 typedef LiveIceCandidate = ({String viewerId, String candidate, String? sdpMid, int? sdpMLineIndex});

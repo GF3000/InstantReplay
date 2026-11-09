@@ -114,6 +114,38 @@ void main() {
               state: SessionRecordingState.recording, elapsedMs: 5000, parts: 1, freeBytes: 9, lowSpace: false),
         ),
       ),
+      const StatusUpdate(
+        status: CameraStatus(
+          recording: true,
+          fps: 30,
+          bufferMs: 1,
+          outboxClips: 0,
+          thermalStatus: 0,
+          scoreboard: ScoreboardState.initial,
+          broadcast: BroadcastInfo(
+            state: BroadcastStreamState.live,
+            configured: true,
+            server: BroadcastInfo.defaultServer,
+            targetKbps: 4500,
+            audio: true,
+            keyHint: 'ab12',
+            bitrateKbps: 4400,
+            uptimeMs: 60000,
+          ),
+        ),
+      ),
+      const ScoreboardCmd(ScoreCommand(team: Team.away, delta: -1)),
+      const ScoreboardCmd(ClockStartCommand()),
+      const ScoreboardCmd(ClockPauseCommand()),
+      const ScoreboardCmd(ClockSetCommand(ms: 61000)),
+      const ScoreboardCmd(PeriodCommand(delta: 1)),
+      ScoreboardCmd(SettingsCommand(ScoreboardState.initial.settings)),
+      const ScoreboardCmd(VisibleCommand(visible: false)),
+      const ScoreboardCmd(ResetCommand()),
+      const BroadcastConfigure(key: 'xxxx-yyyy', targetKbps: 3000, audio: false),
+      const BroadcastConfigure(),
+      const BroadcastStart(),
+      const BroadcastStop(),
       const Ping(),
       const Pong(),
     ];
@@ -150,6 +182,109 @@ void main() {
 
     test('LiveStart defaults to H264', () {
       expect((WsMessage.decode('{"type":"live_start"}')! as LiveStart).codec, 'H264');
+    });
+  });
+
+  group('scoreboard', () {
+    const s0 = ScoreboardState.initial;
+
+    test('round-trips and fills defaults', () {
+      expect(ScoreboardState.fromJson(s0.toJson()), s0);
+      final minimal = ScoreboardState.fromJson({
+        'home': {'name': 'A', 'color': 1},
+        'away': {'name': 'B', 'color': 2},
+      });
+      expect(minimal.period, 1);
+      expect(minimal.clockRunning, isFalse);
+      expect(minimal.visible, isTrue);
+    });
+
+    test('a status from an older Camera has no scoreboard or broadcast', () {
+      final s = CameraStatus.fromJson({'recording': true, 'fps': 30, 'bufferMs': 1, 'outboxClips': 0, 'thermalStatus': 0});
+      expect(s.scoreboard, isNull);
+      expect(s.broadcast, isNull);
+    });
+
+    test('scores never go below zero', () {
+      var s = s0.apply(const ScoreCommand(team: Team.home, delta: 1), elapsedMs: 0);
+      s = s.apply(const ScoreCommand(team: Team.home, delta: 1), elapsedMs: 0);
+      s = s.apply(const ScoreCommand(team: Team.away, delta: -1), elapsedMs: 0);
+      expect((s.home.score, s.away.score), (2, 0));
+    });
+
+    test('a running clock counts up and is re-anchored by every command', () {
+      final running = s0.apply(const ClockStartCommand(), elapsedMs: 0);
+      expect(running.clockAt(1500), 1500);
+      final scored = running.apply(const ScoreCommand(team: Team.home, delta: 1), elapsedMs: 10000);
+      expect(scored.clockMs, 10000);
+      expect(scored.clockRunning, isTrue);
+      final paused = scored.apply(const ClockPauseCommand(), elapsedMs: 500);
+      expect(paused.clockMs, 10500);
+      expect(paused.clockAt(99999), 10500);
+    });
+
+    test('a count-down clock stops at zero and cannot restart from it', () {
+      final s = s0.apply(
+        const SettingsCommand(ScoreboardSettings(
+          homeName: 'a',
+          awayName: 'b',
+          homeColor: 1,
+          awayColor: 2,
+          periods: 4,
+          periodMs: 10 * 60 * 1000,
+          countDown: true,
+        )),
+        elapsedMs: 0,
+      );
+      expect(s.clockMs, 600000);
+      final running = s.apply(const ClockStartCommand(), elapsedMs: 0);
+      expect(running.clockAt(1000), 599000);
+      expect(running.clockAt(700000), 0);
+      final ended = running.apply(const ScoreCommand(team: Team.home, delta: 1), elapsedMs: 700000);
+      expect((ended.clockMs, ended.clockRunning), (0, false));
+      expect(ended.apply(const ClockStartCommand(), elapsedMs: 0).clockRunning, isFalse);
+    });
+
+    test('settings normalize names, clamp periods and reset the clock only when it changes', () {
+      final running = s0.apply(const ClockStartCommand(), elapsedMs: 0);
+      final renamed = running.apply(
+        SettingsCommand(ScoreboardSettings(
+          homeName: '  barcelona ',
+          awayName: '',
+          homeColor: 5,
+          awayColor: 6,
+          periods: 9,
+          periodMs: s0.periodMs,
+          countDown: false,
+        )),
+        elapsedMs: 3000,
+      );
+      expect(renamed.home.name, 'BARCE');
+      expect(renamed.away.name, 'VIS');
+      expect(renamed.periods, 4);
+      expect((renamed.clockMs, renamed.clockRunning), (3000, true));
+    });
+
+    test('period changes pause and reset the clock; reset keeps teams', () {
+      final s = s0
+          .apply(const ClockStartCommand(), elapsedMs: 0)
+          .apply(const ScoreCommand(team: Team.away, delta: 1), elapsedMs: 0)
+          .apply(const PeriodCommand(delta: 1), elapsedMs: 2700000);
+      expect((s.period, s.clockMs, s.clockRunning), (2, 0, false));
+      expect(s.apply(const PeriodCommand(delta: 1), elapsedMs: 0).period, 2);
+      final reset = s.apply(const ResetCommand(), elapsedMs: 0);
+      expect((reset.period, reset.away.score, reset.away.name), (1, 0, 'VIS'));
+    });
+
+    test('formatClock', () {
+      expect(formatClock(0), '00:00');
+      expect(formatClock(61999), '01:01');
+      expect(formatClock(93 * 60000 + 12000), '93:12');
+    });
+
+    test('unknown or malformed commands decode to null', () {
+      expect(WsMessage.decode('{"type":"scoreboard_cmd","action":"explode"}'), isNull);
+      expect(WsMessage.decode('{"type":"scoreboard_cmd","action":"score","team":"nobody","delta":1}'), isNull);
     });
   });
 }

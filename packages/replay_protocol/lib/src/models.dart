@@ -1,6 +1,8 @@
 /// JSON data types of API v1. Unknown fields are ignored; optional fields may be absent.
 library;
 
+import 'broadcast.dart';
+
 typedef Json = Map<String, Object?>;
 
 /// Outbox lifecycle (SPEC §3.4).
@@ -168,6 +170,8 @@ class CameraStatus {
     this.batteryPercent,
     this.plugged,
     this.sessionRecording,
+    this.scoreboard,
+    this.broadcast,
   });
 
   factory CameraStatus.fromJson(Json j) => CameraStatus(
@@ -181,6 +185,14 @@ class CameraStatus {
         plugged: j['plugged'] as bool?,
         sessionRecording: switch (j['sessionRecording']) {
           final Json r => SessionRecording.fromJson(r),
+          _ => null,
+        },
+        scoreboard: switch (j['scoreboard']) {
+          final Json b => ScoreboardState.fromJson(b),
+          _ => null,
+        },
+        broadcast: switch (j['broadcast']) {
+          final Json b => BroadcastInfo.fromJson(b),
           _ => null,
         },
       );
@@ -201,6 +213,11 @@ class CameraStatus {
   /// Full-session recording (SPEC §3.8); null from a Camera without it.
   final SessionRecording? sessionRecording;
 
+  /// Broadcast mode only (SPEC §12): the scoreboard and the YouTube stream. Absent in replay mode,
+  /// and viewers then hide their controls.
+  final ScoreboardState? scoreboard;
+  final BroadcastInfo? broadcast;
+
   Json toJson() => {
         'recording': recording,
         'fps': fps,
@@ -211,6 +228,8 @@ class CameraStatus {
         if (batteryPercent != null) 'batteryPercent': batteryPercent,
         if (plugged != null) 'plugged': plugged,
         if (sessionRecording != null) 'sessionRecording': sessionRecording!.toJson(),
+        if (scoreboard != null) 'scoreboard': scoreboard!.toJson(),
+        if (broadcast != null) 'broadcast': broadcast!.toJson(),
       };
 }
 
