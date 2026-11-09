@@ -28,12 +28,16 @@ class CaptureProfile {
 }
 
 class StartRequest {
-  StartRequest({required this.profileId, required this.windowSeconds});
+  StartRequest({required this.profileId, required this.windowSeconds, this.broadcast});
 
   String profileId;
 
   /// Ring-buffer window: longest preset + post-roll + margin (SPEC §3.2).
   int windowSeconds;
+
+  /// Broadcast mode (SPEC §12): full-size camera texture so a program encoder with the scoreboard
+  /// can be fed by GL. Null or false = replay mode.
+  bool? broadcast;
 }
 
 class StartResult {
@@ -42,6 +46,7 @@ class StartResult {
     required this.encoder,
     required this.highProfile,
     required this.sensorOrientation,
+    this.maxZoom,
   });
 
   /// Flutter texture showing the local preview.
@@ -49,6 +54,9 @@ class StartResult {
   String encoder;
   bool highProfile;
   int sensorOrientation;
+
+  /// Highest zoom of the back camera (1 = none); null from an older plugin.
+  double? maxZoom;
 }
 
 /// Outbox lifecycle (SPEC §3.4).
@@ -76,6 +84,7 @@ class ClipInfo {
     this.assemblyMs,
     this.extraPreRollMs,
     this.sha256,
+    this.reserved,
   });
 
   String id;
@@ -93,6 +102,9 @@ class ClipInfo {
   int? assemblyMs;
   int? extraPreRollMs;
   String? sha256;
+
+  /// Acknowledged but kept in the replay reserve (SPEC §3.4): still downloadable and airable.
+  bool? reserved;
 }
 
 class CaptureStats {
@@ -137,6 +149,119 @@ class CaptureStats {
   /// Full-session recording, idle until someone presses Record. Viewers show their controls when
   /// it is present.
   RecordingStatus? recording;
+
+  /// Present only in broadcast mode (SPEC §12).
+  BroadcastStatus? broadcast;
+
+  /// A replay on air (SPEC §12.6); null while the program shows the camera.
+  ReplayStatus? replay;
+}
+
+/// A clip on air instead of the live picture (SPEC §12.6).
+class ReplayStatus {
+  ReplayStatus({required this.clipId, required this.speed, required this.positionMs, required this.durationMs});
+
+  String clipId;
+
+  /// 0.25, 0.5 or 1.
+  double speed;
+
+  /// Position in the clip (media time, not wall time).
+  int positionMs;
+  int durationMs;
+}
+
+/// What the scoreboard overlay shows (SPEC §12.2). Dart owns the state; native only draws it and
+/// advances a running clock from [clockMs] by its own monotonic clock, starting when received.
+class OverlayState {
+  OverlayState({
+    required this.visible,
+    required this.homeName,
+    required this.awayName,
+    required this.homeScore,
+    required this.awayScore,
+    required this.homeColor,
+    required this.awayColor,
+    required this.periodLabel,
+    required this.clockMs,
+    required this.clockRunning,
+    required this.countDown,
+    required this.scalePercent,
+  });
+
+  bool visible;
+
+  /// Already upper-case, 1–5 characters.
+  String homeName;
+  String awayName;
+  int homeScore;
+  int awayScore;
+
+  /// ARGB.
+  int homeColor;
+  int awayColor;
+
+  /// Localized by Dart, e.g. `1T`, `2H`, `Q3`; empty = not shown.
+  String periodLabel;
+
+  /// Clock value when this state was sent.
+  int clockMs;
+  bool clockRunning;
+
+  /// A running count-down clock stops at 0 on screen.
+  bool countDown;
+
+  /// Bar size: 100 = 56 px high at 1080p.
+  int scalePercent;
+}
+
+class BroadcastConfig {
+  BroadcastConfig({required this.url, required this.targetKbps, required this.audio});
+
+  /// Full RTMP(S) URL including the stream key, e.g. `rtmp://a.rtmp.youtube.com/live2/<key>`.
+  String url;
+
+  /// Video target bitrate (2500–6000); adaptive bitrate may go lower on congestion.
+  int targetKbps;
+
+  /// Microphone on; false sends a silent AAC track.
+  bool audio;
+}
+
+enum BroadcastState { idle, connecting, live, reconnecting, failed }
+
+class BroadcastStatus {
+  BroadcastStatus({
+    required this.state,
+    required this.targetKbps,
+    required this.droppedFrames,
+    required this.audio,
+    this.bitrateKbps,
+    this.uptimeMs,
+    this.fps,
+    this.message,
+  });
+
+  BroadcastState state;
+
+  /// Current video target (after adaptive changes).
+  int targetKbps;
+
+  /// Measured outgoing bitrate (video + audio); null when not live.
+  int? bitrateKbps;
+
+  /// Time since the stream first went live; pauses for reconnections are included.
+  int? uptimeMs;
+
+  /// Program encoder output frames per second.
+  double? fps;
+
+  /// Frames the RTMP client dropped because its queue was full.
+  int droppedFrames;
+  bool audio;
+
+  /// Last error or disconnection reason.
+  String? message;
 }
 
 /// Full-session recording (SPEC D8, §3.8): idle, recording, or paused between plays.
@@ -233,12 +358,20 @@ abstract class CaptureHostApi {
   @async
   bool requestPermission();
 
+  /// RECORD_AUDIO, asked only before a broadcast with audio (SPEC §12.1).
+  @async
+  bool requestMicPermission();
+
   /// Profiles the back camera supports in a regular session, best first.
   List<CaptureProfile> supportedProfiles();
 
   StartResult start(StartRequest request);
 
   void stop();
+
+  /// Sensor zoom (1…maxZoom): applies to the buffer, the recording and the broadcast alike. Glides
+  /// to the new value over a few frames.
+  void setZoom(double ratio);
 
   /// Operating mode turns the local preview off to save power and heat.
   void setPreviewEnabled(bool enabled);
@@ -253,7 +386,11 @@ abstract class CaptureHostApi {
   ClipInfo? getClip(String id);
 
   /// Releases a clip after the Viewer verified it. Returns false if the hash does not match.
+  /// With a replay reserve (SPEC §3.4) the clip is kept among the N most recent instead.
   bool ackClip(String id, String sha256);
+
+  /// Size of the replay reserve (0 = delete on ACK). Trims the reserve at once.
+  void setClipReserve(int size);
 
   /// Send-only WebRTC offer for [viewerId]. Returned as soon as it is created; ICE candidates
   /// follow through [CaptureEventsApi.onLiveIceCandidate] (trickle ICE).
@@ -291,6 +428,40 @@ abstract class CaptureHostApi {
   /// Finishes recordings left open by a crash or a kill. Call before the first start.
   @async
   List<RecordingSaved> recoverRecordings();
+
+  // Broadcast mode (SPEC §12). Only while capture runs with `broadcast: true`.
+
+  /// Replaces what the scoreboard overlay shows. Cheap; call on every change.
+  void setOverlay(OverlayState overlay);
+
+  /// Starts the program encoder, audio and the RTMP connection. Returns once connecting has
+  /// started (state `connecting`); progress arrives through [CaptureEventsApi.onBroadcast]. Fails
+  /// with `not_broadcast_mode` when capture is not in broadcast mode.
+  @async
+  BroadcastStatus broadcastStart(BroadcastConfig config);
+
+  /// Disconnects and releases the program encoder and audio. No-op when idle.
+  @async
+  void broadcastStop();
+
+  BroadcastStatus broadcastStatus();
+
+  // Replays on air (SPEC §12.6). Only while a broadcast is active.
+
+  /// Puts clip [clipId] (ready or in the reserve) on air at [speed], replacing any running
+  /// replay; [label] is drawn over it (e.g. `REPETICIÓN`); the scoreboard too only when
+  /// [scoreboard]. Completes once the first frame is
+  /// decoded. Errors: `not_live` (no active broadcast), `replay_unavailable` (clip not on the
+  /// Camera), `replay_failed`.
+  @async
+  ReplayStatus replayStart(String clipId, double speed, String label, bool scoreboard);
+
+  /// Changes the speed of the running replay at once (no-op without one).
+  void replaySpeed(double speed);
+
+  /// Back to the live picture (no-op without a replay). [CaptureEventsApi.onReplayEnded] follows.
+  @async
+  void replayStop();
 }
 
 @FlutterApi()
@@ -317,4 +488,15 @@ abstract class CaptureEventsApi {
 
   /// A recording finished: by the user, by low space or an error, or recovered after a crash.
   void onRecordingSaved(RecordingSaved saved);
+
+  /// The broadcast state changed (connecting, live, reconnecting, failed, idle). Ongoing numbers
+  /// also ride on [CaptureStats.broadcast].
+  void onBroadcast(BroadcastStatus status);
+
+  /// A replay went on air or changed speed; the position also rides on [CaptureStats.replay].
+  void onReplay(ReplayStatus status);
+
+  /// The program is back on the camera: the clip ended, was stopped or replaced, or failed.
+  /// [error] is set for a failure.
+  void onReplayEnded(String clipId, String? error);
 }

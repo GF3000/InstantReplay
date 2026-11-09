@@ -19,11 +19,18 @@ abstract interface class CaptureLayer {
 
   Future<List<CaptureProfile>> supportedProfiles();
 
-  Future<StartResult> start(String profileId);
+  /// [broadcast] starts in broadcast mode (SPEC §12): the program encoder can then be started.
+  Future<StartResult> start(String profileId, {bool broadcast = false});
 
   Future<void> stop();
 
   Future<void> setPreviewEnabled(bool enabled);
+
+  /// Sensor zoom, 1…[StartResult.maxZoom]; glides to the new value.
+  Future<void> setZoom(double ratio);
+
+  /// Replay reserve size (SPEC §3.4); 0 deletes clips on ACK.
+  Future<void> setClipReserve(int size);
 
   /// Completes when the clip is ready, after [postSeconds] of post-roll. A repeated [requestId]
   /// returns the existing clip instead of cutting a new one.
@@ -70,6 +77,42 @@ abstract interface class CaptureLayer {
   Future<RecordingSaved?> recordStop();
 
   Future<List<RecordingSaved>> recoverRecordings();
+
+  // Broadcast mode (SPEC §12). Only while capture runs with `broadcast: true`.
+
+  /// RECORD_AUDIO; true when granted.
+  Future<bool> requestMicPermission();
+
+  /// What the scoreboard overlay shows. Cheap; call on every change.
+  Future<void> setOverlay(OverlayState overlay);
+
+  /// Returns once connecting has started; progress arrives on [broadcast].
+  Future<BroadcastStatus> broadcastStart(BroadcastConfig config);
+
+  Future<void> broadcastStop();
+
+  Future<BroadcastStatus> broadcastStatus();
+
+  /// Broadcast state changes; the latest numbers also ride on [stats].
+  Stream<BroadcastStatus> get broadcast;
+
+  // Replays on air (SPEC §12.6). Only while a broadcast is active.
+
+  /// Puts [clipId] on air at [speed] with [label] drawn over it; completes on the first decoded
+  /// frame. PlatformException codes: `not_live`, `replay_unavailable`, `replay_failed`.
+  /// [scoreboard]: keep the scoreboard over the replay (off: only the [label] badge).
+  Future<ReplayStatus> replayStart(String clipId, {double speed = 1, required String label, bool scoreboard = false});
+
+  Future<void> replaySpeed(double speed);
+
+  /// Back to the camera; [replayEnded] follows.
+  Future<void> replayStop();
+
+  /// A replay went on air or changed speed; the position also rides on [stats].
+  Stream<ReplayStatus> get replay;
+
+  /// The program is back on the camera; `error` set for a failure.
+  Stream<({String clipId, String? error})> get replayEnded;
 }
 
 /// The real plugin. Only constructed on Android: the /camera route is unreachable elsewhere.
@@ -105,13 +148,20 @@ class PluginCaptureLayer implements CaptureLayer {
   Future<List<CaptureProfile>> supportedProfiles() => _capture.supportedProfiles();
 
   @override
-  Future<StartResult> start(String profileId) => _capture.start(profileId);
+  Future<StartResult> start(String profileId, {bool broadcast = false}) =>
+      _capture.start(profileId, broadcast: broadcast);
 
   @override
   Future<void> stop() => _capture.stop();
 
   @override
   Future<void> setPreviewEnabled(bool enabled) => _capture.setPreviewEnabled(enabled);
+
+  @override
+  Future<void> setZoom(double ratio) => _capture.setZoom(ratio);
+
+  @override
+  Future<void> setClipReserve(int size) => _capture.setClipReserve(size);
 
   @override
   Future<ClipInfo> saveClip({required String requestId, required double preSeconds, double postSeconds = 0}) =>
@@ -165,6 +215,40 @@ class PluginCaptureLayer implements CaptureLayer {
 
   @override
   Future<List<RecordingSaved>> recoverRecordings() => _capture.recoverRecordings();
+
+  @override
+  Future<bool> requestMicPermission() => _capture.requestMicPermission();
+
+  @override
+  Future<void> setOverlay(OverlayState overlay) => _capture.setOverlay(overlay);
+
+  @override
+  Future<BroadcastStatus> broadcastStart(BroadcastConfig config) => _capture.broadcastStart(config);
+
+  @override
+  Future<void> broadcastStop() => _capture.broadcastStop();
+
+  @override
+  Future<BroadcastStatus> broadcastStatus() => _capture.broadcastStatus();
+
+  @override
+  Stream<BroadcastStatus> get broadcast => _capture.broadcast;
+
+  @override
+  Future<ReplayStatus> replayStart(String clipId, {double speed = 1, required String label, bool scoreboard = false}) =>
+      _capture.replayStart(clipId, speed: speed, label: label, scoreboard: scoreboard);
+
+  @override
+  Future<void> replaySpeed(double speed) => _capture.replaySpeed(speed);
+
+  @override
+  Future<void> replayStop() => _capture.replayStop();
+
+  @override
+  Stream<ReplayStatus> get replay => _capture.replay;
+
+  @override
+  Stream<({String clipId, String? error})> get replayEnded => _capture.replayEnded;
 }
 
 final captureLayerProvider = Provider<CaptureLayer>((ref) => PluginCaptureLayer());

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:replay_protocol/replay_protocol.dart';
 
+import '../broadcast/broadcast_host.dart';
 import '../camera/capture_layer.dart';
 import '../discovery/nsd.dart';
 import 'pairing.dart';
@@ -22,12 +23,41 @@ abstract interface class ApiServer {
   void captureRestarted();
 }
 
+/// Camera settings any viewer can see and change, riding on `status`: the zoom and the size of
+/// the replay reserve.
+abstract interface class CameraControls {
+  /// Null while capture is not running.
+  ZoomInfo? get zoom;
+
+  void setZoom(double ratio);
+
+  /// Replay reserve size (SPEC §3.4).
+  int get reserve;
+
+  void setReserve(int size);
+
+  /// After every change, so the server pushes a status at once.
+  Stream<void> get changes;
+}
+
 class ApiServerConfig {
-  const ApiServerConfig({required this.capture, required this.secrets, required this.cameraInfo});
+  const ApiServerConfig({
+    required this.capture,
+    required this.secrets,
+    required this.cameraInfo,
+    this.broadcast,
+    this.controls,
+  });
 
   final CaptureLayer capture;
   final PairingSecrets secrets;
   final CameraInfo Function() cameraInfo;
+
+  /// Broadcast mode (SPEC §12): the scoreboard and the stream; null leaves it out.
+  final BroadcastHost? broadcast;
+
+  /// Zoom and replay reserve; null leaves them out of `status`.
+  final CameraControls? controls;
 }
 
 /// Platform pieces of the server, injectable for tests. Web gets a stub that never runs (the

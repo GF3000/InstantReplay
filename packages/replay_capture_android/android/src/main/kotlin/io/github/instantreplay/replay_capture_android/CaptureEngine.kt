@@ -13,6 +13,7 @@ import android.hardware.camera2.CaptureFailure
 import android.hardware.camera2.CaptureRequest
 import android.hardware.camera2.CaptureResult
 import android.hardware.camera2.TotalCaptureResult
+import android.graphics.Rect
 import android.hardware.camera2.params.OutputConfiguration
 import android.hardware.camera2.params.SessionConfiguration
 import android.opengl.EGLSurface
@@ -25,12 +26,17 @@ import android.os.PowerManager
 import android.os.Process
 import android.util.Range
 import android.view.Surface
+import io.github.instantreplay.replay_capture_android.broadcast.ReplayPlayer
+import io.github.instantreplay.replay_capture_android.broadcast.ScoreboardState
+import io.github.instantreplay.replay_capture_android.gl.LabelRenderer
 import io.github.instantreplay.replay_capture_android.buffer.RingBuffer
 import io.github.instantreplay.replay_capture_android.buffer.Segmenter
 import io.github.instantreplay.replay_capture_android.gl.EglCore
 import io.github.instantreplay.replay_capture_android.gl.FrameHandoff
+import io.github.instantreplay.replay_capture_android.gl.OverlayRenderer
 import io.github.instantreplay.replay_capture_android.gl.TexTransform
 import io.github.instantreplay.replay_capture_android.gl.TextureRenderer
+import java.io.File
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executor
 import java.util.concurrent.FutureTask
@@ -41,6 +47,8 @@ data class CaptureConfig(
     val fps: Int,
     val bitrate: Int,
     val windowSeconds: Int,
+    /** Broadcast mode (SPEC §12.1): full-size camera texture, scoreboard overlay, program output. */
+    val broadcast: Boolean = false,
 )
 
 /**
@@ -51,6 +59,10 @@ data class CaptureConfig(
  * EGL context drawing preview and live view from a [FrameHandoff] copy, so their slow swaps never
  * delay the HQ path), `ir-camera` (Camera2 callbacks), `ir-encoder` (encoder output, segmenting,
  * ring writes), `ir-stats`.
+ *
+ * In broadcast mode the GL thread also draws the program (camera + scoreboard) into the broadcast
+ * encoder's surface while one is attached, and the scoreboard into the handoff copy. The HQ
+ * encoder stays on the direct camera path, so the ring buffer keeps the clean picture.
  */
 internal class CaptureEngine(
     context: Context,
@@ -82,7 +94,22 @@ internal class CaptureEngine(
     private var surfaceTexture: SurfaceTexture? = null
     private var cameraSurface: Surface? = null
     private var encoderEglSurface: EGLSurface? = null // GL fallback path only
+    private var programEglSurface: EGLSurface? = null // broadcast program encoder, while streaming
     private var glIdle: EGLSurface? = null
+    @Volatile private var overlay: OverlayRenderer? = null // broadcast mode only
+    private var label: LabelRenderer? = null // broadcast mode only: REPLAY badge
+
+    // Replay on air (SPEC §12.6): a decoder renders into its own OES texture. GL-thread state,
+    // except [replay], which other threads read.
+    private var replayTexture = 0
+    private var replaySt: SurfaceTexture? = null
+    private var replaySurface: Surface? = null
+    private val replayMatrix = FloatArray(16)
+    /** A frame of the current replay is latched in [replayTexture]: the program shows it. */
+    private var replayShowing = false
+    /** The scoreboard stays over the replay (off by default: only the badge). */
+    @Volatile private var replayScoreboard = false
+    @Volatile private var replay: ReplayPlayer? = null
     private val texMatrix = FloatArray(16)
     private var uprightRotation = 0
     @Volatile private var renderedFrames = 0L
@@ -102,12 +129,31 @@ internal class CaptureEngine(
     private val segmenter = Segmenter(ring, 1_000_000L / config.fps)
     private var camera: CameraDevice? = null
     private var session: CameraCaptureSession? = null
+
+    // Zoom (camera thread): the repeating request is rebuilt on every step of a ramp.
+    private var request: CaptureRequest.Builder? = null
+    private var activeArray: Rect? = null
+    private var zoomRatioSupported = false
+    private var zoomCurrent = 1f
+    private var zoomTarget = 1f
+    private var zoomTicking = false
+
+    /** Highest zoom the back camera offers in a regular session (1 = none). */
+    var maxZoom = 1f
+        private set
     @Volatile private var thermalStatus = PowerManager.THERMAL_STATUS_NONE
     private var lastStatsFrames = 0L
     private var statsTicks = 0
     private var released = false
 
     var sensorOrientation = 0
+        private set
+
+    /**
+     * Camera (and so SurfaceTexture) timestamps are CLOCK_BOOTTIME instead of CLOCK_MONOTONIC.
+     * Broadcast audio must then stamp with `elapsedRealtimeNanos` to stay in sync.
+     */
+    var boottimeTimestamps = false
         private set
 
     /**
@@ -147,9 +193,18 @@ internal class CaptureEngine(
             cameraTexture = TextureRenderer.createExternalTexture()
             val outWidth = minOf(config.width, OUT_MAX_WIDTH)
             handoff = FrameHandoff(outWidth, outWidth * config.height / config.width, useFences = core.glVersion >= 3)
+            if (config.broadcast) {
+                overlay = OverlayRenderer(config.height)
+                label = LabelRenderer(config.height)
+            }
             val st = SurfaceTexture(cameraTexture).apply {
-                // Preview/live only need 720p; the GL fallback raises this to the full size.
-                setDefaultBufferSize(handoff!!.width, handoff!!.height)
+                // Preview/live only need 720p; the program (broadcast) and the GL fallback need
+                // the full size.
+                if (config.broadcast) {
+                    setDefaultBufferSize(config.width, config.height)
+                } else {
+                    setDefaultBufferSize(handoff!!.width, handoff!!.height)
+                }
                 setOnFrameAvailableListener({ drawFrame() }, glHandler)
             }
             surfaceTexture = st
@@ -182,6 +237,120 @@ internal class CaptureEngine(
         hasOutputs = preview != null || live != null
     }
 
+    /** Scoreboard shown on the program and the handoff copy; ignored outside broadcast mode. */
+    fun setOverlay(state: ScoreboardState) {
+        overlay?.set(state)
+    }
+
+    /**
+     * Puts [file] on air instead of the camera (SPEC §12.6), replacing any replay running; [badge]
+     * is drawn top-right. [onStarted] when its first frame is shown, [onEnded] once the program is
+     * back on the camera (end of clip, [stopReplay], replacement or failure), with the error if any.
+     * Broadcast mode only. The ring buffer keeps the camera picture: it is fed directly.
+     */
+    fun startReplay(
+        clipId: String,
+        file: File,
+        speed: Float,
+        badge: String,
+        showScoreboard: Boolean,
+        onStarted: (ReplayPlayer) -> Unit,
+        onEnded: (clipId: String, error: String?) -> Unit,
+    ) {
+        stopReplay()
+        val surface = onGl {
+            if (replaySt == null) {
+                replayTexture = TextureRenderer.createExternalTexture()
+                replaySt = SurfaceTexture(replayTexture).apply {
+                    setDefaultBufferSize(config.width, config.height)
+                    // Latch on the GL thread, where the capture context is current.
+                    setOnFrameAvailableListener({ latchReplayFrame() }, glHandler)
+                }
+                replaySurface = Surface(replaySt)
+            }
+            replaySurface!!
+        }
+        lateinit var player: ReplayPlayer
+        player = ReplayPlayer(
+            clipId = clipId,
+            file = file,
+            speed = speed,
+            output = surface,
+            onStarted = {
+                replayScoreboard = showScoreboard
+                label?.text = badge
+                onStarted(player)
+            },
+            onEnded = { error ->
+                endReplay(player)
+                onEnded(clipId, error)
+            },
+        )
+        replayEnded[player] = onEnded
+        replay = player
+    }
+
+    /** Back to the camera; the running replay's onEnded is called with no error. */
+    fun stopReplay() {
+        val player = replay ?: return
+        val ended = replayEnded.remove(player)
+        player.stop()
+        endReplay(player)
+        ended?.invoke(player.clipId, null)
+    }
+
+    fun setReplaySpeed(speed: Float) {
+        replay?.setSpeed(speed)
+    }
+
+    /** The replay on air, or null. */
+    fun currentReplay(): ReplayPlayer? = replay
+
+    private val replayEnded = java.util.concurrent.ConcurrentHashMap<ReplayPlayer, (String, String?) -> Unit>()
+
+    // Any thread: the program goes back to the camera if [player] is still the current replay.
+    private fun endReplay(player: ReplayPlayer) {
+        replayEnded.remove(player)
+        if (replay !== player) return
+        replay = null
+        glHandler.post {
+            if (replay == null) {
+                replayShowing = false
+                label?.text = null
+            }
+        }
+    }
+
+    // GL thread.
+    private fun latchReplayFrame() {
+        val st = replaySt ?: return
+        try {
+            st.updateTexImage()
+        } catch (e: RuntimeException) {
+            return // released meanwhile
+        }
+        st.getTransformMatrix(replayMatrix)
+        replayShowing = replay != null
+    }
+
+    /**
+     * Attaches the broadcast program encoder's input surface (null detaches it). Blocks until
+     * applied, so after a detach the GL thread no longer draws into the old surface.
+     */
+    fun setProgramSurface(surface: Surface?) = onGl {
+        val core = egl ?: return@onGl
+        programEglSurface?.let {
+            (encoderEglSurface ?: glIdle)?.let(core::makeCurrent)
+            core.releaseSurface(it)
+        }
+        programEglSurface = surface?.let {
+            core.createWindowSurface(it).also { programSurface ->
+                // Non-blocking swaps: a backed-up program encoder drops frames instead of stalling GL.
+                core.setSwapInterval(programSurface, 0)
+            }
+        }
+    }
+
     // Output thread.
     private fun replaceOutput(current: Output?, surface: Surface?, width: Int, height: Int): Output? {
         val core = outEgl ?: return null
@@ -198,6 +367,7 @@ internal class CaptureEngine(
 
     fun release() {
         if (released) return
+        stopReplay()
         released = true
         powerManager.removeThermalStatusListener(thermalListener)
         statsHandler.removeCallbacksAndMessages(null)
@@ -231,13 +401,21 @@ internal class CaptureEngine(
                 (encoderEglSurface ?: glIdle)?.let(core::makeCurrent)
                 handoff?.release()
                 renderer?.release()
+                overlay?.release()
+                label?.release()
+                replaySt?.release()
+                replaySurface?.release()
+                if (replayTexture != 0) GLES20.glDeleteTextures(1, intArrayOf(replayTexture), 0)
                 GLES20.glDeleteTextures(1, intArrayOf(cameraTexture), 0)
                 // Destroying the current surface is deferred by EGL until release() unbinds it.
                 encoderEglSurface?.let { core.releaseSurface(it) }
+                programEglSurface?.let { core.releaseSurface(it) }
                 glIdle?.let { core.releaseSurface(it) }
                 core.release()
             }
             handoff = null
+            overlay = null
+            programEglSurface = null
             surfaceTexture?.release()
             cameraSurface?.release()
             egl = null
@@ -256,6 +434,12 @@ internal class CaptureEngine(
         } ?: error("No back camera")
         val chars = cameraManager.getCameraCharacteristics(id)
         sensorOrientation = chars.get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 0
+        activeArray = chars.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE)
+        val ratioRange = if (Build.VERSION.SDK_INT >= 30) chars.get(CameraCharacteristics.CONTROL_ZOOM_RATIO_RANGE) else null
+        zoomRatioSupported = ratioRange != null
+        maxZoom = ratioRange?.upper ?: chars.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM) ?: 1f
+        boottimeTimestamps = chars.get(CameraCharacteristics.SENSOR_INFO_TIMESTAMP_SOURCE) ==
+            CameraCharacteristics.SENSOR_INFO_TIMESTAMP_SOURCE_REALTIME
         uprightRotation = TexTransform.uprightRotation(sensorOrientation, CAMERA_UI_ROTATION_DEG)
 
         val sizes = chars.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)!!
@@ -300,12 +484,16 @@ internal class CaptureEngine(
             override fun onConfigured(s: CameraCaptureSession) {
                 if (released) return s.close()
                 session = s
-                val request = device.createCaptureRequest(CameraDevice.TEMPLATE_RECORD).apply {
+                val builder = device.createCaptureRequest(CameraDevice.TEMPLATE_RECORD).apply {
                     targets.forEach(::addTarget)
                     set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, fpsRange)
                     set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_VIDEO)
-                }.build()
-                s.setRepeatingRequest(request, captureCounter, cameraHandler)
+                }
+                request = builder
+                // A zoom asked for before the session existed starts there, without a ramp.
+                zoomCurrent = zoomTarget
+                applyZoom(builder, zoomCurrent)
+                s.setRepeatingRequest(builder.build(), captureCounter, cameraHandler)
                 emit(
                     mapOf(
                         "type" to "camera",
@@ -335,6 +523,45 @@ internal class CaptureEngine(
         if (direct && !supported) return useGlPath { createSession(device, fpsRange, direct = false) }
         hqDirect = direct
         device.createCaptureSession(configuration)
+    }
+
+    /**
+     * Zooms to [ratio] (clamped to 1…[maxZoom]), gliding over a few frames. Any thread; it is the
+     * sensor's zoom, so the ring buffer, the recording and the broadcast all get it.
+     */
+    fun setZoom(ratio: Float) = cameraHandler.post {
+        zoomTarget = ratio.coerceIn(1f, maxZoom)
+        if (!zoomTicking) zoomTick()
+    }
+
+    // Camera thread: one step of the ramp per frame until the target is reached.
+    private fun zoomTick() {
+        val s = session
+        val builder = request
+        if (released || s == null || builder == null) {
+            zoomTicking = false
+            return
+        }
+        zoomCurrent = Zoom.step(zoomCurrent, zoomTarget)
+        applyZoom(builder, zoomCurrent)
+        try {
+            s.setRepeatingRequest(builder.build(), captureCounter, cameraHandler)
+        } catch (e: Exception) {
+            zoomTicking = false // session closed meanwhile
+            return
+        }
+        zoomTicking = zoomCurrent != zoomTarget
+        if (zoomTicking) cameraHandler.postDelayed(::zoomTick, ZOOM_STEP_MS)
+    }
+
+    private fun applyZoom(builder: CaptureRequest.Builder, ratio: Float) {
+        if (zoomRatioSupported && Build.VERSION.SDK_INT >= 30) {
+            builder.set(CaptureRequest.CONTROL_ZOOM_RATIO, ratio)
+        } else {
+            val a = activeArray ?: return
+            val r = Zoom.cropRegion(a.left, a.top, a.width(), a.height(), ratio)
+            builder.set(CaptureRequest.SCALER_CROP_REGION, Rect(r[0], r[1], r[2], r[3]))
+        }
     }
 
     /** Switches to rendering into the encoder: full-size camera texture plus an EGL encoder surface. */
@@ -398,17 +625,47 @@ internal class CaptureEngine(
             core.swapBuffers(encSurface)
         }
         renderedFrames++
+        val at30 = config.fps <= 30 || renderedFrames % 2 == 0L
+        val program = programEglSurface
+        val board = if (at30 && (program != null || hasOutputs) && (!replayShowing || replayScoreboard)) {
+            overlay?.takeIf { it.update() }
+        } else {
+            null
+        }
+
+        // Broadcast program at most 30 fps, after the HQ frame so it can never delay it. The swap
+        // doesn't block (swap interval 0): a backed-up encoder loses program frames, not HQ ones.
+        if (program != null && at30) {
+            core.makeCurrent(program)
+            drawSource(gl, config.width, config.height)
+            board?.draw(config.width, config.height)
+            if (replayShowing) label?.draw(config.width, config.height)
+            core.setPresentationTime(program, ts)
+            core.swapBuffers(program)
+        }
 
         // Preview and live view at most 30 fps. Only a cheap copy happens here; the output thread
         // draws and swaps them, so a slow consumer can never delay the next HQ frame.
-        if (hasOutputs && (config.fps <= 30 || renderedFrames % 2 == 0L)) {
-            val wake = frames.publish { gl.draw(cameraTexture, frames.width, frames.height, texMatrix) }
+        if (hasOutputs && at30) {
+            val wake = frames.publish {
+                // The viewers' live view shows what goes on air, replays included.
+                drawSource(gl, frames.width, frames.height)
+                board?.draw(frames.width, frames.height)
+                if (replayShowing) label?.draw(frames.width, frames.height)
+            }
             if (wake) outHandler.post(::drawOutputs)
         }
 
         val drawMs = (System.nanoTime() - started) / 1e6
         if (drawMs > frameIntervalNs / 1e6) slowDraws++
         if (drawMs > maxDrawMs) maxDrawMs = drawMs
+    }
+
+    // GL thread: the program's picture, the replay on air or the camera. The program keeps the
+    // camera's timestamps either way, so the stream's clock never jumps.
+    private fun drawSource(gl: TextureRenderer, width: Int, height: Int) {
+        if (replayShowing) gl.draw(replayTexture, width, height, replayMatrix)
+        else gl.draw(cameraTexture, width, height, texMatrix)
     }
 
     // Output thread: draws the latest handed-off frame; older ones were dropped by publish().
@@ -460,6 +717,7 @@ internal class CaptureEngine(
                 "maxSecondaryMs" to maxSecondaryMs,
                 "thermalStatus" to thermalStatus,
                 "thermalHeadroom" to headroom,
+                "replayActive" to (replay != null),
             ) + ring.stats() + batteryStats(),
         )
         lastStatsFrames = frames
@@ -501,6 +759,7 @@ internal class CaptureEngine(
 
     private companion object {
         const val STATS_INTERVAL_MS = 1000L
+        const val ZOOM_STEP_MS = 33L
         // Preview and live view are at most 720p; the handoff copy needs no more.
         const val OUT_MAX_WIDTH = 1280
         // The Camera role UI is locked to landscapeLeft (Surface.ROTATION_90).

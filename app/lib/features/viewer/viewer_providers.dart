@@ -288,6 +288,108 @@ final viewerRecordingProvider =
 
 // endregion
 
+// region Broadcast mode (SPEC §12)
+
+/// The Camera's scoreboard; null outside broadcast mode. A new value arrives with every status,
+/// anchoring the locally ticking clock.
+final viewerScoreboardProvider = Provider.autoDispose<ScoreboardState?>(
+    (ref) => ref.watch(linkStateProvider.select((s) => s?.status?.scoreboard)));
+
+/// The Camera's YouTube stream; null outside broadcast mode.
+final viewerBroadcastProvider = Provider.autoDispose<BroadcastInfo?>(
+    (ref) => ref.watch(linkStateProvider.select((s) => s?.status?.broadcast)));
+
+/// The Camera's zoom (SPEC §3.1); null from a Camera without it.
+final viewerZoomProvider =
+    Provider.autoDispose<ZoomInfo?>((ref) => ref.watch(linkStateProvider.select((s) => s?.status?.zoom)));
+
+/// Size of the Camera's replay reserve; null from a Camera without it.
+final viewerClipReserveProvider =
+    Provider.autoDispose<int?>((ref) => ref.watch(linkStateProvider.select((s) => s?.status?.reserve)));
+
+/// A broadcast command the Camera refused (or a start without the microphone). A new object every
+/// time, so the same error twice is shown twice.
+final class BroadcastNotice {
+  BroadcastNotice(this.code, this.message);
+
+  /// `broadcast_failed`, `not_configured`, `mic_permission` or `not_broadcast_mode`; for replays on
+  /// air `not_live`, `replay_unavailable` or `replay_failed`.
+  final String code;
+  final String? message;
+
+  static const codes = {
+    'broadcast_failed',
+    'not_configured',
+    'mic_permission',
+    'not_broadcast_mode',
+    'not_live',
+    'replay_unavailable',
+    'replay_failed',
+  };
+}
+
+/// The clip on air instead of the live picture (SPEC §12.6); null otherwise. A new value arrives
+/// with every status, anchoring the locally advancing position.
+final viewerReplayProvider =
+    Provider.autoDispose<ReplayInfo?>((ref) => ref.watch(linkStateProvider.select((s) => s?.status?.replay)));
+
+/// Sends scoreboard and stream commands to the Camera and keeps the last [BroadcastNotice]. The
+/// new state comes back in the status ([viewerScoreboardProvider], [viewerBroadcastProvider]).
+class ViewerBroadcastNotifier extends Notifier<BroadcastNotice?> {
+  @override
+  BroadcastNotice? build() {
+    StreamSubscription<WsMessage>? sub;
+    ref.listen(sessionLinkProvider, (_, link) {
+      unawaited(sub?.cancel());
+      sub = link?.messages.listen((m) {
+        if (m case ErrorMessage(:final code, :final message) when BroadcastNotice.codes.contains(code)) {
+          state = BroadcastNotice(code, message);
+        }
+      });
+    }, fireImmediately: true);
+    ref.onDispose(() => sub?.cancel());
+    return null;
+  }
+
+  /// False when not connected.
+  bool command(ScoreboardCommand command) => _send(ScoreboardCmd(command));
+
+  /// [key] null keeps the key stored on the Camera.
+  bool configure({
+    required String server,
+    String? key,
+    required int targetKbps,
+    required bool audio,
+    bool? replayScoreboard,
+  }) =>
+      _send(BroadcastConfigure(server: server, key: key, targetKbps: targetKbps, audio: audio, replayScoreboard: replayScoreboard));
+
+  bool start() => _send(const BroadcastStart());
+
+  /// Zooms the Camera; not only for broadcast mode.
+  bool zoom(double ratio) => _send(CameraZoom(ratio: ratio));
+
+  /// Sets the Camera's replay reserve (SPEC §3.4).
+  bool reserve(int size) => _send(ClipReserve(size: size));
+
+  bool stop() => _send(const BroadcastStop());
+
+  /// Puts [clipId] on air (SPEC §12.6); the Camera answers with status.replay or an error.
+  bool replayAir(String clipId, {double speed = 1}) => _send(ReplayAir(clipId: clipId, speed: speed));
+
+  bool replaySpeed(double speed) => _send(ReplaySpeed(speed: speed));
+
+  /// Back to the live picture.
+  bool replayStop() => _send(const ReplayStop());
+
+  bool _send(WsMessage m) => ref.read(sessionLinkProvider)?.send(m) ?? false;
+}
+
+final viewerBroadcastNoticeProvider =
+    NotifierProvider.autoDispose<ViewerBroadcastNotifier, BroadcastNotice?>(ViewerBroadcastNotifier.new);
+
+// endregion
+
 // region Live view
 
 enum LivePhase {

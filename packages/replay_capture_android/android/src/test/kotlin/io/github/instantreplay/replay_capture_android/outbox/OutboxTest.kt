@@ -101,6 +101,74 @@ class OutboxTest {
     }
 
     @Test
+    fun reserveKeepsTheNMostRecentAckedClips() {
+        val outbox = outbox().apply { attachSource(FakeSource()); setReserveSize(2) }
+        val clips = (1..3).map { i ->
+            now += 1000
+            save(outbox, "r$i").also { assertTrue(outbox.ack(it.id, it.sha256!!)) }
+        }
+        // The first one left the reserve when the third arrived.
+        assertFalse(File(dir, "${clips[0].id}.mp4").exists())
+        assertEquals(listOf(clips[1].id, clips[2].id), outbox.list().map { it.id })
+        assertTrue(outbox.list().all { it.state == ClipState.ACKED && it.reserved == true })
+        assertTrue(File(clips[2].path!!).exists())
+        val first = events.filter { it.id == clips[0].id }.map { it.state to it.reserved }
+        assertEquals(listOf(ClipState.ACKED to true, ClipState.EXPIRED to false), first.drop(2))
+        assertEquals(2L to 200L, outbox.stats())
+
+        // Survives a restart.
+        val again = outbox()
+        assertEquals(listOf(clips[1].id, clips[2].id), again.list().map { it.id })
+        assertTrue(again.list().all { it.reserved == true })
+    }
+
+    @Test
+    fun shrinkingTheReserveTrimsAtOnceAndZeroDeletesOnAck() {
+        val outbox = outbox().apply { attachSource(FakeSource()); setReserveSize(3) }
+        val a = save(outbox, "a").also { outbox.ack(it.id, it.sha256!!) }
+        now += 1000
+        val b = save(outbox, "b").also { outbox.ack(it.id, it.sha256!!) }
+        outbox.setReserveSize(1)
+        assertEquals(listOf(b.id), outbox.list().map { it.id })
+        assertFalse(File(a.path!!).exists())
+        outbox.setReserveSize(0)
+        assertEquals(emptyList(), outbox.list())
+        val c = save(outbox, "c")
+        outbox.ack(c.id, c.sha256!!)
+        assertFalse(File(c.path!!).exists())
+    }
+
+    @Test
+    fun aPinnedClipOutlivesTheReserveTtlAndCapUntilUnpinned() {
+        val outbox = outbox(ttlMs = 10_000, capBytes = 150).apply { attachSource(FakeSource()); setReserveSize(1) }
+        val a = save(outbox, "a").also { outbox.ack(it.id, it.sha256!!) }
+        assertEquals(a.id, outbox.pin(a.id)?.id)
+        now += 1000
+        val b = save(outbox, "b").also { outbox.ack(it.id, it.sha256!!) }
+        now += 60_000
+        outbox.expire()
+        assertTrue(File(a.path!!).exists(), "pinned: kept past reserve, TTL and cap")
+        assertFalse(File(b.path!!).exists(), "unpinned: TTL")
+        outbox.unpin(a.id)
+        assertFalse(File(a.path!!).exists())
+        assertEquals(emptyList(), outbox.list())
+        assertEquals(null, outbox.pin("nope"))
+    }
+
+    @Test
+    fun reservedClipsGoFirstWhenOverTheCap() {
+        val outbox = outbox(capBytes = 250).apply { attachSource(FakeSource()); setReserveSize(5) }
+        val old = save(outbox, "old")
+        now += 1000
+        val reserved = save(outbox, "res").also { outbox.ack(it.id, it.sha256!!) }
+        now += 1000
+        val fresh = save(outbox, "new")
+        // 300 bytes > 250: the reserved clip goes, although the unacked one is older.
+        assertEquals(listOf(old.id, fresh.id), outbox.list().map { it.id })
+        assertFalse(File(reserved.path!!).exists())
+    }
+
+    @Test
     fun ackRejectsHashMismatchAndUnknownIds() {
         val outbox = outbox().apply { attachSource(FakeSource()) }
         val clip = save(outbox, "r1")

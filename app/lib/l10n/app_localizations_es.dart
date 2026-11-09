@@ -1026,4 +1026,371 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get viewerTagPanelClose => 'Cerrar';
+
+  @override
+  String get cameraMode => 'Modo';
+
+  @override
+  String get cameraModeReplay => 'Repetición';
+
+  @override
+  String get cameraModeBroadcast => 'Emisión (beta)';
+
+  @override
+  String get cameraModeBroadcastHint =>
+      'Experimental: emite en directo a YouTube con un marcador que se controla desde los visores. Los clips siguen funcionando.';
+
+  @override
+  String get cameraModeLocked =>
+      'Detén la emisión para cambiar el modo o el perfil.';
+
+  @override
+  String get broadcastTitle => 'Emisión en YouTube';
+
+  @override
+  String get broadcastStateIdle => 'Sin emitir';
+
+  @override
+  String get broadcastStateConnecting => 'Conectando…';
+
+  @override
+  String get broadcastStateLive => 'En directo';
+
+  @override
+  String get broadcastStateReconnecting => 'Reconectando…';
+
+  @override
+  String get broadcastStateFailed => 'Error';
+
+  @override
+  String get broadcastNotConfigured => 'Introduce primero la clave de emisión';
+
+  @override
+  String broadcastReady(int kbps) {
+    return 'Lista · $kbps kbps';
+  }
+
+  @override
+  String broadcastBitrate(String mbps) {
+    return '$mbps Mbps';
+  }
+
+  @override
+  String get broadcastStart => 'Emitir';
+
+  @override
+  String get broadcastStop => 'Detener';
+
+  @override
+  String get broadcastStopTitle => '¿Detener la emisión?';
+
+  @override
+  String get broadcastStopBody =>
+      'La emisión en YouTube termina para todos los que la estén viendo.';
+
+  @override
+  String get broadcastStopKeep => 'Seguir emitiendo';
+
+  @override
+  String get broadcastSettings => 'Ajustes de emisión';
+
+  @override
+  String get broadcastServer => 'Servidor';
+
+  @override
+  String get broadcastKey => 'Clave de emisión';
+
+  @override
+  String broadcastKeyKeep(String hint) {
+    return 'Déjala vacía para mantener •••• $hint';
+  }
+
+  @override
+  String get broadcastKeyHelp =>
+      'En YouTube Studio: Crear > Emitir en directo > Clave de emisión.';
+
+  @override
+  String get broadcastKeyShow => 'Mostrar la clave';
+
+  @override
+  String get broadcastKeyHide => 'Ocultar la clave';
+
+  @override
+  String get broadcastPaste => 'Pegar';
+
+  @override
+  String broadcastBitrateLabel(int kbps) {
+    return 'Bitrate de vídeo: $kbps kbps';
+  }
+
+  @override
+  String get broadcastAudio => 'Sonido del micrófono';
+
+  @override
+  String get broadcastCancel => 'Cancelar';
+
+  @override
+  String get broadcastSave => 'Guardar';
+
+  @override
+  String broadcastFailed(String message) {
+    return 'No se pudo emitir: $message';
+  }
+
+  @override
+  String get broadcastMicDenied =>
+      'Micrófono no permitido: se emite sin sonido';
+
+  @override
+  String get broadcastNotBroadcastMode => 'La cámara no está en modo emisión';
+
+  @override
+  String get scoreboardTitle => 'Marcador';
+
+  @override
+  String scoreboardHalf(int period) {
+    return '${period}T';
+  }
+
+  @override
+  String scoreboardPlus(String team) {
+    return 'Sumar un punto a $team';
+  }
+
+  @override
+  String scoreboardMinus(String team) {
+    return 'Quitar un punto a $team';
+  }
+
+  @override
+  String get scoreboardStartClock => 'Poner el reloj en marcha';
+
+  @override
+  String get scoreboardPauseClock => 'Parar el reloj';
+
+  @override
+  String get scoreboardSetClock => 'Ajustar el reloj';
+
+  @override
+  String get scoreboardHoldToSetClock =>
+      'Mantén pulsado el reloj para ajustarlo';
+
+  @override
+  String get scoreboardMinutes => 'Minutos';
+
+  @override
+  String get scoreboardSeconds => 'Segundos';
+
+  @override
+  String get scoreboardMore => 'Periodo, mostrar y ajustes';
+
+  @override
+  String get scoreboardHidden => 'Marcador oculto';
+
+  @override
+  String scoreboardGoToPeriod(String period) {
+    return 'Pasar a $period';
+  }
+
+  @override
+  String scoreboardBackToPeriod(String period) {
+    return 'Volver a $period';
+  }
+
+  @override
+  String scoreboardPeriodConfirmTitle(String period) {
+    return '¿Pasar a $period?';
+  }
+
+  @override
+  String scoreboardPeriodConfirmBody(String time) {
+    return 'El reloj se para y se pone a $time.';
+  }
+
+  @override
+  String get scoreboardPeriodConfirm => 'Cambiar de periodo';
+
+  @override
+  String get scoreboardSize => 'Tamaño del marcador';
+
+  @override
+  String get scoreboardSizeSmall => 'Pequeño';
+
+  @override
+  String get scoreboardSizeMedium => 'Mediano';
+
+  @override
+  String get scoreboardSizeLarge => 'Grande';
+
+  @override
+  String get panelsTitle => 'Paneles';
+
+  @override
+  String get panelLive => 'Directo';
+
+  @override
+  String get panelScoreboard => 'Marcador';
+
+  @override
+  String get panelReplays => 'Repeticiones';
+
+  @override
+  String get panelsNothingShown =>
+      'Está todo oculto. Usa el botón de paneles de arriba para mostrar el directo, el marcador o las repeticiones.';
+
+  @override
+  String get cameraScoreboardControls => 'Controles del marcador';
+
+  @override
+  String get cameraConnectViewer => 'Conectar un visor';
+
+  @override
+  String get zoomOut => 'Alejar';
+
+  @override
+  String get zoomIn => 'Acercar';
+
+  @override
+  String get zoomReset => 'Volver a 1×';
+
+  @override
+  String get switchRoleTitle => '¿Cambiar de rol?';
+
+  @override
+  String get switchRoleBroadcastBody =>
+      'La cámara está emitiendo. Cambiar de rol corta la emisión en YouTube y desconecta a todos los visores.';
+
+  @override
+  String get switchRoleViewerBody =>
+      'Estás conectado a la cámara. Cambiar de rol cierra el directo y esta conexión.';
+
+  @override
+  String switchRoleViewersBody(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Hay $count visores conectados. Cambiar de rol para la cámara y los desconecta.',
+      one:
+          'Hay un visor conectado. Cambiar de rol para la cámara y lo desconecta.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get clipReserveTitle => 'Reserva de repeticiones';
+
+  @override
+  String get clipReserveOff =>
+      'Desactivada: la cámara borra cada clip en cuanto está en la tablet.';
+
+  @override
+  String clipReserveHint(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'La cámara guarda los últimos $count clips para poder emitirlos.',
+      one: 'La cámara guarda el último clip para poder emitirlo.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get clipReserveLess => 'Menos';
+
+  @override
+  String get clipReserveMore => 'Más';
+
+  @override
+  String get clipReserveDone => 'Hecho';
+
+  @override
+  String get clipOnCamera => 'En la cámara';
+
+  @override
+  String get broadcastReplayScoreboard => 'Marcador en las repeticiones';
+
+  @override
+  String get broadcastReplayScoreboardHint =>
+      'Desactivado: la repetición en antena solo muestra el cartel REPETICIÓN.';
+
+  @override
+  String get scoreboardSet => 'Ajustar';
+
+  @override
+  String get scoreboardVisible => 'En pantalla';
+
+  @override
+  String get scoreboardReset => 'Reiniciar';
+
+  @override
+  String get scoreboardResetTitle => '¿Reiniciar el marcador?';
+
+  @override
+  String get scoreboardResetBody =>
+      'Marcador a 0, primer periodo y reloj a cero. Los nombres y los ajustes se mantienen.';
+
+  @override
+  String get scoreboardSettings => 'Ajustes del marcador';
+
+  @override
+  String get scoreboardHome => 'Local';
+
+  @override
+  String get scoreboardAway => 'Visitante';
+
+  @override
+  String get scoreboardTeamName => 'Nombre (hasta 5 letras)';
+
+  @override
+  String scoreboardTeamColor(String team) {
+    return 'Color de $team';
+  }
+
+  @override
+  String get scoreboardPeriods => 'Periodos';
+
+  @override
+  String get scoreboardPeriodMinutes => 'Minutos por periodo';
+
+  @override
+  String get scoreboardClockDirection => 'Reloj';
+
+  @override
+  String get scoreboardCountUp => 'Ascendente';
+
+  @override
+  String get scoreboardCountDown => 'Descendente';
+
+  @override
+  String get replayLabelOnAir => 'REPETICIÓN';
+
+  @override
+  String get replayOnAir => 'REPETICIÓN EN ANTENA';
+
+  @override
+  String get replayBackToLive => 'Volver al directo';
+
+  @override
+  String get replaySpeed => 'Velocidad de la repetición';
+
+  @override
+  String get replayChoiceTitle => '¿Dónde ver la jugada?';
+
+  @override
+  String get replayChoiceTablet => 'Solo en la tablet';
+
+  @override
+  String get replayChoiceAir => 'También en emisión';
+
+  @override
+  String get replayNotLive => 'La emisión no está en marcha';
+
+  @override
+  String get replayUnavailable => 'Este clip ya no está en la cámara';
+
+  @override
+  String replayFailed(String message) {
+    return 'No se pudo emitir la repetición: $message';
+  }
 }

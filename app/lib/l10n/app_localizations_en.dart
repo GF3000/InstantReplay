@@ -1022,4 +1022,370 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get viewerTagPanelClose => 'Close';
+
+  @override
+  String get cameraMode => 'Mode';
+
+  @override
+  String get cameraModeReplay => 'Replay';
+
+  @override
+  String get cameraModeBroadcast => 'Broadcast (beta)';
+
+  @override
+  String get cameraModeBroadcastHint =>
+      'Experimental: streams to YouTube Live with a scoreboard that viewers control. Clips keep working.';
+
+  @override
+  String get cameraModeLocked =>
+      'Stop the stream to change the mode or the profile.';
+
+  @override
+  String get broadcastTitle => 'YouTube stream';
+
+  @override
+  String get broadcastStateIdle => 'Off air';
+
+  @override
+  String get broadcastStateConnecting => 'Connecting…';
+
+  @override
+  String get broadcastStateLive => 'Live';
+
+  @override
+  String get broadcastStateReconnecting => 'Reconnecting…';
+
+  @override
+  String get broadcastStateFailed => 'Failed';
+
+  @override
+  String get broadcastNotConfigured => 'Enter the stream key first';
+
+  @override
+  String broadcastReady(int kbps) {
+    return 'Ready · $kbps kbps';
+  }
+
+  @override
+  String broadcastBitrate(String mbps) {
+    return '$mbps Mbps';
+  }
+
+  @override
+  String get broadcastStart => 'Go live';
+
+  @override
+  String get broadcastStop => 'Stop';
+
+  @override
+  String get broadcastStopTitle => 'Stop the stream?';
+
+  @override
+  String get broadcastStopBody =>
+      'The YouTube stream ends for everyone watching it.';
+
+  @override
+  String get broadcastStopKeep => 'Keep streaming';
+
+  @override
+  String get broadcastSettings => 'Stream settings';
+
+  @override
+  String get broadcastServer => 'Server';
+
+  @override
+  String get broadcastKey => 'Stream key';
+
+  @override
+  String broadcastKeyKeep(String hint) {
+    return 'Leave empty to keep •••• $hint';
+  }
+
+  @override
+  String get broadcastKeyHelp =>
+      'In YouTube Studio: Create > Go live > Stream key.';
+
+  @override
+  String get broadcastKeyShow => 'Show the key';
+
+  @override
+  String get broadcastKeyHide => 'Hide the key';
+
+  @override
+  String get broadcastPaste => 'Paste';
+
+  @override
+  String broadcastBitrateLabel(int kbps) {
+    return 'Video bitrate: $kbps kbps';
+  }
+
+  @override
+  String get broadcastAudio => 'Sound from the microphone';
+
+  @override
+  String get broadcastCancel => 'Cancel';
+
+  @override
+  String get broadcastSave => 'Save';
+
+  @override
+  String broadcastFailed(String message) {
+    return 'Could not stream: $message';
+  }
+
+  @override
+  String get broadcastMicDenied =>
+      'Microphone not allowed: streaming without sound';
+
+  @override
+  String get broadcastNotBroadcastMode => 'The camera is not in broadcast mode';
+
+  @override
+  String get scoreboardTitle => 'Scoreboard';
+
+  @override
+  String scoreboardHalf(int period) {
+    return '${period}H';
+  }
+
+  @override
+  String scoreboardPlus(String team) {
+    return 'Add a point to $team';
+  }
+
+  @override
+  String scoreboardMinus(String team) {
+    return 'Take a point from $team';
+  }
+
+  @override
+  String get scoreboardStartClock => 'Start the clock';
+
+  @override
+  String get scoreboardPauseClock => 'Stop the clock';
+
+  @override
+  String get scoreboardSetClock => 'Set the clock';
+
+  @override
+  String get scoreboardHoldToSetClock => 'Press and hold the clock to set it';
+
+  @override
+  String get scoreboardMinutes => 'Minutes';
+
+  @override
+  String get scoreboardSeconds => 'Seconds';
+
+  @override
+  String get scoreboardMore => 'Period, show and settings';
+
+  @override
+  String get scoreboardHidden => 'Scoreboard hidden';
+
+  @override
+  String scoreboardGoToPeriod(String period) {
+    return 'Go to $period';
+  }
+
+  @override
+  String scoreboardBackToPeriod(String period) {
+    return 'Back to $period';
+  }
+
+  @override
+  String scoreboardPeriodConfirmTitle(String period) {
+    return 'Go to $period?';
+  }
+
+  @override
+  String scoreboardPeriodConfirmBody(String time) {
+    return 'The clock stops and goes to $time.';
+  }
+
+  @override
+  String get scoreboardPeriodConfirm => 'Change period';
+
+  @override
+  String get scoreboardSize => 'Scoreboard size';
+
+  @override
+  String get scoreboardSizeSmall => 'Small';
+
+  @override
+  String get scoreboardSizeMedium => 'Medium';
+
+  @override
+  String get scoreboardSizeLarge => 'Large';
+
+  @override
+  String get panelsTitle => 'Panels';
+
+  @override
+  String get panelLive => 'Live view';
+
+  @override
+  String get panelScoreboard => 'Scoreboard';
+
+  @override
+  String get panelReplays => 'Replays';
+
+  @override
+  String get panelsNothingShown =>
+      'Everything is hidden. Use the panels button at the top to show the live view, the scoreboard or replays.';
+
+  @override
+  String get cameraScoreboardControls => 'Scoreboard controls';
+
+  @override
+  String get cameraConnectViewer => 'Connect a viewer';
+
+  @override
+  String get zoomOut => 'Zoom out';
+
+  @override
+  String get zoomIn => 'Zoom in';
+
+  @override
+  String get zoomReset => 'Back to 1×';
+
+  @override
+  String get switchRoleTitle => 'Switch role?';
+
+  @override
+  String get switchRoleBroadcastBody =>
+      'The camera is streaming. Switching role ends the stream on YouTube and disconnects every viewer.';
+
+  @override
+  String get switchRoleViewerBody =>
+      'You are connected to the camera. Switching role closes the live view and this connection.';
+
+  @override
+  String switchRoleViewersBody(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count viewers are connected. Switching role stops the camera and disconnects them.',
+      one:
+          'A viewer is connected. Switching role stops the camera and disconnects it.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get clipReserveTitle => 'Replay reserve';
+
+  @override
+  String get clipReserveOff =>
+      'Off: the camera deletes each clip once it is on the tablet.';
+
+  @override
+  String clipReserveHint(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'The camera keeps the last $count clips so they can go on air.',
+      one: 'The camera keeps the last clip so it can go on air.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get clipReserveLess => 'Fewer';
+
+  @override
+  String get clipReserveMore => 'More';
+
+  @override
+  String get clipReserveDone => 'Done';
+
+  @override
+  String get clipOnCamera => 'On the camera';
+
+  @override
+  String get broadcastReplayScoreboard => 'Scoreboard during replays';
+
+  @override
+  String get broadcastReplayScoreboardHint =>
+      'Off: a replay on air shows only its REPLAY badge.';
+
+  @override
+  String get scoreboardSet => 'Set';
+
+  @override
+  String get scoreboardVisible => 'On screen';
+
+  @override
+  String get scoreboardReset => 'Reset';
+
+  @override
+  String get scoreboardResetTitle => 'Reset the scoreboard?';
+
+  @override
+  String get scoreboardResetBody =>
+      'Scores back to 0, first period and the clock reset. Team names and settings stay.';
+
+  @override
+  String get scoreboardSettings => 'Scoreboard settings';
+
+  @override
+  String get scoreboardHome => 'Home';
+
+  @override
+  String get scoreboardAway => 'Away';
+
+  @override
+  String get scoreboardTeamName => 'Name (up to 5 letters)';
+
+  @override
+  String scoreboardTeamColor(String team) {
+    return 'Color of $team';
+  }
+
+  @override
+  String get scoreboardPeriods => 'Periods';
+
+  @override
+  String get scoreboardPeriodMinutes => 'Minutes per period';
+
+  @override
+  String get scoreboardClockDirection => 'Clock';
+
+  @override
+  String get scoreboardCountUp => 'Counts up';
+
+  @override
+  String get scoreboardCountDown => 'Counts down';
+
+  @override
+  String get replayLabelOnAir => 'REPLAY';
+
+  @override
+  String get replayOnAir => 'REPLAY ON AIR';
+
+  @override
+  String get replayBackToLive => 'Back to live';
+
+  @override
+  String get replaySpeed => 'Replay speed';
+
+  @override
+  String get replayChoiceTitle => 'Where to watch the play?';
+
+  @override
+  String get replayChoiceTablet => 'Only on this tablet';
+
+  @override
+  String get replayChoiceAir => 'Also on air';
+
+  @override
+  String get replayNotLive => 'The stream is not on';
+
+  @override
+  String get replayUnavailable => 'This clip is no longer on the camera';
+
+  @override
+  String replayFailed(String message) {
+    return 'Could not put the replay on air: $message';
+  }
 }

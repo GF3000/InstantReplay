@@ -9,6 +9,7 @@ import '../clips/clip_transfers.dart';
 import '../tags/tag_widgets.dart';
 import '../tags/tags.dart';
 import '../viewer_providers.dart';
+import 'replay_air.dart';
 import 'review_page.dart';
 
 /// "Bien · 12:41", or "Clip · 12:41" when untagged (UX §3.3).
@@ -218,7 +219,15 @@ class ClipTile extends ConsumerWidget {
       builder: (context, c) {
         final roomy = c.maxWidth >= 420;
         return InkWell(
-          onTap: stored == null ? null : () => Navigator.of(context).push(ReviewPage.route(clip)),
+          // While streaming, a clip still on the Camera can also go on air (SPEC §12.6).
+          onTap: stored == null
+              ? null
+              : () => openClipReview(
+                    context,
+                    ref,
+                    clip,
+                    ({required onAir}) => ReviewPage.route(clip, replayBar: true, onAir: onAir),
+                  ),
           onLongPress: changeTag,
           child: Container(
             height: 72,
@@ -242,12 +251,29 @@ class ClipTile extends ConsumerWidget {
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
                       ),
-                      Text(
-                        '${l10n.viewerClipDuration(clipSeconds(clip))} · $state',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: stateColor),
-                      ),
+                      Row(children: [
+                        Flexible(
+                          child: Text(
+                            '${l10n.viewerClipDuration(clipSeconds(clip))} · $state',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: stateColor),
+                          ),
+                        ),
+                        // Still on the Camera: it can go on air (SPEC §12.6).
+                        if (clip.onCamera && clip.phase == SessionClipPhase.ready) ...[
+                          const SizedBox(width: 6),
+                          Tooltip(
+                            message: l10n.clipOnCamera,
+                            child: Icon(
+                              Icons.videocam_outlined,
+                              key: ValueKey('clip-on-camera-${clip.requestId}'),
+                              size: 16,
+                              color: scheme.primary,
+                            ),
+                          ),
+                        ],
+                      ]),
                     ],
                   ),
                 ),

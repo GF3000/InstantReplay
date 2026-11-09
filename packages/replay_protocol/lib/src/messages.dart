@@ -6,6 +6,7 @@ library;
 
 import 'dart:convert';
 
+import 'broadcast.dart';
 import 'models.dart';
 
 sealed class WsMessage {
@@ -46,6 +47,24 @@ sealed class WsMessage {
           durationMs: j['durationMs']! as int,
           reason: RecordingEndReason.values.asNameMap()[j['reason']] ?? RecordingEndReason.user,
         ),
+      ScoreboardCmd.typeName => switch (ScoreboardCommand.fromJson(j)) {
+          final c? => ScoreboardCmd(c),
+          null => null,
+        },
+      BroadcastConfigure.typeName => BroadcastConfigure(
+          server: j['server'] as String? ?? BroadcastInfo.defaultServer,
+          key: j['key'] as String?,
+          targetKbps: j['targetKbps'] as int? ?? BroadcastInfo.defaultKbps,
+          audio: j['audio'] as bool? ?? true,
+          replayScoreboard: j['replayScoreboard'] as bool?,
+        ),
+      BroadcastStart.typeName => const BroadcastStart(),
+      BroadcastStop.typeName => const BroadcastStop(),
+      CameraZoom.typeName => CameraZoom(ratio: (j['ratio']! as num).toDouble()),
+      ClipReserve.typeName => ClipReserve(size: j['size']! as int),
+      ReplayAir.typeName => ReplayAir(clipId: j['clipId']! as String, speed: (j['speed'] as num? ?? 1).toDouble()),
+      ReplaySpeed.typeName => ReplaySpeed(speed: (j['speed']! as num).toDouble()),
+      ReplayStop.typeName => const ReplayStop(),
       Ping.typeName => const Ping(),
       Pong.typeName => const Pong(),
       _ => null,
@@ -261,6 +280,153 @@ final class RecordingFinished extends WsMessage {
 
   @override
   Json fields() => {'name': name, 'parts': parts, 'durationMs': durationMs, 'reason': reason.name};
+}
+
+/// Viewer → Camera: change the scoreboard (SPEC §12.3). The new state arrives in the next
+/// [StatusUpdate], sent at once.
+final class ScoreboardCmd extends WsMessage {
+  const ScoreboardCmd(this.command);
+
+  static const typeName = 'scoreboard_cmd';
+  final ScoreboardCommand command;
+
+  @override
+  String get type => typeName;
+
+  @override
+  Json fields() => command.toJson();
+}
+
+/// Viewer → Camera: where to stream. [key] null keeps the stored stream key.
+final class BroadcastConfigure extends WsMessage {
+  const BroadcastConfigure({
+    this.server = BroadcastInfo.defaultServer,
+    this.key,
+    this.targetKbps = BroadcastInfo.defaultKbps,
+    this.audio = true,
+    this.replayScoreboard,
+  });
+
+  static const typeName = 'broadcast_config';
+  final String server;
+  final String? key;
+  final int targetKbps;
+  final bool audio;
+
+  /// Scoreboard during replays on air; null keeps the stored choice.
+  final bool? replayScoreboard;
+
+  @override
+  String get type => typeName;
+
+  @override
+  Json fields() => {
+        'server': server,
+        if (key != null) 'key': key,
+        'targetKbps': targetKbps,
+        'audio': audio,
+        if (replayScoreboard != null) 'replayScoreboard': replayScoreboard,
+      };
+}
+
+/// Viewer → Camera: go live. Failures come back as [ErrorMessage] `broadcast_failed`,
+/// `not_configured` or `mic_permission`.
+final class BroadcastStart extends WsMessage {
+  const BroadcastStart();
+
+  static const typeName = 'broadcast_start';
+
+  @override
+  String get type => typeName;
+
+  @override
+  Json fields() => const {};
+}
+
+/// Viewer → Camera: end the stream.
+final class BroadcastStop extends WsMessage {
+  const BroadcastStop();
+
+  static const typeName = 'broadcast_stop';
+
+  @override
+  String get type => typeName;
+
+  @override
+  Json fields() => const {};
+}
+
+/// Viewer → Camera: zoom the camera to [ratio] (clamped to 1…`status.zoom.max`). The new value
+/// arrives in the next [StatusUpdate], sent at once.
+final class CameraZoom extends WsMessage {
+  const CameraZoom({required this.ratio});
+
+  static const typeName = 'camera_zoom';
+  final double ratio;
+
+  @override
+  String get type => typeName;
+
+  @override
+  Json fields() => {'ratio': ratio};
+}
+
+/// Viewer → Camera: keep the [size] most recent acknowledged clips for replays on air (SPEC §3.4);
+/// 0 deletes clips on ACK. The new size arrives in the next [StatusUpdate].
+final class ClipReserve extends WsMessage {
+  const ClipReserve({required this.size});
+
+  static const typeName = 'clip_reserve';
+  final int size;
+
+  @override
+  String get type => typeName;
+
+  @override
+  Json fields() => {'size': size};
+}
+
+/// Viewer → Camera: put clip [clipId] on air at [speed] (SPEC §12.6), replacing any replay on air.
+/// Errors: `not_live`, `replay_unavailable`, `replay_failed`. `status.replay` follows.
+final class ReplayAir extends WsMessage {
+  const ReplayAir({required this.clipId, this.speed = 1});
+
+  static const typeName = 'replay_air';
+  final String clipId;
+  final double speed;
+
+  @override
+  String get type => typeName;
+
+  @override
+  Json fields() => {'clipId': clipId, 'speed': speed};
+}
+
+/// Viewer → Camera: change the speed of the replay on air.
+final class ReplaySpeed extends WsMessage {
+  const ReplaySpeed({required this.speed});
+
+  static const typeName = 'replay_speed';
+  final double speed;
+
+  @override
+  String get type => typeName;
+
+  @override
+  Json fields() => {'speed': speed};
+}
+
+/// Viewer → Camera: cut back to the live picture.
+final class ReplayStop extends WsMessage {
+  const ReplayStop();
+
+  static const typeName = 'replay_stop';
+
+  @override
+  String get type => typeName;
+
+  @override
+  Json fields() => const {};
 }
 
 /// Keep-alive: the Viewer pings every 5 s; the Camera drops a viewer silent for 15 s.

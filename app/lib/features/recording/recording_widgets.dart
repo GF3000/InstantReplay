@@ -311,3 +311,157 @@ class RecordingStatusText extends StatelessWidget {
     ]);
   }
 }
+
+/// The full-session recording as one small control (SPEC §3.8): a camera icon while idle, a
+/// `● 12:34` pill while recording (`⏸ 12:34` paused). Tapping it opens [showRecordingDialog]
+/// with the state, the time recorded, the space left and the actions, so a stray tap never
+/// starts or stops anything.
+class RecordingButton extends StatelessWidget {
+  const RecordingButton({
+    super.key,
+    required this.recording,
+    required this.enabled,
+    required this.onRecord,
+    required this.onPause,
+    required this.onFinish,
+    this.keyPrefix = 'rec',
+    this.dim = false,
+    this.overVideo = false,
+  });
+
+  final SessionRecording? recording;
+  final bool enabled;
+  final void Function(int includeSeconds) onRecord;
+  final VoidCallback onPause;
+  final VoidCallback onFinish;
+
+  /// Prefix of the keys: `<prefix>-button`, and in the dialog `<prefix>-record`,
+  /// `<prefix>-record-include`, `<prefix>-pause`, `<prefix>-finish`.
+  final String keyPrefix;
+
+  /// The Camera's black operating screen.
+  final bool dim;
+
+  /// Drawn over the camera preview: a dark backing keeps it readable.
+  final bool overVideo;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final rec = recording;
+    final state = rec?.state ?? SessionRecordingState.idle;
+    final red = dim ? RecordingBar.dimRed : const Color(0xFFE53935);
+    final fg = dim ? RecordingBar.dimColor : (overVideo ? Colors.white : null);
+    void open() => showRecordingDialog(
+          context,
+          recording: rec,
+          onRecord: onRecord,
+          onPause: onPause,
+          onFinish: onFinish,
+          keyPrefix: keyPrefix,
+        );
+    if (state == SessionRecordingState.idle) {
+      return IconButton(
+        key: ValueKey('$keyPrefix-button'),
+        tooltip: l10n.recTitle,
+        color: fg,
+        style: overVideo ? IconButton.styleFrom(backgroundColor: Colors.black54) : null,
+        constraints: const BoxConstraints.tightFor(width: 48, height: 48),
+        onPressed: enabled ? open : null,
+        icon: const Icon(Icons.videocam_outlined),
+      );
+    }
+    final recordingNow = state == SessionRecordingState.recording;
+    final warn = rec?.lowSpace ?? false;
+    return Tooltip(
+      message: l10n.recTitle,
+      child: OutlinedButton.icon(
+        key: ValueKey('$keyPrefix-button'),
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(48, 40),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          foregroundColor: dim ? RecordingBar.dimColor : (recordingNow ? red : fg),
+          backgroundColor: overVideo ? Colors.black54 : null,
+          side: BorderSide(color: recordingNow || warn ? red : (fg ?? Colors.grey), width: recordingNow ? 2 : 1),
+        ),
+        onPressed: enabled ? open : null,
+        icon: Icon(recordingNow ? Icons.fiber_manual_record : Icons.pause, size: 16, color: recordingNow ? red : fg),
+        label: Text(
+          formatRecordingClock(rec!.elapsedMs),
+          key: const ValueKey('rec-button-time'),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontFeatures: [FontFeature.tabularFigures()]),
+        ),
+      ),
+    );
+  }
+}
+
+/// The recording's state (time, parts, space left) and what can be done from it: start, or
+/// include the last 30 s; pause; resume; finish (which asks again, it cannot be undone).
+Future<void> showRecordingDialog(
+  BuildContext context, {
+  required SessionRecording? recording,
+  required void Function(int includeSeconds) onRecord,
+  required VoidCallback onPause,
+  required VoidCallback onFinish,
+  String keyPrefix = 'rec',
+}) {
+  final l10n = AppLocalizations.of(context);
+  final state = recording?.state ?? SessionRecordingState.idle;
+  const red = Color(0xFFE53935);
+  Widget action(String key, IconData icon, String label, VoidCallback onTap, {Color? color}) => SimpleDialogOption(
+        key: ValueKey('$keyPrefix-$key'),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        onPressed: onTap,
+        child: Row(children: [
+          Icon(icon, color: color),
+          const SizedBox(width: 16),
+          Flexible(child: Text(label, style: Theme.of(context).textTheme.titleMedium)),
+        ]),
+      );
+  return showDialog<void>(
+    context: context,
+    builder: (dialogContext) {
+      void run(VoidCallback f) {
+        Navigator.of(dialogContext).pop();
+        f();
+      }
+
+      return SimpleDialog(
+        key: ValueKey('$keyPrefix-dialog'),
+        title: Text(l10n.recTitle),
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+            child: RecordingStatusText(recording: recording),
+          ),
+          const Divider(),
+          if (state != SessionRecordingState.recording) ...[
+            action(
+              'record',
+              Icons.fiber_manual_record,
+              state == SessionRecordingState.paused ? l10n.recResumeFromNow : l10n.recFromNow,
+              () => run(() => onRecord(0)),
+              color: red,
+            ),
+            action(
+              'record-include',
+              Icons.history,
+              state == SessionRecordingState.paused
+                  ? l10n.recResumeIncludeLast(recordIncludeSeconds)
+                  : l10n.recIncludeLast(recordIncludeSeconds),
+              () => run(() => onRecord(recordIncludeSeconds)),
+            ),
+          ],
+          if (state == SessionRecordingState.recording)
+            action('pause', Icons.pause, l10n.recPause, () => run(onPause)),
+          if (state != SessionRecordingState.idle)
+            action('finish', Icons.stop, l10n.recFinish, () async {
+              Navigator.of(dialogContext).pop();
+              if (await confirmFinishRecording(context, recording?.elapsedMs ?? 0)) onFinish();
+            }),
+        ],
+      );
+    },
+  );
+}

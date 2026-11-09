@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:replay_protocol/replay_protocol.dart';
 
 import '../../core/preferences.dart';
+import '../broadcast/broadcast_providers.dart';
 import '../camera/camera_session.dart';
 import '../camera/capture_layer.dart';
 import '../discovery/discovered_camera.dart';
@@ -74,6 +75,8 @@ class CameraServerNotifier extends Notifier<CameraServerState> {
   @override
   CameraServerState build() {
     final secrets = PairingSecrets.generate();
+    // The scoreboard and the stream live as long as the server (and the Camera screen).
+    ref.listen(broadcastHostProvider, (_, _) {});
     ref.listen(cameraSessionProvider, (previous, session) {
       _profileId = session.phase == CameraPhase.running ? session.profileId : null;
       if (session.phase != CameraPhase.running) return;
@@ -106,6 +109,8 @@ class CameraServerNotifier extends Notifier<CameraServerState> {
       server = await platform.createServer(ApiServerConfig(
         capture: ref.read(captureLayerProvider),
         secrets: secrets,
+        broadcast: ref.read(broadcastHostProvider),
+        controls: _SessionControls(ref),
         cameraInfo: () => CameraInfo(
           protocolVersion: protocolVersion,
           cameraId: cameraId,
@@ -185,3 +190,33 @@ final cameraIdProvider = Provider<String>((ref) {
   unawaited(prefs.setString(key, id));
   return id;
 });
+
+/// [CameraControls] over the Camera session.
+class _SessionControls implements CameraControls {
+  _SessionControls(this._ref) {
+    _ref.listen(cameraSessionProvider.select((s) => (s.zoom, s.maxZoom, s.clipReserve)), (_, _) => _changes.add(null));
+    _ref.onDispose(_changes.close);
+  }
+
+  final Ref _ref;
+  final _changes = StreamController<void>.broadcast();
+
+  @override
+  ZoomInfo? get zoom {
+    final s = _ref.read(cameraSessionProvider);
+    if (s.phase != CameraPhase.running || s.maxZoom <= 1) return null;
+    return ZoomInfo(ratio: s.zoom, max: s.maxZoom);
+  }
+
+  @override
+  void setZoom(double ratio) => _ref.read(cameraSessionProvider.notifier).setZoom(ratio);
+
+  @override
+  int get reserve => _ref.read(cameraSessionProvider).clipReserve;
+
+  @override
+  void setReserve(int size) => _ref.read(cameraSessionProvider.notifier).setClipReserve(size);
+
+  @override
+  Stream<void> get changes => _changes.stream;
+}

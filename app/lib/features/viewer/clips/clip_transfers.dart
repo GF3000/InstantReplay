@@ -42,6 +42,7 @@ class SessionClip {
     this.stored,
     this.failure,
     this.acked = false,
+    this.onCamera = false,
   });
 
   final String requestId;
@@ -60,6 +61,9 @@ class SessionClip {
   /// The Camera confirmed the checksum and released its copy.
   final bool acked;
 
+  /// The Camera still has the file (ready, or in its replay reserve), so it can go on air (§12.6).
+  final bool onCamera;
+
   /// Download progress 0..1, or null when the size is unknown.
   double? get progress => total == null || total == 0 ? null : (received / total!).clamp(0, 1).toDouble();
 
@@ -72,6 +76,7 @@ class SessionClip {
     StoredClip? stored,
     ClipFailure? Function()? failure,
     bool? acked,
+    bool? onCamera,
   }) =>
       SessionClip(
         requestId: requestId,
@@ -85,6 +90,7 @@ class SessionClip {
         stored: stored ?? this.stored,
         failure: failure == null ? this.failure : failure(),
         acked: acked ?? this.acked,
+        onCamera: onCamera ?? this.onCamera,
       );
 }
 
@@ -224,7 +230,7 @@ class ClipTransfers {
       );
     }
     _dtos[dto.requestId] = dto;
-    c = c.copyWith(clipId: dto.id, durationMs: dto.durationMs);
+    c = c.copyWith(clipId: dto.id, durationMs: dto.durationMs, onCamera: dto.onCamera);
     switch (dto.state) {
       case ClipState.recording:
         if (c.phase == SessionClipPhase.requesting) c = c.copyWith(phase: SessionClipPhase.recording);

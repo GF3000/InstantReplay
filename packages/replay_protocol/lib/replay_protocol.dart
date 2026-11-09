@@ -4,6 +4,7 @@
 library;
 
 export 'src/api.dart';
+export 'src/broadcast.dart';
 export 'src/messages.dart';
 export 'src/models.dart';
 

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -38,6 +39,9 @@ class CameraSessionState {
     this.recording,
     this.recovered = const [],
     this.lastSaved,
+    this.broadcast = false,
+    this.zoom = 1,
+    this.clipReserve = CameraSessionNotifier.defaultClipReserve,
   });
 
   final CameraPhase phase;
@@ -69,6 +73,19 @@ class CameraSessionState {
   /// The last recording that ended while this screen was open, for a one-off message.
   final RecordingSavedNotice? lastSaved;
 
+  /// Broadcast mode (SPEC §12): capture runs with `broadcast: true`, the scoreboard and the
+  /// YouTube stream are offered. Replay mode (false) is the default.
+  final bool broadcast;
+
+  /// Sensor zoom target (SPEC §3.1), remembered so the framing survives a restart.
+  final double zoom;
+
+  /// How many acknowledged clips the Camera keeps for replays on air (SPEC §3.4); 0 = none.
+  final int clipReserve;
+
+  /// Highest zoom offered: what the sensor allows, capped where a 1080p crop still looks sharp.
+  double get maxZoom => min(session?.maxZoom ?? 1, CameraSessionNotifier.zoomCap);
+
   CaptureProfile? get profile => profiles.where((p) => p.id == profileId).firstOrNull;
 
   CameraSessionState copyWith({
@@ -86,6 +103,9 @@ class CameraSessionState {
     RecordingStatus? recording,
     List<RecordingSaved>? recovered,
     RecordingSavedNotice? lastSaved,
+    bool? broadcast,
+    double? zoom,
+    int? clipReserve,
   }) =>
       CameraSessionState(
         phase: phase ?? this.phase,
@@ -102,6 +122,9 @@ class CameraSessionState {
         recording: recording ?? this.recording,
         recovered: recovered ?? this.recovered,
         lastSaved: lastSaved ?? this.lastSaved,
+        broadcast: broadcast ?? this.broadcast,
+        zoom: zoom ?? this.zoom,
+        clipReserve: clipReserve ?? this.clipReserve,
       );
 }
 
@@ -117,10 +140,22 @@ final class RecordingSavedNotice {
 class CameraSessionNotifier extends Notifier<CameraSessionState> {
   static const defaultProfileId = '1080p30';
   static const _profileKey = 'camera.profile';
+  static const _zoomKey = 'camera.zoom';
+  static const _reserveKey = 'camera.clipReserve';
+  static const defaultClipReserve = 3;
+  static const maxClipReserve = 10;
+
+  /// Above this the sensor crop gets soft; the UI offers up to here.
+  static const zoomCap = 4.0;
+  static const modeKey = 'camera.mode';
+  static const broadcastMode = 'broadcast';
   static const _maxErrors = 5;
 
   late CaptureLayer _capture;
   bool _running = false;
+
+  /// [CameraSessionState.broadcast], readable while disposing.
+  bool _broadcastMode = false;
 
   /// Crash recovery runs once per screen, before the first start (the recorder needs it first).
   bool _recoveryDone = false;
@@ -144,8 +179,11 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
       // Leaving the Camera finishes the recording first, so it reaches the gallery, then stops
       // capture. Always asked: the recorder may hold a recording this screen has not heard of yet.
       final running = _running;
+      final broadcast = _broadcastMode;
       _running = false;
       unawaited(() async {
+        // A stream ends with the Camera screen; the plugin would release it with capture anyway.
+        if (broadcast) await _capture.broadcastStop().catchError((Object _) {});
         try {
           await _capture.recordStop();
         } catch (_) {
@@ -155,7 +193,13 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
       }());
     });
     Future.microtask(enter);
-    return const CameraSessionState();
+    _broadcastMode = ref.read(sharedPreferencesProvider).getString(modeKey) == broadcastMode;
+    final prefs = ref.read(sharedPreferencesProvider);
+    final zoom = prefs.getDouble(_zoomKey) ?? 1;
+    final reserve = prefs.getInt(_reserveKey) ?? defaultClipReserve;
+    // The outbox outlives capture: its reserve size is set once on entry.
+    unawaited(_capture.setClipReserve(reserve).catchError((Object _) {}));
+    return CameraSessionState(broadcast: _broadcastMode, zoom: zoom, clipReserve: reserve);
   }
 
   /// Permissions → profiles → start the default profile. Also the "try again" action.
@@ -221,6 +265,17 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
     await _start(id);
   }
 
+  /// Switches between replay and broadcast mode (SPEC §12), remembered for the next session.
+  /// Capture restarts like on a profile change.
+  Future<void> setBroadcastMode(bool broadcast) async {
+    if (broadcast == state.broadcast) return;
+    _broadcastMode = broadcast;
+    state = state.copyWith(broadcast: broadcast);
+    unawaited(ref.read(sharedPreferencesProvider).setString(modeKey, broadcast ? broadcastMode : 'replay'));
+    final id = state.profileId;
+    if (id != null && state.phase != CameraPhase.initializing) await _start(id);
+  }
+
   Future<void> _start(String id) async {
     state = state.copyWith(phase: CameraPhase.starting, session: () => null, stats: () => null, startError: () => null);
     try {
@@ -228,17 +283,39 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
         _running = false;
         await _capture.stop();
       }
-      final session = await _capture.start(id);
+      final session = await _capture.start(id, broadcast: state.broadcast);
       if (!ref.mounted) {
         unawaited(_capture.stop());
         return;
       }
       _running = true;
       state = state.copyWith(phase: CameraPhase.running, session: () => session);
+      // The remembered framing; the native side applies it as soon as the camera session opens.
+      final zoom = state.zoom.clamp(1.0, state.maxZoom);
+      if (zoom > 1) unawaited(_capture.setZoom(zoom).catchError((Object _) {}));
     } catch (e) {
       if (!ref.mounted) return;
       state = state.copyWith(phase: CameraPhase.startFailed, startError: () => _describe(e));
     }
+  }
+
+  /// Zooms the camera (SPEC §3.1), from this screen or any viewer; clamped to 1…[maxZoom].
+  void setZoom(double ratio) {
+    if (state.phase != CameraPhase.running) return;
+    final zoom = (ratio.clamp(1.0, state.maxZoom) * 100).roundToDouble() / 100;
+    if (zoom == state.zoom) return;
+    state = state.copyWith(zoom: zoom);
+    unawaited(_capture.setZoom(zoom).catchError((Object _) {}));
+    unawaited(ref.read(sharedPreferencesProvider).setDouble(_zoomKey, zoom));
+  }
+
+  /// Replay reserve size (SPEC §3.4), from this screen or any viewer; remembered.
+  void setClipReserve(int size) {
+    final n = size.clamp(0, maxClipReserve);
+    if (n == state.clipReserve) return;
+    state = state.copyWith(clipReserve: n);
+    unawaited(_capture.setClipReserve(n).catchError((Object _) {}));
+    unawaited(ref.read(sharedPreferencesProvider).setInt(_reserveKey, n));
   }
 
   Future<void> startOperating() async {
@@ -274,7 +351,11 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
     }
     final current = state.profile;
     final fallback = current == null ? null : thermalFallback(state.profiles, current, event.action);
-    if (fallback != null && state.phase == CameraPhase.running) unawaited(selectProfile(fallback.id));
+    // In broadcast mode a restart would cut the stream, which is never degraded automatically
+    // (SPEC §12.1); the plugin's own steps (preview off, live view down) still apply.
+    if (fallback != null && state.phase == CameraPhase.running && !state.broadcast) {
+      unawaited(selectProfile(fallback.id));
+    }
   }
 
   /// A cooler profile for [action], or null if [current] already satisfies it.

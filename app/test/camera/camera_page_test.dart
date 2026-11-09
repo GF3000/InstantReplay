@@ -56,8 +56,17 @@ Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
   await tester.pumpAndSettle();
 }
 
-/// The Camera's own recording buttons (on the preview in setup, on the black operating screen).
-Finder _rec(String name) => find.byKey(Key('camera-rec-$name'));
+/// The Camera's own recording controls: the button (on the preview in setup, on the black
+/// operating screen) and the actions in its dialog.
+Finder _rec(String name) => find.byKey(ValueKey('camera-rec-$name'));
+
+/// Opens the recording dialog from its button and picks [action] in it.
+Future<void> _recAction(WidgetTester tester, String action) async {
+  await tester.tap(_rec('button'));
+  await tester.pumpAndSettle();
+  await tester.tap(_rec(action));
+  await tester.pumpAndSettle();
+}
 
 Future<void> _tapNow(WidgetTester tester, Finder finder) async {
   await tester.tap(finder);
@@ -74,7 +83,8 @@ void main() {
     final fake = FakeCaptureLayer();
     await _pumpCamera(tester, fake);
 
-    expect(fake.calls.take(2), ['cameraPermission', 'notificationPermission']);
+    // The replay reserve size goes to the outbox on entry (SPEC §3.4), before anything else.
+    expect(fake.calls.take(3), ['reserve:3', 'cameraPermission', 'notificationPermission']);
     expect(fake.starts, ['1080p30']);
     expect(find.byType(Texture), findsOneWidget);
   });
@@ -280,62 +290,64 @@ void main() {
     testWidgets('starts idle; Record, Pause and Finish with a confirmation', (tester) async {
       final fake = FakeCaptureLayer();
       await _pumpCamera(tester, fake, height: 2400);
-      expect(find.text('Full recording'), findsOneWidget);
+      // A small button; its dialog holds the actions.
+      expect(find.byTooltip('Full recording'), findsOneWidget);
+      await tester.tap(_rec('button'));
+      await tester.pumpAndSettle();
       expect(_rec('pause'), findsNothing);
       expect(_rec('finish'), findsNothing);
       expect(fake.calls.where((c) => c.startsWith('record')), isEmpty, reason: 'the session starts paused');
 
       await _tapNow(tester, _rec('record'));
       expect(fake.calls.last, 'recordStart:0');
-      expect(_rec('pause'), findsOneWidget);
 
       fake.statsController.add(stats(recording: recStatus(state: RecordingState.recording, elapsedMs: 754000, parts: 2)));
+      await tester.pumpAndSettle();
+      expect(find.text('12:34'), findsOneWidget, reason: 'the button shows the time');
+      await tester.tap(_rec('button'));
       await tester.pumpAndSettle();
       expect(find.text('12:34 · part 2'), findsOneWidget);
       expect(find.text('10 h left'), findsOneWidget);
 
       await _tapNow(tester, _rec('pause'));
       expect(fake.calls.last, 'recordPause');
-      expect(find.textContaining('Paused'), findsOneWidget);
 
       // Finish asks first; "Keep recording" changes nothing.
-      await _tapNow(tester, _rec('finish'));
+      await _recAction(tester, 'finish');
       expect(find.text('Finish the recording?'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('rec-finish-keep')));
       await tester.pumpAndSettle();
       expect(fake.calls.where((c) => c == 'recordStop'), isEmpty);
 
-      await _tapNow(tester, _rec('finish'));
+      await _recAction(tester, 'finish');
       await tester.tap(find.byKey(const ValueKey('rec-finish-confirm')));
       await tester.pumpAndSettle();
       expect(fake.calls.last, 'recordStop');
       expect(find.textContaining('Recording saved to the camera'), findsOneWidget);
-      expect(_rec('finish'), findsNothing);
     });
 
-    testWidgets('Record and Resume can include the last 30 s from the menu or a long-press', (tester) async {
+    testWidgets('Record and Resume can include the last 30 s', (tester) async {
       final fake = FakeCaptureLayer();
       await _pumpCamera(tester, fake, height: 2400);
 
-      await _tapNow(tester, _rec('record-menu'));
-      expect(find.text('Record including the last 30 s'), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('rec-include-30')));
+      await tester.tap(_rec('button'));
       await tester.pumpAndSettle();
+      expect(find.text('Record including the last 30 s'), findsOneWidget);
+      await _tapNow(tester, _rec('record-include'));
       expect(fake.calls.last, 'recordStart:30');
 
-      await _tapNow(tester, _rec('pause'));
-      await tester.longPress(_rec('record'));
+      await _recAction(tester, 'pause');
+      await tester.tap(_rec('button'));
       await tester.pumpAndSettle();
       expect(find.text('Resume including the last 30 s'), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('rec-include-30')));
-      await tester.pumpAndSettle();
+      await _tapNow(tester, _rec('record-include'));
       expect(fake.calls.last, 'recordStart:30');
     });
 
     testWidgets('no space to start is explained', (tester) async {
       final fake = FakeCaptureLayer()..recordStartError = PlatformException(code: 'no_space');
       await _pumpCamera(tester, fake, height: 2400);
-      await _tapNow(tester, _rec('record'));
+      await _recAction(tester, 'record');
       expect(find.text('Not enough space on the camera to record (it needs 1 GB free)'), findsOneWidget);
     });
 
@@ -345,7 +357,11 @@ void main() {
       fake.recordingController
           .add(recStatus(state: RecordingState.recording, elapsedMs: 60000, remainingMs: 8 * 60000, lowSpace: true));
       await tester.pumpAndSettle();
+      await tester.tap(_rec('button'));
+      await tester.pumpAndSettle();
       expect(find.text('Low space: 8 min left'), findsOneWidget);
+      await tester.tapAt(const Offset(5, 5)); // close the dialog
+      await tester.pumpAndSettle();
 
       fake.recordingSavedController
           .add(RecordingSaved(name: 'a.mp4', parts: 1, durationMs: 3600000, bytes: 1, reason: RecordingEnd.lowSpace));
@@ -361,17 +377,14 @@ void main() {
       await tester.pumpAndSettle();
       expect(_operating(tester), isTrue);
 
-      await tester.tap(_rec('record'));
-      await tester.pumpAndSettle();
+      await _recAction(tester, 'record');
       expect(fake.calls.last, 'recordStart:0');
       expect(_operating(tester), isTrue);
 
-      await tester.tap(_rec('pause'));
-      await tester.pumpAndSettle();
+      await _recAction(tester, 'pause');
       expect(fake.calls.last, 'recordPause');
 
-      await tester.tap(_rec('finish'));
-      await tester.pumpAndSettle();
+      await _recAction(tester, 'finish');
       await tester.tap(find.byKey(const ValueKey('rec-finish-confirm')));
       await tester.pumpAndSettle();
       expect(fake.calls.last, 'recordStop');
@@ -381,7 +394,7 @@ void main() {
     testWidgets('a profile change keeps the recording going', (tester) async {
       final fake = FakeCaptureLayer();
       await _pumpCamera(tester, fake);
-      await _tapNow(tester, _rec('record'));
+      await _recAction(tester, 'record');
       await _openAdvanced(tester);
       await _tapVisible(tester, find.byKey(const Key('camera-profile')));
       await tester.tap(find.text('1080p60 · 20 Mbps · 9.0 GB/h').last);
@@ -389,13 +402,12 @@ void main() {
 
       expect(fake.starts, ['1080p30', '1080p60']);
       expect(fake.calls.where((c) => c == 'recordStop' || c == 'recordPause'), isEmpty);
-      expect(_rec('pause'), findsOneWidget);
     });
 
     testWidgets('leaving the Camera finishes the recording, then stops capture', (tester) async {
       final fake = FakeCaptureLayer();
       await _pumpCamera(tester, fake, height: 2400);
-      await _tapNow(tester, _rec('record'));
+      await _recAction(tester, 'record');
 
       await tester.tap(find.byTooltip('Switch role'));
       await tester.pumpAndSettle();
@@ -535,6 +547,142 @@ void main() {
       await tester.tap(find.byTooltip('Switch role'));
       await tester.pumpAndSettle();
       expect(server.last!.closed, isTrue);
+    });
+  });
+
+  group('broadcast mode', () {
+    testWidgets('choosing Broadcast restarts capture in broadcast mode, remembered; viewers renegotiate', (tester) async {
+      final server = FakeServerPlatform();
+      final fake = FakeCaptureLayer();
+      final prefs = await _pumpCamera(tester, fake, server: server, height: 2400);
+      expect(fake.startModes, [false]);
+      expect(find.byKey(const Key('camera-broadcast-card')), findsNothing);
+
+      await _openAdvanced(tester);
+      await _tapVisible(tester, find.text('Broadcast (beta)'));
+
+      expect(fake.startModes, [false, true]);
+      expect(fake.calls.where((c) => c == 'stop' || c.startsWith('start:')), ['start:1080p30', 'stop', 'start:1080p30']);
+      expect(prefs.getString('camera.mode'), 'broadcast');
+      expect(server.last!.restarts, 1);
+      expect(server.last!.config.broadcast!.active, isTrue);
+      // Asked while someone is at the Camera; the overlay goes out once capture runs.
+      expect(fake.calls, contains('micPermission'));
+      expect(fake.overlays, isNotEmpty);
+      expect(fake.overlays.last.homeName, 'LOC');
+      expect(find.byKey(const Key('camera-broadcast-card')), findsOneWidget);
+      // The header carries the stream; without a key, Go live opens the settings.
+      expect(find.byKey(const ValueKey('camera-broadcast-start')), findsOneWidget);
+      expect(find.byTooltip('Enter the stream key first'), findsOneWidget);
+    });
+
+    testWidgets('a remembered Broadcast mode starts in it; the Camera configures and goes live', (tester) async {
+      final fake = FakeCaptureLayer();
+      await _pumpCamera(tester, fake, height: 2400, saved: {'camera.mode': 'broadcast'});
+      expect(fake.startModes, [true]);
+
+      await _tapVisible(tester, find.byKey(const ValueKey('camera-broadcast-settings')));
+      await tester.enterText(find.byKey(const ValueKey('broadcast-key')), 'abcd-efgh-WXYZ');
+      await tester.tap(find.byKey(const ValueKey('broadcast-config-save')));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Ready · 4500 kbps'), findsOneWidget);
+
+      await _tapNow(tester, find.byKey(const ValueKey('camera-broadcast-start')));
+      expect(fake.broadcastConfigs.single.url, 'rtmp://a.rtmp.youtube.com/live2/abcd-efgh-WXYZ');
+      expect(find.text('Connecting…'), findsOneWidget);
+
+      // While streaming, the mode and the profile cannot change (it would cut the stream).
+      await _openAdvanced(tester);
+      final choice = tester.widget<SegmentedButton<bool>>(find.byKey(const Key('camera-mode-choice')));
+      expect(choice.onSelectionChanged, isNull);
+
+      await _tapVisible(tester, find.byKey(const ValueKey('camera-broadcast-stop')));
+      await _tapNow(tester, find.byKey(const ValueKey('broadcast-stop-confirm')));
+      expect(fake.calls.last, 'broadcastStop');
+    });
+
+    testWidgets('the phone keeps the score itself; pairing folds; the controls can be hidden', (tester) async {
+      final fake = FakeCaptureLayer();
+      await _pumpCamera(tester, fake, height: 2400, saved: {'camera.mode': 'broadcast'});
+      expect(find.byKey(const Key('camera-scoreboard')), findsOneWidget);
+      expect(find.byKey(const Key('camera-pairing-qr')), findsNothing, reason: 'folded');
+      expect(find.byKey(const Key('camera-pairing-folded')), findsOneWidget);
+
+      await _tapNow(tester, find.byKey(const ValueKey('score-home-plus')));
+      expect(fake.overlays.last.homeScore, 1);
+
+      await _tapNow(tester, find.byKey(const Key('camera-scoreboard-toggle')));
+      expect(find.byKey(const Key('camera-scoreboard')), findsNothing);
+      expect(find.byKey(const Key('camera-score')), findsOneWidget, reason: 'the score on air instead');
+    });
+
+    testWidgets('a replay on air shows on the broadcast card; speed and Back to live act on the Camera', (tester) async {
+      final fake = FakeCaptureLayer();
+      await _pumpCamera(tester, fake, height: 2400, saved: {'camera.mode': 'broadcast', 'broadcast.key': 'abcd'});
+      await _tapNow(tester, find.byKey(const ValueKey('camera-broadcast-start')));
+      expect(find.byKey(const ValueKey('camera-replay')), findsNothing);
+
+      // A viewer put a clip on air.
+      final onAir = fake.replayState = ReplayStatus(clipId: 'clip1', speed: 1, positionMs: 0, durationMs: 4000);
+      fake.replayController.add(onAir);
+      await tester.pump();
+      await tester.pump();
+      expect(find.byKey(const ValueKey('camera-replay')), findsOneWidget);
+      expect(find.text('REPLAY ON AIR'), findsOneWidget);
+      expect(find.text('0:00 / 0:04'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('camera-replay-speed-0.5')));
+      await tester.pump();
+      expect(fake.calls.last, 'replaySpeed:0.5');
+      await tester.tap(find.byKey(const ValueKey('camera-replay-stop')));
+      await tester.pump();
+      await tester.pump();
+      expect(fake.calls.last, 'replayStop');
+      expect(find.byKey(const ValueKey('camera-replay')), findsNothing);
+    });
+
+    testWidgets('the replay reserve is set from Advanced and remembered', (tester) async {
+      final fake = FakeCaptureLayer();
+      final prefs = await _pumpCamera(tester, fake, height: 2400);
+      await _openAdvanced(tester);
+      await _tapVisible(tester, find.byKey(const ValueKey('camera-clip-reserve-plus')));
+      expect(fake.calls.last, 'reserve:4');
+      expect(prefs.getInt('camera.clipReserve'), 4);
+      for (var i = 0; i < 4; i++) {
+        await _tapVisible(tester, find.byKey(const ValueKey('camera-clip-reserve-minus')));
+      }
+      expect(fake.calls.last, 'reserve:0');
+      expect(find.text('Off: the camera deletes each clip once it is on the tablet.'), findsOneWidget);
+    });
+
+    testWidgets('zoom: the buttons step it, remembered for the next start; 1× resets', (tester) async {
+      final fake = FakeCaptureLayer();
+      final prefs = await _pumpCamera(tester, fake, height: 2400);
+      await _tapNow(tester, find.byKey(const ValueKey('camera-zoom-in')));
+      await _tapNow(tester, find.byKey(const ValueKey('camera-zoom-in')));
+      expect(fake.calls.where((c) => c.startsWith('zoom:')), ['zoom:1.25', 'zoom:1.5']);
+      expect(find.text('1.5×'), findsOneWidget);
+      expect(prefs.getDouble('camera.zoom'), 1.5);
+      await _tapNow(tester, find.byKey(const ValueKey('camera-zoom-reset')));
+      expect(fake.calls.last, 'zoom:1.0');
+    });
+
+    testWidgets('the operating screen shows the score and the stream', (tester) async {
+      final fake = FakeCaptureLayer();
+      await _pumpCamera(tester, fake, saved: {'camera.mode': 'broadcast'});
+      await _tapNow(tester, find.text('Start operating'));
+      expect(_operating(tester), isTrue);
+      expect(find.byKey(const Key('camera-score')), findsOneWidget);
+      expect(find.text('0 – 0'), findsOneWidget);
+      expect(find.text('Off air'), findsOneWidget);
+    });
+
+    testWidgets('a thermal profile fallback does not restart capture while broadcasting', (tester) async {
+      final fake = FakeCaptureLayer();
+      await _pumpCamera(tester, fake, saved: {'camera.mode': 'broadcast', 'camera.profile': '1080p60'});
+      fake.thermalController.add(ThermalEvent(status: 3, action: ThermalAction.reduceFps));
+      await tester.pumpAndSettle();
+      expect(fake.starts, ['1080p60']);
     });
   });
 }

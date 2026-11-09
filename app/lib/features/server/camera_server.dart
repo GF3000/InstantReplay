@@ -13,6 +13,7 @@ import 'package:shelf_static/shelf_static.dart';
 import 'package:shelf_web_socket/shelf_web_socket.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
+import '../broadcast/broadcast_host.dart';
 import '../camera/capture_layer.dart';
 import 'api_server.dart';
 import 'pairing.dart';
@@ -28,6 +29,8 @@ class CameraServer implements ApiServer {
     required this.secrets,
     required this.cameraInfo,
     this.webRoot,
+    this.broadcast,
+    this.controls,
     this.saveTimeout = const Duration(seconds: 5),
     this.silenceTimeout = const Duration(seconds: 15),
     AttemptLimiter? pairLimiter,
@@ -41,6 +44,12 @@ class CameraServer implements ApiServer {
 
   /// Directory with the web viewer's `index.html`; null when this build has none.
   final String? webRoot;
+
+  /// Broadcast mode (SPEC §12): the scoreboard and the stream; null leaves it out.
+  final BroadcastHost? broadcast;
+
+  /// Zoom and replay reserve; null leaves them out of `status`.
+  final CameraControls? controls;
 
   /// How long `POST /clips` waits for the outbox to register the clip.
   final Duration saveTimeout;
@@ -82,6 +91,13 @@ class CameraServer implements ApiServer {
       ..add(capture.stats.listen(_onStats))
       ..add(capture.recording.listen(_onRecording))
       ..add(capture.recordingSaved.listen(_onRecordingSaved));
+    if (broadcast case final b?) {
+      _subs
+        ..add(b.changes.listen((_) => _onBroadcastChanged()))
+        // A replay that failed on air: every viewer hears why the program is back on the camera.
+        ..add(b.replayFailures.listen((reason) => _broadcast(ErrorMessage(code: 'replay_failed', message: reason))));
+    }
+    if (controls case final c?) _subs.add(c.changes.listen((_) => _onBroadcastChanged()));
     final sweepEvery = Duration(milliseconds: max(100, silenceTimeout.inMilliseconds ~/ 3));
     _sweep = Timer.periodic(sweepEvery, (_) => _dropSilent());
     final server = await shelf_io.serve(handler, address ?? InternetAddress.anyIPv4, port);
@@ -226,7 +242,9 @@ class CameraServer implements ApiServer {
   Future<Response> _download(Request request, String id) async {
     final clip = await capture.getClip(id);
     final path = clip?.path;
-    if (clip == null || clip.state != cap.ClipState.ready || path == null) return _error(HttpStatus.notFound, 'not_found');
+    // Ready, or acknowledged but kept in the replay reserve (SPEC §3.4).
+    final onCamera = clip != null && (clip.state == cap.ClipState.ready || clip.reserved == true);
+    if (!onCamera || path == null) return _error(HttpStatus.notFound, 'not_found');
     final file = File(path);
     if (!file.existsSync()) return _error(HttpStatus.notFound, 'not_found');
     final length = await file.length();
@@ -387,6 +405,38 @@ compilación que incluya el visor web.</p>
           _onRecording(await capture.recordPause());
         case RecStop():
           await capture.recordStop();
+        // Broadcast mode (SPEC §12.3): any viewer drives the scoreboard and the stream; the new
+        // state goes to every viewer at once (_onBroadcastChanged).
+        // Zoom (SPEC §3.1): any viewer, every viewer sees it at once.
+        case CameraZoom(:final ratio):
+          controls?.setZoom(ratio);
+        case ClipReserve(:final size):
+          controls?.setReserve(size);
+        case ScoreboardCmd(:final command):
+          _broadcastHost().scoreboardCommand(command);
+        case BroadcastConfigure(:final server, :final key, :final targetKbps, :final audio, :final replayScoreboard):
+          await _broadcastHost().configure(
+            server: server,
+            key: key,
+            targetKbps: targetKbps,
+            audio: audio,
+            replayScoreboard: replayScoreboard,
+          );
+        case BroadcastStart():
+          // Without the microphone the stream still goes out, with silence: say so to who asked.
+          if (!await _broadcastHost().start()) {
+            s.send(const ErrorMessage(code: 'mic_permission', message: 'Streaming without sound.'));
+          }
+        case BroadcastStop():
+          await _broadcastHost().stop();
+        // Replays on air (SPEC §12.6): any viewer puts a clip on air, changes its speed or cuts
+        // back to live; status.replay reaches every viewer at once.
+        case ReplayAir(:final clipId, :final speed):
+          await _broadcastHost().replayAir(clipId, speed);
+        case ReplaySpeed(:final speed):
+          await _broadcastHost().replaySpeed(speed);
+        case ReplayStop():
+          await _broadcastHost().replayStop();
         case Welcome() || RtcOffer() || ClipChanged() || StatusUpdate() || RecordingFinished() || ErrorMessage() || Pong():
           break; // Camera → Viewer messages; nothing to do.
       }
@@ -399,6 +449,10 @@ compilación que incluya el visor web.</p>
         LiveStart() => 'live_failed',
         RecStart() || RecPause() || RecStop() =>
           e is PlatformException && e.code == 'no_space' ? 'no_space' : 'rec_failed',
+        _ when e is BroadcastException => e.code,
+        ScoreboardCmd() || BroadcastConfigure() || BroadcastStart() || BroadcastStop() =>
+          e is PlatformException && e.code == 'not_broadcast_mode' ? 'not_broadcast_mode' : 'broadcast_failed',
+        ReplayAir() || ReplaySpeed() || ReplayStop() => 'replay_failed',
         _ => 'failed',
       };
 
@@ -415,7 +469,7 @@ compilación que incluya el visor web.</p>
     s.viewerId ??= hello.viewerId;
     s.send(Welcome(camera: cameraInfo()));
     final status = _lastStatus;
-    if (status != null) s.send(StatusUpdate(status: status));
+    if (status != null) s.send(StatusUpdate(status: _lastStatus = _withBroadcastNow(status)));
     if (!wasGreeted) _emitViewerCount();
   }
 
@@ -469,7 +523,7 @@ compilación que incluya el visor web.</p>
 
   void _onStats(cap.CaptureStats stats) {
     if (stats.recording case final r?) _lastRecording = r;
-    final status = _lastStatus = cameraStatus(stats, fallbackRecording: _lastRecording);
+    final status = _lastStatus = _withBroadcastNow(cameraStatus(stats, fallbackRecording: _lastRecording));
     final now = DateTime.now();
     final last = _lastStatusSent;
     if (last != null && now.difference(last) < const Duration(milliseconds: 900)) return;
@@ -487,8 +541,36 @@ compilación que incluya el visor web.</p>
     final recording = sessionRecording(r);
     final before = last.sessionRecording?.toJson();
     if (before != null && _sameJson(before, recording.toJson())) return;
-    final status = _lastStatus = withSessionRecording(last, recording);
+    final status = _lastStatus = _withBroadcastNow(withSessionRecording(last, recording));
     _broadcast(StatusUpdate(status: status));
+  }
+
+  /// The broadcast host, or `not_broadcast_mode` when capture runs in replay mode.
+  BroadcastHost _broadcastHost() {
+    final host = broadcast;
+    if (host == null || !host.active) throw const BroadcastException('not_broadcast_mode');
+    return host;
+  }
+
+  /// [status] with the scoreboard (its clock as of now), the stream and any replay on air (its
+  /// position as of now) in broadcast mode, without them in replay mode.
+  CameraStatus _withBroadcastNow(CameraStatus status) {
+    final host = broadcast;
+    final active = host != null && host.active;
+    var withHost = !active
+        ? (status.scoreboard == null && status.broadcast == null ? status : withBroadcast(status))
+        : withBroadcast(status, scoreboard: host.scoreboard, broadcast: host.info);
+    final replay = active ? host.replay : null;
+    if (replay != withHost.replay) withHost = withHost.withReplay(replay);
+    final c = controls;
+    return c == null ? withHost : withHost.withControls(zoom: c.zoom, reserve: c.reserve);
+  }
+
+  /// A scoreboard or stream change (or a mode switch) goes out at once, like a recording change.
+  void _onBroadcastChanged() {
+    final last = _lastStatus;
+    if (last == null) return; // The first stats tick will carry it.
+    _broadcast(StatusUpdate(status: _lastStatus = _withBroadcastNow(last)));
   }
 
   void _onRecordingSaved(cap.RecordingSaved saved) => _broadcast(recordingFinished(saved));
@@ -554,7 +636,11 @@ compilación que incluya el visor web.</p>
         headers: {HttpHeaders.contentTypeHeader: 'application/json', ...headers},
       );
 
-  static String _describe(Object e) => e is PlatformException ? (e.message ?? e.code) : '$e';
+  static String _describe(Object e) => switch (e) {
+        PlatformException() => e.message ?? e.code,
+        BroadcastException() => e.message ?? e.code,
+        _ => '$e',
+      };
 }
 
 class _ViewerSocket {

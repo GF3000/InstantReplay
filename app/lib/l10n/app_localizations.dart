@@ -1759,6 +1759,624 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Close'**
   String get viewerTagPanelClose;
+
+  /// No description provided for @cameraMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Mode'**
+  String get cameraMode;
+
+  /// No description provided for @cameraModeReplay.
+  ///
+  /// In en, this message translates to:
+  /// **'Replay'**
+  String get cameraModeReplay;
+
+  /// No description provided for @cameraModeBroadcast.
+  ///
+  /// In en, this message translates to:
+  /// **'Broadcast (beta)'**
+  String get cameraModeBroadcast;
+
+  /// No description provided for @cameraModeBroadcastHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Experimental: streams to YouTube Live with a scoreboard that viewers control. Clips keep working.'**
+  String get cameraModeBroadcastHint;
+
+  /// No description provided for @cameraModeLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop the stream to change the mode or the profile.'**
+  String get cameraModeLocked;
+
+  /// No description provided for @broadcastTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube stream'**
+  String get broadcastTitle;
+
+  /// No description provided for @broadcastStateIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Off air'**
+  String get broadcastStateIdle;
+
+  /// No description provided for @broadcastStateConnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting…'**
+  String get broadcastStateConnecting;
+
+  /// No description provided for @broadcastStateLive.
+  ///
+  /// In en, this message translates to:
+  /// **'Live'**
+  String get broadcastStateLive;
+
+  /// No description provided for @broadcastStateReconnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnecting…'**
+  String get broadcastStateReconnecting;
+
+  /// No description provided for @broadcastStateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get broadcastStateFailed;
+
+  /// No description provided for @broadcastNotConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the stream key first'**
+  String get broadcastNotConfigured;
+
+  /// No description provided for @broadcastReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready · {kbps} kbps'**
+  String broadcastReady(int kbps);
+
+  /// No description provided for @broadcastBitrate.
+  ///
+  /// In en, this message translates to:
+  /// **'{mbps} Mbps'**
+  String broadcastBitrate(String mbps);
+
+  /// No description provided for @broadcastStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Go live'**
+  String get broadcastStart;
+
+  /// No description provided for @broadcastStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get broadcastStop;
+
+  /// No description provided for @broadcastStopTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop the stream?'**
+  String get broadcastStopTitle;
+
+  /// No description provided for @broadcastStopBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The YouTube stream ends for everyone watching it.'**
+  String get broadcastStopBody;
+
+  /// No description provided for @broadcastStopKeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep streaming'**
+  String get broadcastStopKeep;
+
+  /// No description provided for @broadcastSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Stream settings'**
+  String get broadcastSettings;
+
+  /// No description provided for @broadcastServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Server'**
+  String get broadcastServer;
+
+  /// No description provided for @broadcastKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Stream key'**
+  String get broadcastKey;
+
+  /// No description provided for @broadcastKeyKeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave empty to keep •••• {hint}'**
+  String broadcastKeyKeep(String hint);
+
+  /// No description provided for @broadcastKeyHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'In YouTube Studio: Create > Go live > Stream key.'**
+  String get broadcastKeyHelp;
+
+  /// No description provided for @broadcastKeyShow.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the key'**
+  String get broadcastKeyShow;
+
+  /// No description provided for @broadcastKeyHide.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide the key'**
+  String get broadcastKeyHide;
+
+  /// No description provided for @broadcastPaste.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste'**
+  String get broadcastPaste;
+
+  /// No description provided for @broadcastBitrateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Video bitrate: {kbps} kbps'**
+  String broadcastBitrateLabel(int kbps);
+
+  /// No description provided for @broadcastAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound from the microphone'**
+  String get broadcastAudio;
+
+  /// No description provided for @broadcastCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get broadcastCancel;
+
+  /// No description provided for @broadcastSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get broadcastSave;
+
+  /// No description provided for @broadcastFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not stream: {message}'**
+  String broadcastFailed(String message);
+
+  /// No description provided for @broadcastMicDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone not allowed: streaming without sound'**
+  String get broadcastMicDenied;
+
+  /// No description provided for @broadcastNotBroadcastMode.
+  ///
+  /// In en, this message translates to:
+  /// **'The camera is not in broadcast mode'**
+  String get broadcastNotBroadcastMode;
+
+  /// No description provided for @scoreboardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scoreboard'**
+  String get scoreboardTitle;
+
+  /// No description provided for @scoreboardHalf.
+  ///
+  /// In en, this message translates to:
+  /// **'{period}H'**
+  String scoreboardHalf(int period);
+
+  /// No description provided for @scoreboardPlus.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a point to {team}'**
+  String scoreboardPlus(String team);
+
+  /// No description provided for @scoreboardMinus.
+  ///
+  /// In en, this message translates to:
+  /// **'Take a point from {team}'**
+  String scoreboardMinus(String team);
+
+  /// No description provided for @scoreboardStartClock.
+  ///
+  /// In en, this message translates to:
+  /// **'Start the clock'**
+  String get scoreboardStartClock;
+
+  /// No description provided for @scoreboardPauseClock.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop the clock'**
+  String get scoreboardPauseClock;
+
+  /// No description provided for @scoreboardSetClock.
+  ///
+  /// In en, this message translates to:
+  /// **'Set the clock'**
+  String get scoreboardSetClock;
+
+  /// No description provided for @scoreboardHoldToSetClock.
+  ///
+  /// In en, this message translates to:
+  /// **'Press and hold the clock to set it'**
+  String get scoreboardHoldToSetClock;
+
+  /// No description provided for @scoreboardMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Minutes'**
+  String get scoreboardMinutes;
+
+  /// No description provided for @scoreboardSeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'Seconds'**
+  String get scoreboardSeconds;
+
+  /// No description provided for @scoreboardMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Period, show and settings'**
+  String get scoreboardMore;
+
+  /// No description provided for @scoreboardHidden.
+  ///
+  /// In en, this message translates to:
+  /// **'Scoreboard hidden'**
+  String get scoreboardHidden;
+
+  /// No description provided for @scoreboardGoToPeriod.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to {period}'**
+  String scoreboardGoToPeriod(String period);
+
+  /// No description provided for @scoreboardBackToPeriod.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to {period}'**
+  String scoreboardBackToPeriod(String period);
+
+  /// No description provided for @scoreboardPeriodConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to {period}?'**
+  String scoreboardPeriodConfirmTitle(String period);
+
+  /// No description provided for @scoreboardPeriodConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The clock stops and goes to {time}.'**
+  String scoreboardPeriodConfirmBody(String time);
+
+  /// No description provided for @scoreboardPeriodConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Change period'**
+  String get scoreboardPeriodConfirm;
+
+  /// No description provided for @scoreboardSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Scoreboard size'**
+  String get scoreboardSize;
+
+  /// No description provided for @scoreboardSizeSmall.
+  ///
+  /// In en, this message translates to:
+  /// **'Small'**
+  String get scoreboardSizeSmall;
+
+  /// No description provided for @scoreboardSizeMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get scoreboardSizeMedium;
+
+  /// No description provided for @scoreboardSizeLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'Large'**
+  String get scoreboardSizeLarge;
+
+  /// No description provided for @panelsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Panels'**
+  String get panelsTitle;
+
+  /// No description provided for @panelLive.
+  ///
+  /// In en, this message translates to:
+  /// **'Live view'**
+  String get panelLive;
+
+  /// No description provided for @panelScoreboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Scoreboard'**
+  String get panelScoreboard;
+
+  /// No description provided for @panelReplays.
+  ///
+  /// In en, this message translates to:
+  /// **'Replays'**
+  String get panelReplays;
+
+  /// No description provided for @panelsNothingShown.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything is hidden. Use the panels button at the top to show the live view, the scoreboard or replays.'**
+  String get panelsNothingShown;
+
+  /// No description provided for @cameraScoreboardControls.
+  ///
+  /// In en, this message translates to:
+  /// **'Scoreboard controls'**
+  String get cameraScoreboardControls;
+
+  /// No description provided for @cameraConnectViewer.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect a viewer'**
+  String get cameraConnectViewer;
+
+  /// No description provided for @zoomOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom out'**
+  String get zoomOut;
+
+  /// No description provided for @zoomIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom in'**
+  String get zoomIn;
+
+  /// No description provided for @zoomReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to 1×'**
+  String get zoomReset;
+
+  /// No description provided for @switchRoleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch role?'**
+  String get switchRoleTitle;
+
+  /// No description provided for @switchRoleBroadcastBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The camera is streaming. Switching role ends the stream on YouTube and disconnects every viewer.'**
+  String get switchRoleBroadcastBody;
+
+  /// No description provided for @switchRoleViewerBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You are connected to the camera. Switching role closes the live view and this connection.'**
+  String get switchRoleViewerBody;
+
+  /// No description provided for @switchRoleViewersBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{A viewer is connected. Switching role stops the camera and disconnects it.} other{{count} viewers are connected. Switching role stops the camera and disconnects them.}}'**
+  String switchRoleViewersBody(int count);
+
+  /// No description provided for @clipReserveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Replay reserve'**
+  String get clipReserveTitle;
+
+  /// No description provided for @clipReserveOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off: the camera deletes each clip once it is on the tablet.'**
+  String get clipReserveOff;
+
+  /// No description provided for @clipReserveHint.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{The camera keeps the last clip so it can go on air.} other{The camera keeps the last {count} clips so they can go on air.}}'**
+  String clipReserveHint(int count);
+
+  /// No description provided for @clipReserveLess.
+  ///
+  /// In en, this message translates to:
+  /// **'Fewer'**
+  String get clipReserveLess;
+
+  /// No description provided for @clipReserveMore.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get clipReserveMore;
+
+  /// No description provided for @clipReserveDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get clipReserveDone;
+
+  /// No description provided for @clipOnCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'On the camera'**
+  String get clipOnCamera;
+
+  /// No description provided for @broadcastReplayScoreboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Scoreboard during replays'**
+  String get broadcastReplayScoreboard;
+
+  /// No description provided for @broadcastReplayScoreboardHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Off: a replay on air shows only its REPLAY badge.'**
+  String get broadcastReplayScoreboardHint;
+
+  /// No description provided for @scoreboardSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Set'**
+  String get scoreboardSet;
+
+  /// No description provided for @scoreboardVisible.
+  ///
+  /// In en, this message translates to:
+  /// **'On screen'**
+  String get scoreboardVisible;
+
+  /// No description provided for @scoreboardReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get scoreboardReset;
+
+  /// No description provided for @scoreboardResetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset the scoreboard?'**
+  String get scoreboardResetTitle;
+
+  /// No description provided for @scoreboardResetBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Scores back to 0, first period and the clock reset. Team names and settings stay.'**
+  String get scoreboardResetBody;
+
+  /// No description provided for @scoreboardSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Scoreboard settings'**
+  String get scoreboardSettings;
+
+  /// No description provided for @scoreboardHome.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get scoreboardHome;
+
+  /// No description provided for @scoreboardAway.
+  ///
+  /// In en, this message translates to:
+  /// **'Away'**
+  String get scoreboardAway;
+
+  /// No description provided for @scoreboardTeamName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name (up to 5 letters)'**
+  String get scoreboardTeamName;
+
+  /// No description provided for @scoreboardTeamColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Color of {team}'**
+  String scoreboardTeamColor(String team);
+
+  /// No description provided for @scoreboardPeriods.
+  ///
+  /// In en, this message translates to:
+  /// **'Periods'**
+  String get scoreboardPeriods;
+
+  /// No description provided for @scoreboardPeriodMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Minutes per period'**
+  String get scoreboardPeriodMinutes;
+
+  /// No description provided for @scoreboardClockDirection.
+  ///
+  /// In en, this message translates to:
+  /// **'Clock'**
+  String get scoreboardClockDirection;
+
+  /// No description provided for @scoreboardCountUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Counts up'**
+  String get scoreboardCountUp;
+
+  /// No description provided for @scoreboardCountDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Counts down'**
+  String get scoreboardCountDown;
+
+  /// Drawn over a replay on the stream (SPEC §12.6); upper case.
+  ///
+  /// In en, this message translates to:
+  /// **'REPLAY'**
+  String get replayLabelOnAir;
+
+  /// No description provided for @replayOnAir.
+  ///
+  /// In en, this message translates to:
+  /// **'REPLAY ON AIR'**
+  String get replayOnAir;
+
+  /// No description provided for @replayBackToLive.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to live'**
+  String get replayBackToLive;
+
+  /// No description provided for @replaySpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Replay speed'**
+  String get replaySpeed;
+
+  /// No description provided for @replayChoiceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Where to watch the play?'**
+  String get replayChoiceTitle;
+
+  /// No description provided for @replayChoiceTablet.
+  ///
+  /// In en, this message translates to:
+  /// **'Only on this tablet'**
+  String get replayChoiceTablet;
+
+  /// No description provided for @replayChoiceAir.
+  ///
+  /// In en, this message translates to:
+  /// **'Also on air'**
+  String get replayChoiceAir;
+
+  /// No description provided for @replayNotLive.
+  ///
+  /// In en, this message translates to:
+  /// **'The stream is not on'**
+  String get replayNotLive;
+
+  /// No description provided for @replayUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This clip is no longer on the camera'**
+  String get replayUnavailable;
+
+  /// No description provided for @replayFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not put the replay on air: {message}'**
+  String replayFailed(String message);
 }
 
 class _AppLocalizationsDelegate

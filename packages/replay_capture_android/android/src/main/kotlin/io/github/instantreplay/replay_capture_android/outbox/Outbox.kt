@@ -22,6 +22,10 @@ import java.util.concurrent.atomic.AtomicInteger
  * `recording → ready → acked (file deleted)`, or `ready → expired` after [ttlMs] or when ready clips
  * exceed [capBytes] (oldest first).
  *
+ * With a replay reserve of [reserveSize] > 0, an acknowledged clip keeps its file (state `acked`,
+ * `reserved = true`) among the N most recent; older ones are deleted (`expired`). A [pin]ned clip
+ * (on air) is never deleted until unpinned.
+ *
  * Outlives capture start/stop: [attach] connects it to the current ring buffer. Clip files are
  * `<id>.mp4` in [dir]; the index ([OutboxIndex]) is rewritten on every change so ready clips survive
  * app restarts.
@@ -49,6 +53,8 @@ internal class Outbox(
     private val timer: ScheduledExecutorService? =
         if (expiryPeriodMs > 0) Executors.newSingleThreadScheduledExecutor(daemonThreads("ir-outbox-expiry")) else null
     @Volatile private var source: ClipSource? = null
+    private var reserveSize = 0
+    private val pinned = HashSet<String>()
 
     init {
         dir.mkdirs()
@@ -115,18 +121,65 @@ internal class Outbox(
 
     fun get(id: String): ClipInfo? = synchronized(lock) { clips[id] }
 
-    /** Deletes a ready clip once the requester confirmed its checksum. */
+    /**
+     * Releases a ready clip once the requester confirmed its checksum: deleted, or kept in the
+     * replay reserve when [reserveSize] > 0 (the oldest reserved clip may go to make room).
+     */
     fun ack(id: String, sha256: String): Boolean {
-        val acked = synchronized(lock) {
+        val changed = synchronized(lock) {
             val clip = clips[id] ?: return false
             if (clip.state != ClipState.READY || !clip.sha256.equals(sha256, ignoreCase = true)) return false
-            clips.remove(id)
-            clipFile(id).delete()
+            val acked = if (reserveSize > 0) {
+                clip.copy(state = ClipState.ACKED, reserved = true).also { clips[id] = it }
+            } else {
+                clips.remove(id)
+                clipFile(id).delete()
+                clip.copy(state = ClipState.ACKED)
+            }
+            val trimmed = trimReserve()
             persist()
-            clip.copy(state = ClipState.ACKED)
+            listOf(acked) + trimmed
         }
-        onChange(acked)
+        changed.forEach(onChange)
         return true
+    }
+
+    /** Changes the reserve size (0 = delete on ACK) and trims it at once. */
+    fun setReserveSize(size: Int) {
+        val trimmed = synchronized(lock) {
+            reserveSize = size.coerceIn(0, MAX_RESERVE)
+            trimReserve().also { if (it.isNotEmpty()) persist() }
+        }
+        trimmed.forEach(onChange)
+    }
+
+    /**
+     * A ready or reserved clip that can be read (and aired), or null. The file stays until [unpin],
+     * whatever the reserve, TTL or cap say meanwhile.
+     */
+    fun pin(id: String): ClipInfo? = synchronized(lock) {
+        val clip = clips[id]?.takeIf { it.state == ClipState.READY || it.reserved == true } ?: return null
+        pinned += id
+        clip
+    }
+
+    fun unpin(id: String) {
+        val trimmed = synchronized(lock) {
+            if (!pinned.remove(id)) return
+            trimReserve().also { if (it.isNotEmpty()) persist() }
+        }
+        trimmed.forEach(onChange)
+        expireSafely()
+    }
+
+    /** Call with [lock] held: deletes the oldest reserved clips beyond [reserveSize], except pinned ones. */
+    private fun trimReserve(): List<ClipInfo> {
+        val reserved = clips.values.filter { it.reserved == true }.sortedByDescending { it.createdAtMs }
+        return reserved.drop(reserveSize).filter { it.id !in pinned }.map { clip ->
+            clips.remove(clip.id)
+            clipFile(clip.id).delete()
+            clip.copy(state = ClipState.EXPIRED, reserved = false)
+        }
     }
 
     /** Clip count and bytes on disk. */
@@ -141,9 +194,13 @@ internal class Outbox(
     fun expire() {
         val expired = synchronized(lock) {
             val now = clock()
-            val ready = clips.values.filter { it.state == ClipState.READY }.sortedBy { it.createdAtMs }
+            // Reserved clips are safe on a viewer already, so they go first when over the cap.
+            val ready = clips.values
+                .filter { (it.state == ClipState.READY || it.reserved == true) && it.id !in pinned }
+                .sortedWith(compareBy({ it.reserved != true }, { it.createdAtMs }))
             val gone = ready.filter { now - it.createdAtMs > ttlMs }.toMutableList()
-            var bytes = ready.sumOf { it.bytes ?: 0L } - gone.sumOf { it.bytes ?: 0L }
+            var bytes = clips.values.filter { it.state == ClipState.READY || it.reserved == true }.sumOf { it.bytes ?: 0L } -
+                gone.sumOf { it.bytes ?: 0L }
             for (clip in ready) {
                 if (bytes <= capBytes) break
                 if (clip in gone) continue
@@ -156,7 +213,7 @@ internal class Outbox(
                 clipFile(clip.id).delete()
             }
             persist()
-            gone.map { it.copy(state = ClipState.EXPIRED) }
+            gone.map { it.copy(state = ClipState.EXPIRED, reserved = if (it.reserved == true) false else null) }
         }
         expired.forEach(onChange)
     }
@@ -215,7 +272,7 @@ internal class Outbox(
     private fun restore() {
         val restored = index.read().filter { clip ->
             val file = clipFile(clip.id)
-            clip.state == ClipState.READY && file.isFile && file.length() == clip.bytes
+            (clip.state == ClipState.READY || clip.reserved == true) && file.isFile && file.length() == clip.bytes
         }
         synchronized(lock) {
             restored.forEach { clips[it.id] = it.copy(path = clipFile(it.id).absolutePath) }
@@ -251,6 +308,8 @@ internal class Outbox(
     }
 
     private companion object {
+        const val MAX_RESERVE = 20
+
         fun daemonThreads(name: String): ThreadFactory {
             val count = AtomicInteger()
             return ThreadFactory { r -> Thread(r, "$name-${count.incrementAndGet()}").apply { isDaemon = true } }

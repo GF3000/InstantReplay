@@ -2,6 +2,8 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        // RootEncoder (replay_capture_android's RTMP client) is published on JitPack only.
+        maven { url = uri("https://jitpack.io") }
     }
 }
 

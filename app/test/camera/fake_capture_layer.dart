@@ -12,6 +12,7 @@ CaptureStats stats({
   double? batteryTempC = 36.5,
   bool plugged = true,
   RecordingStatus? recording,
+  ReplayStatus? replay,
 }) =>
     CaptureStats(
       encodedFrames: 1000,
@@ -28,6 +29,7 @@ CaptureStats stats({
       batteryTempC: batteryTempC,
       batteryPercent: 80,
       recording: recording,
+      replay: replay,
     );
 
 /// In-memory capture layer that records every call.
@@ -78,12 +80,16 @@ class FakeCaptureLayer implements CaptureLayer {
   @override
   Future<List<CaptureProfile>> supportedProfiles() async => profiles;
 
+  /// The `broadcast` flag of every start, in order.
+  final startModes = <bool>[];
+
   @override
-  Future<StartResult> start(String profileId) async {
+  Future<StartResult> start(String profileId, {bool broadcast = false}) async {
     calls.add('start:$profileId');
+    startModes.add(broadcast);
     final error = startError;
     if (error != null) throw error;
-    return StartResult(textureId: 7, encoder: 'fake', highProfile: true, sensorOrientation: 90);
+    return StartResult(textureId: 7, encoder: 'fake', highProfile: true, sensorOrientation: 90, maxZoom: 10);
   }
 
   @override
@@ -91,6 +97,18 @@ class FakeCaptureLayer implements CaptureLayer {
 
   @override
   Future<void> setPreviewEnabled(bool enabled) async => calls.add('preview:$enabled');
+
+  @override
+  Future<void> setZoom(double ratio) async => calls.add('zoom:$ratio');
+
+  @override
+  Future<void> setClipReserve(int size) async {
+    calls.add('reserve:$size');
+    reserveSize = size;
+  }
+
+  /// Replay reserve (SPEC §3.4): acked clips keep their file while > 0.
+  int reserveSize = 0;
 
   @override
   Future<ClipInfo> saveClip({required String requestId, required double preSeconds, double postSeconds = 0}) {
@@ -164,9 +182,11 @@ class FakeCaptureLayer implements CaptureLayer {
       requestId: clip.requestId,
       state: ClipState.acked,
       createdAtMs: clip.createdAtMs,
+      path: reserveSize > 0 ? clip.path : null,
       bytes: clip.bytes,
       durationMs: clip.durationMs,
       sha256: clip.sha256,
+      reserved: reserveSize > 0 ? true : null,
     );
     outbox[id] = acked;
     clipChangesController.add(acked);
@@ -258,6 +278,120 @@ class FakeCaptureLayer implements CaptureLayer {
     toRecover = [];
     return found;
   }
+
+  // endregion
+
+  // region Broadcast
+
+  bool micGranted = true;
+  final overlays = <OverlayState>[];
+  final broadcastConfigs = <BroadcastConfig>[];
+  final broadcastController = StreamController<BroadcastStatus>.broadcast();
+  BroadcastStatus broadcastState = BroadcastStatus(state: BroadcastState.idle, targetKbps: 4500, droppedFrames: 0, audio: true);
+
+  /// Thrown by [broadcastStart] when set.
+  Object? broadcastStartError;
+
+  @override
+  Future<bool> requestMicPermission() async {
+    calls.add('micPermission');
+    return micGranted;
+  }
+
+  @override
+  Future<void> setOverlay(OverlayState overlay) async => overlays.add(overlay);
+
+  @override
+  Future<BroadcastStatus> broadcastStart(BroadcastConfig config) async {
+    calls.add('broadcastStart');
+    if (broadcastStartError case final e?) throw e;
+    broadcastConfigs.add(config);
+    broadcastState = BroadcastStatus(
+        state: BroadcastState.connecting, targetKbps: config.targetKbps, droppedFrames: 0, audio: config.audio);
+    broadcastController.add(broadcastState);
+    return broadcastState;
+  }
+
+  @override
+  Future<void> broadcastStop() async {
+    calls.add('broadcastStop');
+    endReplay();
+    broadcastState = BroadcastStatus(state: BroadcastState.idle, targetKbps: 4500, droppedFrames: 0, audio: true);
+    broadcastController.add(broadcastState);
+  }
+
+  @override
+  Future<BroadcastStatus> broadcastStatus() async => broadcastState;
+
+  @override
+  Stream<BroadcastStatus> get broadcast => broadcastController.stream;
+
+  // endregion
+
+  // region Replays on air: the fake native side answers at once; tests end or fail a replay with
+  // [endReplay].
+
+  final replayController = StreamController<ReplayStatus>.broadcast();
+  final replayEndedController = StreamController<({String clipId, String? error})>.broadcast();
+
+  /// Labels passed to [replayStart], in order.
+  final replayLabels = <String>[];
+
+  /// The replay on air as the fake native side sees it.
+  ReplayStatus? replayState;
+
+  /// `scoreboard` passed to each [replayStart].
+  final replayScoreboards = <bool>[];
+
+  /// Thrown by [replayStart] when set, e.g. `PlatformException(code: 'replay_unavailable')`.
+  Object? replayStartError;
+
+  /// Length of every clip put on air.
+  int replayDurationMs = 20000;
+
+  @override
+  Future<ReplayStatus> replayStart(String clipId, {double speed = 1, required String label, bool scoreboard = false}) async {
+    calls.add('replayStart:$clipId:$speed');
+    replayScoreboards.add(scoreboard);
+    if (replayStartError case final e?) throw e;
+    replayLabels.add(label);
+    final previous = replayState;
+    final status =
+        replayState = ReplayStatus(clipId: clipId, speed: speed, positionMs: 0, durationMs: replayDurationMs);
+    if (previous != null) replayEndedController.add((clipId: previous.clipId, error: null));
+    replayController.add(status);
+    return status;
+  }
+
+  @override
+  Future<void> replaySpeed(double speed) async {
+    calls.add('replaySpeed:$speed');
+    final r = replayState;
+    if (r == null) return;
+    final status = replayState =
+        ReplayStatus(clipId: r.clipId, speed: speed, positionMs: r.positionMs, durationMs: r.durationMs);
+    replayController.add(status);
+  }
+
+  @override
+  Future<void> replayStop() async {
+    calls.add('replayStop');
+    endReplay();
+  }
+
+  /// The clip ended (or failed with [error]): back to the camera.
+  void endReplay({String? error}) {
+    final r = replayState;
+    if (r == null) return;
+    replayState = null;
+    replayEndedController.add((clipId: r.clipId, error: error));
+  }
+
+  @override
+  Stream<ReplayStatus> get replay => replayController.stream;
+
+  @override
+  Stream<({String clipId, String? error})> get replayEnded => replayEndedController.stream;
 
   // endregion
 }

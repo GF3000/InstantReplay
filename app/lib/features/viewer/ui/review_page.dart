@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:replay_protocol/replay_protocol.dart' show ReplayInfo;
 import 'package:video_player/video_player.dart';
 
 import '../../../l10n/app_localizations.dart';
@@ -8,8 +11,10 @@ import '../player/frame_timeline.dart';
 import '../player/player_platform.dart';
 import '../tags/tag_widgets.dart';
 import '../tags/tags.dart';
+import '../viewer_providers.dart';
 import 'clip_export_actions.dart';
 import 'clip_list.dart';
+import 'replay_air.dart';
 import 'telestrator.dart';
 import 'video_zoom.dart';
 
@@ -63,6 +68,8 @@ class ReviewPage extends ConsumerStatefulWidget {
     this.playlist,
     this.playerFactory,
     this.platformFactory,
+    this.replayBar = false,
+    this.onAir = false,
   });
 
   /// A ready clip ([SessionClip.stored] set).
@@ -81,14 +88,28 @@ class ReviewPage extends ConsumerStatefulWidget {
   /// Tests inject the platform helper; defaults to [PlayerPlatform.new].
   final PlayerPlatform Function(VideoPlayerController player)? platformFactory;
 
+  /// A clip of the live session: while it is on air (SPEC §12.6) the replay bar shows on top.
+  final bool replayBar;
+
+  /// The clip was put on air from here (SPEC §12.6): the tablet mirrors the stream. One speed
+  /// control drives both, the local player follows the stream's position and speed, and leaving
+  /// the page goes back to live.
+  final bool onAir;
+
   static const speeds = [0.25, 0.5, 1.0];
 
   /// Horizontal drag on the video moves one frame per this many logical pixels.
   static const dragPixelsPerFrame = 6.0;
 
-  static Route<void> route(SessionClip clip, {ClipLabelChoices? labelChoices}) => MaterialPageRoute<void>(
+  static Route<void> route(
+    SessionClip clip, {
+    ClipLabelChoices? labelChoices,
+    bool replayBar = false,
+    bool onAir = false,
+  }) =>
+      MaterialPageRoute<void>(
         fullscreenDialog: true,
-        builder: (_) => ReviewPage(clip: clip, labelChoices: labelChoices),
+        builder: (_) => ReviewPage(clip: clip, labelChoices: labelChoices, replayBar: replayBar, onAir: onAir),
       );
 
   @override
@@ -131,13 +152,22 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
   bool _multiTouch = false;
   int _fingers = 0;
 
+  /// This clip has been on air since the page opened; it is the one to stop on leaving.
+  bool _aired = false;
+  late final ViewerBroadcastNotifier _remote;
+
   @override
   void initState() {
     super.initState();
+    _remote = ref.read(viewerBroadcastNoticeProvider.notifier);
     _player = (widget.playerFactory ?? widget.clip.stored!.createPlayer)();
     _platform = (widget.platformFactory ?? PlayerPlatform.new)(_player);
     _player.addListener(_onPlayer);
     _init();
+    if (widget.onAir) {
+      // Mirror the stream: its speed and position drive the local player.
+      ref.listenManual(viewerReplayProvider, (_, replay) => _onReplay(replay), fireImmediately: true);
+    }
   }
 
   Future<void> _init() async {
@@ -145,7 +175,8 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
     try {
       await _player.initialize();
       _timeline = FrameTimeline.uniform(_player.value.duration);
-      await _player.setLooping(widget.playlist == null);
+      // On air the clip plays once, like the stream.
+      await _player.setLooping(widget.playlist == null && !widget.onAir);
       await _player.setVolume(0); // No audio (D7); also lets browsers autoplay.
       if (_speed != 1) await _player.setPlaybackSpeed(_speed);
       await _player.play();
@@ -167,8 +198,42 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
     }
   }
 
+  /// The replay on air changed: follow its speed, and its position when it starts or drifts.
+  void _onReplay(ReplayInfo? replay) {
+    if (replay == null || replay.clipId != widget.clip.clipId) {
+      // It ended on the Camera, or another clip replaced it: the stream is back on live.
+      _aired = false;
+      return;
+    }
+    final started = !_aired;
+    _aired = true;
+    if (replay.speed != _speed) {
+      setState(() => _speed = replay.speed);
+      unawaited(_player.setPlaybackSpeed(replay.speed));
+    }
+    final local = _player.value.position.inMilliseconds;
+    if (started || (local - replay.positionMs).abs() > _maxDriftMs) {
+      unawaited(_serial(() async {
+        await _player.seekTo(Duration(milliseconds: replay.positionMs));
+        if (!_drawMode) await _player.play();
+      }));
+    }
+  }
+
+  /// Tablet and stream may drift this far apart before the tablet jumps to the stream.
+  static const _maxDriftMs = 600;
+
+  /// Back to live from this page: stops the replay and closes the page.
+  void _backToLive() {
+    _remote.replayStop();
+    _aired = false;
+    Navigator.of(context).maybePop();
+  }
+
   @override
   void dispose() {
+    // Leaving the page ends the replay on air: the stream goes back to live.
+    if (widget.onAir && _aired) _remote.replayStop();
     _player.removeListener(_onPlayer);
     _platform.dispose();
     _player.dispose();
@@ -182,6 +247,8 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
   Future<void> _setSpeed(double speed) async {
     setState(() => _speed = speed);
     widget.playlist?.onSpeed(speed);
+    // On air, one control: the stream changes speed with the tablet.
+    if (widget.onAir && _aired) _remote.replaySpeed(speed);
     await _player.setPlaybackSpeed(speed);
   }
 
@@ -370,7 +437,16 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
         ],
       ),
       body: SafeArea(
-        child: _failed
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          if (widget.replayBar && clip.clipId != null)
+            ViewerReplayBar(clipId: clip.clipId, speed: !widget.onAir, onStop: widget.onAir ? _backToLive : null),
+          Expanded(child: _body(l10n)),
+        ]),
+      ),
+    );
+  }
+
+  Widget _body(AppLocalizations l10n) => _failed
             ? Center(child: Text(l10n.viewerReviewError, style: Theme.of(context).textTheme.titleMedium))
             : ValueListenableBuilder<VideoPlayerValue>(
                 valueListenable: _player,
@@ -445,10 +521,7 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
                   _controls(l10n, v),
                   ]);
                 },
-              ),
-      ),
-    );
-  }
+              );
 
   Widget _scrubBar(VideoPlayerValue v) {
     final total = v.duration.inMilliseconds;

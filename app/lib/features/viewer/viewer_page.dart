@@ -6,8 +6,10 @@ import '../../l10n/app_localizations.dart';
 import '../library/library_providers.dart';
 import '../library/presentation/library_page.dart';
 import '../library/presentation/session_picker_view.dart';
+import '../role/confirm_switch_role.dart';
 import '../role/role.dart';
 import 'data/session_link.dart';
+import '../camera/clip_reserve_widgets.dart';
 import 'tags/tag_editor_page.dart';
 import 'ui/camera_status.dart';
 import 'ui/connect_view.dart';
@@ -34,6 +36,8 @@ class ViewerPage extends ConsumerWidget {
         ),
         actions: [
           if (setup.paired) const CameraStatusIndicator(),
+          if (setup.paired) const ViewerRecordingButton(),
+          if (setup.paired) const ViewerPanelsButton(),
           IconButton(
             key: const ValueKey('viewer-settings'),
             tooltip: l10n.settingsTitle,
@@ -51,9 +55,14 @@ class ViewerPage extends ConsumerWidget {
                   await Navigator.of(context).push(LibraryPage.route());
                 case _MenuItem.changeSession:
                   ref.read(activeSessionProvider.notifier).close();
+                case _MenuItem.clipReserve:
+                  await showDialog<void>(context: context, builder: (_) => const _ClipReserveDialog());
                 case _MenuItem.changeCamera:
                   await ref.read(viewerSetupProvider.notifier).changeCamera();
                 case _MenuItem.switchRole:
+                  // Connected: switching drops the live view and, on Android, the clip transfers.
+                  final connected = ref.read(linkStateProvider)?.phase == LinkPhase.connected;
+                  if (connected && !await confirmSwitchRole(context, l10n.switchRoleViewerBody)) return;
                   await ref.read(roleProvider.notifier).clear();
                   if (context.mounted) context.go('/');
               }
@@ -74,6 +83,12 @@ class ViewerPage extends ConsumerWidget {
                 PopupMenuItem(
                   value: _MenuItem.changeSession,
                   child: ListTile(leading: const Icon(Icons.event_note), title: Text(l10n.libraryChangeSession)),
+                ),
+              if (setup.paired && ref.read(viewerClipReserveProvider) != null)
+                PopupMenuItem(
+                  key: const ValueKey('viewer-menu-clip-reserve'),
+                  value: _MenuItem.clipReserve,
+                  child: ListTile(leading: const Icon(Icons.inventory_2_outlined), title: Text(l10n.clipReserveTitle)),
                 ),
               if (setup.paired && !setup.addressFixed)
                 PopupMenuItem(
@@ -101,7 +116,38 @@ class ViewerPage extends ConsumerWidget {
   static String _cameraTitle(String name, String? profile) => profile == null ? name : '$name · $profile';
 }
 
-enum _MenuItem { tags, library, changeSession, changeCamera, switchRole }
+enum _MenuItem { tags, library, changeSession, clipReserve, changeCamera, switchRole }
+
+/// The Camera's replay reserve, changed from this viewer; the value follows the Camera's status.
+class _ClipReserveDialog extends ConsumerWidget {
+  const _ClipReserveDialog();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final size = ref.watch(viewerClipReserveProvider);
+    final connected = ref.watch(linkStateProvider.select((s) => s?.phase == LinkPhase.connected));
+    return AlertDialog(
+      title: Text(l10n.clipReserveTitle),
+      content: SizedBox(
+        width: 360,
+        child: ClipReserveStepper(
+          keyPrefix: 'viewer-clip-reserve',
+          size: size ?? 0,
+          enabled: connected && size != null,
+          onChanged: ref.read(viewerBroadcastNoticeProvider.notifier).reserve,
+        ),
+      ),
+      actions: [
+        TextButton(
+          style: TextButton.styleFrom(minimumSize: const Size(64, 48)),
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l10n.clipReserveDone),
+        ),
+      ],
+    );
+  }
+}
 
 class _Session extends ConsumerWidget {
   const _Session();

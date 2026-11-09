@@ -115,6 +115,14 @@ enum ClipState {
   expired,
 }
 
+enum BroadcastState {
+  idle,
+  connecting,
+  live,
+  reconnecting,
+  failed,
+}
+
 /// Full-session recording (SPEC D8, §3.8): idle, recording, or paused between plays.
 enum RecordingState {
   idle,
@@ -211,6 +219,7 @@ class StartRequest {
   StartRequest({
     required this.profileId,
     required this.windowSeconds,
+    this.broadcast,
   });
 
   String profileId;
@@ -218,10 +227,15 @@ class StartRequest {
   /// Ring-buffer window: longest preset + post-roll + margin (SPEC §3.2).
   int windowSeconds;
 
+  /// Broadcast mode (SPEC §12): full-size camera texture so a program encoder with the scoreboard
+  /// can be fed by GL. Null or false = replay mode.
+  bool? broadcast;
+
   List<Object?> _toList() {
     return <Object?>[
       profileId,
       windowSeconds,
+      broadcast,
     ];
   }
 
@@ -233,6 +247,7 @@ class StartRequest {
     return StartRequest(
       profileId: result[0]! as String,
       windowSeconds: result[1]! as int,
+      broadcast: result[2] as bool?,
     );
   }
 
@@ -245,7 +260,7 @@ class StartRequest {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(profileId, other.profileId) && _deepEquals(windowSeconds, other.windowSeconds);
+    return _deepEquals(profileId, other.profileId) && _deepEquals(windowSeconds, other.windowSeconds) && _deepEquals(broadcast, other.broadcast);
   }
 
   @override
@@ -254,7 +269,7 @@ class StartRequest {
 
   @override
   String toString() {
-    return 'StartRequest(profileId: $profileId, windowSeconds: $windowSeconds)';
+    return 'StartRequest(profileId: $profileId, windowSeconds: $windowSeconds, broadcast: $broadcast)';
   }
 }
 
@@ -264,6 +279,7 @@ class StartResult {
     required this.encoder,
     required this.highProfile,
     required this.sensorOrientation,
+    this.maxZoom,
   });
 
   /// Flutter texture showing the local preview.
@@ -275,12 +291,16 @@ class StartResult {
 
   int sensorOrientation;
 
+  /// Highest zoom of the back camera (1 = none); null from an older plugin.
+  double? maxZoom;
+
   List<Object?> _toList() {
     return <Object?>[
       textureId,
       encoder,
       highProfile,
       sensorOrientation,
+      maxZoom,
     ];
   }
 
@@ -294,6 +314,7 @@ class StartResult {
       encoder: result[1]! as String,
       highProfile: result[2]! as bool,
       sensorOrientation: result[3]! as int,
+      maxZoom: result[4] as double?,
     );
   }
 
@@ -306,7 +327,7 @@ class StartResult {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(textureId, other.textureId) && _deepEquals(encoder, other.encoder) && _deepEquals(highProfile, other.highProfile) && _deepEquals(sensorOrientation, other.sensorOrientation);
+    return _deepEquals(textureId, other.textureId) && _deepEquals(encoder, other.encoder) && _deepEquals(highProfile, other.highProfile) && _deepEquals(sensorOrientation, other.sensorOrientation) && _deepEquals(maxZoom, other.maxZoom);
   }
 
   @override
@@ -315,7 +336,7 @@ class StartResult {
 
   @override
   String toString() {
-    return 'StartResult(textureId: $textureId, encoder: $encoder, highProfile: $highProfile, sensorOrientation: $sensorOrientation)';
+    return 'StartResult(textureId: $textureId, encoder: $encoder, highProfile: $highProfile, sensorOrientation: $sensorOrientation, maxZoom: $maxZoom)';
   }
 }
 
@@ -388,6 +409,7 @@ class ClipInfo {
     this.assemblyMs,
     this.extraPreRollMs,
     this.sha256,
+    this.reserved,
   });
 
   String id;
@@ -413,6 +435,9 @@ class ClipInfo {
 
   String? sha256;
 
+  /// Acknowledged but kept in the replay reserve (SPEC §3.4): still downloadable and airable.
+  bool? reserved;
+
   List<Object?> _toList() {
     return <Object?>[
       id,
@@ -426,6 +451,7 @@ class ClipInfo {
       assemblyMs,
       extraPreRollMs,
       sha256,
+      reserved,
     ];
   }
 
@@ -446,6 +472,7 @@ class ClipInfo {
       assemblyMs: result[8] as int?,
       extraPreRollMs: result[9] as int?,
       sha256: result[10] as String?,
+      reserved: result[11] as bool?,
     );
   }
 
@@ -458,7 +485,7 @@ class ClipInfo {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(id, other.id) && _deepEquals(requestId, other.requestId) && _deepEquals(state, other.state) && _deepEquals(createdAtMs, other.createdAtMs) && _deepEquals(path, other.path) && _deepEquals(bytes, other.bytes) && _deepEquals(durationMs, other.durationMs) && _deepEquals(fragments, other.fragments) && _deepEquals(assemblyMs, other.assemblyMs) && _deepEquals(extraPreRollMs, other.extraPreRollMs) && _deepEquals(sha256, other.sha256);
+    return _deepEquals(id, other.id) && _deepEquals(requestId, other.requestId) && _deepEquals(state, other.state) && _deepEquals(createdAtMs, other.createdAtMs) && _deepEquals(path, other.path) && _deepEquals(bytes, other.bytes) && _deepEquals(durationMs, other.durationMs) && _deepEquals(fragments, other.fragments) && _deepEquals(assemblyMs, other.assemblyMs) && _deepEquals(extraPreRollMs, other.extraPreRollMs) && _deepEquals(sha256, other.sha256) && _deepEquals(reserved, other.reserved);
   }
 
   @override
@@ -467,7 +494,7 @@ class ClipInfo {
 
   @override
   String toString() {
-    return 'ClipInfo(id: $id, requestId: $requestId, state: $state, createdAtMs: $createdAtMs, path: $path, bytes: $bytes, durationMs: $durationMs, fragments: $fragments, assemblyMs: $assemblyMs, extraPreRollMs: $extraPreRollMs, sha256: $sha256)';
+    return 'ClipInfo(id: $id, requestId: $requestId, state: $state, createdAtMs: $createdAtMs, path: $path, bytes: $bytes, durationMs: $durationMs, fragments: $fragments, assemblyMs: $assemblyMs, extraPreRollMs: $extraPreRollMs, sha256: $sha256, reserved: $reserved)';
   }
 }
 
@@ -488,6 +515,8 @@ class CaptureStats {
     this.batteryPercent,
     required this.plugged,
     this.recording,
+    this.broadcast,
+    this.replay,
   });
 
   int encodedFrames;
@@ -524,6 +553,12 @@ class CaptureStats {
   /// it is present.
   RecordingStatus? recording;
 
+  /// Present only in broadcast mode (SPEC §12).
+  BroadcastStatus? broadcast;
+
+  /// A replay on air (SPEC §12.6); null while the program shows the camera.
+  ReplayStatus? replay;
+
   List<Object?> _toList() {
     return <Object?>[
       encodedFrames,
@@ -541,6 +576,8 @@ class CaptureStats {
       batteryPercent,
       plugged,
       recording,
+      broadcast,
+      replay,
     ];
   }
 
@@ -565,6 +602,8 @@ class CaptureStats {
       batteryPercent: result[12] as int?,
       plugged: result[13]! as bool,
       recording: result[14] as RecordingStatus?,
+      broadcast: result[15] as BroadcastStatus?,
+      replay: result[16] as ReplayStatus?,
     );
   }
 
@@ -577,7 +616,7 @@ class CaptureStats {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(encodedFrames, other.encodedFrames) && _deepEquals(fps, other.fps) && _deepEquals(gaps, other.gaps) && _deepEquals(cameraGaps, other.cameraGaps) && _deepEquals(glGaps, other.glGaps) && _deepEquals(bufferMs, other.bufferMs) && _deepEquals(bufferBytes, other.bufferBytes) && _deepEquals(outboxClips, other.outboxClips) && _deepEquals(outboxBytes, other.outboxBytes) && _deepEquals(thermalStatus, other.thermalStatus) && _deepEquals(thermalHeadroom, other.thermalHeadroom) && _deepEquals(batteryTempC, other.batteryTempC) && _deepEquals(batteryPercent, other.batteryPercent) && _deepEquals(plugged, other.plugged) && _deepEquals(recording, other.recording);
+    return _deepEquals(encodedFrames, other.encodedFrames) && _deepEquals(fps, other.fps) && _deepEquals(gaps, other.gaps) && _deepEquals(cameraGaps, other.cameraGaps) && _deepEquals(glGaps, other.glGaps) && _deepEquals(bufferMs, other.bufferMs) && _deepEquals(bufferBytes, other.bufferBytes) && _deepEquals(outboxClips, other.outboxClips) && _deepEquals(outboxBytes, other.outboxBytes) && _deepEquals(thermalStatus, other.thermalStatus) && _deepEquals(thermalHeadroom, other.thermalHeadroom) && _deepEquals(batteryTempC, other.batteryTempC) && _deepEquals(batteryPercent, other.batteryPercent) && _deepEquals(plugged, other.plugged) && _deepEquals(recording, other.recording) && _deepEquals(broadcast, other.broadcast) && _deepEquals(replay, other.replay);
   }
 
   @override
@@ -586,7 +625,322 @@ class CaptureStats {
 
   @override
   String toString() {
-    return 'CaptureStats(encodedFrames: $encodedFrames, fps: $fps, gaps: $gaps, cameraGaps: $cameraGaps, glGaps: $glGaps, bufferMs: $bufferMs, bufferBytes: $bufferBytes, outboxClips: $outboxClips, outboxBytes: $outboxBytes, thermalStatus: $thermalStatus, thermalHeadroom: $thermalHeadroom, batteryTempC: $batteryTempC, batteryPercent: $batteryPercent, plugged: $plugged, recording: $recording)';
+    return 'CaptureStats(encodedFrames: $encodedFrames, fps: $fps, gaps: $gaps, cameraGaps: $cameraGaps, glGaps: $glGaps, bufferMs: $bufferMs, bufferBytes: $bufferBytes, outboxClips: $outboxClips, outboxBytes: $outboxBytes, thermalStatus: $thermalStatus, thermalHeadroom: $thermalHeadroom, batteryTempC: $batteryTempC, batteryPercent: $batteryPercent, plugged: $plugged, recording: $recording, broadcast: $broadcast, replay: $replay)';
+  }
+}
+
+/// A clip on air instead of the live picture (SPEC §12.6).
+class ReplayStatus {
+  ReplayStatus({
+    required this.clipId,
+    required this.speed,
+    required this.positionMs,
+    required this.durationMs,
+  });
+
+  String clipId;
+
+  /// 0.25, 0.5 or 1.
+  double speed;
+
+  /// Position in the clip (media time, not wall time).
+  int positionMs;
+
+  int durationMs;
+
+  List<Object?> _toList() {
+    return <Object?>[
+      clipId,
+      speed,
+      positionMs,
+      durationMs,
+    ];
+  }
+
+  Object encode() {
+    return _toList();  }
+
+  static ReplayStatus decode(Object result) {
+    result as List<Object?>;
+    return ReplayStatus(
+      clipId: result[0]! as String,
+      speed: result[1]! as double,
+      positionMs: result[2]! as int,
+      durationMs: result[3]! as int,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! ReplayStatus || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(clipId, other.clipId) && _deepEquals(speed, other.speed) && _deepEquals(positionMs, other.positionMs) && _deepEquals(durationMs, other.durationMs);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+
+  @override
+  String toString() {
+    return 'ReplayStatus(clipId: $clipId, speed: $speed, positionMs: $positionMs, durationMs: $durationMs)';
+  }
+}
+
+/// What the scoreboard overlay shows (SPEC §12.2). Dart owns the state; native only draws it and
+/// advances a running clock from [clockMs] by its own monotonic clock, starting when received.
+class OverlayState {
+  OverlayState({
+    required this.visible,
+    required this.homeName,
+    required this.awayName,
+    required this.homeScore,
+    required this.awayScore,
+    required this.homeColor,
+    required this.awayColor,
+    required this.periodLabel,
+    required this.clockMs,
+    required this.clockRunning,
+    required this.countDown,
+    required this.scalePercent,
+  });
+
+  bool visible;
+
+  /// Already upper-case, 1–5 characters.
+  String homeName;
+
+  String awayName;
+
+  int homeScore;
+
+  int awayScore;
+
+  /// ARGB.
+  int homeColor;
+
+  int awayColor;
+
+  /// Localized by Dart, e.g. `1T`, `2H`, `Q3`; empty = not shown.
+  String periodLabel;
+
+  /// Clock value when this state was sent.
+  int clockMs;
+
+  bool clockRunning;
+
+  /// A running count-down clock stops at 0 on screen.
+  bool countDown;
+
+  /// Bar size: 100 = 56 px high at 1080p.
+  int scalePercent;
+
+  List<Object?> _toList() {
+    return <Object?>[
+      visible,
+      homeName,
+      awayName,
+      homeScore,
+      awayScore,
+      homeColor,
+      awayColor,
+      periodLabel,
+      clockMs,
+      clockRunning,
+      countDown,
+      scalePercent,
+    ];
+  }
+
+  Object encode() {
+    return _toList();  }
+
+  static OverlayState decode(Object result) {
+    result as List<Object?>;
+    return OverlayState(
+      visible: result[0]! as bool,
+      homeName: result[1]! as String,
+      awayName: result[2]! as String,
+      homeScore: result[3]! as int,
+      awayScore: result[4]! as int,
+      homeColor: result[5]! as int,
+      awayColor: result[6]! as int,
+      periodLabel: result[7]! as String,
+      clockMs: result[8]! as int,
+      clockRunning: result[9]! as bool,
+      countDown: result[10]! as bool,
+      scalePercent: result[11]! as int,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! OverlayState || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(visible, other.visible) && _deepEquals(homeName, other.homeName) && _deepEquals(awayName, other.awayName) && _deepEquals(homeScore, other.homeScore) && _deepEquals(awayScore, other.awayScore) && _deepEquals(homeColor, other.homeColor) && _deepEquals(awayColor, other.awayColor) && _deepEquals(periodLabel, other.periodLabel) && _deepEquals(clockMs, other.clockMs) && _deepEquals(clockRunning, other.clockRunning) && _deepEquals(countDown, other.countDown) && _deepEquals(scalePercent, other.scalePercent);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+
+  @override
+  String toString() {
+    return 'OverlayState(visible: $visible, homeName: $homeName, awayName: $awayName, homeScore: $homeScore, awayScore: $awayScore, homeColor: $homeColor, awayColor: $awayColor, periodLabel: $periodLabel, clockMs: $clockMs, clockRunning: $clockRunning, countDown: $countDown, scalePercent: $scalePercent)';
+  }
+}
+
+class BroadcastConfig {
+  BroadcastConfig({
+    required this.url,
+    required this.targetKbps,
+    required this.audio,
+  });
+
+  /// Full RTMP(S) URL including the stream key, e.g. `rtmp://a.rtmp.youtube.com/live2/<key>`.
+  String url;
+
+  /// Video target bitrate (2500–6000); adaptive bitrate may go lower on congestion.
+  int targetKbps;
+
+  /// Microphone on; false sends a silent AAC track.
+  bool audio;
+
+  List<Object?> _toList() {
+    return <Object?>[
+      url,
+      targetKbps,
+      audio,
+    ];
+  }
+
+  Object encode() {
+    return _toList();  }
+
+  static BroadcastConfig decode(Object result) {
+    result as List<Object?>;
+    return BroadcastConfig(
+      url: result[0]! as String,
+      targetKbps: result[1]! as int,
+      audio: result[2]! as bool,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! BroadcastConfig || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(url, other.url) && _deepEquals(targetKbps, other.targetKbps) && _deepEquals(audio, other.audio);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+
+  @override
+  String toString() {
+    return 'BroadcastConfig(url: $url, targetKbps: $targetKbps, audio: $audio)';
+  }
+}
+
+class BroadcastStatus {
+  BroadcastStatus({
+    required this.state,
+    required this.targetKbps,
+    this.bitrateKbps,
+    this.uptimeMs,
+    this.fps,
+    required this.droppedFrames,
+    required this.audio,
+    this.message,
+  });
+
+  BroadcastState state;
+
+  /// Current video target (after adaptive changes).
+  int targetKbps;
+
+  /// Measured outgoing bitrate (video + audio); null when not live.
+  int? bitrateKbps;
+
+  /// Time since the stream first went live; pauses for reconnections are included.
+  int? uptimeMs;
+
+  /// Program encoder output frames per second.
+  double? fps;
+
+  /// Frames the RTMP client dropped because its queue was full.
+  int droppedFrames;
+
+  bool audio;
+
+  /// Last error or disconnection reason.
+  String? message;
+
+  List<Object?> _toList() {
+    return <Object?>[
+      state,
+      targetKbps,
+      bitrateKbps,
+      uptimeMs,
+      fps,
+      droppedFrames,
+      audio,
+      message,
+    ];
+  }
+
+  Object encode() {
+    return _toList();  }
+
+  static BroadcastStatus decode(Object result) {
+    result as List<Object?>;
+    return BroadcastStatus(
+      state: result[0]! as BroadcastState,
+      targetKbps: result[1]! as int,
+      bitrateKbps: result[2] as int?,
+      uptimeMs: result[3] as int?,
+      fps: result[4] as double?,
+      droppedFrames: result[5]! as int,
+      audio: result[6]! as bool,
+      message: result[7] as String?,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! BroadcastStatus || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(state, other.state) && _deepEquals(targetKbps, other.targetKbps) && _deepEquals(bitrateKbps, other.bitrateKbps) && _deepEquals(uptimeMs, other.uptimeMs) && _deepEquals(fps, other.fps) && _deepEquals(droppedFrames, other.droppedFrames) && _deepEquals(audio, other.audio) && _deepEquals(message, other.message);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+
+  @override
+  String toString() {
+    return 'BroadcastStatus(state: $state, targetKbps: $targetKbps, bitrateKbps: $bitrateKbps, uptimeMs: $uptimeMs, fps: $fps, droppedFrames: $droppedFrames, audio: $audio, message: $message)';
   }
 }
 
@@ -880,44 +1234,59 @@ class _PigeonCodec extends StandardMessageCodec {
     }    else if (value is ClipState) {
       buffer.putUint8(129);
       writeValue(buffer, value.index);
-    }    else if (value is RecordingState) {
+    }    else if (value is BroadcastState) {
       buffer.putUint8(130);
       writeValue(buffer, value.index);
-    }    else if (value is RecordingEnd) {
+    }    else if (value is RecordingState) {
       buffer.putUint8(131);
       writeValue(buffer, value.index);
-    }    else if (value is ThermalAction) {
+    }    else if (value is RecordingEnd) {
       buffer.putUint8(132);
       writeValue(buffer, value.index);
-    }    else if (value is CaptureProfile) {
+    }    else if (value is ThermalAction) {
       buffer.putUint8(133);
-      writeValue(buffer, value.encode());
-    }    else if (value is StartRequest) {
+      writeValue(buffer, value.index);
+    }    else if (value is CaptureProfile) {
       buffer.putUint8(134);
       writeValue(buffer, value.encode());
-    }    else if (value is StartResult) {
+    }    else if (value is StartRequest) {
       buffer.putUint8(135);
       writeValue(buffer, value.encode());
-    }    else if (value is SaveRequest) {
+    }    else if (value is StartResult) {
       buffer.putUint8(136);
       writeValue(buffer, value.encode());
-    }    else if (value is ClipInfo) {
+    }    else if (value is SaveRequest) {
       buffer.putUint8(137);
       writeValue(buffer, value.encode());
-    }    else if (value is CaptureStats) {
+    }    else if (value is ClipInfo) {
       buffer.putUint8(138);
       writeValue(buffer, value.encode());
-    }    else if (value is RecordingStatus) {
+    }    else if (value is CaptureStats) {
       buffer.putUint8(139);
       writeValue(buffer, value.encode());
-    }    else if (value is RecordingSaved) {
+    }    else if (value is ReplayStatus) {
       buffer.putUint8(140);
       writeValue(buffer, value.encode());
-    }    else if (value is ThermalEvent) {
+    }    else if (value is OverlayState) {
       buffer.putUint8(141);
       writeValue(buffer, value.encode());
-    }    else if (value is LiveViewerStats) {
+    }    else if (value is BroadcastConfig) {
       buffer.putUint8(142);
+      writeValue(buffer, value.encode());
+    }    else if (value is BroadcastStatus) {
+      buffer.putUint8(143);
+      writeValue(buffer, value.encode());
+    }    else if (value is RecordingStatus) {
+      buffer.putUint8(144);
+      writeValue(buffer, value.encode());
+    }    else if (value is RecordingSaved) {
+      buffer.putUint8(145);
+      writeValue(buffer, value.encode());
+    }    else if (value is ThermalEvent) {
+      buffer.putUint8(146);
+      writeValue(buffer, value.encode());
+    }    else if (value is LiveViewerStats) {
+      buffer.putUint8(147);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -932,32 +1301,43 @@ class _PigeonCodec extends StandardMessageCodec {
         return value == null ? null : ClipState.values[value];
       case 130:
         final value = readValue(buffer) as int?;
-        return value == null ? null : RecordingState.values[value];
+        return value == null ? null : BroadcastState.values[value];
       case 131:
         final value = readValue(buffer) as int?;
-        return value == null ? null : RecordingEnd.values[value];
+        return value == null ? null : RecordingState.values[value];
       case 132:
         final value = readValue(buffer) as int?;
-        return value == null ? null : ThermalAction.values[value];
+        return value == null ? null : RecordingEnd.values[value];
       case 133:
-        return CaptureProfile.decode(readValue(buffer)!);
+        final value = readValue(buffer) as int?;
+        return value == null ? null : ThermalAction.values[value];
       case 134:
-        return StartRequest.decode(readValue(buffer)!);
+        return CaptureProfile.decode(readValue(buffer)!);
       case 135:
-        return StartResult.decode(readValue(buffer)!);
+        return StartRequest.decode(readValue(buffer)!);
       case 136:
-        return SaveRequest.decode(readValue(buffer)!);
+        return StartResult.decode(readValue(buffer)!);
       case 137:
-        return ClipInfo.decode(readValue(buffer)!);
+        return SaveRequest.decode(readValue(buffer)!);
       case 138:
-        return CaptureStats.decode(readValue(buffer)!);
+        return ClipInfo.decode(readValue(buffer)!);
       case 139:
-        return RecordingStatus.decode(readValue(buffer)!);
+        return CaptureStats.decode(readValue(buffer)!);
       case 140:
-        return RecordingSaved.decode(readValue(buffer)!);
+        return ReplayStatus.decode(readValue(buffer)!);
       case 141:
-        return ThermalEvent.decode(readValue(buffer)!);
+        return OverlayState.decode(readValue(buffer)!);
       case 142:
+        return BroadcastConfig.decode(readValue(buffer)!);
+      case 143:
+        return BroadcastStatus.decode(readValue(buffer)!);
+      case 144:
+        return RecordingStatus.decode(readValue(buffer)!);
+      case 145:
+        return RecordingSaved.decode(readValue(buffer)!);
+      case 146:
+        return ThermalEvent.decode(readValue(buffer)!);
+      case 147:
         return LiveViewerStats.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
@@ -980,6 +1360,26 @@ class CaptureHostApi {
 
   Future<bool> requestPermission() async {
     final pigeonVar_channelName = 'dev.flutter.pigeon.replay_capture_android.CaptureHostApi.requestPermission$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return pigeonVar_replyValue! as bool;
+  }
+
+  /// RECORD_AUDIO, asked only before a broadcast with audio (SPEC §12.1).
+  Future<bool> requestMicPermission() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.replay_capture_android.CaptureHostApi.requestMicPermission$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -1044,6 +1444,26 @@ class CaptureHostApi {
       binaryMessenger: pigeonVar_binaryMessenger,
     );
     final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+  }
+
+  /// Sensor zoom (1…maxZoom): applies to the buffer, the recording and the broadcast alike. Glides
+  /// to the new value over a few frames.
+  Future<void> setZoom(double ratio) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.replay_capture_android.CaptureHostApi.setZoom$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[ratio]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
@@ -1133,6 +1553,7 @@ class CaptureHostApi {
   }
 
   /// Releases a clip after the Viewer verified it. Returns false if the hash does not match.
+  /// With a replay reserve (SPEC §3.4) the clip is kept among the N most recent instead.
   Future<bool> ackClip(String id, String sha256) async {
     final pigeonVar_channelName = 'dev.flutter.pigeon.replay_capture_android.CaptureHostApi.ackClip$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
@@ -1150,6 +1571,25 @@ class CaptureHostApi {
     )
     ;
     return pigeonVar_replyValue! as bool;
+  }
+
+  /// Size of the replay reserve (0 = delete on ACK). Trims the reserve at once.
+  Future<void> setClipReserve(int size) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.replay_capture_android.CaptureHostApi.setClipReserve$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[size]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
   }
 
   /// Send-only WebRTC offer for [viewerId]. Returned as soon as it is created; ICE candidates
@@ -1346,6 +1786,147 @@ class CaptureHostApi {
     ;
     return (pigeonVar_replyValue! as List<Object?>).cast<RecordingSaved>();
   }
+
+  /// Replaces what the scoreboard overlay shows. Cheap; call on every change.
+  Future<void> setOverlay(OverlayState overlay) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.replay_capture_android.CaptureHostApi.setOverlay$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[overlay]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+  }
+
+  /// Starts the program encoder, audio and the RTMP connection. Returns once connecting has
+  /// started (state `connecting`); progress arrives through [CaptureEventsApi.onBroadcast]. Fails
+  /// with `not_broadcast_mode` when capture is not in broadcast mode.
+  Future<BroadcastStatus> broadcastStart(BroadcastConfig config) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.replay_capture_android.CaptureHostApi.broadcastStart$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[config]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return pigeonVar_replyValue! as BroadcastStatus;
+  }
+
+  /// Disconnects and releases the program encoder and audio. No-op when idle.
+  Future<void> broadcastStop() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.replay_capture_android.CaptureHostApi.broadcastStop$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+  }
+
+  Future<BroadcastStatus> broadcastStatus() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.replay_capture_android.CaptureHostApi.broadcastStatus$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return pigeonVar_replyValue! as BroadcastStatus;
+  }
+
+  /// Puts clip [clipId] (ready or in the reserve) on air at [speed], replacing any running
+  /// replay; [label] is drawn over it (e.g. `REPETICIÓN`); the scoreboard too only when
+  /// [scoreboard]. Completes once the first frame is
+  /// decoded. Errors: `not_live` (no active broadcast), `replay_unavailable` (clip not on the
+  /// Camera), `replay_failed`.
+  Future<ReplayStatus> replayStart(String clipId, double speed, String label, bool scoreboard) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.replay_capture_android.CaptureHostApi.replayStart$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[clipId, speed, label, scoreboard]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return pigeonVar_replyValue! as ReplayStatus;
+  }
+
+  /// Changes the speed of the running replay at once (no-op without one).
+  Future<void> replaySpeed(double speed) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.replay_capture_android.CaptureHostApi.replaySpeed$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[speed]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+  }
+
+  /// Back to the live picture (no-op without a replay). [CaptureEventsApi.onReplayEnded] follows.
+  Future<void> replayStop() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.replay_capture_android.CaptureHostApi.replayStop$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+  }
 }
 
 abstract class CaptureEventsApi {
@@ -1373,6 +1954,17 @@ abstract class CaptureEventsApi {
 
   /// A recording finished: by the user, by low space or an error, or recovered after a crash.
   void onRecordingSaved(RecordingSaved saved);
+
+  /// The broadcast state changed (connecting, live, reconnecting, failed, idle). Ongoing numbers
+  /// also ride on [CaptureStats.broadcast].
+  void onBroadcast(BroadcastStatus status);
+
+  /// A replay went on air or changed speed; the position also rides on [CaptureStats.replay].
+  void onReplay(ReplayStatus status);
+
+  /// The program is back on the camera: the clip ended, was stopped or replaced, or failed.
+  /// [error] is set for a failure.
+  void onReplayEnded(String clipId, String? error);
 
   static void setUp(CaptureEventsApi? api, {BinaryMessenger? binaryMessenger, String messageChannelSuffix = '',}) {
     messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
@@ -1560,6 +2152,70 @@ abstract class CaptureEventsApi {
           final RecordingSaved arg_saved = args[0]! as RecordingSaved;
           try {
             api.onRecordingSaved(arg_saved);
+            return wrapResponse(empty: true);
+          } on PlatformException catch (e) {
+            return wrapResponse(error: e);
+          }          catch (e) {
+            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
+          }
+        });
+      }
+    }
+    {
+      final pigeonVar_channel = BasicMessageChannel<Object?>(
+          'dev.flutter.pigeon.replay_capture_android.CaptureEventsApi.onBroadcast$messageChannelSuffix', pigeonChannelCodec,
+          binaryMessenger: binaryMessenger);
+      if (api == null) {
+        pigeonVar_channel.setMessageHandler(null);
+      } else {
+        pigeonVar_channel.setMessageHandler((Object? message) async {
+          final List<Object?> args = message! as List<Object?>;
+          final BroadcastStatus arg_status = args[0]! as BroadcastStatus;
+          try {
+            api.onBroadcast(arg_status);
+            return wrapResponse(empty: true);
+          } on PlatformException catch (e) {
+            return wrapResponse(error: e);
+          }          catch (e) {
+            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
+          }
+        });
+      }
+    }
+    {
+      final pigeonVar_channel = BasicMessageChannel<Object?>(
+          'dev.flutter.pigeon.replay_capture_android.CaptureEventsApi.onReplay$messageChannelSuffix', pigeonChannelCodec,
+          binaryMessenger: binaryMessenger);
+      if (api == null) {
+        pigeonVar_channel.setMessageHandler(null);
+      } else {
+        pigeonVar_channel.setMessageHandler((Object? message) async {
+          final List<Object?> args = message! as List<Object?>;
+          final ReplayStatus arg_status = args[0]! as ReplayStatus;
+          try {
+            api.onReplay(arg_status);
+            return wrapResponse(empty: true);
+          } on PlatformException catch (e) {
+            return wrapResponse(error: e);
+          }          catch (e) {
+            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
+          }
+        });
+      }
+    }
+    {
+      final pigeonVar_channel = BasicMessageChannel<Object?>(
+          'dev.flutter.pigeon.replay_capture_android.CaptureEventsApi.onReplayEnded$messageChannelSuffix', pigeonChannelCodec,
+          binaryMessenger: binaryMessenger);
+      if (api == null) {
+        pigeonVar_channel.setMessageHandler(null);
+      } else {
+        pigeonVar_channel.setMessageHandler((Object? message) async {
+          final List<Object?> args = message! as List<Object?>;
+          final String arg_clipId = args[0]! as String;
+          final String? arg_error = args[1] as String?;
+          try {
+            api.onReplayEnded(arg_clipId, arg_error);
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
