@@ -12,6 +12,7 @@ CaptureStats stats({
   double? batteryTempC = 36.5,
   bool plugged = true,
   RecordingStatus? recording,
+  ReplayStatus? replay,
 }) =>
     CaptureStats(
       encodedFrames: 1000,
@@ -28,6 +29,7 @@ CaptureStats stats({
       batteryTempC: batteryTempC,
       batteryPercent: 80,
       recording: recording,
+      replay: replay,
     );
 
 /// In-memory capture layer that records every call.
@@ -313,6 +315,7 @@ class FakeCaptureLayer implements CaptureLayer {
   @override
   Future<void> broadcastStop() async {
     calls.add('broadcastStop');
+    endReplay();
     broadcastState = BroadcastStatus(state: BroadcastState.idle, targetKbps: 4500, droppedFrames: 0, audio: true);
     broadcastController.add(broadcastState);
   }
@@ -322,6 +325,69 @@ class FakeCaptureLayer implements CaptureLayer {
 
   @override
   Stream<BroadcastStatus> get broadcast => broadcastController.stream;
+
+  // endregion
+
+  // region Replays on air: the fake native side answers at once; tests end or fail a replay with
+  // [endReplay].
+
+  final replayController = StreamController<ReplayStatus>.broadcast();
+  final replayEndedController = StreamController<({String clipId, String? error})>.broadcast();
+
+  /// Labels passed to [replayStart], in order.
+  final replayLabels = <String>[];
+
+  /// The replay on air as the fake native side sees it.
+  ReplayStatus? replayState;
+
+  /// Thrown by [replayStart] when set, e.g. `PlatformException(code: 'replay_unavailable')`.
+  Object? replayStartError;
+
+  /// Length of every clip put on air.
+  int replayDurationMs = 20000;
+
+  @override
+  Future<ReplayStatus> replayStart(String clipId, {double speed = 1, required String label}) async {
+    calls.add('replayStart:$clipId:$speed');
+    if (replayStartError case final e?) throw e;
+    replayLabels.add(label);
+    final previous = replayState;
+    final status =
+        replayState = ReplayStatus(clipId: clipId, speed: speed, positionMs: 0, durationMs: replayDurationMs);
+    if (previous != null) replayEndedController.add((clipId: previous.clipId, error: null));
+    replayController.add(status);
+    return status;
+  }
+
+  @override
+  Future<void> replaySpeed(double speed) async {
+    calls.add('replaySpeed:$speed');
+    final r = replayState;
+    if (r == null) return;
+    final status = replayState =
+        ReplayStatus(clipId: r.clipId, speed: speed, positionMs: r.positionMs, durationMs: r.durationMs);
+    replayController.add(status);
+  }
+
+  @override
+  Future<void> replayStop() async {
+    calls.add('replayStop');
+    endReplay();
+  }
+
+  /// The clip ended (or failed with [error]): back to the camera.
+  void endReplay({String? error}) {
+    final r = replayState;
+    if (r == null) return;
+    replayState = null;
+    replayEndedController.add((clipId: r.clipId, error: error));
+  }
+
+  @override
+  Stream<ReplayStatus> get replay => replayController.stream;
+
+  @override
+  Stream<({String clipId, String? error})> get replayEnded => replayEndedController.stream;
 
   // endregion
 }

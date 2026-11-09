@@ -7,6 +7,7 @@ import 'package:flutter/widgets.dart' show Locale;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:instant_replay/features/broadcast/broadcast_controller.dart';
 import 'package:instant_replay/features/broadcast/broadcast_providers.dart' show CameraBroadcast;
+import 'package:instant_replay/features/broadcast/replay_controller.dart';
 import 'package:instant_replay/features/broadcast/scoreboard_controller.dart';
 import 'package:instant_replay/features/server/api_server.dart' show CameraControls;
 import 'package:instant_replay/features/server/camera_server.dart';
@@ -532,11 +533,13 @@ void main() {
   group('broadcast mode', () {
     late bool active;
     late CameraBroadcast host;
+    late int nowMs;
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
       active = true;
+      nowMs = 0;
       final scoreboard = ScoreboardController(
         prefs: prefs,
         clockMs: () => 0,
@@ -544,10 +547,23 @@ void main() {
         l10n: () => lookupAppLocalizations(const Locale('en')),
       );
       final stream = BroadcastController(prefs: prefs, capture: capture);
+      final replay = ReplayController(
+        capture: capture,
+        clockMs: () => nowMs,
+        l10n: () => lookupAppLocalizations(const Locale('en')),
+        isLive: () => stream.info.active,
+      );
       final changes = StreamController<void>.broadcast();
       scoreboard.changes.listen((_) => changes.add(null));
       stream.stateChanges.listen((_) => changes.add(null));
-      host = CameraBroadcast(scoreboard: scoreboard, stream: stream, isActive: () => active, changes: changes.stream);
+      replay.changes.listen((_) => changes.add(null));
+      host = CameraBroadcast(
+        scoreboard: scoreboard,
+        stream: stream,
+        replay: replay,
+        isActive: () => active,
+        changes: changes.stream,
+      );
       await startServer(broadcast: host);
     });
 
@@ -655,6 +671,129 @@ void main() {
       final e = await v.next<ErrorMessage>();
       expect((e.code, e.message), ('broadcast_failed', 'no route'));
       await v.close();
+    });
+
+    group('replays on air', () {
+      /// The next status matching [test], skipping others.
+      Future<CameraStatus> statusWhere(_Viewer v, bool Function(CameraStatus s) test) async {
+        while (true) {
+          final s = (await v.next<StatusUpdate>()).status;
+          if (test(s)) return s;
+        }
+      }
+
+      Future<void> goLive() async {
+        await host.configure(server: BroadcastInfo.defaultServer, key: 'abcd', targetKbps: 4500, audio: false);
+        await host.start();
+        expect(host.info.active, isTrue);
+      }
+
+      test('replay_air puts a clip on air for every viewer at once; speed and Back to live too', () async {
+        await goLive();
+        final a = await greeted('viewer-a');
+        final b = await greeted('viewer-b');
+        capture.statsController.add(stats());
+        for (final v in [a, b]) {
+          expect((await v.next<StatusUpdate>()).status.replay, isNull, reason: 'nothing on air yet');
+        }
+
+        a.send(const ReplayAir(clipId: 'clip1', speed: 0.5));
+        for (final v in [a, b]) {
+          final r = (await statusWhere(v, (s) => s.replay != null)).replay!;
+          expect((r.clipId, r.speed, r.positionMs, r.durationMs), ('clip1', 0.5, 0, 20000));
+        }
+        expect(capture.calls, contains('replayStart:clip1:0.5'));
+        expect(capture.replayLabels, ['REPLAY']);
+
+        // Any speed is taken to the nearest one offered, and every viewer hears at once.
+        b.send(const ReplaySpeed(speed: 0.3));
+        for (final v in [a, b]) {
+          expect((await statusWhere(v, (s) => s.replay?.speed != 0.5)).replay!.speed, 0.25);
+        }
+        expect(capture.calls, contains('replaySpeed:0.25'));
+
+        a.send(const ReplayStop());
+        for (final v in [a, b]) {
+          expect((await statusWhere(v, (s) => s.replay == null)).replay, isNull);
+        }
+        expect(capture.calls, contains('replayStop'));
+        await a.close();
+        await b.close();
+      });
+
+      test('the position is as of now: a viewer joining later sees it advance at the replay speed', () async {
+        await goLive();
+        final a = await greeted('viewer-a');
+        capture.statsController.add(stats());
+        await a.next<StatusUpdate>();
+        a.send(const ReplayAir(clipId: 'clip1', speed: 0.5));
+        await statusWhere(a, (s) => s.replay != null);
+
+        nowMs = 4000;
+        final b = await greeted('viewer-b');
+        expect((await b.next<StatusUpdate>()).status.replay!.positionMs, 2000);
+        nowMs = 100000;
+        final c = await greeted('viewer-c');
+        expect((await c.next<StatusUpdate>()).status.replay!.positionMs, 20000, reason: 'stops at the end');
+        await a.close();
+        await b.close();
+        await c.close();
+      });
+
+      test('the end of the clip goes back to live; a failure on air is told to every viewer', () async {
+        await goLive();
+        final a = await greeted('viewer-a');
+        capture.statsController.add(stats());
+        await a.next<StatusUpdate>();
+        a.send(const ReplayAir(clipId: 'clip1'));
+        await statusWhere(a, (s) => s.replay != null);
+        capture.endReplay();
+        expect((await statusWhere(a, (s) => s.replay == null)).replay, isNull);
+
+        a.send(const ReplayAir(clipId: 'clip2'));
+        await statusWhere(a, (s) => s.replay?.clipId == 'clip2');
+        capture.endReplay(error: 'decoder died');
+        final e = await a.next<ErrorMessage>();
+        expect((e.code, e.message), ('replay_failed', 'decoder died'));
+        await a.close();
+      });
+
+      test('without an active stream: not_live', () async {
+        final v = await greeted('viewer-a');
+        capture.statsController.add(stats());
+        await v.next<StatusUpdate>();
+        v.send(const ReplayAir(clipId: 'clip1'));
+        expect((await v.next<ErrorMessage>()).code, 'not_live');
+        expect(capture.calls.where((c) => c.startsWith('replay')), isEmpty);
+        await v.close();
+      });
+
+      test('a clip no longer on the Camera: replay_unavailable; other failures: replay_failed', () async {
+        await goLive();
+        final v = await greeted('viewer-a');
+        capture.replayStartError = PlatformException(code: 'replay_unavailable', message: 'gone');
+        v.send(const ReplayAir(clipId: 'old'));
+        expect((await v.next<ErrorMessage>()).code, 'replay_unavailable');
+        capture.replayStartError = PlatformException(code: 'codec', message: 'no decoder');
+        v.send(const ReplayAir(clipId: 'clip1'));
+        final e = await v.next<ErrorMessage>();
+        expect((e.code, e.message), ('replay_failed', 'no decoder'));
+        expect(host.replay, isNull);
+        await v.close();
+      });
+
+      test('replay mode: not_broadcast_mode and never a replay in the status', () async {
+        active = false;
+        final v = await greeted('viewer-a');
+        capture.statsController.add(stats());
+        expect((await v.next<StatusUpdate>()).status.replay, isNull);
+        for (final m in const [ReplayAir(clipId: 'clip1'), ReplaySpeed(speed: 0.5), ReplayStop()]) {
+          v.send(m);
+          expect((await v.next<ErrorMessage>()).code, 'not_broadcast_mode', reason: m.type);
+        }
+        expect(capture.calls.where((c) => c.startsWith('replay')), isEmpty);
+        await v.close();
+      });
     });
   });
 

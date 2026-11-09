@@ -9,6 +9,7 @@ import '../clips/clip_transfers.dart';
 import '../tags/tag_widgets.dart';
 import '../tags/tags.dart';
 import '../viewer_providers.dart';
+import 'replay_air.dart';
 import 'review_page.dart';
 
 /// "Bien · 12:41", or "Clip · 12:41" when untagged (UX §3.3).
@@ -218,7 +219,10 @@ class ClipTile extends ConsumerWidget {
       builder: (context, c) {
         final roomy = c.maxWidth >= 420;
         return InkWell(
-          onTap: stored == null ? null : () => Navigator.of(context).push(ReviewPage.route(clip)),
+          // While streaming, a clip still on the Camera can also go on air (SPEC §12.6).
+          onTap: stored == null
+              ? null
+              : () => openClipReview(context, ref, clip, () => ReviewPage.route(clip, replayBar: true)),
           onLongPress: changeTag,
           child: Container(
             height: 72,

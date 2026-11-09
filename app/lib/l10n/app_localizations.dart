@@ -2305,6 +2305,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Counts down'**
   String get scoreboardCountDown;
+
+  /// Drawn over a replay on the stream (SPEC §12.6); upper case.
+  ///
+  /// In en, this message translates to:
+  /// **'REPLAY'**
+  String get replayLabelOnAir;
+
+  /// No description provided for @replayOnAir.
+  ///
+  /// In en, this message translates to:
+  /// **'REPLAY ON AIR'**
+  String get replayOnAir;
+
+  /// No description provided for @replayBackToLive.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to live'**
+  String get replayBackToLive;
+
+  /// No description provided for @replaySpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Replay speed'**
+  String get replaySpeed;
+
+  /// No description provided for @replayChoiceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Where to watch the play?'**
+  String get replayChoiceTitle;
+
+  /// No description provided for @replayChoiceTablet.
+  ///
+  /// In en, this message translates to:
+  /// **'Only on this tablet'**
+  String get replayChoiceTablet;
+
+  /// No description provided for @replayChoiceAir.
+  ///
+  /// In en, this message translates to:
+  /// **'Also on air'**
+  String get replayChoiceAir;
+
+  /// No description provided for @replayNotLive.
+  ///
+  /// In en, this message translates to:
+  /// **'The stream is not on'**
+  String get replayNotLive;
+
+  /// No description provided for @replayUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This clip is no longer on the camera'**
+  String get replayUnavailable;
+
+  /// No description provided for @replayFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not put the replay on air: {message}'**
+  String replayFailed(String message);
 }
 
 class _AppLocalizationsDelegate

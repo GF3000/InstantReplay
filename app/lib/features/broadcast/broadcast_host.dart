@@ -27,10 +27,29 @@ abstract interface class BroadcastHost {
   Future<bool> start();
 
   Future<void> stop();
+
+  // Replays on air (SPEC §12.6). [changes] fires when one starts, changes speed or ends.
+
+  /// The replay on air, its position as of now; null while the program shows the camera.
+  ReplayInfo? get replay;
+
+  /// A replay that failed on air, with the reason.
+  Stream<String> get replayFailures;
+
+  /// Puts [clipId] on air at [speed], replacing any replay on air. Throws [BroadcastException]
+  /// `not_live` (no stream active), `replay_unavailable` (clip not on the Camera) or
+  /// `replay_failed`.
+  Future<void> replayAir(String clipId, double speed);
+
+  /// Changes the speed of the replay on air; nothing without one.
+  Future<void> replaySpeed(double speed);
+
+  /// Back to the live picture.
+  Future<void> replayStop();
 }
 
 /// A broadcast command refused with an API error code (`not_configured`, `broadcast_failed`,
-/// `mic_permission`, `not_broadcast_mode`).
+/// `mic_permission`, `not_broadcast_mode`, `not_live`, `replay_unavailable`, `replay_failed`).
 class BroadcastException implements Exception {
   const BroadcastException(this.code, [this.message]);
 

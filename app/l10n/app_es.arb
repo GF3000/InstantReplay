@@ -367,5 +367,15 @@
   "scoreboardPeriodMinutes": "Minutos por periodo",
   "scoreboardClockDirection": "Reloj",
   "scoreboardCountUp": "Ascendente",
-  "scoreboardCountDown": "Descendente"
+  "scoreboardCountDown": "Descendente",
+  "replayLabelOnAir": "REPETICIÓN",
+  "replayOnAir": "REPETICIÓN EN ANTENA",
+  "replayBackToLive": "Volver al directo",
+  "replaySpeed": "Velocidad de la repetición",
+  "replayChoiceTitle": "¿Dónde ver la jugada?",
+  "replayChoiceTablet": "Solo en la tablet",
+  "replayChoiceAir": "También en emisión",
+  "replayNotLive": "La emisión no está en marcha",
+  "replayUnavailable": "Este clip ya no está en la cámara",
+  "replayFailed": "No se pudo emitir la repetición: {message}"
 }

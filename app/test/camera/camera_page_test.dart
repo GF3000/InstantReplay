@@ -605,6 +605,31 @@ void main() {
       expect(find.byKey(const Key('camera-score')), findsOneWidget, reason: 'the score on air instead');
     });
 
+    testWidgets('a replay on air shows on the broadcast card; speed and Back to live act on the Camera', (tester) async {
+      final fake = FakeCaptureLayer();
+      await _pumpCamera(tester, fake, height: 2400, saved: {'camera.mode': 'broadcast', 'broadcast.key': 'abcd'});
+      await _tapNow(tester, find.byKey(const ValueKey('camera-broadcast-start')));
+      expect(find.byKey(const ValueKey('camera-replay')), findsNothing);
+
+      // A viewer put a clip on air.
+      final onAir = fake.replayState = ReplayStatus(clipId: 'clip1', speed: 1, positionMs: 0, durationMs: 4000);
+      fake.replayController.add(onAir);
+      await tester.pump();
+      await tester.pump();
+      expect(find.byKey(const ValueKey('camera-replay')), findsOneWidget);
+      expect(find.text('REPLAY ON AIR'), findsOneWidget);
+      expect(find.text('0:00 / 0:04'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('camera-replay-speed-0.5')));
+      await tester.pump();
+      expect(fake.calls.last, 'replaySpeed:0.5');
+      await tester.tap(find.byKey(const ValueKey('camera-replay-stop')));
+      await tester.pump();
+      await tester.pump();
+      expect(fake.calls.last, 'replayStop');
+      expect(find.byKey(const ValueKey('camera-replay')), findsNothing);
+    });
+
     testWidgets('the replay reserve is set from Advanced and remembered', (tester) async {
       final fake = FakeCaptureLayer();
       final prefs = await _pumpCamera(tester, fake, height: 2400);

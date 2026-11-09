@@ -11,6 +11,7 @@ import '../tags/tag_widgets.dart';
 import '../tags/tags.dart';
 import '../viewer_providers.dart';
 import 'clip_list.dart';
+import 'replay_air.dart';
 
 /// Main Viewer screen, "balanced" layout (UX §3.2): a large live view and a large Save button.
 ///
@@ -46,23 +47,31 @@ class LiveControlView extends ConsumerWidget {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
     });
     final broadcast = ref.watch(viewerScoreboardProvider.select((s) => s != null));
+    final onAir = ref.watch(viewerReplayProvider.select((r) => r != null));
     final hidden = ref.watch(hiddenPanelsProvider);
     return _layout(
       live: !hidden.contains(Panel.viewerLive),
       scoreboard: broadcast && !hidden.contains(Panel.viewerScoreboard),
       replays: !hidden.contains(Panel.viewerReplays),
+      onAir: onAir,
     );
   }
 
   /// Each part can be hidden from the app bar (SPEC §12.5): e.g. only the scoreboard for a
   /// scorekeeper, or only live + replays for the coach while the Camera keeps the score.
-  Widget _layout({required bool live, required bool scoreboard, required bool replays}) =>
+  ///
+  /// While a clip is on air ([onAir]) the replay bar takes room: on a short portrait screen the
+  /// live view (which shows the replay then) gives it up.
+  Widget _layout({required bool live, required bool scoreboard, required bool replays, required bool onAir}) =>
       LayoutBuilder(builder: (context, c) {
         const bars = [ViewerBroadcastBar(), ViewerRecordingBar()];
+        // A clip on air (SPEC §12.6): on top of the right panel, or above the scoreboard.
+        const replayBar = ViewerReplayBar();
         Widget save({required bool compact, bool tight = false}) => SaveControls(compact: compact, tight: tight);
         const clips = Expanded(child: ClipList());
         if (!live && !scoreboard && !replays) {
           return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            replayBar,
             ...bars,
             const Expanded(child: _NothingShown()),
           ]);
@@ -72,12 +81,13 @@ class LiveControlView extends ConsumerWidget {
           final left = live || scoreboard;
           // Without the live view the scoreboard gets the room: full size, centred.
           final leftColumn = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            if (!replays) ...bars,
+            if (!replays) ...[replayBar, ...bars],
             if (live) const Expanded(child: _LiveWithTagPanel()),
             if (scoreboard && live) ViewerScoreboardPanel(compact: c.maxHeight < 700),
             if (scoreboard && !live) const Expanded(child: Center(child: ViewerScoreboardPanel())),
           ]);
           final rightColumn = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            replayBar,
             ...bars,
             save(compact: scoreboard || c.maxHeight < 480, tight: c.maxHeight < 400),
             const Divider(height: 1),
@@ -92,12 +102,15 @@ class LiveControlView extends ConsumerWidget {
           ]);
         }
         final liveShare = scoreboard ? 0.3 : (replays ? 0.42 : 0.6);
+        const minLive = 120.0;
+        final liveMax = onAir && c.maxHeight < 760 ? minLive : c.maxHeight * liveShare;
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           if (live)
             SizedBox(
-              height: (c.maxWidth * 9 / 16).clamp(120.0, c.maxHeight * liveShare),
+              height: (c.maxWidth * 9 / 16).clamp(minLive, liveMax < minLive ? minLive : liveMax),
               child: const _LiveWithTagPanel(),
             ),
+          replayBar,
           if (scoreboard) ViewerScoreboardPanel(compact: replays && c.maxHeight < 900),
           ...bars,
           if (replays) ...[

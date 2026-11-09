@@ -10,6 +10,7 @@ import '../tags/tag_widgets.dart';
 import '../tags/tags.dart';
 import 'clip_export_actions.dart';
 import 'clip_list.dart';
+import 'replay_air.dart';
 import 'telestrator.dart';
 import 'video_zoom.dart';
 
@@ -63,6 +64,7 @@ class ReviewPage extends ConsumerStatefulWidget {
     this.playlist,
     this.playerFactory,
     this.platformFactory,
+    this.replayBar = false,
   });
 
   /// A ready clip ([SessionClip.stored] set).
@@ -81,14 +83,18 @@ class ReviewPage extends ConsumerStatefulWidget {
   /// Tests inject the platform helper; defaults to [PlayerPlatform.new].
   final PlayerPlatform Function(VideoPlayerController player)? platformFactory;
 
+  /// A clip of the live session: while it is on air (SPEC §12.6) the replay bar shows on top.
+  final bool replayBar;
+
   static const speeds = [0.25, 0.5, 1.0];
 
   /// Horizontal drag on the video moves one frame per this many logical pixels.
   static const dragPixelsPerFrame = 6.0;
 
-  static Route<void> route(SessionClip clip, {ClipLabelChoices? labelChoices}) => MaterialPageRoute<void>(
+  static Route<void> route(SessionClip clip, {ClipLabelChoices? labelChoices, bool replayBar = false}) =>
+      MaterialPageRoute<void>(
         fullscreenDialog: true,
-        builder: (_) => ReviewPage(clip: clip, labelChoices: labelChoices),
+        builder: (_) => ReviewPage(clip: clip, labelChoices: labelChoices, replayBar: replayBar),
       );
 
   @override
@@ -370,7 +376,15 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
         ],
       ),
       body: SafeArea(
-        child: _failed
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          if (widget.replayBar && clip.clipId != null) ViewerReplayBar(clipId: clip.clipId),
+          Expanded(child: _body(l10n)),
+        ]),
+      ),
+    );
+  }
+
+  Widget _body(AppLocalizations l10n) => _failed
             ? Center(child: Text(l10n.viewerReviewError, style: Theme.of(context).textTheme.titleMedium))
             : ValueListenableBuilder<VideoPlayerValue>(
                 valueListenable: _player,
@@ -445,10 +459,7 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
                   _controls(l10n, v),
                   ]);
                 },
-              ),
-      ),
-    );
-  }
+              );
 
   Widget _scrubBar(VideoPlayerValue v) {
     final total = v.duration.inMilliseconds;
