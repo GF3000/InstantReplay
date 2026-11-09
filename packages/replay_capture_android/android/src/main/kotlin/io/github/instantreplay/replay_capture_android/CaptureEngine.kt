@@ -26,7 +26,9 @@ import android.os.PowerManager
 import android.os.Process
 import android.util.Range
 import android.view.Surface
+import io.github.instantreplay.replay_capture_android.broadcast.ReplayPlayer
 import io.github.instantreplay.replay_capture_android.broadcast.ScoreboardState
+import io.github.instantreplay.replay_capture_android.gl.LabelRenderer
 import io.github.instantreplay.replay_capture_android.buffer.RingBuffer
 import io.github.instantreplay.replay_capture_android.buffer.Segmenter
 import io.github.instantreplay.replay_capture_android.gl.EglCore
@@ -34,6 +36,7 @@ import io.github.instantreplay.replay_capture_android.gl.FrameHandoff
 import io.github.instantreplay.replay_capture_android.gl.OverlayRenderer
 import io.github.instantreplay.replay_capture_android.gl.TexTransform
 import io.github.instantreplay.replay_capture_android.gl.TextureRenderer
+import java.io.File
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executor
 import java.util.concurrent.FutureTask
@@ -94,6 +97,17 @@ internal class CaptureEngine(
     private var programEglSurface: EGLSurface? = null // broadcast program encoder, while streaming
     private var glIdle: EGLSurface? = null
     @Volatile private var overlay: OverlayRenderer? = null // broadcast mode only
+    private var label: LabelRenderer? = null // broadcast mode only: REPLAY badge
+
+    // Replay on air (SPEC §12.6): a decoder renders into its own OES texture. GL-thread state,
+    // except [replay], which other threads read.
+    private var replayTexture = 0
+    private var replaySt: SurfaceTexture? = null
+    private var replaySurface: Surface? = null
+    private val replayMatrix = FloatArray(16)
+    /** A frame of the current replay is latched in [replayTexture]: the program shows it. */
+    private var replayShowing = false
+    @Volatile private var replay: ReplayPlayer? = null
     private val texMatrix = FloatArray(16)
     private var uprightRotation = 0
     @Volatile private var renderedFrames = 0L
@@ -177,7 +191,10 @@ internal class CaptureEngine(
             cameraTexture = TextureRenderer.createExternalTexture()
             val outWidth = minOf(config.width, OUT_MAX_WIDTH)
             handoff = FrameHandoff(outWidth, outWidth * config.height / config.width, useFences = core.glVersion >= 3)
-            if (config.broadcast) overlay = OverlayRenderer(config.height)
+            if (config.broadcast) {
+                overlay = OverlayRenderer(config.height)
+                label = LabelRenderer(config.height)
+            }
             val st = SurfaceTexture(cameraTexture).apply {
                 // Preview/live only need 720p; the program (broadcast) and the GL fallback need
                 // the full size.
@@ -224,6 +241,95 @@ internal class CaptureEngine(
     }
 
     /**
+     * Puts [file] on air instead of the camera (SPEC §12.6), replacing any replay running; [badge]
+     * is drawn top-right. [onStarted] when its first frame is shown, [onEnded] once the program is
+     * back on the camera (end of clip, [stopReplay], replacement or failure), with the error if any.
+     * Broadcast mode only. The ring buffer keeps the camera picture: it is fed directly.
+     */
+    fun startReplay(
+        clipId: String,
+        file: File,
+        speed: Float,
+        badge: String,
+        onStarted: (ReplayPlayer) -> Unit,
+        onEnded: (clipId: String, error: String?) -> Unit,
+    ) {
+        stopReplay()
+        val surface = onGl {
+            if (replaySt == null) {
+                replayTexture = TextureRenderer.createExternalTexture()
+                replaySt = SurfaceTexture(replayTexture).apply {
+                    setDefaultBufferSize(config.width, config.height)
+                    // Latch on the GL thread, where the capture context is current.
+                    setOnFrameAvailableListener({ latchReplayFrame() }, glHandler)
+                }
+                replaySurface = Surface(replaySt)
+            }
+            replaySurface!!
+        }
+        lateinit var player: ReplayPlayer
+        player = ReplayPlayer(
+            clipId = clipId,
+            file = file,
+            speed = speed,
+            output = surface,
+            onStarted = {
+                label?.text = badge
+                onStarted(player)
+            },
+            onEnded = { error ->
+                endReplay(player)
+                onEnded(clipId, error)
+            },
+        )
+        replayEnded[player] = onEnded
+        replay = player
+    }
+
+    /** Back to the camera; the running replay's onEnded is called with no error. */
+    fun stopReplay() {
+        val player = replay ?: return
+        val ended = replayEnded.remove(player)
+        player.stop()
+        endReplay(player)
+        ended?.invoke(player.clipId, null)
+    }
+
+    fun setReplaySpeed(speed: Float) {
+        replay?.setSpeed(speed)
+    }
+
+    /** The replay on air, or null. */
+    fun currentReplay(): ReplayPlayer? = replay
+
+    private val replayEnded = java.util.concurrent.ConcurrentHashMap<ReplayPlayer, (String, String?) -> Unit>()
+
+    // Any thread: the program goes back to the camera if [player] is still the current replay.
+    private fun endReplay(player: ReplayPlayer) {
+        replayEnded.remove(player)
+        if (replay !== player) return
+        replay = null
+        glHandler.post {
+            if (replay == null) {
+                replayShowing = false
+                label?.text = null
+            }
+        }
+    }
+
+    // GL thread.
+    private fun latchReplayFrame() {
+        val st = replaySt ?: return
+        try {
+            st.updateTexImage()
+        } catch (e: RuntimeException) {
+            return // released meanwhile
+        }
+        st.getTransformMatrix(replayMatrix)
+        replayShowing = replay != null
+    }
+
+    /**
      * Attaches the broadcast program encoder's input surface (null detaches it). Blocks until
      * applied, so after a detach the GL thread no longer draws into the old surface.
      */
@@ -257,6 +363,7 @@ internal class CaptureEngine(
 
     fun release() {
         if (released) return
+        stopReplay()
         released = true
         powerManager.removeThermalStatusListener(thermalListener)
         statsHandler.removeCallbacksAndMessages(null)
@@ -291,6 +398,10 @@ internal class CaptureEngine(
                 handoff?.release()
                 renderer?.release()
                 overlay?.release()
+                label?.release()
+                replaySt?.release()
+                replaySurface?.release()
+                if (replayTexture != 0) GLES20.glDeleteTextures(1, intArrayOf(replayTexture), 0)
                 GLES20.glDeleteTextures(1, intArrayOf(cameraTexture), 0)
                 // Destroying the current surface is deferred by EGL until release() unbinds it.
                 encoderEglSurface?.let { core.releaseSurface(it) }
@@ -518,8 +629,9 @@ internal class CaptureEngine(
         // doesn't block (swap interval 0): a backed-up encoder loses program frames, not HQ ones.
         if (program != null && at30) {
             core.makeCurrent(program)
-            gl.draw(cameraTexture, config.width, config.height, texMatrix)
+            drawSource(gl, config.width, config.height)
             board?.draw(config.width, config.height)
+            if (replayShowing) label?.draw(config.width, config.height)
             core.setPresentationTime(program, ts)
             core.swapBuffers(program)
         }
@@ -528,9 +640,10 @@ internal class CaptureEngine(
         // draws and swaps them, so a slow consumer can never delay the next HQ frame.
         if (hasOutputs && at30) {
             val wake = frames.publish {
-                gl.draw(cameraTexture, frames.width, frames.height, texMatrix)
-                // The viewers' live view shows what goes on air.
+                // The viewers' live view shows what goes on air, replays included.
+                drawSource(gl, frames.width, frames.height)
                 board?.draw(frames.width, frames.height)
+                if (replayShowing) label?.draw(frames.width, frames.height)
             }
             if (wake) outHandler.post(::drawOutputs)
         }
@@ -538,6 +651,13 @@ internal class CaptureEngine(
         val drawMs = (System.nanoTime() - started) / 1e6
         if (drawMs > frameIntervalNs / 1e6) slowDraws++
         if (drawMs > maxDrawMs) maxDrawMs = drawMs
+    }
+
+    // GL thread: the program's picture, the replay on air or the camera. The program keeps the
+    // camera's timestamps either way, so the stream's clock never jumps.
+    private fun drawSource(gl: TextureRenderer, width: Int, height: Int) {
+        if (replayShowing) gl.draw(replayTexture, width, height, replayMatrix)
+        else gl.draw(cameraTexture, width, height, texMatrix)
     }
 
     // Output thread: draws the latest handed-off frame; older ones were dropped by publish().
@@ -589,6 +709,7 @@ internal class CaptureEngine(
                 "maxSecondaryMs" to maxSecondaryMs,
                 "thermalStatus" to thermalStatus,
                 "thermalHeadroom" to headroom,
+                "replayActive" to (replay != null),
             ) + ring.stats() + batteryStats(),
         )
         lastStatsFrames = frames

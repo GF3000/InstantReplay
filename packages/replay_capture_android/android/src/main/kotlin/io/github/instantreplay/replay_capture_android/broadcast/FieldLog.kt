@@ -21,6 +21,8 @@ internal data class FieldSample(
     val measuredKbps: Long?,
     val droppedFrames: Long,
     val rtmpState: String,
+    /** A replay is on air (SPEC §12.6): the extra decoder's heat shows against it. */
+    val replay: Boolean = false,
 )
 
 /**
@@ -37,7 +39,7 @@ internal class FieldLog(private val file: File) {
 
     companion object {
         const val HEADER = "time,thermal_status,thermal_headroom,battery_temp_c,battery_percent,plugged," +
-            "camera_fps,program_fps,target_kbps,measured_kbps,dropped_frames,rtmp_state"
+            "camera_fps,program_fps,target_kbps,measured_kbps,dropped_frames,rtmp_state,replay"
 
         private val FILE_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm", Locale.ROOT)
 
@@ -58,6 +60,7 @@ internal class FieldLog(private val file: File) {
             s.measuredKbps?.toString(),
             s.droppedFrames.toString(),
             s.rtmpState,
+            if (s.replay) "1" else "0",
         ).joinToString(",") { it ?: "" }
 
         private fun fixed(value: Double, decimals: Int) = String.format(Locale.ROOT, "%.${decimals}f", value)

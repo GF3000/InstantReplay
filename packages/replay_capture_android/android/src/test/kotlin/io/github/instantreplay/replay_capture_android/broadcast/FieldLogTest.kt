@@ -7,6 +7,7 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class FieldLogTest {
     private val time = OffsetDateTime.of(2026, 11, 15, 17, 4, 5, 678_000_000, ZoneOffset.ofHours(1))
@@ -29,7 +30,7 @@ class FieldLogTest {
     @Test
     fun formatsARowMatchingTheHeader() {
         val row = FieldLog.row(sample())
-        assertEquals("2026-11-15T17:04:05+01:00,2,0.712,38.3,87,true,30.0,30.0,4500,4620,3,live", row)
+        assertEquals("2026-11-15T17:04:05+01:00,2,0.712,38.3,87,true,30.0,30.0,4500,4620,3,live,0", row)
         assertEquals(FieldLog.HEADER.split(",").size, row.split(",").size)
     }
 
@@ -41,7 +42,12 @@ class FieldLogTest {
                 cameraFps = null, programFps = null, measuredKbps = null, rtmpState = "reconnecting",
             ),
         )
-        assertEquals("2026-11-15T17:04:05+01:00,2,,,,,,,4500,,3,reconnecting", row)
+        assertEquals("2026-11-15T17:04:05+01:00,2,,,,,,,4500,,3,reconnecting,0", row)
+    }
+
+    @Test
+    fun aReplayOnAirIsMarked() {
+        assertTrue(FieldLog.row(sample().copy(replay = true)).endsWith(",live,1"))
     }
 
     @Test

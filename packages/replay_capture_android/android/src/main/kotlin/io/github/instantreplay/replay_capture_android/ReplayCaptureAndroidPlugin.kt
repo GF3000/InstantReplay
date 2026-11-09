@@ -21,6 +21,7 @@ import io.flutter.view.TextureRegistry
 import io.github.instantreplay.replay_capture_android.broadcast.Broadcaster
 import io.github.instantreplay.replay_capture_android.broadcast.ScoreboardState
 import io.github.instantreplay.replay_capture_android.buffer.RingBuffer
+import io.github.instantreplay.replay_capture_android.broadcast.ReplayPlayer
 import io.github.instantreplay.replay_capture_android.outbox.Outbox
 import io.github.instantreplay.replay_capture_android.recording.MediaStorePartStore
 import io.github.instantreplay.replay_capture_android.recording.SessionRecorder
@@ -318,10 +319,73 @@ class ReplayCaptureAndroidPlugin :
 
     override fun broadcastStop(callback: (Result<Unit>) -> Unit) {
         val b = broadcaster ?: return callback(Result.success(Unit))
+        engine?.stopReplay() // nothing goes on air without a stream
         b.stop { mainHandler.post { callback(Result.success(Unit)) } }
     }
 
     override fun broadcastStatus(): BroadcastStatus = broadcaster?.status() ?: IDLE_BROADCAST
+
+    // Replays on air (SPEC §12.6).
+
+    override fun replayStart(clipId: String, speed: Double, label: String, callback: (Result<ReplayStatus>) -> Unit) {
+        val e = engine
+        val b = broadcaster
+        if (e == null || b == null || !b.isActive) {
+            return callback(Result.failure(FlutterError("not_live", "No broadcast is active")))
+        }
+        // Pinned: neither the reserve nor the TTL deletes it while it is on air.
+        val clip = outbox.pin(clipId)
+        val path = clip?.path
+        if (clip == null || path == null) {
+            if (clip != null) outbox.unpin(clipId)
+            return callback(Result.failure(FlutterError("replay_unavailable", "Clip $clipId is not on the Camera")))
+        }
+        var answered = false
+        e.startReplay(
+            clipId = clipId,
+            file = File(path),
+            speed = speed.toFloat(),
+            badge = label,
+            onStarted = { player ->
+                mainHandler.post {
+                    val status = replayStatus(player)
+                    if (!answered) {
+                        answered = true
+                        callback(Result.success(status))
+                    }
+                    events.onReplay(status) {}
+                }
+            },
+            onEnded = { id, error ->
+                outbox.unpin(id)
+                mainHandler.post {
+                    if (!answered) {
+                        answered = true
+                        callback(Result.failure(FlutterError("replay_failed", error ?: "Replay ended before its first frame")))
+                    }
+                    events.onReplayEnded(id, error) {}
+                }
+            },
+        )
+    }
+
+    override fun replaySpeed(speed: Double) {
+        val e = engine ?: return
+        e.setReplaySpeed(speed.toFloat())
+        e.currentReplay()?.let { events.onReplay(replayStatus(it)) {} }
+    }
+
+    override fun replayStop(callback: (Result<Unit>) -> Unit) {
+        engine?.stopReplay()
+        callback(Result.success(Unit))
+    }
+
+    private fun replayStatus(p: ReplayPlayer) = ReplayStatus(
+        clipId = p.clipId,
+        speed = p.clock.speed().toDouble(),
+        positionMs = p.positionMs,
+        durationMs = p.durationMs,
+    )
 
     /** Main thread: forwards a broadcast state change and keeps the service type in step. */
     private fun onBroadcastStatus(status: BroadcastStatus) {
@@ -438,6 +502,7 @@ class ReplayCaptureAndroidPlugin :
             plugged = e["plugged"] == true,
             recording = recorder.currentStatus(),
             broadcast = broadcaster?.status(),
+            replay = engine?.currentReplay()?.let(::replayStatus),
         )
     }
 

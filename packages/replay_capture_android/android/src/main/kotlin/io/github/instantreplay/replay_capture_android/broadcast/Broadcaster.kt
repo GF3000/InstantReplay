@@ -264,6 +264,7 @@ internal class Broadcaster(
                     measuredKbps = measuredBps?.let { it / 1000 },
                     droppedFrames = droppedFrames,
                     rtmpState = state.name.lowercase(),
+                    replay = d["replayActive"] == true,
                 ),
             )
         } catch (e: Exception) {
