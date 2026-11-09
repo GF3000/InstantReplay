@@ -125,13 +125,19 @@ This avoids relying on Camera2 multi-stream combinations, which differ between d
 stateDiagram-v2
   [*] --> Recording: POST /clips
   Recording --> Ready: post-roll done, assembled
-  Ready --> Acked: POST /clips/{id}/ack (sha256 ok)
+  Ready --> Acked: POST /clips/{id}/ack (sha256 ok), reserve size 0
+  Ready --> Reserved: ack, reserve size N > 0
   Acked --> [*]: delete file
+  Reserved --> Expired: (N+1)th clip reserved (oldest first), TTL, cap
   Ready --> Expired: TTL 2 h or outbox > 1 GB (oldest first)
   Expired --> [*]: delete + notify
 ```
-- Other viewers may download while `Ready`. The file is deleted once the requester ACKs; other viewers lose access then.
-- Outbox survives app restarts (index persisted as JSON).
+- Other viewers may download while `Ready`, and while the clip is in the reserve.
+- **Replay reserve** (for replays on air, §12.6): after the ACK, a clip is not deleted but kept in a reserve of the **N most recent acknowledged clips**. When the (N+1)th arrives, the oldest reserved clip is deleted. N is configurable (**default 3**; 0 = delete on ACK as before), set in the Camera's Advanced section or from any viewer, and remembered.
+- The TTL (2 h) and the 1 GB cap apply to reserved clips too; reserved clips go first when the cap is exceeded (they are already safe on a viewer).
+- A clip **on air** (§12.6) is pinned: neither the reserve nor the TTL/cap delete it until the replay ends.
+- A reserved clip keeps `state: acked` on the wire with `reserved: true` (older viewers already treat `acked` as done); leaving the reserve is announced as `expired`.
+- Outbox and reserve survive app restarts (index persisted as JSON).
 
 ### 3.5 Operating modes (UI on A)
 - **Setup:** full preview, framing grid, zoom/exposure/focus, quality profile, QR + 6-digit code, network info.
@@ -492,3 +498,18 @@ Each device shows only what its person does; the choice is remembered per device
 - **Viewer**: a panels menu in the app bar shows or hides the **live view**, the **scoreboard** (broadcast mode only) and **replays** (Save, the clip list and tags). The stream and recording bars always stay.
 - Typical setups: (1) the Camera operator keeps the score, the bench tablet shows live + replays; (2) a second person keeps the score on a phone or tablet with only the scoreboard, no replays; (3) one bench device does everything.
 - Scoreboard settings include the overlay **size**: small (100 %), medium (130 %, default), large (160 %) of the base bar.
+
+### 12.6 Replays on air
+A viewer can put a clip that is still on the Camera on air: the Camera decodes it and composes it instead of the live picture, with the scoreboard on top. Only clips on the Camera qualify (ready or in the reserve, §3.4); older library clips stay on the tablet (uploading them back is out of scope, as are telestrator drawings on air).
+
+- **Viewer.** While the stream is active, starting a replay of a clip that is on the Camera asks **"Only on this tablet"** or **"Also on air"**. Other clips play locally without asking. On air, the viewer shows a replay bar: clip, position, **speed** (0.25× / 0.5× / 1×, changeable at any time, e.g. 1× then 0.5× for the key moment) and **Back to live**.
+- **Protocol** (viewer → Camera):
+  - `replay_air {clipId, speed}`: start (or replace) the replay. Errors: `not_live` (no stream active), `replay_unavailable` (clip not on the Camera), `replay_failed`.
+  - `replay_speed {speed}`: change the speed of the running replay.
+  - `replay_stop`: cut back to live.
+  - `status.replay {clipId, speed, positionMs, durationMs}` while a replay is on air; absent otherwise. `status.reserve {size}` and `ClipDto.reserved` describe the reserve; `clip_reserve {size}` changes N.
+- **Camera.** A `MediaExtractor` + hardware decoder renders the clip into a second OES texture. The GL thread keeps running on camera frames: for each one it draws the latest replay frame (instead of the camera texture) into the program encoder and the viewers' live view, then the scoreboard and a **REPLAY** label. Replay frames are released by a media clock that advances `speed ×` wall time, so speed changes are seamless. The program keeps the camera's timestamps, so RTMP never restarts and timestamps stay continuous. Audio stays the live microphone.
+- At the end of the clip (or on `replay_stop`), the program goes back to the camera; the clip is unpinned.
+- The HQ ring buffer and the full-session recording keep the clean camera picture (direct path, untouched).
+- The field log gains a `replay` column (1 while a replay is on air) to measure the extra decoder's heat.
+
