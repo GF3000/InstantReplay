@@ -1354,4 +1354,36 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get scoreboardCountDown => 'Descendente';
+
+  @override
+  String get replayLabelOnAir => 'REPETICIÓN';
+
+  @override
+  String get replayOnAir => 'REPETICIÓN EN ANTENA';
+
+  @override
+  String get replayBackToLive => 'Volver al directo';
+
+  @override
+  String get replaySpeed => 'Velocidad de la repetición';
+
+  @override
+  String get replayChoiceTitle => '¿Dónde ver la jugada?';
+
+  @override
+  String get replayChoiceTablet => 'Solo en la tablet';
+
+  @override
+  String get replayChoiceAir => 'También en emisión';
+
+  @override
+  String get replayNotLive => 'La emisión no está en marcha';
+
+  @override
+  String get replayUnavailable => 'Este clip ya no está en la cámara';
+
+  @override
+  String replayFailed(String message) {
+    return 'No se pudo emitir la repetición: $message';
+  }
 }

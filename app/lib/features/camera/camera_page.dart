@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:replay_capture_android/replay_capture_android.dart';
 import 'package:replay_protocol/replay_protocol.dart'
-    show BroadcastInfo, RecordingEndReason, ScoreboardState, formatClock, hotThermalStatus;
+    show BroadcastInfo, RecordingEndReason, ReplayInfo, ScoreboardState, formatClock, hotThermalStatus;
 
 import '../../core/orientation_lock.dart';
 import '../../core/panels.dart';
@@ -15,6 +15,7 @@ import '../broadcast/broadcast_controller.dart';
 import '../broadcast/broadcast_host.dart';
 import '../broadcast/broadcast_providers.dart';
 import '../broadcast/broadcast_widgets.dart';
+import '../broadcast/replay_widgets.dart';
 import '../broadcast/scoreboard_controller.dart' show periodLabel;
 import '../recording/recording_widgets.dart';
 import '../role/confirm_switch_role.dart';
@@ -679,15 +680,41 @@ class _BroadcastCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final running = state.phase == CameraPhase.running;
     final controls = ref.watch(panelShownProvider(Panel.cameraScoreboard));
+    final replay = ref.watch(replayInfoProvider).value;
     return Card(
       key: const Key('camera-broadcast-card'),
       margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 8, 8, 12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          if (replay != null) ...[
+            _CameraReplayBar(replay: replay, enabled: running),
+            const SizedBox(height: 8),
+          ],
           if (controls) _CameraScoreboardControls(enabled: running) else const _CameraScoreLine(),
         ]),
       ),
+    );
+  }
+}
+
+/// A clip on air (SPEC §12.6), put there by a viewer: the same speed and Back to live every
+/// viewer has, applied straight to the Camera.
+class _CameraReplayBar extends ConsumerWidget {
+  const _CameraReplayBar({required this.replay, required this.enabled});
+
+  final ReplayInfo replay;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final controller = ref.watch(replayControllerProvider);
+    return ReplayBar(
+      keyPrefix: 'camera-replay',
+      replay: replay,
+      enabled: enabled,
+      onSpeed: (speed) => _CameraBroadcastBar._run(context, () => controller.setSpeed(speed)),
+      onStop: () => _CameraBroadcastBar._run(context, controller.stop),
     );
   }
 }

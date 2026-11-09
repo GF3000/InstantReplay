@@ -91,7 +91,12 @@ class CameraServer implements ApiServer {
       ..add(capture.stats.listen(_onStats))
       ..add(capture.recording.listen(_onRecording))
       ..add(capture.recordingSaved.listen(_onRecordingSaved));
-    if (broadcast case final b?) _subs.add(b.changes.listen((_) => _onBroadcastChanged()));
+    if (broadcast case final b?) {
+      _subs
+        ..add(b.changes.listen((_) => _onBroadcastChanged()))
+        // A replay that failed on air: every viewer hears why the program is back on the camera.
+        ..add(b.replayFailures.listen((reason) => _broadcast(ErrorMessage(code: 'replay_failed', message: reason))));
+    }
     if (controls case final c?) _subs.add(c.changes.listen((_) => _onBroadcastChanged()));
     final sweepEvery = Duration(milliseconds: max(100, silenceTimeout.inMilliseconds ~/ 3));
     _sweep = Timer.periodic(sweepEvery, (_) => _dropSilent());
@@ -418,6 +423,14 @@ compilación que incluya el visor web.</p>
           }
         case BroadcastStop():
           await _broadcastHost().stop();
+        // Replays on air (SPEC §12.6): any viewer puts a clip on air, changes its speed or cuts
+        // back to live; status.replay reaches every viewer at once.
+        case ReplayAir(:final clipId, :final speed):
+          await _broadcastHost().replayAir(clipId, speed);
+        case ReplaySpeed(:final speed):
+          await _broadcastHost().replaySpeed(speed);
+        case ReplayStop():
+          await _broadcastHost().replayStop();
         case Welcome() || RtcOffer() || ClipChanged() || StatusUpdate() || RecordingFinished() || ErrorMessage() || Pong():
           break; // Camera → Viewer messages; nothing to do.
       }
@@ -433,6 +446,7 @@ compilación que incluya el visor web.</p>
         _ when e is BroadcastException => e.code,
         ScoreboardCmd() || BroadcastConfigure() || BroadcastStart() || BroadcastStop() =>
           e is PlatformException && e.code == 'not_broadcast_mode' ? 'not_broadcast_mode' : 'broadcast_failed',
+        ReplayAir() || ReplaySpeed() || ReplayStop() => 'replay_failed',
         _ => 'failed',
       };
 
@@ -532,13 +546,16 @@ compilación que incluya el visor web.</p>
     return host;
   }
 
-  /// [status] with the scoreboard (its clock as of now) and the stream in broadcast mode, without
-  /// them in replay mode.
+  /// [status] with the scoreboard (its clock as of now), the stream and any replay on air (its
+  /// position as of now) in broadcast mode, without them in replay mode.
   CameraStatus _withBroadcastNow(CameraStatus status) {
     final host = broadcast;
-    final withHost = host == null || !host.active
+    final active = host != null && host.active;
+    var withHost = !active
         ? (status.scoreboard == null && status.broadcast == null ? status : withBroadcast(status))
         : withBroadcast(status, scoreboard: host.scoreboard, broadcast: host.info);
+    final replay = active ? host.replay : null;
+    if (replay != withHost.replay) withHost = withHost.withReplay(replay);
     final c = controls;
     return c == null ? withHost : withHost.withControls(zoom: c.zoom, reserve: c.reserve);
   }

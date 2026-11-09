@@ -1349,4 +1349,36 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get scoreboardCountDown => 'Counts down';
+
+  @override
+  String get replayLabelOnAir => 'REPLAY';
+
+  @override
+  String get replayOnAir => 'REPLAY ON AIR';
+
+  @override
+  String get replayBackToLive => 'Back to live';
+
+  @override
+  String get replaySpeed => 'Replay speed';
+
+  @override
+  String get replayChoiceTitle => 'Where to watch the play?';
+
+  @override
+  String get replayChoiceTablet => 'Only on this tablet';
+
+  @override
+  String get replayChoiceAir => 'Also on air';
+
+  @override
+  String get replayNotLive => 'The stream is not on';
+
+  @override
+  String get replayUnavailable => 'This clip is no longer on the camera';
+
+  @override
+  String replayFailed(String message) {
+    return 'Could not put the replay on air: $message';
+  }
 }

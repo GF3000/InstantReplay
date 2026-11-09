@@ -876,5 +876,25 @@
   "scoreboardPeriodMinutes": "Minutes per period",
   "scoreboardClockDirection": "Clock",
   "scoreboardCountUp": "Counts up",
-  "scoreboardCountDown": "Counts down"
+  "scoreboardCountDown": "Counts down",
+  "replayLabelOnAir": "REPLAY",
+  "@replayLabelOnAir": {
+    "description": "Drawn over a replay on the stream (SPEC §12.6); upper case."
+  },
+  "replayOnAir": "REPLAY ON AIR",
+  "replayBackToLive": "Back to live",
+  "replaySpeed": "Replay speed",
+  "replayChoiceTitle": "Where to watch the play?",
+  "replayChoiceTablet": "Only on this tablet",
+  "replayChoiceAir": "Also on air",
+  "replayNotLive": "The stream is not on",
+  "replayUnavailable": "This clip is no longer on the camera",
+  "replayFailed": "Could not put the replay on air: {message}",
+  "@replayFailed": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  }
 }

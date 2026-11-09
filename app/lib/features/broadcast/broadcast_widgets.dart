@@ -35,6 +35,9 @@ String broadcastErrorMessage(AppLocalizations l10n, String code, String? message
       'not_configured' => l10n.broadcastNotConfigured,
       'mic_permission' => l10n.broadcastMicDenied,
       'not_broadcast_mode' => l10n.broadcastNotBroadcastMode,
+      'not_live' => l10n.replayNotLive,
+      'replay_unavailable' => l10n.replayUnavailable,
+      'replay_failed' => l10n.replayFailed(message ?? code),
       _ => l10n.broadcastFailed(message ?? code),
     };
 

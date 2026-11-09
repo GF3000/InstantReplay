@@ -95,6 +95,23 @@ abstract interface class CaptureLayer {
 
   /// Broadcast state changes; the latest numbers also ride on [stats].
   Stream<BroadcastStatus> get broadcast;
+
+  // Replays on air (SPEC §12.6). Only while a broadcast is active.
+
+  /// Puts [clipId] on air at [speed] with [label] drawn over it; completes on the first decoded
+  /// frame. PlatformException codes: `not_live`, `replay_unavailable`, `replay_failed`.
+  Future<ReplayStatus> replayStart(String clipId, {double speed = 1, required String label});
+
+  Future<void> replaySpeed(double speed);
+
+  /// Back to the camera; [replayEnded] follows.
+  Future<void> replayStop();
+
+  /// A replay went on air or changed speed; the position also rides on [stats].
+  Stream<ReplayStatus> get replay;
+
+  /// The program is back on the camera; `error` set for a failure.
+  Stream<({String clipId, String? error})> get replayEnded;
 }
 
 /// The real plugin. Only constructed on Android: the /camera route is unreachable elsewhere.
@@ -215,6 +232,22 @@ class PluginCaptureLayer implements CaptureLayer {
 
   @override
   Stream<BroadcastStatus> get broadcast => _capture.broadcast;
+
+  @override
+  Future<ReplayStatus> replayStart(String clipId, {double speed = 1, required String label}) =>
+      _capture.replayStart(clipId, speed: speed, label: label);
+
+  @override
+  Future<void> replaySpeed(double speed) => _capture.replaySpeed(speed);
+
+  @override
+  Future<void> replayStop() => _capture.replayStop();
+
+  @override
+  Stream<ReplayStatus> get replay => _capture.replay;
+
+  @override
+  Stream<({String clipId, String? error})> get replayEnded => _capture.replayEnded;
 }
 
 final captureLayerProvider = Provider<CaptureLayer>((ref) => PluginCaptureLayer());
