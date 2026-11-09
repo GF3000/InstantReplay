@@ -52,6 +52,24 @@ CameraStatus withSessionRecording(CameraStatus status, SessionRecording? recordi
       batteryPercent: status.batteryPercent,
       plugged: status.plugged,
       sessionRecording: recording,
+      scoreboard: status.scoreboard,
+      broadcast: status.broadcast,
+    );
+
+/// [status] with broadcast mode's scoreboard and stream (both null in replay mode).
+CameraStatus withBroadcast(CameraStatus status, {ScoreboardState? scoreboard, BroadcastInfo? broadcast}) =>
+    CameraStatus(
+      recording: status.recording,
+      fps: status.fps,
+      bufferMs: status.bufferMs,
+      outboxClips: status.outboxClips,
+      thermalStatus: status.thermalStatus,
+      batteryTempC: status.batteryTempC,
+      batteryPercent: status.batteryPercent,
+      plugged: status.plugged,
+      sessionRecording: status.sessionRecording,
+      scoreboard: scoreboard,
+      broadcast: broadcast,
     );
 
 /// A saved recording → the message every viewer gets.

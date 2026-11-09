@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:replay_protocol/replay_protocol.dart';
 
 import '../../core/preferences.dart';
+import '../broadcast/broadcast_providers.dart';
 import '../camera/camera_session.dart';
 import '../camera/capture_layer.dart';
 import '../discovery/discovered_camera.dart';
@@ -74,6 +75,8 @@ class CameraServerNotifier extends Notifier<CameraServerState> {
   @override
   CameraServerState build() {
     final secrets = PairingSecrets.generate();
+    // The scoreboard and the stream live as long as the server (and the Camera screen).
+    ref.listen(broadcastHostProvider, (_, _) {});
     ref.listen(cameraSessionProvider, (previous, session) {
       _profileId = session.phase == CameraPhase.running ? session.profileId : null;
       if (session.phase != CameraPhase.running) return;
@@ -106,6 +109,7 @@ class CameraServerNotifier extends Notifier<CameraServerState> {
       server = await platform.createServer(ApiServerConfig(
         capture: ref.read(captureLayerProvider),
         secrets: secrets,
+        broadcast: ref.read(broadcastHostProvider),
         cameraInfo: () => CameraInfo(
           protocolVersion: protocolVersion,
           cameraId: cameraId,

@@ -1759,6 +1759,366 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Close'**
   String get viewerTagPanelClose;
+
+  /// No description provided for @cameraMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Mode'**
+  String get cameraMode;
+
+  /// No description provided for @cameraModeReplay.
+  ///
+  /// In en, this message translates to:
+  /// **'Replay'**
+  String get cameraModeReplay;
+
+  /// No description provided for @cameraModeBroadcast.
+  ///
+  /// In en, this message translates to:
+  /// **'Broadcast (beta)'**
+  String get cameraModeBroadcast;
+
+  /// No description provided for @cameraModeBroadcastHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Experimental: streams to YouTube Live with a scoreboard that viewers control. Clips keep working.'**
+  String get cameraModeBroadcastHint;
+
+  /// No description provided for @cameraModeLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop the stream to change the mode or the profile.'**
+  String get cameraModeLocked;
+
+  /// No description provided for @broadcastTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube stream'**
+  String get broadcastTitle;
+
+  /// No description provided for @broadcastStateIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Off air'**
+  String get broadcastStateIdle;
+
+  /// No description provided for @broadcastStateConnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting…'**
+  String get broadcastStateConnecting;
+
+  /// No description provided for @broadcastStateLive.
+  ///
+  /// In en, this message translates to:
+  /// **'Live'**
+  String get broadcastStateLive;
+
+  /// No description provided for @broadcastStateReconnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnecting…'**
+  String get broadcastStateReconnecting;
+
+  /// No description provided for @broadcastStateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get broadcastStateFailed;
+
+  /// No description provided for @broadcastNotConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the stream key first'**
+  String get broadcastNotConfigured;
+
+  /// No description provided for @broadcastReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready · {kbps} kbps'**
+  String broadcastReady(int kbps);
+
+  /// No description provided for @broadcastBitrate.
+  ///
+  /// In en, this message translates to:
+  /// **'{mbps} Mbps'**
+  String broadcastBitrate(String mbps);
+
+  /// No description provided for @broadcastStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Go live'**
+  String get broadcastStart;
+
+  /// No description provided for @broadcastStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get broadcastStop;
+
+  /// No description provided for @broadcastStopTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop the stream?'**
+  String get broadcastStopTitle;
+
+  /// No description provided for @broadcastStopBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The YouTube stream ends for everyone watching it.'**
+  String get broadcastStopBody;
+
+  /// No description provided for @broadcastStopKeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep streaming'**
+  String get broadcastStopKeep;
+
+  /// No description provided for @broadcastSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Stream settings'**
+  String get broadcastSettings;
+
+  /// No description provided for @broadcastServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Server'**
+  String get broadcastServer;
+
+  /// No description provided for @broadcastKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Stream key'**
+  String get broadcastKey;
+
+  /// No description provided for @broadcastKeyKeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave empty to keep •••• {hint}'**
+  String broadcastKeyKeep(String hint);
+
+  /// No description provided for @broadcastKeyHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'In YouTube Studio: Create → Go live → Stream key.'**
+  String get broadcastKeyHelp;
+
+  /// No description provided for @broadcastKeyShow.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the key'**
+  String get broadcastKeyShow;
+
+  /// No description provided for @broadcastKeyHide.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide the key'**
+  String get broadcastKeyHide;
+
+  /// No description provided for @broadcastPaste.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste'**
+  String get broadcastPaste;
+
+  /// No description provided for @broadcastBitrateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Video bitrate: {kbps} kbps'**
+  String broadcastBitrateLabel(int kbps);
+
+  /// No description provided for @broadcastAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound from the microphone'**
+  String get broadcastAudio;
+
+  /// No description provided for @broadcastCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get broadcastCancel;
+
+  /// No description provided for @broadcastSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get broadcastSave;
+
+  /// No description provided for @broadcastFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not stream: {message}'**
+  String broadcastFailed(String message);
+
+  /// No description provided for @broadcastMicDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone not allowed: streaming without sound'**
+  String get broadcastMicDenied;
+
+  /// No description provided for @broadcastNotBroadcastMode.
+  ///
+  /// In en, this message translates to:
+  /// **'The camera is not in broadcast mode'**
+  String get broadcastNotBroadcastMode;
+
+  /// No description provided for @scoreboardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scoreboard'**
+  String get scoreboardTitle;
+
+  /// No description provided for @scoreboardHalf.
+  ///
+  /// In en, this message translates to:
+  /// **'{period}H'**
+  String scoreboardHalf(int period);
+
+  /// No description provided for @scoreboardPlus.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a point to {team}'**
+  String scoreboardPlus(String team);
+
+  /// No description provided for @scoreboardMinus.
+  ///
+  /// In en, this message translates to:
+  /// **'Take a point from {team}'**
+  String scoreboardMinus(String team);
+
+  /// No description provided for @scoreboardStartClock.
+  ///
+  /// In en, this message translates to:
+  /// **'Start the clock'**
+  String get scoreboardStartClock;
+
+  /// No description provided for @scoreboardPauseClock.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop the clock'**
+  String get scoreboardPauseClock;
+
+  /// No description provided for @scoreboardSetClock.
+  ///
+  /// In en, this message translates to:
+  /// **'Set the clock'**
+  String get scoreboardSetClock;
+
+  /// No description provided for @scoreboardSetClockHint.
+  ///
+  /// In en, this message translates to:
+  /// **'mm:ss'**
+  String get scoreboardSetClockHint;
+
+  /// No description provided for @scoreboardInvalidTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Use minutes:seconds, e.g. 12:30'**
+  String get scoreboardInvalidTime;
+
+  /// No description provided for @scoreboardSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Set'**
+  String get scoreboardSet;
+
+  /// No description provided for @scoreboardPeriodPrev.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous period'**
+  String get scoreboardPeriodPrev;
+
+  /// No description provided for @scoreboardPeriodNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next period'**
+  String get scoreboardPeriodNext;
+
+  /// No description provided for @scoreboardVisible.
+  ///
+  /// In en, this message translates to:
+  /// **'On screen'**
+  String get scoreboardVisible;
+
+  /// No description provided for @scoreboardReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get scoreboardReset;
+
+  /// No description provided for @scoreboardResetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset the scoreboard?'**
+  String get scoreboardResetTitle;
+
+  /// No description provided for @scoreboardResetBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Scores back to 0, first period and the clock reset. Team names and settings stay.'**
+  String get scoreboardResetBody;
+
+  /// No description provided for @scoreboardSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Scoreboard settings'**
+  String get scoreboardSettings;
+
+  /// No description provided for @scoreboardHome.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get scoreboardHome;
+
+  /// No description provided for @scoreboardAway.
+  ///
+  /// In en, this message translates to:
+  /// **'Away'**
+  String get scoreboardAway;
+
+  /// No description provided for @scoreboardTeamName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name (up to 5 letters)'**
+  String get scoreboardTeamName;
+
+  /// No description provided for @scoreboardTeamColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Color of {team}'**
+  String scoreboardTeamColor(String team);
+
+  /// No description provided for @scoreboardPeriods.
+  ///
+  /// In en, this message translates to:
+  /// **'Periods'**
+  String get scoreboardPeriods;
+
+  /// No description provided for @scoreboardPeriodMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Minutes per period'**
+  String get scoreboardPeriodMinutes;
+
+  /// No description provided for @scoreboardClockDirection.
+  ///
+  /// In en, this message translates to:
+  /// **'Clock'**
+  String get scoreboardClockDirection;
+
+  /// No description provided for @scoreboardCountUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Counts up'**
+  String get scoreboardCountUp;
+
+  /// No description provided for @scoreboardCountDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Counts down'**
+  String get scoreboardCountDown;
 }
 
 class _AppLocalizationsDelegate

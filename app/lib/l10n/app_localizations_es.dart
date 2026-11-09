@@ -1026,4 +1026,208 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get viewerTagPanelClose => 'Cerrar';
+
+  @override
+  String get cameraMode => 'Modo';
+
+  @override
+  String get cameraModeReplay => 'Repetición';
+
+  @override
+  String get cameraModeBroadcast => 'Emisión (beta)';
+
+  @override
+  String get cameraModeBroadcastHint =>
+      'Experimental: emite en directo a YouTube con un marcador que se controla desde los visores. Los clips siguen funcionando.';
+
+  @override
+  String get cameraModeLocked =>
+      'Detén la emisión para cambiar el modo o el perfil.';
+
+  @override
+  String get broadcastTitle => 'Emisión en YouTube';
+
+  @override
+  String get broadcastStateIdle => 'Sin emitir';
+
+  @override
+  String get broadcastStateConnecting => 'Conectando…';
+
+  @override
+  String get broadcastStateLive => 'En directo';
+
+  @override
+  String get broadcastStateReconnecting => 'Reconectando…';
+
+  @override
+  String get broadcastStateFailed => 'Error';
+
+  @override
+  String get broadcastNotConfigured => 'Introduce primero la clave de emisión';
+
+  @override
+  String broadcastReady(int kbps) {
+    return 'Lista · $kbps kbps';
+  }
+
+  @override
+  String broadcastBitrate(String mbps) {
+    return '$mbps Mbps';
+  }
+
+  @override
+  String get broadcastStart => 'Emitir';
+
+  @override
+  String get broadcastStop => 'Detener';
+
+  @override
+  String get broadcastStopTitle => '¿Detener la emisión?';
+
+  @override
+  String get broadcastStopBody =>
+      'La emisión en YouTube termina para todos los que la estén viendo.';
+
+  @override
+  String get broadcastStopKeep => 'Seguir emitiendo';
+
+  @override
+  String get broadcastSettings => 'Ajustes de emisión';
+
+  @override
+  String get broadcastServer => 'Servidor';
+
+  @override
+  String get broadcastKey => 'Clave de emisión';
+
+  @override
+  String broadcastKeyKeep(String hint) {
+    return 'Déjala vacía para mantener •••• $hint';
+  }
+
+  @override
+  String get broadcastKeyHelp =>
+      'En YouTube Studio: Crear → Emitir en directo → Clave de emisión.';
+
+  @override
+  String get broadcastKeyShow => 'Mostrar la clave';
+
+  @override
+  String get broadcastKeyHide => 'Ocultar la clave';
+
+  @override
+  String get broadcastPaste => 'Pegar';
+
+  @override
+  String broadcastBitrateLabel(int kbps) {
+    return 'Bitrate de vídeo: $kbps kbps';
+  }
+
+  @override
+  String get broadcastAudio => 'Sonido del micrófono';
+
+  @override
+  String get broadcastCancel => 'Cancelar';
+
+  @override
+  String get broadcastSave => 'Guardar';
+
+  @override
+  String broadcastFailed(String message) {
+    return 'No se pudo emitir: $message';
+  }
+
+  @override
+  String get broadcastMicDenied =>
+      'Micrófono no permitido: se emite sin sonido';
+
+  @override
+  String get broadcastNotBroadcastMode => 'La cámara no está en modo emisión';
+
+  @override
+  String get scoreboardTitle => 'Marcador';
+
+  @override
+  String scoreboardHalf(int period) {
+    return '${period}T';
+  }
+
+  @override
+  String scoreboardPlus(String team) {
+    return 'Sumar un punto a $team';
+  }
+
+  @override
+  String scoreboardMinus(String team) {
+    return 'Quitar un punto a $team';
+  }
+
+  @override
+  String get scoreboardStartClock => 'Poner el reloj en marcha';
+
+  @override
+  String get scoreboardPauseClock => 'Parar el reloj';
+
+  @override
+  String get scoreboardSetClock => 'Ajustar el reloj';
+
+  @override
+  String get scoreboardSetClockHint => 'mm:ss';
+
+  @override
+  String get scoreboardInvalidTime => 'Usa minutos:segundos, p. ej. 12:30';
+
+  @override
+  String get scoreboardSet => 'Ajustar';
+
+  @override
+  String get scoreboardPeriodPrev => 'Periodo anterior';
+
+  @override
+  String get scoreboardPeriodNext => 'Periodo siguiente';
+
+  @override
+  String get scoreboardVisible => 'En pantalla';
+
+  @override
+  String get scoreboardReset => 'Reiniciar';
+
+  @override
+  String get scoreboardResetTitle => '¿Reiniciar el marcador?';
+
+  @override
+  String get scoreboardResetBody =>
+      'Marcador a 0, primer periodo y reloj a cero. Los nombres y los ajustes se mantienen.';
+
+  @override
+  String get scoreboardSettings => 'Ajustes del marcador';
+
+  @override
+  String get scoreboardHome => 'Local';
+
+  @override
+  String get scoreboardAway => 'Visitante';
+
+  @override
+  String get scoreboardTeamName => 'Nombre (hasta 5 letras)';
+
+  @override
+  String scoreboardTeamColor(String team) {
+    return 'Color de $team';
+  }
+
+  @override
+  String get scoreboardPeriods => 'Periodos';
+
+  @override
+  String get scoreboardPeriodMinutes => 'Minutos por periodo';
+
+  @override
+  String get scoreboardClockDirection => 'Reloj';
+
+  @override
+  String get scoreboardCountUp => 'Ascendente';
+
+  @override
+  String get scoreboardCountDown => 'Descendente';
 }

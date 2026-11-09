@@ -692,5 +692,128 @@
   },
   "viewerClipUndo": "Undo",
   "viewerTagPanelTitle": "Tag this play",
-  "viewerTagPanelClose": "Close"
+  "viewerTagPanelClose": "Close",
+  "cameraMode": "Mode",
+  "cameraModeReplay": "Replay",
+  "cameraModeBroadcast": "Broadcast (beta)",
+  "cameraModeBroadcastHint": "Experimental: streams to YouTube Live with a scoreboard that viewers control. Clips keep working.",
+  "cameraModeLocked": "Stop the stream to change the mode or the profile.",
+  "broadcastTitle": "YouTube stream",
+  "broadcastStateIdle": "Off air",
+  "broadcastStateConnecting": "Connecting…",
+  "broadcastStateLive": "Live",
+  "broadcastStateReconnecting": "Reconnecting…",
+  "broadcastStateFailed": "Failed",
+  "broadcastNotConfigured": "Enter the stream key first",
+  "broadcastReady": "Ready · {kbps} kbps",
+  "@broadcastReady": {
+    "placeholders": {
+      "kbps": {
+        "type": "int"
+      }
+    }
+  },
+  "broadcastBitrate": "{mbps} Mbps",
+  "@broadcastBitrate": {
+    "placeholders": {
+      "mbps": {
+        "type": "String"
+      }
+    }
+  },
+  "broadcastStart": "Go live",
+  "broadcastStop": "Stop",
+  "broadcastStopTitle": "Stop the stream?",
+  "broadcastStopBody": "The YouTube stream ends for everyone watching it.",
+  "broadcastStopKeep": "Keep streaming",
+  "broadcastSettings": "Stream settings",
+  "broadcastServer": "Server",
+  "broadcastKey": "Stream key",
+  "broadcastKeyKeep": "Leave empty to keep •••• {hint}",
+  "@broadcastKeyKeep": {
+    "placeholders": {
+      "hint": {
+        "type": "String"
+      }
+    }
+  },
+  "broadcastKeyHelp": "In YouTube Studio: Create → Go live → Stream key.",
+  "broadcastKeyShow": "Show the key",
+  "broadcastKeyHide": "Hide the key",
+  "broadcastPaste": "Paste",
+  "broadcastBitrateLabel": "Video bitrate: {kbps} kbps",
+  "@broadcastBitrateLabel": {
+    "placeholders": {
+      "kbps": {
+        "type": "int"
+      }
+    }
+  },
+  "broadcastAudio": "Sound from the microphone",
+  "broadcastCancel": "Cancel",
+  "broadcastSave": "Save",
+  "broadcastFailed": "Could not stream: {message}",
+  "@broadcastFailed": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "broadcastMicDenied": "Microphone not allowed: streaming without sound",
+  "broadcastNotBroadcastMode": "The camera is not in broadcast mode",
+  "scoreboardTitle": "Scoreboard",
+  "scoreboardHalf": "{period}H",
+  "@scoreboardHalf": {
+    "placeholders": {
+      "period": {
+        "type": "int"
+      }
+    }
+  },
+  "scoreboardPlus": "Add a point to {team}",
+  "@scoreboardPlus": {
+    "placeholders": {
+      "team": {
+        "type": "String"
+      }
+    }
+  },
+  "scoreboardMinus": "Take a point from {team}",
+  "@scoreboardMinus": {
+    "placeholders": {
+      "team": {
+        "type": "String"
+      }
+    }
+  },
+  "scoreboardStartClock": "Start the clock",
+  "scoreboardPauseClock": "Stop the clock",
+  "scoreboardSetClock": "Set the clock",
+  "scoreboardSetClockHint": "mm:ss",
+  "scoreboardInvalidTime": "Use minutes:seconds, e.g. 12:30",
+  "scoreboardSet": "Set",
+  "scoreboardPeriodPrev": "Previous period",
+  "scoreboardPeriodNext": "Next period",
+  "scoreboardVisible": "On screen",
+  "scoreboardReset": "Reset",
+  "scoreboardResetTitle": "Reset the scoreboard?",
+  "scoreboardResetBody": "Scores back to 0, first period and the clock reset. Team names and settings stay.",
+  "scoreboardSettings": "Scoreboard settings",
+  "scoreboardHome": "Home",
+  "scoreboardAway": "Away",
+  "scoreboardTeamName": "Name (up to 5 letters)",
+  "scoreboardTeamColor": "Color of {team}",
+  "@scoreboardTeamColor": {
+    "placeholders": {
+      "team": {
+        "type": "String"
+      }
+    }
+  },
+  "scoreboardPeriods": "Periods",
+  "scoreboardPeriodMinutes": "Minutes per period",
+  "scoreboardClockDirection": "Clock",
+  "scoreboardCountUp": "Counts up",
+  "scoreboardCountDown": "Counts down"
 }

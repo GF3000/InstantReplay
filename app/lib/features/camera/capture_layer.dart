@@ -19,7 +19,8 @@ abstract interface class CaptureLayer {
 
   Future<List<CaptureProfile>> supportedProfiles();
 
-  Future<StartResult> start(String profileId);
+  /// [broadcast] starts in broadcast mode (SPEC §12): the program encoder can then be started.
+  Future<StartResult> start(String profileId, {bool broadcast = false});
 
   Future<void> stop();
 
@@ -70,6 +71,24 @@ abstract interface class CaptureLayer {
   Future<RecordingSaved?> recordStop();
 
   Future<List<RecordingSaved>> recoverRecordings();
+
+  // Broadcast mode (SPEC §12). Only while capture runs with `broadcast: true`.
+
+  /// RECORD_AUDIO; true when granted.
+  Future<bool> requestMicPermission();
+
+  /// What the scoreboard overlay shows. Cheap; call on every change.
+  Future<void> setOverlay(OverlayState overlay);
+
+  /// Returns once connecting has started; progress arrives on [broadcast].
+  Future<BroadcastStatus> broadcastStart(BroadcastConfig config);
+
+  Future<void> broadcastStop();
+
+  Future<BroadcastStatus> broadcastStatus();
+
+  /// Broadcast state changes; the latest numbers also ride on [stats].
+  Stream<BroadcastStatus> get broadcast;
 }
 
 /// The real plugin. Only constructed on Android: the /camera route is unreachable elsewhere.
@@ -105,7 +124,8 @@ class PluginCaptureLayer implements CaptureLayer {
   Future<List<CaptureProfile>> supportedProfiles() => _capture.supportedProfiles();
 
   @override
-  Future<StartResult> start(String profileId) => _capture.start(profileId);
+  Future<StartResult> start(String profileId, {bool broadcast = false}) =>
+      _capture.start(profileId, broadcast: broadcast);
 
   @override
   Future<void> stop() => _capture.stop();
@@ -165,6 +185,24 @@ class PluginCaptureLayer implements CaptureLayer {
 
   @override
   Future<List<RecordingSaved>> recoverRecordings() => _capture.recoverRecordings();
+
+  @override
+  Future<bool> requestMicPermission() => _capture.requestMicPermission();
+
+  @override
+  Future<void> setOverlay(OverlayState overlay) => _capture.setOverlay(overlay);
+
+  @override
+  Future<BroadcastStatus> broadcastStart(BroadcastConfig config) => _capture.broadcastStart(config);
+
+  @override
+  Future<void> broadcastStop() => _capture.broadcastStop();
+
+  @override
+  Future<BroadcastStatus> broadcastStatus() => _capture.broadcastStatus();
+
+  @override
+  Stream<BroadcastStatus> get broadcast => _capture.broadcast;
 }
 
 final captureLayerProvider = Provider<CaptureLayer>((ref) => PluginCaptureLayer());

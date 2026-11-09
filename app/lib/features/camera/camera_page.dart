@@ -5,15 +5,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:replay_capture_android/replay_capture_android.dart';
-import 'package:replay_protocol/replay_protocol.dart' show RecordingEndReason, hotThermalStatus;
+import 'package:replay_protocol/replay_protocol.dart' show RecordingEndReason, ScoreboardState, formatClock, hotThermalStatus;
 
 import '../../core/orientation_lock.dart';
 import '../../l10n/app_localizations.dart';
+import '../broadcast/broadcast_host.dart';
+import '../broadcast/broadcast_providers.dart';
+import '../broadcast/broadcast_widgets.dart';
+import '../broadcast/scoreboard_controller.dart' show periodLabel;
 import '../recording/recording_widgets.dart';
 import '../role/role.dart';
 import '../server/protocol_mapping.dart' show sessionRecording;
 import '../server/server_controller.dart';
 import 'camera_session.dart';
+import 'capture_layer.dart';
 import 'pairing_card.dart';
 
 /// Camera role (SPEC §3.5, D17; UX §2): a setup screen to frame the shot and pair a viewer, and a
@@ -222,6 +227,11 @@ class _Panel extends ConsumerWidget {
             _RecoveredCard(recovered: state.recovered, onDismiss: notifier.dismissRecovered),
             const SizedBox(height: 8),
           ],
+          // Broadcast mode: the stream and the score, below the warnings, which need action.
+          if (state.broadcast) ...[
+            _BroadcastCard(state: state),
+            const SizedBox(height: 8),
+          ],
           _Advanced(state: state),
         ],
       ),
@@ -345,6 +355,8 @@ class _Advanced extends ConsumerWidget {
       collapsedShape: const Border(),
       expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        _ModeChoice(state: state),
+        const SizedBox(height: 12),
         if (state.profiles.isNotEmpty) ...[
           InputDecorator(
             decoration: InputDecoration(
@@ -361,7 +373,9 @@ class _Advanced extends ConsumerWidget {
                 items: [
                   for (final p in state.profiles) DropdownMenuItem(value: p.id, child: Text(_profileLabel(context, p))),
                 ],
-                onChanged: state.phase == CameraPhase.starting || state.phase == CameraPhase.initializing
+                onChanged: state.phase == CameraPhase.starting ||
+                        state.phase == CameraPhase.initializing ||
+                        _streaming(ref)
                     ? null
                     : (id) => id == null ? null : notifier.selectProfile(id),
               ),
@@ -517,6 +531,187 @@ class _StatRow extends StatelessWidget {
 
 // endregion
 
+// region Broadcast mode (SPEC §12)
+
+/// A stream is starting, on air or reconnecting: changing the mode or the profile would cut it.
+bool _streaming(WidgetRef ref) =>
+    ref.watch(cameraSessionProvider.select((s) => s.broadcast)) &&
+    (ref.watch(broadcastInfoProvider).value?.active ?? false);
+
+/// Replay (default) or Broadcast (experimental), under Advanced: most sessions never change it.
+class _ModeChoice extends ConsumerWidget {
+  const _ModeChoice({required this.state});
+
+  final CameraSessionState state;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final streaming = _streaming(ref);
+    final busy = state.phase == CameraPhase.starting || state.phase == CameraPhase.initializing;
+    return InputDecorator(
+      decoration: InputDecoration(
+        labelText: l10n.cameraMode,
+        border: const OutlineInputBorder(),
+        contentPadding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        SegmentedButton<bool>(
+          key: const Key('camera-mode-choice'),
+          showSelectedIcon: false,
+          style: SegmentedButton.styleFrom(minimumSize: const Size(0, 48)),
+          segments: [
+            ButtonSegment(value: false, icon: const Icon(Icons.replay), label: Text(l10n.cameraModeReplay)),
+            ButtonSegment(value: true, icon: const Icon(Icons.sensors), label: Text(l10n.cameraModeBroadcast)),
+          ],
+          selected: {state.broadcast},
+          onSelectionChanged: busy || streaming ? null : (s) => _setMode(ref, s.single),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          streaming ? l10n.cameraModeLocked : l10n.cameraModeBroadcastHint,
+          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+      ]),
+    );
+  }
+
+  static Future<void> _setMode(WidgetRef ref, bool broadcast) async {
+    final capture = ref.read(captureLayerProvider);
+    final audio = ref.read(broadcastControllerProvider).audio;
+    await ref.read(cameraSessionProvider.notifier).setBroadcastMode(broadcast);
+    // Ask for the microphone now, while someone is at the Camera, rather than when a viewer
+    // presses Go live with the phone on its tripod.
+    if (broadcast && audio) {
+      try {
+        await capture.requestMicPermission();
+      } catch (_) {
+        // Asked again on Go live.
+      }
+    }
+  }
+}
+
+/// Broadcast mode on the setup screen: the stream with its controls, and the score on air.
+class _BroadcastCard extends StatelessWidget {
+  const _BroadcastCard({required this.state});
+
+  final CameraSessionState state;
+
+  @override
+  Widget build(BuildContext context) => Card(
+        key: const Key('camera-broadcast-card'),
+        margin: EdgeInsets.zero,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 8, 12),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            _CameraBroadcastBar(enabled: state.phase == CameraPhase.running),
+            const Divider(height: 20),
+            const _CameraScoreLine(),
+          ]),
+        ),
+      );
+}
+
+/// The Camera's own Go live / Stop and stream settings, the same controls every viewer has.
+class _CameraBroadcastBar extends ConsumerWidget {
+  const _CameraBroadcastBar({required this.enabled, this.dim = false});
+
+  final bool enabled;
+  final bool dim;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final controller = ref.watch(broadcastControllerProvider);
+    final info = ref.watch(broadcastInfoProvider).value ?? controller.info;
+    return BroadcastBar(
+      key: const Key('camera-broadcast'),
+      info: info,
+      enabled: enabled,
+      keyPrefix: 'camera-broadcast',
+      buttonSize: 56,
+      dim: dim,
+      onStart: () => _run(context, () async {
+        if (!await controller.start() && context.mounted) {
+          _snack(context, AppLocalizations.of(context).broadcastMicDenied);
+        }
+      }),
+      onStop: () => _run(context, controller.stop),
+      onConfigure: () async {
+        final result = await showBroadcastConfigDialog(context, info);
+        if (result == null) return;
+        await controller.configure(
+            server: result.server, key: result.key, targetKbps: result.targetKbps, audio: result.audio);
+      },
+    );
+  }
+
+  static Future<void> _run(BuildContext context, Future<void> Function() action) async {
+    final l10n = AppLocalizations.of(context);
+    try {
+      await action();
+    } on BroadcastException catch (e) {
+      if (context.mounted) _snack(context, broadcastErrorMessage(l10n, e.code, e.message));
+    } on PlatformException catch (e) {
+      if (context.mounted) _snack(context, l10n.broadcastFailed(e.message ?? e.code));
+    } catch (e) {
+      if (context.mounted) _snack(context, l10n.broadcastFailed('$e'));
+    }
+  }
+
+  static void _snack(BuildContext context, String text) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+}
+
+/// `LOC 2 – 1 VIS 12:34 1T`: the score as it goes on air; large on the operating screen.
+class _CameraScoreLine extends ConsumerWidget {
+  const _CameraScoreLine({this.dim = false});
+
+  final bool dim;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final ScoreboardState s =
+        ref.watch(scoreboardStateProvider).value ?? ref.watch(scoreboardControllerProvider).current;
+    const dimColor = Color(0xFF5A5A5A);
+    final size = dim ? 40.0 : 22.0;
+    final style = TextStyle(
+      fontSize: size,
+      fontWeight: FontWeight.w800,
+      color: dim ? dimColor : null,
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
+    Widget name(String text, int color) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          decoration: BoxDecoration(
+            color: dim ? null : Color(color),
+            border: dim ? Border.all(color: dimColor) : null,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(text, style: style.copyWith(fontSize: size * 0.7, color: dim ? dimColor : onColor(Color(color)))),
+        );
+    final label = periodLabel(l10n, period: s.period, periods: s.periods);
+    return Wrap(
+      key: const Key('camera-score'),
+      spacing: 10,
+      runSpacing: 4,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        name(s.home.name, s.home.color),
+        Text('${s.home.score} – ${s.away.score}', style: style),
+        name(s.away.name, s.away.color),
+        ScoreboardClock(state: s, builder: (_, ms) => Text(formatClock(ms), style: style)),
+        if (label.isNotEmpty) Text(label, style: style.copyWith(fontSize: size * 0.7)),
+        if (!s.visible) Icon(Icons.visibility_off, size: size * 0.7, color: dim ? dimColor : null),
+      ],
+    );
+  }
+}
+
+// endregion
+
 // region Operating mode
 
 /// Pure black with one dim status line, so an AMOLED screen draws almost nothing. Tap to wake.
@@ -566,6 +761,15 @@ class _OperatingViewState extends ConsumerState<_OperatingView> {
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                if (state.broadcast) ...[
+                  const _CameraScoreLine(dim: true),
+                  const SizedBox(height: 8),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 420),
+                    child: _CameraBroadcastBar(enabled: running, dim: true),
+                  ),
+                  const SizedBox(height: 8),
+                ],
                 // The recording stays at hand without waking the screen; the buttons take their
                 // own taps, everything around them wakes to setup.
                 ConstrainedBox(

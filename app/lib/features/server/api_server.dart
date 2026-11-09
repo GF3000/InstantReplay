@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:replay_protocol/replay_protocol.dart';
 
+import '../broadcast/broadcast_host.dart';
 import '../camera/capture_layer.dart';
 import '../discovery/nsd.dart';
 import 'pairing.dart';
@@ -23,11 +24,14 @@ abstract interface class ApiServer {
 }
 
 class ApiServerConfig {
-  const ApiServerConfig({required this.capture, required this.secrets, required this.cameraInfo});
+  const ApiServerConfig({required this.capture, required this.secrets, required this.cameraInfo, this.broadcast});
 
   final CaptureLayer capture;
   final PairingSecrets secrets;
   final CameraInfo Function() cameraInfo;
+
+  /// Broadcast mode (SPEC §12): the scoreboard and the stream; null leaves it out.
+  final BroadcastHost? broadcast;
 }
 
 /// Platform pieces of the server, injectable for tests. Web gets a stub that never runs (the
