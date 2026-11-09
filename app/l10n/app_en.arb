@@ -855,6 +855,8 @@
       "count": {"type": "int"}
     }
   },
+  "broadcastReplayScoreboard": "Scoreboard during replays",
+  "broadcastReplayScoreboardHint": "Off: a replay on air shows only its REPLAY badge.",
   "scoreboardSet": "Set",
   "scoreboardVisible": "On screen",
   "scoreboardReset": "Reset",

@@ -23,6 +23,7 @@ class BroadcastController {
   static const streamKeyKey = 'broadcast.key';
   static const kbpsKey = 'broadcast.kbps';
   static const audioKey = 'broadcast.audio';
+  static const replayScoreboardKey = 'broadcast.replayScoreboard';
 
   final SharedPreferences _prefs;
   final CaptureLayer capture;
@@ -42,6 +43,9 @@ class BroadcastController {
 
   bool get audio => _prefs.getBool(audioKey) ?? true;
 
+  /// Scoreboard over replays on air (SPEC §12.6); off by default.
+  bool get replayScoreboard => _prefs.getBool(replayScoreboardKey) ?? false;
+
   bool get configured => _key != null;
 
   /// What viewers see: the configuration (with only a hint of the key) and the latest native state.
@@ -54,6 +58,7 @@ class BroadcastController {
       keyHint: keyHint(_key),
       targetKbps: targetKbps,
       audio: audio,
+      replayScoreboard: replayScoreboard,
       bitrateKbps: n?.bitrateKbps,
       uptimeMs: n?.uptimeMs,
       message: n?.message,
@@ -66,7 +71,14 @@ class BroadcastController {
   /// Configuration and stream state changes only.
   Stream<void> get stateChanges => _stateChanges.stream;
 
-  Future<void> configure({required String server, String? key, required int targetKbps, required bool audio}) async {
+  Future<void> configure({
+    required String server,
+    String? key,
+    required int targetKbps,
+    required bool audio,
+    bool? replayScoreboard,
+  }) async {
+    if (replayScoreboard != null) await _prefs.setBool(replayScoreboardKey, replayScoreboard);
     final s = server.trim();
     await _prefs.setString(serverKey, s.isEmpty ? BroadcastInfo.defaultServer : s);
     final k = key?.trim();

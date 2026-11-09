@@ -812,7 +812,13 @@ class _CameraBroadcastBar extends ConsumerWidget {
   static Future<void> _configure(BuildContext context, BroadcastController controller, BroadcastInfo info) async {
     final result = await showBroadcastConfigDialog(context, info);
     if (result == null) return;
-    await controller.configure(server: result.server, key: result.key, targetKbps: result.targetKbps, audio: result.audio);
+    await controller.configure(
+      server: result.server,
+      key: result.key,
+      targetKbps: result.targetKbps,
+      audio: result.audio,
+      replayScoreboard: result.replayScoreboard,
+    );
   }
 
   static Future<void> _run(BuildContext context, Future<void> Function() action) async {

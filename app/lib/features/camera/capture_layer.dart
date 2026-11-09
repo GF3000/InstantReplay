@@ -100,7 +100,8 @@ abstract interface class CaptureLayer {
 
   /// Puts [clipId] on air at [speed] with [label] drawn over it; completes on the first decoded
   /// frame. PlatformException codes: `not_live`, `replay_unavailable`, `replay_failed`.
-  Future<ReplayStatus> replayStart(String clipId, {double speed = 1, required String label});
+  /// [scoreboard]: keep the scoreboard over the replay (off: only the [label] badge).
+  Future<ReplayStatus> replayStart(String clipId, {double speed = 1, required String label, bool scoreboard = false});
 
   Future<void> replaySpeed(double speed);
 
@@ -234,8 +235,8 @@ class PluginCaptureLayer implements CaptureLayer {
   Stream<BroadcastStatus> get broadcast => _capture.broadcast;
 
   @override
-  Future<ReplayStatus> replayStart(String clipId, {double speed = 1, required String label}) =>
-      _capture.replayStart(clipId, speed: speed, label: label);
+  Future<ReplayStatus> replayStart(String clipId, {double speed = 1, required String label, bool scoreboard = false}) =>
+      _capture.replayStart(clipId, speed: speed, label: label, scoreboard: scoreboard);
 
   @override
   Future<void> replaySpeed(double speed) => _capture.replaySpeed(speed);

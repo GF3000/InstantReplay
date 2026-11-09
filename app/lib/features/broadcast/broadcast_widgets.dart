@@ -267,7 +267,7 @@ Future<bool> confirmStopBroadcast(BuildContext context) async {
 }
 
 /// What the stream settings dialog returns. [key] null keeps the stored key.
-typedef BroadcastConfigResult = ({String server, String? key, int targetKbps, bool audio});
+typedef BroadcastConfigResult = ({String server, String? key, int targetKbps, bool audio, bool replayScoreboard});
 
 /// Server, stream key (hidden, paste-friendly), bitrate and microphone. The stored key never
 /// comes back to the screen: an empty field keeps it.
@@ -288,6 +288,7 @@ class _BroadcastConfigDialogState extends State<_BroadcastConfigDialog> {
   final _key = TextEditingController();
   late int _kbps = widget.info.targetKbps.clamp(BroadcastInfo.minKbps, BroadcastInfo.maxKbps);
   late bool _audio = widget.info.audio;
+  late bool _replayScoreboard = widget.info.replayScoreboard;
   bool _showKey = false;
 
   @override
@@ -361,6 +362,14 @@ class _BroadcastConfigDialogState extends State<_BroadcastConfigDialog> {
             value: _audio,
             onChanged: (v) => setState(() => _audio = v),
           ),
+          SwitchListTile(
+            key: const ValueKey('broadcast-replay-scoreboard'),
+            contentPadding: EdgeInsets.zero,
+            title: Text(l10n.broadcastReplayScoreboard),
+            subtitle: Text(l10n.broadcastReplayScoreboardHint),
+            value: _replayScoreboard,
+            onChanged: (v) => setState(() => _replayScoreboard = v),
+          ),
         ]),
       ),
       actions: [
@@ -379,6 +388,7 @@ class _BroadcastConfigDialogState extends State<_BroadcastConfigDialog> {
               key: key.isEmpty ? null : key,
               targetKbps: _kbps,
               audio: _audio,
+              replayScoreboard: _replayScoreboard,
             ));
           },
           child: Text(l10n.broadcastSave),

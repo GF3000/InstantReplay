@@ -1414,11 +1414,12 @@ interface CaptureHostApi {
   fun broadcastStatus(): BroadcastStatus
   /**
    * Puts clip [clipId] (ready or in the reserve) on air at [speed], replacing any running
-   * replay; [label] is drawn over it (e.g. `REPETICIÓN`). Completes once the first frame is
+   * replay; [label] is drawn over it (e.g. `REPETICIÓN`); the scoreboard too only when
+   * [scoreboard]. Completes once the first frame is
    * decoded. Errors: `not_live` (no active broadcast), `replay_unavailable` (clip not on the
    * Camera), `replay_failed`.
    */
-  fun replayStart(clipId: String, speed: Double, label: String, callback: (Result<ReplayStatus>) -> Unit)
+  fun replayStart(clipId: String, speed: Double, label: String, scoreboard: Boolean, callback: (Result<ReplayStatus>) -> Unit)
   /** Changes the speed of the running replay at once (no-op without one). */
   fun replaySpeed(speed: Double)
   /** Back to the live picture (no-op without a replay). [CaptureEventsApi.onReplayEnded] follows. */
@@ -1906,7 +1907,8 @@ interface CaptureHostApi {
             val clipIdArg = args[0] as String
             val speedArg = args[1] as Double
             val labelArg = args[2] as String
-            api.replayStart(clipIdArg, speedArg, labelArg) { result: Result<ReplayStatus> ->
+            val scoreboardArg = args[3] as Boolean
+            api.replayStart(clipIdArg, speedArg, labelArg, scoreboardArg) { result: Result<ReplayStatus> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(CaptureApiPigeonUtils.wrapError(error))

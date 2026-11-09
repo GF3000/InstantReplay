@@ -107,6 +107,8 @@ internal class CaptureEngine(
     private val replayMatrix = FloatArray(16)
     /** A frame of the current replay is latched in [replayTexture]: the program shows it. */
     private var replayShowing = false
+    /** The scoreboard stays over the replay (off by default: only the badge). */
+    @Volatile private var replayScoreboard = false
     @Volatile private var replay: ReplayPlayer? = null
     private val texMatrix = FloatArray(16)
     private var uprightRotation = 0
@@ -251,6 +253,7 @@ internal class CaptureEngine(
         file: File,
         speed: Float,
         badge: String,
+        showScoreboard: Boolean,
         onStarted: (ReplayPlayer) -> Unit,
         onEnded: (clipId: String, error: String?) -> Unit,
     ) {
@@ -274,6 +277,7 @@ internal class CaptureEngine(
             speed = speed,
             output = surface,
             onStarted = {
+                replayScoreboard = showScoreboard
                 label?.text = badge
                 onStarted(player)
             },
@@ -623,7 +627,11 @@ internal class CaptureEngine(
         renderedFrames++
         val at30 = config.fps <= 30 || renderedFrames % 2 == 0L
         val program = programEglSurface
-        val board = if (at30 && (program != null || hasOutputs)) overlay?.takeIf { it.update() } else null
+        val board = if (at30 && (program != null || hasOutputs) && (!replayShowing || replayScoreboard)) {
+            overlay?.takeIf { it.update() }
+        } else {
+            null
+        }
 
         // Broadcast program at most 30 fps, after the HQ frame so it can never delay it. The swap
         // doesn't block (swap interval 0): a backed-up encoder loses program frames, not HQ ones.

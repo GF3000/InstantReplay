@@ -2216,6 +2216,18 @@ abstract class AppLocalizations {
   /// **'On the camera'**
   String get clipOnCamera;
 
+  /// No description provided for @broadcastReplayScoreboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Scoreboard during replays'**
+  String get broadcastReplayScoreboard;
+
+  /// No description provided for @broadcastReplayScoreboardHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Off: a replay on air shows only its REPLAY badge.'**
+  String get broadcastReplayScoreboardHint;
+
   /// No description provided for @scoreboardSet.
   ///
   /// In en, this message translates to:

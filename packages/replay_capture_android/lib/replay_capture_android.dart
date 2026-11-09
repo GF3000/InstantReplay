@@ -136,8 +136,9 @@ class ReplayCapture implements CaptureEventsApi {
 
   Future<BroadcastStatus> broadcastStatus() => _host.broadcastStatus();
 
-  Future<ReplayStatus> replayStart(String clipId, {double speed = 1, required String label}) =>
-      _host.replayStart(clipId, speed, label);
+  /// [scoreboard]: keep the scoreboard over the replay (off: only the [label] badge).
+  Future<ReplayStatus> replayStart(String clipId, {double speed = 1, required String label, bool scoreboard = false}) =>
+      _host.replayStart(clipId, speed, label, scoreboard);
 
   Future<void> replaySpeed(double speed) => _host.replaySpeed(speed);
 

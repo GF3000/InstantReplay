@@ -12,7 +12,13 @@ import 'broadcast_host.dart';
 /// picture, changes its speed, cuts back to live, and keeps the replay on air as the plugin
 /// reports it.
 class ReplayController {
-  ReplayController({required this.capture, required this._clockMs, required this._l10n, required this._isLive}) {
+  ReplayController({
+    required this.capture,
+    required this._clockMs,
+    required this._l10n,
+    required this._isLive,
+    bool Function()? replayScoreboard,
+  }) : _replayScoreboard = replayScoreboard ?? _never {
     _subs
       ..add(capture.replay.listen(_onReplay))
       ..add(capture.replayEnded.listen(_onEnded))
@@ -32,6 +38,11 @@ class ReplayController {
 
   /// The stream is starting, on air or reconnecting.
   final bool Function() _isLive;
+
+  /// The stream setting "scoreboard during replays" (SPEC §12.6), read at each start.
+  final bool Function() _replayScoreboard;
+
+  static bool _never() => false;
 
   final _subs = <StreamSubscription<Object?>>[];
   final _changes = StreamController<void>.broadcast();
@@ -70,7 +81,12 @@ class ReplayController {
     if (!_isLive()) throw const BroadcastException('not_live');
     _starting++;
     try {
-      final status = await capture.replayStart(clipId, speed: nearestSpeed(speed), label: _l10n().replayLabelOnAir);
+      final status = await capture.replayStart(
+        clipId,
+        speed: nearestSpeed(speed),
+        label: _l10n().replayLabelOnAir,
+        scoreboard: _replayScoreboard(),
+      );
       final next = _info(status);
       _set(next, emit: _isNews(current, next)); // The plugin's event may have said it already.
     } on PlatformException catch (e) {

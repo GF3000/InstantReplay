@@ -414,8 +414,14 @@ compilación que incluya el visor web.</p>
           controls?.setReserve(size);
         case ScoreboardCmd(:final command):
           _broadcastHost().scoreboardCommand(command);
-        case BroadcastConfigure(:final server, :final key, :final targetKbps, :final audio):
-          await _broadcastHost().configure(server: server, key: key, targetKbps: targetKbps, audio: audio);
+        case BroadcastConfigure(:final server, :final key, :final targetKbps, :final audio, :final replayScoreboard):
+          await _broadcastHost().configure(
+            server: server,
+            key: key,
+            targetKbps: targetKbps,
+            audio: audio,
+            replayScoreboard: replayScoreboard,
+          );
         case BroadcastStart():
           // Without the microphone the stream still goes out, with silence: say so to who asked.
           if (!await _broadcastHost().start()) {

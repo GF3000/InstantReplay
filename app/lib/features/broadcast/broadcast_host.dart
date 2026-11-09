@@ -20,7 +20,14 @@ abstract interface class BroadcastHost {
   void scoreboardCommand(ScoreboardCommand command);
 
   /// [key] null (or empty) keeps the stored key.
-  Future<void> configure({required String server, String? key, required int targetKbps, required bool audio});
+  /// [replayScoreboard] null keeps the stored choice.
+  Future<void> configure({
+    required String server,
+    String? key,
+    required int targetKbps,
+    required bool audio,
+    bool? replayScoreboard,
+  });
 
   /// Throws [BroadcastException] (`not_configured`, `broadcast_failed`). Returns false when the
   /// stream started without the microphone because its permission was denied.

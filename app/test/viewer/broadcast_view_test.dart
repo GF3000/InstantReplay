@@ -76,9 +76,18 @@ class _FakeBroadcast extends ViewerBroadcastNotifier {
     return true;
   }
 
+  bool? lastReplayScoreboard;
+
   @override
-  bool configure({required String server, String? key, required int targetKbps, required bool audio}) {
+  bool configure({
+    required String server,
+    String? key,
+    required int targetKbps,
+    required bool audio,
+    bool? replayScoreboard,
+  }) {
     sent.add((server: server, key: key, targetKbps: targetKbps, audio: audio));
+    lastReplayScoreboard = replayScoreboard;
     return true;
   }
 

@@ -1303,6 +1303,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get clipOnCamera => 'On the camera';
 
   @override
+  String get broadcastReplayScoreboard => 'Scoreboard during replays';
+
+  @override
+  String get broadcastReplayScoreboardHint =>
+      'Off: a replay on air shows only its REPLAY badge.';
+
+  @override
   String get scoreboardSet => 'Set';
 
   @override

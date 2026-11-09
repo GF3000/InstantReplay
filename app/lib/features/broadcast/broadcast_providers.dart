@@ -78,6 +78,7 @@ final replayControllerProvider = Provider.autoDispose<ReplayController>((ref) {
     clockMs: ref.watch(monotonicClockProvider),
     l10n: ref.watch(cameraL10nProvider),
     isLive: () => stream.info.active,
+    replayScoreboard: () => stream.replayScoreboard,
   );
   ref.onDispose(controller.dispose);
   return controller;
@@ -149,8 +150,20 @@ class CameraBroadcast implements BroadcastHost {
   void scoreboardCommand(ScoreboardCommand command) => _scoreboard.apply(command);
 
   @override
-  Future<void> configure({required String server, String? key, required int targetKbps, required bool audio}) =>
-      _stream.configure(server: server, key: key, targetKbps: targetKbps, audio: audio);
+  Future<void> configure({
+    required String server,
+    String? key,
+    required int targetKbps,
+    required bool audio,
+    bool? replayScoreboard,
+  }) =>
+      _stream.configure(
+        server: server,
+        key: key,
+        targetKbps: targetKbps,
+        audio: audio,
+        replayScoreboard: replayScoreboard,
+      );
 
   @override
   Future<bool> start() => _stream.start();

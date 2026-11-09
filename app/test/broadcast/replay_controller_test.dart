@@ -16,6 +16,7 @@ void main() {
   late String language;
   late int changes;
   late List<String> failures;
+  late bool scoreboardOnReplays;
 
   setUp(() {
     capture = FakeCaptureLayer();
@@ -24,11 +25,13 @@ void main() {
     language = 'en';
     changes = 0;
     failures = [];
+    scoreboardOnReplays = false;
     replay = ReplayController(
       capture: capture,
       clockMs: () => nowMs,
       l10n: () => lookupAppLocalizations(Locale(language)),
       isLive: () => live,
+      replayScoreboard: () => scoreboardOnReplays,
     );
     replay.changes.listen((_) => changes++);
     replay.failures.listen(failures.add);
@@ -45,6 +48,13 @@ void main() {
     expect(ReplayController.nearestSpeed(0), 0.25);
     expect(ReplayController.nearestSpeed(-3), 0.25);
     expect(ReplayController.nearestSpeed(double.nan), 1.0);
+  });
+
+  test('the scoreboard over a replay follows the stream setting, read at each start (off by default)', () async {
+    await replay.air('clip1');
+    scoreboardOnReplays = true;
+    await replay.air('clip2');
+    expect(capture.replayScoreboards, [false, true]);
   });
 
   test('the label on air follows the Camera language', () async {

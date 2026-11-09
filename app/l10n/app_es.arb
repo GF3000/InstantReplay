@@ -353,6 +353,8 @@
   "clipReserveMore": "Más",
   "clipReserveDone": "Hecho",
   "clipOnCamera": "En la cámara",
+  "broadcastReplayScoreboard": "Marcador en las repeticiones",
+  "broadcastReplayScoreboardHint": "Desactivado: la repetición en antena solo muestra el cartel REPETICIÓN.",
   "scoreboardSet": "Ajustar",
   "scoreboardVisible": "En pantalla",
   "scoreboardReset": "Reiniciar",

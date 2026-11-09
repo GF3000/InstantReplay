@@ -432,6 +432,7 @@ class BroadcastInfo {
     required this.server,
     required this.targetKbps,
     required this.audio,
+    this.replayScoreboard = false,
     this.keyHint,
     this.bitrateKbps,
     this.uptimeMs,
@@ -444,6 +445,7 @@ class BroadcastInfo {
         server: j['server'] as String? ?? defaultServer,
         targetKbps: j['targetKbps'] as int? ?? defaultKbps,
         audio: j['audio'] as bool? ?? true,
+        replayScoreboard: j['replayScoreboard'] as bool? ?? false,
         keyHint: j['keyHint'] as String?,
         bitrateKbps: j['bitrateKbps'] as int?,
         uptimeMs: j['uptimeMs'] as int?,
@@ -468,6 +470,10 @@ class BroadcastInfo {
   final int targetKbps;
   final bool audio;
 
+  /// The scoreboard stays on screen during replays on air (SPEC §12.6). Off by default: a replay
+  /// shows only its REPLAY badge.
+  final bool replayScoreboard;
+
   /// Measured outgoing bitrate while live.
   final int? bitrateKbps;
   final int? uptimeMs;
@@ -483,6 +489,7 @@ class BroadcastInfo {
         'server': server,
         'targetKbps': targetKbps,
         'audio': audio,
+        'replayScoreboard': replayScoreboard,
         if (keyHint != null) 'keyHint': keyHint,
         if (bitrateKbps != null) 'bitrateKbps': bitrateKbps,
         if (uptimeMs != null) 'uptimeMs': uptimeMs,

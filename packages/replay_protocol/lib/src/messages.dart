@@ -56,6 +56,7 @@ sealed class WsMessage {
           key: j['key'] as String?,
           targetKbps: j['targetKbps'] as int? ?? BroadcastInfo.defaultKbps,
           audio: j['audio'] as bool? ?? true,
+          replayScoreboard: j['replayScoreboard'] as bool?,
         ),
       BroadcastStart.typeName => const BroadcastStart(),
       BroadcastStop.typeName => const BroadcastStop(),
@@ -303,6 +304,7 @@ final class BroadcastConfigure extends WsMessage {
     this.key,
     this.targetKbps = BroadcastInfo.defaultKbps,
     this.audio = true,
+    this.replayScoreboard,
   });
 
   static const typeName = 'broadcast_config';
@@ -310,6 +312,9 @@ final class BroadcastConfigure extends WsMessage {
   final String? key;
   final int targetKbps;
   final bool audio;
+
+  /// Scoreboard during replays on air; null keeps the stored choice.
+  final bool? replayScoreboard;
 
   @override
   String get type => typeName;
@@ -320,6 +325,7 @@ final class BroadcastConfigure extends WsMessage {
         if (key != null) 'key': key,
         'targetKbps': targetKbps,
         'audio': audio,
+        if (replayScoreboard != null) 'replayScoreboard': replayScoreboard,
       };
 }
 

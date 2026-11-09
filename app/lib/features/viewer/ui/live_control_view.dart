@@ -332,7 +332,13 @@ class ViewerBroadcastBar extends ConsumerWidget {
         onConfigure: () async {
           final result = await showBroadcastConfigDialog(context, info);
           if (result == null) return;
-          remote.configure(server: result.server, key: result.key, targetKbps: result.targetKbps, audio: result.audio);
+          remote.configure(
+            server: result.server,
+            key: result.key,
+            targetKbps: result.targetKbps,
+            audio: result.audio,
+            replayScoreboard: result.replayScoreboard,
+          );
         },
       ),
     );

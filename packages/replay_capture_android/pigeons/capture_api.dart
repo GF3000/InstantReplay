@@ -449,11 +449,12 @@ abstract class CaptureHostApi {
   // Replays on air (SPEC §12.6). Only while a broadcast is active.
 
   /// Puts clip [clipId] (ready or in the reserve) on air at [speed], replacing any running
-  /// replay; [label] is drawn over it (e.g. `REPETICIÓN`). Completes once the first frame is
+  /// replay; [label] is drawn over it (e.g. `REPETICIÓN`); the scoreboard too only when
+  /// [scoreboard]. Completes once the first frame is
   /// decoded. Errors: `not_live` (no active broadcast), `replay_unavailable` (clip not on the
   /// Camera), `replay_failed`.
   @async
-  ReplayStatus replayStart(String clipId, double speed, String label);
+  ReplayStatus replayStart(String clipId, double speed, String label, bool scoreboard);
 
   /// Changes the speed of the running replay at once (no-op without one).
   void replaySpeed(double speed);

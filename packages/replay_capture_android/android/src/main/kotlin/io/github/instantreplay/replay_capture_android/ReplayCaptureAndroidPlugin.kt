@@ -327,7 +327,13 @@ class ReplayCaptureAndroidPlugin :
 
     // Replays on air (SPEC §12.6).
 
-    override fun replayStart(clipId: String, speed: Double, label: String, callback: (Result<ReplayStatus>) -> Unit) {
+    override fun replayStart(
+        clipId: String,
+        speed: Double,
+        label: String,
+        scoreboard: Boolean,
+        callback: (Result<ReplayStatus>) -> Unit,
+    ) {
         val e = engine
         val b = broadcaster
         if (e == null || b == null || !b.isActive) {
@@ -346,6 +352,7 @@ class ReplayCaptureAndroidPlugin :
             file = File(path),
             speed = speed.toFloat(),
             badge = label,
+            showScoreboard = scoreboard,
             onStarted = { player ->
                 mainHandler.post {
                     val status = replayStatus(player)

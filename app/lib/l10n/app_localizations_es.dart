@@ -1308,6 +1308,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get clipOnCamera => 'En la cámara';
 
   @override
+  String get broadcastReplayScoreboard => 'Marcador en las repeticiones';
+
+  @override
+  String get broadcastReplayScoreboardHint =>
+      'Desactivado: la repetición en antena solo muestra el cartel REPETICIÓN.';
+
+  @override
   String get scoreboardSet => 'Ajustar';
 
   @override

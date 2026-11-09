@@ -1867,17 +1867,18 @@ class CaptureHostApi {
   }
 
   /// Puts clip [clipId] (ready or in the reserve) on air at [speed], replacing any running
-  /// replay; [label] is drawn over it (e.g. `REPETICIÓN`). Completes once the first frame is
+  /// replay; [label] is drawn over it (e.g. `REPETICIÓN`); the scoreboard too only when
+  /// [scoreboard]. Completes once the first frame is
   /// decoded. Errors: `not_live` (no active broadcast), `replay_unavailable` (clip not on the
   /// Camera), `replay_failed`.
-  Future<ReplayStatus> replayStart(String clipId, double speed, String label) async {
+  Future<ReplayStatus> replayStart(String clipId, double speed, String label, bool scoreboard) async {
     final pigeonVar_channelName = 'dev.flutter.pigeon.replay_capture_android.CaptureHostApi.replayStart$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[clipId, speed, label]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[clipId, speed, label, scoreboard]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(

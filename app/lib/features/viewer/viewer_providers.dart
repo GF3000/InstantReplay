@@ -355,8 +355,14 @@ class ViewerBroadcastNotifier extends Notifier<BroadcastNotice?> {
   bool command(ScoreboardCommand command) => _send(ScoreboardCmd(command));
 
   /// [key] null keeps the key stored on the Camera.
-  bool configure({required String server, String? key, required int targetKbps, required bool audio}) =>
-      _send(BroadcastConfigure(server: server, key: key, targetKbps: targetKbps, audio: audio));
+  bool configure({
+    required String server,
+    String? key,
+    required int targetKbps,
+    required bool audio,
+    bool? replayScoreboard,
+  }) =>
+      _send(BroadcastConfigure(server: server, key: key, targetKbps: targetKbps, audio: audio, replayScoreboard: replayScoreboard));
 
   bool start() => _send(const BroadcastStart());
 

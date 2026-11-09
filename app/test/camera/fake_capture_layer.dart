@@ -340,6 +340,9 @@ class FakeCaptureLayer implements CaptureLayer {
   /// The replay on air as the fake native side sees it.
   ReplayStatus? replayState;
 
+  /// `scoreboard` passed to each [replayStart].
+  final replayScoreboards = <bool>[];
+
   /// Thrown by [replayStart] when set, e.g. `PlatformException(code: 'replay_unavailable')`.
   Object? replayStartError;
 
@@ -347,8 +350,9 @@ class FakeCaptureLayer implements CaptureLayer {
   int replayDurationMs = 20000;
 
   @override
-  Future<ReplayStatus> replayStart(String clipId, {double speed = 1, required String label}) async {
+  Future<ReplayStatus> replayStart(String clipId, {double speed = 1, required String label, bool scoreboard = false}) async {
     calls.add('replayStart:$clipId:$speed');
+    replayScoreboards.add(scoreboard);
     if (replayStartError case final e?) throw e;
     replayLabels.add(label);
     final previous = replayState;

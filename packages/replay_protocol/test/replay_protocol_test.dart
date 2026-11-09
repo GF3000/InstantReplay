@@ -143,6 +143,7 @@ void main() {
       const ScoreboardCmd(VisibleCommand(visible: false)),
       const ScoreboardCmd(ResetCommand()),
       const BroadcastConfigure(key: 'xxxx-yyyy', targetKbps: 3000, audio: false),
+      const BroadcastConfigure(replayScoreboard: true),
       const BroadcastConfigure(),
       const BroadcastStart(),
       const BroadcastStop(),
@@ -217,6 +218,13 @@ void main() {
       expect(minimal.period, 1);
       expect(minimal.clockRunning, isFalse);
       expect(minimal.visible, isTrue);
+    });
+
+    test('the scoreboard over replays is off unless the Camera says otherwise', () {
+      final info = BroadcastInfo.fromJson({'state': 'idle'});
+      expect(info.replayScoreboard, isFalse);
+      expect(BroadcastInfo.fromJson({...info.toJson(), 'replayScoreboard': true}).replayScoreboard, isTrue);
+      expect(const BroadcastConfigure().toJson().containsKey('replayScoreboard'), isFalse, reason: 'null keeps it');
     });
 
     test('ClipDto.onCamera: ready, or acked in the reserve', () {
