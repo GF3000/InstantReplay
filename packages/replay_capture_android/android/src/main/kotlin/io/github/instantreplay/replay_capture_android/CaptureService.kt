@@ -31,6 +31,7 @@ internal class CaptureService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        microphone = intent?.getBooleanExtra(EXTRA_MICROPHONE, false) ?: false
         promote()
         // Without the engine (process restart) there is nothing to keep alive.
         return START_NOT_STICKY
@@ -41,8 +42,24 @@ internal class CaptureService : Service() {
         super.onDestroy()
     }
 
+    /** A broadcast with audio runs: Android 14+ cuts the mic in the background without this type. */
+    private var microphone = false
+
     private fun promote() {
         try {
+            if (microphone) {
+                try {
+                    startForeground(
+                        NOTIFICATION_ID,
+                        buildNotification(),
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE,
+                    )
+                    return
+                } catch (e: Exception) {
+                    // E.g. requested from the background: keep the camera guarantee at least.
+                    Log.w(TAG, "Could not add the microphone type", e)
+                }
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 startForeground(NOTIFICATION_ID, buildNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA)
             } else {
@@ -105,10 +122,18 @@ internal class CaptureService : Service() {
         private const val CHANNEL_ID = "replay_capture_recording"
         private const val NOTIFICATION_ID = 0x1257
 
-        /** Called by the plugin once the pipeline is running (the app is in the foreground then). */
-        fun start(context: Context) {
+        private const val EXTRA_MICROPHONE = "microphone"
+
+        /**
+         * Called by the plugin once the pipeline is running (the app is in the foreground then),
+         * and again with [microphone] when a broadcast with audio starts or stops, to change the
+         * service type (`camera` or `camera|microphone`).
+         */
+        fun start(context: Context, microphone: Boolean = false) {
             try {
-                context.startForegroundService(Intent(context, CaptureService::class.java))
+                context.startForegroundService(
+                    Intent(context, CaptureService::class.java).putExtra(EXTRA_MICROPHONE, microphone),
+                )
             } catch (e: Exception) {
                 // ForegroundServiceStartNotAllowedException (Android 12+) if somehow started from the background.
                 Log.w(TAG, "Could not start the capture service", e)

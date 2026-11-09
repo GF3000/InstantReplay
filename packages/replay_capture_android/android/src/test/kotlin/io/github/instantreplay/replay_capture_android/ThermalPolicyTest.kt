@@ -29,6 +29,23 @@ class ThermalPolicyTest {
     }
 
     @Test
+    fun broadcastModeNeverTouchesTheProgram() {
+        // No fps or resolution change (a capture restart would cut the stream): only the
+        // preview and the viewers' live view give way.
+        val broadcast = { status: Int -> ThermalPolicy.actionFor(status, broadcast = true) }
+        assertEquals(ThermalAction.NONE, broadcast(PowerManager.THERMAL_STATUS_LIGHT))
+        assertEquals(ThermalAction.PREVIEW_OFF, broadcast(PowerManager.THERMAL_STATUS_MODERATE))
+        assertEquals(ThermalAction.REDUCE_LIVE_BITRATE, broadcast(PowerManager.THERMAL_STATUS_SEVERE))
+        assertEquals(ThermalAction.STOP_LIVE, broadcast(PowerManager.THERMAL_STATUS_CRITICAL))
+        assertEquals(ThermalAction.STOP_LIVE, broadcast(PowerManager.THERMAL_STATUS_SHUTDOWN))
+
+        val policy = ThermalPolicy().apply { reset(broadcast = true) }
+        assertEquals(ThermalAction.REDUCE_LIVE_BITRATE, policy.onStatus(PowerManager.THERMAL_STATUS_SEVERE))
+        policy.reset()
+        assertEquals(ThermalAction.REDUCE_FPS, policy.onStatus(PowerManager.THERMAL_STATUS_SEVERE), "reset() is replay mode")
+    }
+
+    @Test
     fun resetStartsOver() {
         val policy = ThermalPolicy()
         policy.onStatus(PowerManager.THERMAL_STATUS_CRITICAL)

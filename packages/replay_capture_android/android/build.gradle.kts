@@ -18,6 +18,8 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        // RootEncoder (RTMP client for broadcast mode) is published on JitPack only.
+        maven { url = uri("https://jitpack.io") }
     }
 }
 
@@ -74,5 +76,7 @@ kotlin {
 dependencies {
     // Must match the version bundled by flutter_webrtc so the APK has a single copy of org.webrtc.
     implementation("io.github.webrtc-sdk:android:150.7871.04")
+    // RTMP(S) client for broadcast mode (SPEC §12.1), Apache-2.0.
+    implementation("com.github.pedroSG94.RootEncoder:rtmp:2.8.1")
     testImplementation("org.jetbrains.kotlin:kotlin-test")
 }

@@ -36,8 +36,12 @@ internal class TextureRenderer(private val external: Boolean) {
             .apply { put(vertices); position(0) }
     }
 
-    fun draw(texture: Int, width: Int, height: Int, texMatrix: FloatArray = IDENTITY) {
-        GLES20.glViewport(0, 0, width, height)
+    fun draw(texture: Int, width: Int, height: Int, texMatrix: FloatArray = IDENTITY) =
+        draw(texture, 0, 0, width, height, texMatrix)
+
+    /** Draws into the viewport rectangle at ([x], [y]) (GL origin: bottom-left), e.g. an overlay. */
+    fun draw(texture: Int, x: Int, y: Int, width: Int, height: Int, texMatrix: FloatArray = IDENTITY) {
+        GLES20.glViewport(x, y, width, height)
         GLES20.glUseProgram(program)
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
         GLES20.glBindTexture(target, texture)
