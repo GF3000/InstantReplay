@@ -17,6 +17,7 @@ export 'src/capture_api.g.dart'
         RecordingSaved,
         RecordingState,
         RecordingStatus,
+        ReplayStatus,
         SaveRequest,
         StartRequest,
         StartResult,
@@ -42,6 +43,8 @@ class ReplayCapture implements CaptureEventsApi {
   final _recording = StreamController<RecordingStatus>.broadcast();
   final _recordingSaved = StreamController<RecordingSaved>.broadcast();
   final _broadcast = StreamController<BroadcastStatus>.broadcast();
+  final _replay = StreamController<ReplayStatus>.broadcast();
+  final _replayEnded = StreamController<({String clipId, String? error})>.broadcast();
 
   /// About once per second while capturing.
   Stream<CaptureStats> get stats => _stats.stream;
@@ -65,6 +68,12 @@ class ReplayCapture implements CaptureEventsApi {
 
   /// Broadcast state changes (SPEC §12); the latest numbers also ride on every [stats] event.
   Stream<BroadcastStatus> get broadcast => _broadcast.stream;
+
+  /// A replay went on air or changed speed (SPEC §12.6).
+  Stream<ReplayStatus> get replay => _replay.stream;
+
+  /// The program is back on the camera; [error] set for a failure.
+  Stream<({String clipId, String? error})> get replayEnded => _replayEnded.stream;
 
   Future<bool> requestPermission() => _host.requestPermission();
 
@@ -127,6 +136,13 @@ class ReplayCapture implements CaptureEventsApi {
 
   Future<BroadcastStatus> broadcastStatus() => _host.broadcastStatus();
 
+  Future<ReplayStatus> replayStart(String clipId, {double speed = 1, required String label}) =>
+      _host.replayStart(clipId, speed, label);
+
+  Future<void> replaySpeed(double speed) => _host.replaySpeed(speed);
+
+  Future<void> replayStop() => _host.replayStop();
+
   @override
   void onStats(CaptureStats stats) => _stats.add(stats);
 
@@ -157,6 +173,12 @@ class ReplayCapture implements CaptureEventsApi {
 
   @override
   void onBroadcast(BroadcastStatus status) => _broadcast.add(status);
+
+  @override
+  void onReplay(ReplayStatus status) => _replay.add(status);
+
+  @override
+  void onReplayEnded(String clipId, String? error) => _replayEnded.add((clipId: clipId, error: error));
 }
 
 typedef LiveIceCandidate = ({String viewerId, String candidate, String? sdpMid, int? sdpMLineIndex});

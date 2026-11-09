@@ -148,6 +148,9 @@ void main() {
       const BroadcastStop(),
       const CameraZoom(ratio: 1.5),
       const ClipReserve(size: 3),
+      const ReplayAir(clipId: 'c1', speed: 0.5),
+      const ReplaySpeed(speed: 0.25),
+      const ReplayStop(),
       const ClipChanged(
         clip: ClipDto(id: 'c', requestId: 'r', state: ClipState.acked, createdAtMs: 1, reserved: true),
       ),
@@ -160,6 +163,7 @@ void main() {
           thermalStatus: 0,
           zoom: ZoomInfo(ratio: 1.5, max: 4),
           reserve: 3,
+          replay: ReplayInfo(clipId: 'c1', speed: 0.5, positionMs: 1200, durationMs: 20000),
         ),
       ),
       const Ping(),

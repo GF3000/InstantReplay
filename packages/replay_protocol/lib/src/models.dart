@@ -184,6 +184,7 @@ class CameraStatus {
     this.broadcast,
     this.zoom,
     this.reserve,
+    this.replay,
   });
 
   factory CameraStatus.fromJson(Json j) => CameraStatus(
@@ -215,6 +216,10 @@ class CameraStatus {
           {'size': final int size} => size,
           _ => null,
         },
+        replay: switch (j['replay']) {
+          final Json r => ReplayInfo.fromJson(r),
+          _ => null,
+        },
       );
 
   /// The capture pipeline is running (the ring buffer is filling). Not the full-session
@@ -244,6 +249,9 @@ class CameraStatus {
   /// Size of the Camera's replay reserve (SPEC §3.4); null from a Camera without it.
   final int? reserve;
 
+  /// A clip on air instead of the live picture (SPEC §12.6); null otherwise.
+  final ReplayInfo? replay;
+
   /// This status with another [zoom] and [reserve]; every other field kept.
   CameraStatus withControls({ZoomInfo? zoom, int? reserve}) => CameraStatus(
         recording: recording,
@@ -259,6 +267,25 @@ class CameraStatus {
         broadcast: broadcast,
         zoom: zoom,
         reserve: reserve,
+        replay: replay,
+      );
+
+  /// This status with another [replay]; every other field kept.
+  CameraStatus withReplay(ReplayInfo? replay) => CameraStatus(
+        recording: recording,
+        fps: fps,
+        bufferMs: bufferMs,
+        outboxClips: outboxClips,
+        thermalStatus: thermalStatus,
+        batteryTempC: batteryTempC,
+        batteryPercent: batteryPercent,
+        plugged: plugged,
+        sessionRecording: sessionRecording,
+        scoreboard: scoreboard,
+        broadcast: broadcast,
+        zoom: zoom,
+        reserve: reserve,
+        replay: replay,
       );
 
   Json toJson() => {
@@ -275,7 +302,43 @@ class CameraStatus {
         if (broadcast != null) 'broadcast': broadcast!.toJson(),
         if (zoom != null) 'zoom': zoom!.toJson(),
         if (reserve != null) 'reserve': {'size': reserve},
+        if (replay != null) 'replay': replay!.toJson(),
       };
+}
+
+/// A clip on air (SPEC §12.6).
+class ReplayInfo {
+  const ReplayInfo({required this.clipId, required this.speed, required this.positionMs, required this.durationMs});
+
+  factory ReplayInfo.fromJson(Json j) => ReplayInfo(
+        clipId: j['clipId']! as String,
+        speed: (j['speed']! as num).toDouble(),
+        positionMs: j['positionMs'] as int? ?? 0,
+        durationMs: j['durationMs'] as int? ?? 0,
+      );
+
+  /// Speeds a replay can run at.
+  static const speeds = [0.25, 0.5, 1.0];
+
+  final String clipId;
+  final double speed;
+
+  /// Media position in the clip when the status was built.
+  final int positionMs;
+  final int durationMs;
+
+  Json toJson() => {'clipId': clipId, 'speed': speed, 'positionMs': positionMs, 'durationMs': durationMs};
+
+  @override
+  bool operator ==(Object other) =>
+      other is ReplayInfo &&
+      other.clipId == clipId &&
+      other.speed == speed &&
+      other.positionMs == positionMs &&
+      other.durationMs == durationMs;
+
+  @override
+  int get hashCode => Object.hash(clipId, speed, positionMs, durationMs);
 }
 
 /// The Camera's sensor zoom (SPEC §3.1): applies to clips, recording and broadcast alike.

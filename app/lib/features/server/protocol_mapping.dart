@@ -57,6 +57,7 @@ CameraStatus withSessionRecording(CameraStatus status, SessionRecording? recordi
       broadcast: status.broadcast,
       zoom: status.zoom,
       reserve: status.reserve,
+      replay: status.replay,
     );
 
 /// [status] with broadcast mode's scoreboard and stream (both null in replay mode).
@@ -75,6 +76,7 @@ CameraStatus withBroadcast(CameraStatus status, {ScoreboardState? scoreboard, Br
       broadcast: broadcast,
       zoom: status.zoom,
       reserve: status.reserve,
+      replay: status.replay,
     );
 
 /// A saved recording → the message every viewer gets.

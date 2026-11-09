@@ -152,6 +152,23 @@ class CaptureStats {
 
   /// Present only in broadcast mode (SPEC §12).
   BroadcastStatus? broadcast;
+
+  /// A replay on air (SPEC §12.6); null while the program shows the camera.
+  ReplayStatus? replay;
+}
+
+/// A clip on air instead of the live picture (SPEC §12.6).
+class ReplayStatus {
+  ReplayStatus({required this.clipId, required this.speed, required this.positionMs, required this.durationMs});
+
+  String clipId;
+
+  /// 0.25, 0.5 or 1.
+  double speed;
+
+  /// Position in the clip (media time, not wall time).
+  int positionMs;
+  int durationMs;
 }
 
 /// What the scoreboard overlay shows (SPEC §12.2). Dart owns the state; native only draws it and
@@ -428,6 +445,22 @@ abstract class CaptureHostApi {
   void broadcastStop();
 
   BroadcastStatus broadcastStatus();
+
+  // Replays on air (SPEC §12.6). Only while a broadcast is active.
+
+  /// Puts clip [clipId] (ready or in the reserve) on air at [speed], replacing any running
+  /// replay; [label] is drawn over it (e.g. `REPETICIÓN`). Completes once the first frame is
+  /// decoded. Errors: `not_live` (no active broadcast), `replay_unavailable` (clip not on the
+  /// Camera), `replay_failed`.
+  @async
+  ReplayStatus replayStart(String clipId, double speed, String label);
+
+  /// Changes the speed of the running replay at once (no-op without one).
+  void replaySpeed(double speed);
+
+  /// Back to the live picture (no-op without a replay). [CaptureEventsApi.onReplayEnded] follows.
+  @async
+  void replayStop();
 }
 
 @FlutterApi()
@@ -458,4 +491,11 @@ abstract class CaptureEventsApi {
   /// The broadcast state changed (connecting, live, reconnecting, failed, idle). Ongoing numbers
   /// also ride on [CaptureStats.broadcast].
   void onBroadcast(BroadcastStatus status);
+
+  /// A replay went on air or changed speed; the position also rides on [CaptureStats.replay].
+  void onReplay(ReplayStatus status);
+
+  /// The program is back on the camera: the clip ended, was stopped or replaced, or failed.
+  /// [error] is set for a failure.
+  void onReplayEnded(String clipId, String? error);
 }

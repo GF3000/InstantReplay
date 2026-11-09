@@ -61,6 +61,9 @@ sealed class WsMessage {
       BroadcastStop.typeName => const BroadcastStop(),
       CameraZoom.typeName => CameraZoom(ratio: (j['ratio']! as num).toDouble()),
       ClipReserve.typeName => ClipReserve(size: j['size']! as int),
+      ReplayAir.typeName => ReplayAir(clipId: j['clipId']! as String, speed: (j['speed'] as num? ?? 1).toDouble()),
+      ReplaySpeed.typeName => ReplaySpeed(speed: (j['speed']! as num).toDouble()),
+      ReplayStop.typeName => const ReplayStop(),
       Ping.typeName => const Ping(),
       Pong.typeName => const Pong(),
       _ => null,
@@ -375,6 +378,49 @@ final class ClipReserve extends WsMessage {
 
   @override
   Json fields() => {'size': size};
+}
+
+/// Viewer → Camera: put clip [clipId] on air at [speed] (SPEC §12.6), replacing any replay on air.
+/// Errors: `not_live`, `replay_unavailable`, `replay_failed`. `status.replay` follows.
+final class ReplayAir extends WsMessage {
+  const ReplayAir({required this.clipId, this.speed = 1});
+
+  static const typeName = 'replay_air';
+  final String clipId;
+  final double speed;
+
+  @override
+  String get type => typeName;
+
+  @override
+  Json fields() => {'clipId': clipId, 'speed': speed};
+}
+
+/// Viewer → Camera: change the speed of the replay on air.
+final class ReplaySpeed extends WsMessage {
+  const ReplaySpeed({required this.speed});
+
+  static const typeName = 'replay_speed';
+  final double speed;
+
+  @override
+  String get type => typeName;
+
+  @override
+  Json fields() => {'speed': speed};
+}
+
+/// Viewer → Camera: cut back to the live picture.
+final class ReplayStop extends WsMessage {
+  const ReplayStop();
+
+  static const typeName = 'replay_stop';
+
+  @override
+  String get type => typeName;
+
+  @override
+  Json fields() => const {};
 }
 
 /// Keep-alive: the Viewer pings every 5 s; the Camera drops a viewer silent for 15 s.

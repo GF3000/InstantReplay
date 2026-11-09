@@ -582,7 +582,9 @@ data class CaptureStats (
    */
   val recording: RecordingStatus? = null,
   /** Present only in broadcast mode (SPEC §12). */
-  val broadcast: BroadcastStatus? = null
+  val broadcast: BroadcastStatus? = null,
+  /** A replay on air (SPEC §12.6); null while the program shows the camera. */
+  val replay: ReplayStatus? = null
 )
  {
   companion object {
@@ -603,7 +605,8 @@ data class CaptureStats (
       val plugged = pigeonVar_list[13] as Boolean
       val recording = pigeonVar_list[14] as RecordingStatus?
       val broadcast = pigeonVar_list[15] as BroadcastStatus?
-      return CaptureStats(encodedFrames, fps, gaps, cameraGaps, glGaps, bufferMs, bufferBytes, outboxClips, outboxBytes, thermalStatus, thermalHeadroom, batteryTempC, batteryPercent, plugged, recording, broadcast)
+      val replay = pigeonVar_list[16] as ReplayStatus?
+      return CaptureStats(encodedFrames, fps, gaps, cameraGaps, glGaps, bufferMs, bufferBytes, outboxClips, outboxBytes, thermalStatus, thermalHeadroom, batteryTempC, batteryPercent, plugged, recording, broadcast, replay)
     }
   }
   fun toList(): List<Any?> {
@@ -624,6 +627,7 @@ data class CaptureStats (
       plugged,
       recording,
       broadcast,
+      replay,
     )
   }
   override fun equals(other: Any?): Boolean {
@@ -634,7 +638,7 @@ data class CaptureStats (
       return true
     }
     val other = other as CaptureStats
-    return CaptureApiPigeonUtils.deepEquals(this.encodedFrames, other.encodedFrames) && CaptureApiPigeonUtils.deepEquals(this.fps, other.fps) && CaptureApiPigeonUtils.deepEquals(this.gaps, other.gaps) && CaptureApiPigeonUtils.deepEquals(this.cameraGaps, other.cameraGaps) && CaptureApiPigeonUtils.deepEquals(this.glGaps, other.glGaps) && CaptureApiPigeonUtils.deepEquals(this.bufferMs, other.bufferMs) && CaptureApiPigeonUtils.deepEquals(this.bufferBytes, other.bufferBytes) && CaptureApiPigeonUtils.deepEquals(this.outboxClips, other.outboxClips) && CaptureApiPigeonUtils.deepEquals(this.outboxBytes, other.outboxBytes) && CaptureApiPigeonUtils.deepEquals(this.thermalStatus, other.thermalStatus) && CaptureApiPigeonUtils.deepEquals(this.thermalHeadroom, other.thermalHeadroom) && CaptureApiPigeonUtils.deepEquals(this.batteryTempC, other.batteryTempC) && CaptureApiPigeonUtils.deepEquals(this.batteryPercent, other.batteryPercent) && CaptureApiPigeonUtils.deepEquals(this.plugged, other.plugged) && CaptureApiPigeonUtils.deepEquals(this.recording, other.recording) && CaptureApiPigeonUtils.deepEquals(this.broadcast, other.broadcast)
+    return CaptureApiPigeonUtils.deepEquals(this.encodedFrames, other.encodedFrames) && CaptureApiPigeonUtils.deepEquals(this.fps, other.fps) && CaptureApiPigeonUtils.deepEquals(this.gaps, other.gaps) && CaptureApiPigeonUtils.deepEquals(this.cameraGaps, other.cameraGaps) && CaptureApiPigeonUtils.deepEquals(this.glGaps, other.glGaps) && CaptureApiPigeonUtils.deepEquals(this.bufferMs, other.bufferMs) && CaptureApiPigeonUtils.deepEquals(this.bufferBytes, other.bufferBytes) && CaptureApiPigeonUtils.deepEquals(this.outboxClips, other.outboxClips) && CaptureApiPigeonUtils.deepEquals(this.outboxBytes, other.outboxBytes) && CaptureApiPigeonUtils.deepEquals(this.thermalStatus, other.thermalStatus) && CaptureApiPigeonUtils.deepEquals(this.thermalHeadroom, other.thermalHeadroom) && CaptureApiPigeonUtils.deepEquals(this.batteryTempC, other.batteryTempC) && CaptureApiPigeonUtils.deepEquals(this.batteryPercent, other.batteryPercent) && CaptureApiPigeonUtils.deepEquals(this.plugged, other.plugged) && CaptureApiPigeonUtils.deepEquals(this.recording, other.recording) && CaptureApiPigeonUtils.deepEquals(this.broadcast, other.broadcast) && CaptureApiPigeonUtils.deepEquals(this.replay, other.replay)
   }
 
   override fun hashCode(): Int {
@@ -655,10 +659,66 @@ data class CaptureStats (
     result = 31 * result + CaptureApiPigeonUtils.deepHash(this.plugged)
     result = 31 * result + CaptureApiPigeonUtils.deepHash(this.recording)
     result = 31 * result + CaptureApiPigeonUtils.deepHash(this.broadcast)
+    result = 31 * result + CaptureApiPigeonUtils.deepHash(this.replay)
     return result
   }
   override fun toString(): String {
-    return "CaptureStats(encodedFrames=$encodedFrames, fps=$fps, gaps=$gaps, cameraGaps=$cameraGaps, glGaps=$glGaps, bufferMs=$bufferMs, bufferBytes=$bufferBytes, outboxClips=$outboxClips, outboxBytes=$outboxBytes, thermalStatus=$thermalStatus, thermalHeadroom=$thermalHeadroom, batteryTempC=$batteryTempC, batteryPercent=$batteryPercent, plugged=$plugged, recording=$recording, broadcast=$broadcast)"
+    return "CaptureStats(encodedFrames=$encodedFrames, fps=$fps, gaps=$gaps, cameraGaps=$cameraGaps, glGaps=$glGaps, bufferMs=$bufferMs, bufferBytes=$bufferBytes, outboxClips=$outboxClips, outboxBytes=$outboxBytes, thermalStatus=$thermalStatus, thermalHeadroom=$thermalHeadroom, batteryTempC=$batteryTempC, batteryPercent=$batteryPercent, plugged=$plugged, recording=$recording, broadcast=$broadcast, replay=$replay)"
+  }
+}
+
+/**
+ * A clip on air instead of the live picture (SPEC §12.6).
+ *
+ * Generated class from Pigeon that represents data sent in messages.
+ */
+data class ReplayStatus (
+  val clipId: String,
+  /** 0.25, 0.5 or 1. */
+  val speed: Double,
+  /** Position in the clip (media time, not wall time). */
+  val positionMs: Long,
+  val durationMs: Long
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): ReplayStatus {
+      val clipId = pigeonVar_list[0] as String
+      val speed = pigeonVar_list[1] as Double
+      val positionMs = pigeonVar_list[2] as Long
+      val durationMs = pigeonVar_list[3] as Long
+      return ReplayStatus(clipId, speed, positionMs, durationMs)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      clipId,
+      speed,
+      positionMs,
+      durationMs,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other == null || other.javaClass != javaClass) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    val other = other as ReplayStatus
+    return CaptureApiPigeonUtils.deepEquals(this.clipId, other.clipId) && CaptureApiPigeonUtils.deepEquals(this.speed, other.speed) && CaptureApiPigeonUtils.deepEquals(this.positionMs, other.positionMs) && CaptureApiPigeonUtils.deepEquals(this.durationMs, other.durationMs)
+  }
+
+  override fun hashCode(): Int {
+    var result = javaClass.hashCode()
+    result = 31 * result + CaptureApiPigeonUtils.deepHash(this.clipId)
+    result = 31 * result + CaptureApiPigeonUtils.deepHash(this.speed)
+    result = 31 * result + CaptureApiPigeonUtils.deepHash(this.positionMs)
+    result = 31 * result + CaptureApiPigeonUtils.deepHash(this.durationMs)
+    return result
+  }
+  override fun toString(): String {
+    return "ReplayStatus(clipId=$clipId, speed=$speed, positionMs=$positionMs, durationMs=$durationMs)"
   }
 }
 
@@ -1166,35 +1226,40 @@ private open class CaptureApiPigeonCodec : StandardMessageCodec() {
       }
       140.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          OverlayState.fromList(it)
+          ReplayStatus.fromList(it)
         }
       }
       141.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          BroadcastConfig.fromList(it)
+          OverlayState.fromList(it)
         }
       }
       142.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          BroadcastStatus.fromList(it)
+          BroadcastConfig.fromList(it)
         }
       }
       143.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          RecordingStatus.fromList(it)
+          BroadcastStatus.fromList(it)
         }
       }
       144.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          RecordingSaved.fromList(it)
+          RecordingStatus.fromList(it)
         }
       }
       145.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          ThermalEvent.fromList(it)
+          RecordingSaved.fromList(it)
         }
       }
       146.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          ThermalEvent.fromList(it)
+        }
+      }
+      147.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
           LiveViewerStats.fromList(it)
         }
@@ -1248,32 +1313,36 @@ private open class CaptureApiPigeonCodec : StandardMessageCodec() {
         stream.write(139)
         writeValue(stream, value.toList())
       }
-      is OverlayState -> {
+      is ReplayStatus -> {
         stream.write(140)
         writeValue(stream, value.toList())
       }
-      is BroadcastConfig -> {
+      is OverlayState -> {
         stream.write(141)
         writeValue(stream, value.toList())
       }
-      is BroadcastStatus -> {
+      is BroadcastConfig -> {
         stream.write(142)
         writeValue(stream, value.toList())
       }
-      is RecordingStatus -> {
+      is BroadcastStatus -> {
         stream.write(143)
         writeValue(stream, value.toList())
       }
-      is RecordingSaved -> {
+      is RecordingStatus -> {
         stream.write(144)
         writeValue(stream, value.toList())
       }
-      is ThermalEvent -> {
+      is RecordingSaved -> {
         stream.write(145)
         writeValue(stream, value.toList())
       }
-      is LiveViewerStats -> {
+      is ThermalEvent -> {
         stream.write(146)
+        writeValue(stream, value.toList())
+      }
+      is LiveViewerStats -> {
+        stream.write(147)
         writeValue(stream, value.toList())
       }
       else -> super.writeValue(stream, value)
@@ -1343,6 +1412,17 @@ interface CaptureHostApi {
   /** Disconnects and releases the program encoder and audio. No-op when idle. */
   fun broadcastStop(callback: (Result<Unit>) -> Unit)
   fun broadcastStatus(): BroadcastStatus
+  /**
+   * Puts clip [clipId] (ready or in the reserve) on air at [speed], replacing any running
+   * replay; [label] is drawn over it (e.g. `REPETICIÓN`). Completes once the first frame is
+   * decoded. Errors: `not_live` (no active broadcast), `replay_unavailable` (clip not on the
+   * Camera), `replay_failed`.
+   */
+  fun replayStart(clipId: String, speed: Double, label: String, callback: (Result<ReplayStatus>) -> Unit)
+  /** Changes the speed of the running replay at once (no-op without one). */
+  fun replaySpeed(speed: Double)
+  /** Back to the live picture (no-op without a replay). [CaptureEventsApi.onReplayEnded] follows. */
+  fun replayStop(callback: (Result<Unit>) -> Unit)
 
   companion object {
     /** The codec used by CaptureHostApi. */
@@ -1818,6 +1898,63 @@ interface CaptureHostApi {
           channel.setMessageHandler(null)
         }
       }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.replay_capture_android.CaptureHostApi.replayStart$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val clipIdArg = args[0] as String
+            val speedArg = args[1] as Double
+            val labelArg = args[2] as String
+            api.replayStart(clipIdArg, speedArg, labelArg) { result: Result<ReplayStatus> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(CaptureApiPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(CaptureApiPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.replay_capture_android.CaptureHostApi.replaySpeed$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val speedArg = args[0] as Double
+            val wrapped: List<Any?> = try {
+              api.replaySpeed(speedArg)
+              listOf(null)
+            } catch (exception: Throwable) {
+              CaptureApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.replay_capture_android.CaptureHostApi.replayStop$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.replayStop{ result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(CaptureApiPigeonUtils.wrapError(error))
+              } else {
+                reply.reply(CaptureApiPigeonUtils.wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
     }
   }
 }
@@ -1997,6 +2134,45 @@ class CaptureEventsApi(private val binaryMessenger: BinaryMessenger, private val
     val channelName = "dev.flutter.pigeon.replay_capture_android.CaptureEventsApi.onBroadcast$separatedMessageChannelSuffix"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(listOf(statusArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else {
+          callback(Result.success(Unit))
+        }
+      } else {
+        callback(Result.failure(CaptureApiPigeonUtils.createConnectionError(channelName)))
+      } 
+    }
+  }
+  /** A replay went on air or changed speed; the position also rides on [CaptureStats.replay]. */
+  fun onReplay(statusArg: ReplayStatus, callback: (Result<Unit>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.replay_capture_android.CaptureEventsApi.onReplay$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(statusArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else {
+          callback(Result.success(Unit))
+        }
+      } else {
+        callback(Result.failure(CaptureApiPigeonUtils.createConnectionError(channelName)))
+      } 
+    }
+  }
+  /**
+   * The program is back on the camera: the clip ended, was stopped or replaced, or failed.
+   * [error] is set for a failure.
+   */
+  fun onReplayEnded(clipIdArg: String, errorArg: String?, callback: (Result<Unit>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.replay_capture_android.CaptureEventsApi.onReplayEnded$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(clipIdArg, errorArg)) {
       if (it is List<*>) {
         if (it.size > 1) {
           callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
