@@ -587,6 +587,21 @@ void main() {
       expect(fake.calls.last, 'broadcastStop');
     });
 
+    testWidgets('the phone keeps the score itself; pairing folds; the controls can be hidden', (tester) async {
+      final fake = FakeCaptureLayer();
+      await _pumpCamera(tester, fake, height: 2400, saved: {'camera.mode': 'broadcast'});
+      expect(find.byKey(const Key('camera-scoreboard')), findsOneWidget);
+      expect(find.byKey(const Key('camera-pairing-qr')), findsNothing, reason: 'folded');
+      expect(find.byKey(const Key('camera-pairing-folded')), findsOneWidget);
+
+      await _tapNow(tester, find.byKey(const ValueKey('score-home-plus')));
+      expect(fake.overlays.last.homeScore, 1);
+
+      await _tapNow(tester, find.byKey(const Key('camera-scoreboard-toggle')));
+      expect(find.byKey(const Key('camera-scoreboard')), findsNothing);
+      expect(find.byKey(const Key('camera-score')), findsOneWidget, reason: 'the score on air instead');
+    });
+
     testWidgets('the operating screen shows the score and the stream', (tester) async {
       final fake = FakeCaptureLayer();
       await _pumpCamera(tester, fake, saved: {'camera.mode': 'broadcast'});

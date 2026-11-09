@@ -70,7 +70,7 @@ internal class OverlayRenderer(private val referenceHeight: Int) {
     /** Draws the bar top-left with a safe margin into the current target of [frameWidth]×[frameHeight]. */
     fun draw(frameWidth: Int, frameHeight: Int) {
         if (textureWidth == 0) return
-        val height = Scoreboard.barHeight(frameHeight)
+        val height = Scoreboard.barHeight(frameHeight, shown?.scalePercent ?: 100)
         val width = textureWidth * height / textureHeight
         val x = Scoreboard.margin(frameWidth)
         val y = frameHeight - Scoreboard.margin(frameHeight) - height // GL origin is bottom-left
@@ -86,7 +86,7 @@ internal class OverlayRenderer(private val referenceHeight: Int) {
     }
 
     private fun upload(text: ScoreboardText) {
-        val height = Scoreboard.barHeight(referenceHeight)
+        val height = Scoreboard.barHeight(referenceHeight, text.scalePercent)
         paint.textSize = height * Scoreboard.TEXT_SIZE
         val layout = Scoreboard.layout(text, height, paint::measureText)
         val bitmap = render(layout)

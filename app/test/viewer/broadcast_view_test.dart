@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:instant_replay/core/panels.dart';
 import 'package:instant_replay/core/preferences.dart';
 import 'package:instant_replay/features/broadcast/broadcast_widgets.dart';
 import 'package:instant_replay/features/viewer/clips/clip_transfers.dart';
@@ -155,6 +156,35 @@ void main() {
       isA<ClockStartCommand>(),
       isA<VisibleCommand>().having((c) => c.visible, 'visible', false),
     ]);
+  });
+
+  testWidgets('panels: hide the live view, the scoreboard or the replays on this device', (tester) async {
+    await _pump(tester);
+    expect(find.byType(LivePanel), findsOneWidget);
+    expect(_key('viewer-scoreboard'), findsOneWidget);
+    expect(_key('viewer-save'), findsOneWidget);
+
+    final container = ProviderScope.containerOf(tester.element(find.byType(LiveControlView)));
+    final panels = container.read(hiddenPanelsProvider.notifier);
+    // A scorekeeper: only the scoreboard, full size.
+    panels.set(Panel.viewerLive, visible: false);
+    panels.set(Panel.viewerReplays, visible: false);
+    await tester.pump();
+    expect(find.byType(LivePanel), findsNothing);
+    expect(_key('viewer-save'), findsNothing);
+    expect(_key('viewer-scoreboard'), findsOneWidget);
+    expect(_key('viewer-broadcast'), findsOneWidget, reason: 'the stream bar always stays');
+
+    // A coach while the Camera keeps the score: live + replays.
+    panels.set(Panel.viewerScoreboard, visible: false);
+    panels.set(Panel.viewerLive, visible: true);
+    panels.set(Panel.viewerReplays, visible: true);
+    await tester.pump();
+    expect(_key('viewer-scoreboard'), findsNothing);
+    expect(find.byType(LivePanel), findsOneWidget);
+    expect(_key('viewer-save'), findsOneWidget);
+    expect(container.read(sharedPreferencesProvider).getStringList('ui.hiddenPanels'), ['viewerScoreboard']);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('the + and − buttons are big and apart', (tester) async {

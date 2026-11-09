@@ -15,6 +15,8 @@ internal data class ScoreboardState(
     val clockMs: Long,
     val clockRunning: Boolean,
     val countDown: Boolean,
+    /** Bar size relative to the 56 px (at 1080p) default; 100 = default. */
+    val scalePercent: Int = 100,
 )
 
 /** Everything the bar shows. The bitmap is redrawn only when this changes (at most once per second). */
@@ -27,6 +29,7 @@ internal data class ScoreboardText(
     val awayColor: Int,
     val clock: String,
     val period: String,
+    val scalePercent: Int = 100,
 )
 
 internal enum class CellKind { STRIPE, NAME, SCORE, CLOCK, PERIOD }
@@ -63,6 +66,7 @@ internal object Scoreboard {
         awayColor = state.awayColor,
         clock = formatClock(clockMs(state, elapsedMs), state.countDown),
         period = state.periodLabel,
+        scalePercent = state.scalePercent.coerceIn(MIN_SCALE, MAX_SCALE),
     )
 
     /**
@@ -92,8 +96,12 @@ internal object Scoreboard {
         return BarLayout(kotlin.math.ceil(x).toInt(), height, height * TEXT_SIZE, cells)
     }
 
-    /** Bar height on a frame [frameHeight] px high: 56 px at 1080p. */
-    fun barHeight(frameHeight: Int) = maxOf(16, Math.round(frameHeight * 56f / 1080f))
+    /** Bar height on a frame [frameHeight] px high: 56 px at 1080p and [scalePercent] 100. */
+    fun barHeight(frameHeight: Int, scalePercent: Int = 100) =
+        maxOf(16, Math.round(frameHeight * 56f / 1080f * scalePercent.coerceIn(MIN_SCALE, MAX_SCALE) / 100f))
+
+    const val MIN_SCALE = 50
+    const val MAX_SCALE = 250
 
     /** Safe margin from the frame edges: 3% of each dimension. */
     fun margin(size: Int) = Math.round(size * 0.03f)

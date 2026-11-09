@@ -883,6 +883,9 @@ class _SettingsDialogState extends State<_SettingsDialog> {
   late int _awayColor = widget.current.awayColor;
   late int _periods = widget.current.periods.clamp(1, ScoreboardState.maxPeriods);
   late bool _countDown = widget.current.countDown;
+  late int _scale = ScoreboardState.scales.contains(widget.current.scale)
+      ? widget.current.scale
+      : ScoreboardState.defaultScale;
 
   @override
   void dispose() {
@@ -954,6 +957,20 @@ class _SettingsDialogState extends State<_SettingsDialog> {
             selected: {_countDown},
             onSelectionChanged: (s) => setState(() => _countDown = s.single),
           ),
+          const SizedBox(height: 16),
+          Text(l10n.scoreboardSize, style: text.titleSmall),
+          const SizedBox(height: 8),
+          SegmentedButton<int>(
+            key: const ValueKey('score-settings-size'),
+            showSelectedIcon: false,
+            segments: [
+              ButtonSegment(value: ScoreboardState.scales[0], label: Text(l10n.scoreboardSizeSmall)),
+              ButtonSegment(value: ScoreboardState.scales[1], label: Text(l10n.scoreboardSizeMedium)),
+              ButtonSegment(value: ScoreboardState.scales[2], label: Text(l10n.scoreboardSizeLarge)),
+            ],
+            selected: {_scale},
+            onSelectionChanged: (s) => setState(() => _scale = s.single),
+          ),
         ]),
       ),
       actions: [
@@ -975,6 +992,7 @@ class _SettingsDialogState extends State<_SettingsDialog> {
               periods: _periods,
               periodMs: minutes.clamp(1, 120) * 60000,
               countDown: _countDown,
+              scale: _scale,
             ));
           },
           child: Text(l10n.broadcastSave),

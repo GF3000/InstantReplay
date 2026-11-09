@@ -161,6 +161,7 @@ class OverlayState {
     required this.clockMs,
     required this.clockRunning,
     required this.countDown,
+    required this.scalePercent,
   });
 
   bool visible;
@@ -184,6 +185,9 @@ class OverlayState {
 
   /// A running count-down clock stops at 0 on screen.
   bool countDown;
+
+  /// Bar size: 100 = 56 px high at 1080p.
+  int scalePercent;
 }
 
 class BroadcastConfig {

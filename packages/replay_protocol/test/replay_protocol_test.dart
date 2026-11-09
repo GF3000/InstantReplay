@@ -276,6 +276,24 @@ void main() {
       expect((reset.period, reset.away.score, reset.away.name), (1, 0, 'VIS'));
     });
 
+    test('scale: defaults to medium, settings change it, old JSON reads as default', () {
+      expect(s0.scale, ScoreboardState.defaultScale);
+      final json = s0.toJson()..remove('scale');
+      expect(ScoreboardState.fromJson(json).scale, ScoreboardState.defaultScale);
+      final big = s0.apply(SettingsCommand(ScoreboardSettings(
+        homeName: 'A',
+        awayName: 'B',
+        homeColor: 1,
+        awayColor: 2,
+        periods: 2,
+        periodMs: s0.periodMs,
+        countDown: false,
+        scale: 160,
+      )), elapsedMs: 0);
+      expect(big.scale, 160);
+      expect(ScoreboardState.fromJson(big.toJson()), big);
+    });
+
     test('formatClock', () {
       expect(formatClock(0), '00:00');
       expect(formatClock(61999), '01:01');

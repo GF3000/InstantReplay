@@ -121,6 +121,7 @@ ScoreboardState rebuild(ScoreboardState s, {required int clockMs, required bool 
       clockMs: clockMs,
       clockRunning: running,
       visible: s.visible,
+      scale: s.scale,
     );
 
 /// The period as shown on air: `1T`/`2T` (es) or `1H`/`2H` (en) for halves, `P1`… for thirds,
@@ -145,4 +146,5 @@ OverlayState overlayFor(ScoreboardState s, AppLocalizations l10n) => OverlayStat
       clockMs: s.clockMs,
       clockRunning: s.clockRunning,
       countDown: s.countDown,
+      scalePercent: s.scale,
     );

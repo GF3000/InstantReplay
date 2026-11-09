@@ -2066,6 +2066,72 @@ abstract class AppLocalizations {
   /// **'Change period'**
   String get scoreboardPeriodConfirm;
 
+  /// No description provided for @scoreboardSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Scoreboard size'**
+  String get scoreboardSize;
+
+  /// No description provided for @scoreboardSizeSmall.
+  ///
+  /// In en, this message translates to:
+  /// **'Small'**
+  String get scoreboardSizeSmall;
+
+  /// No description provided for @scoreboardSizeMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get scoreboardSizeMedium;
+
+  /// No description provided for @scoreboardSizeLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'Large'**
+  String get scoreboardSizeLarge;
+
+  /// No description provided for @panelsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Panels'**
+  String get panelsTitle;
+
+  /// No description provided for @panelLive.
+  ///
+  /// In en, this message translates to:
+  /// **'Live view'**
+  String get panelLive;
+
+  /// No description provided for @panelScoreboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Scoreboard'**
+  String get panelScoreboard;
+
+  /// No description provided for @panelReplays.
+  ///
+  /// In en, this message translates to:
+  /// **'Replays'**
+  String get panelReplays;
+
+  /// No description provided for @panelsNothingShown.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything is hidden. Use the panels button at the top to show the live view, the scoreboard or replays.'**
+  String get panelsNothingShown;
+
+  /// No description provided for @cameraScoreboardControls.
+  ///
+  /// In en, this message translates to:
+  /// **'Scoreboard controls'**
+  String get cameraScoreboardControls;
+
+  /// No description provided for @cameraConnectViewer.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect a viewer'**
+  String get cameraConnectViewer;
+
   /// No description provided for @scoreboardSet.
   ///
   /// In en, this message translates to:

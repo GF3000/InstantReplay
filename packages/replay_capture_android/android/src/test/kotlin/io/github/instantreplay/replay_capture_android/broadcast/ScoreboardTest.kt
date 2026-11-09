@@ -95,6 +95,8 @@ class ScoreboardTest {
     fun scalesWithTheFrame() {
         assertEquals(56, Scoreboard.barHeight(1080))
         assertEquals(37, Scoreboard.barHeight(720))
+        assertEquals(84, Scoreboard.barHeight(1080, 150))
+        assertEquals(140, Scoreboard.barHeight(1080, 999), "clamped to 250%")
         assertEquals(58, Scoreboard.margin(1920))
         assertEquals(32, Scoreboard.margin(1080))
     }

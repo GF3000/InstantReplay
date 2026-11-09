@@ -290,6 +290,7 @@ class ReplayCaptureAndroidPlugin :
                 clockMs = overlay.clockMs,
                 clockRunning = overlay.clockRunning,
                 countDown = overlay.countDown,
+                scalePercent = overlay.scalePercent.toInt(),
             ),
         )
     }

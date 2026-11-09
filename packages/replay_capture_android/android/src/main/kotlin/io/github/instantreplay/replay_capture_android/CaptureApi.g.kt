@@ -674,7 +674,9 @@ data class OverlayState (
   val clockMs: Long,
   val clockRunning: Boolean,
   /** A running count-down clock stops at 0 on screen. */
-  val countDown: Boolean
+  val countDown: Boolean,
+  /** Bar size: 100 = 56 px high at 1080p. */
+  val scalePercent: Long
 )
  {
   companion object {
@@ -690,7 +692,8 @@ data class OverlayState (
       val clockMs = pigeonVar_list[8] as Long
       val clockRunning = pigeonVar_list[9] as Boolean
       val countDown = pigeonVar_list[10] as Boolean
-      return OverlayState(visible, homeName, awayName, homeScore, awayScore, homeColor, awayColor, periodLabel, clockMs, clockRunning, countDown)
+      val scalePercent = pigeonVar_list[11] as Long
+      return OverlayState(visible, homeName, awayName, homeScore, awayScore, homeColor, awayColor, periodLabel, clockMs, clockRunning, countDown, scalePercent)
     }
   }
   fun toList(): List<Any?> {
@@ -706,6 +709,7 @@ data class OverlayState (
       clockMs,
       clockRunning,
       countDown,
+      scalePercent,
     )
   }
   override fun equals(other: Any?): Boolean {
@@ -716,7 +720,7 @@ data class OverlayState (
       return true
     }
     val other = other as OverlayState
-    return CaptureApiPigeonUtils.deepEquals(this.visible, other.visible) && CaptureApiPigeonUtils.deepEquals(this.homeName, other.homeName) && CaptureApiPigeonUtils.deepEquals(this.awayName, other.awayName) && CaptureApiPigeonUtils.deepEquals(this.homeScore, other.homeScore) && CaptureApiPigeonUtils.deepEquals(this.awayScore, other.awayScore) && CaptureApiPigeonUtils.deepEquals(this.homeColor, other.homeColor) && CaptureApiPigeonUtils.deepEquals(this.awayColor, other.awayColor) && CaptureApiPigeonUtils.deepEquals(this.periodLabel, other.periodLabel) && CaptureApiPigeonUtils.deepEquals(this.clockMs, other.clockMs) && CaptureApiPigeonUtils.deepEquals(this.clockRunning, other.clockRunning) && CaptureApiPigeonUtils.deepEquals(this.countDown, other.countDown)
+    return CaptureApiPigeonUtils.deepEquals(this.visible, other.visible) && CaptureApiPigeonUtils.deepEquals(this.homeName, other.homeName) && CaptureApiPigeonUtils.deepEquals(this.awayName, other.awayName) && CaptureApiPigeonUtils.deepEquals(this.homeScore, other.homeScore) && CaptureApiPigeonUtils.deepEquals(this.awayScore, other.awayScore) && CaptureApiPigeonUtils.deepEquals(this.homeColor, other.homeColor) && CaptureApiPigeonUtils.deepEquals(this.awayColor, other.awayColor) && CaptureApiPigeonUtils.deepEquals(this.periodLabel, other.periodLabel) && CaptureApiPigeonUtils.deepEquals(this.clockMs, other.clockMs) && CaptureApiPigeonUtils.deepEquals(this.clockRunning, other.clockRunning) && CaptureApiPigeonUtils.deepEquals(this.countDown, other.countDown) && CaptureApiPigeonUtils.deepEquals(this.scalePercent, other.scalePercent)
   }
 
   override fun hashCode(): Int {
@@ -732,10 +736,11 @@ data class OverlayState (
     result = 31 * result + CaptureApiPigeonUtils.deepHash(this.clockMs)
     result = 31 * result + CaptureApiPigeonUtils.deepHash(this.clockRunning)
     result = 31 * result + CaptureApiPigeonUtils.deepHash(this.countDown)
+    result = 31 * result + CaptureApiPigeonUtils.deepHash(this.scalePercent)
     return result
   }
   override fun toString(): String {
-    return "OverlayState(visible=$visible, homeName=$homeName, awayName=$awayName, homeScore=$homeScore, awayScore=$awayScore, homeColor=$homeColor, awayColor=$awayColor, periodLabel=$periodLabel, clockMs=$clockMs, clockRunning=$clockRunning, countDown=$countDown)"
+    return "OverlayState(visible=$visible, homeName=$homeName, awayName=$awayName, homeScore=$homeScore, awayScore=$awayScore, homeColor=$homeColor, awayColor=$awayColor, periodLabel=$periodLabel, clockMs=$clockMs, clockRunning=$clockRunning, countDown=$countDown, scalePercent=$scalePercent)"
   }
 }
 

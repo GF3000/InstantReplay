@@ -1206,6 +1206,40 @@ class AppLocalizationsEn extends AppLocalizations {
   String get scoreboardPeriodConfirm => 'Change period';
 
   @override
+  String get scoreboardSize => 'Scoreboard size';
+
+  @override
+  String get scoreboardSizeSmall => 'Small';
+
+  @override
+  String get scoreboardSizeMedium => 'Medium';
+
+  @override
+  String get scoreboardSizeLarge => 'Large';
+
+  @override
+  String get panelsTitle => 'Panels';
+
+  @override
+  String get panelLive => 'Live view';
+
+  @override
+  String get panelScoreboard => 'Scoreboard';
+
+  @override
+  String get panelReplays => 'Replays';
+
+  @override
+  String get panelsNothingShown =>
+      'Everything is hidden. Use the panels button at the top to show the live view, the scoreboard or replays.';
+
+  @override
+  String get cameraScoreboardControls => 'Scoreboard controls';
+
+  @override
+  String get cameraConnectViewer => 'Connect a viewer';
+
+  @override
   String get scoreboardSet => 'Set';
 
   @override

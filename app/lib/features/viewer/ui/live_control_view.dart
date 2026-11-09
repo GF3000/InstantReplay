@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/panels.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../broadcast/broadcast_widgets.dart';
 import '../../recording/recording_widgets.dart';
@@ -43,48 +44,118 @@ class LiveControlView extends ConsumerWidget {
       final text = broadcastErrorMessage(AppLocalizations.of(context), notice.code, notice.message);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
     });
-    final scoreboard = ref.watch(viewerScoreboardProvider.select((s) => s != null));
-    return _layout(scoreboard: scoreboard);
+    final broadcast = ref.watch(viewerScoreboardProvider.select((s) => s != null));
+    final hidden = ref.watch(hiddenPanelsProvider);
+    return _layout(
+      live: !hidden.contains(Panel.viewerLive),
+      scoreboard: broadcast && !hidden.contains(Panel.viewerScoreboard),
+      replays: !hidden.contains(Panel.viewerReplays),
+    );
   }
 
-  Widget _layout({required bool scoreboard}) => LayoutBuilder(builder: (context, c) {
-        final wide = c.maxWidth > c.maxHeight && c.maxWidth >= 560;
-        if (wide) {
-          final panel = c.maxWidth >= 1000 ? 400.0 : (c.maxWidth * 0.42).clamp(260.0, 360.0);
-          return Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Expanded(
-              child: scoreboard
-                  ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                      const Expanded(child: _LiveWithTagPanel()),
-                      ViewerScoreboardPanel(compact: c.maxHeight < 700),
-                    ])
-                  : const _LiveWithTagPanel(),
-            ),
-            SizedBox(
-              width: panel,
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                const ViewerBroadcastBar(),
-                const ViewerRecordingBar(),
-                SaveControls(compact: scoreboard || c.maxHeight < 480, tight: c.maxHeight < 400),
-                const Divider(height: 1),
-                const Expanded(child: ClipList()),
-              ]),
-            ),
+  /// Each part can be hidden from the app bar (SPEC §12.4): e.g. only the scoreboard for a
+  /// scorekeeper, or only live + replays for the coach while the Camera keeps the score.
+  Widget _layout({required bool live, required bool scoreboard, required bool replays}) =>
+      LayoutBuilder(builder: (context, c) {
+        const bars = [ViewerBroadcastBar(), ViewerRecordingBar()];
+        Widget save({required bool compact, bool tight = false}) => SaveControls(compact: compact, tight: tight);
+        const clips = Expanded(child: ClipList());
+        if (!live && !scoreboard && !replays) {
+          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            ...bars,
+            const Expanded(child: _NothingShown()),
           ]);
         }
+        final wide = c.maxWidth > c.maxHeight && c.maxWidth >= 560;
+        if (wide) {
+          final left = live || scoreboard;
+          // Without the live view the scoreboard gets the room: full size, centred.
+          final leftColumn = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            if (!replays) ...bars,
+            if (live) const Expanded(child: _LiveWithTagPanel()),
+            if (scoreboard && live) ViewerScoreboardPanel(compact: c.maxHeight < 700),
+            if (scoreboard && !live) const Expanded(child: Center(child: ViewerScoreboardPanel())),
+          ]);
+          final rightColumn = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            ...bars,
+            save(compact: scoreboard || c.maxHeight < 480, tight: c.maxHeight < 400),
+            const Divider(height: 1),
+            clips,
+          ]);
+          if (!left) return rightColumn;
+          if (!replays) return leftColumn;
+          final panel = c.maxWidth >= 1000 ? 400.0 : (c.maxWidth * 0.42).clamp(260.0, 360.0);
+          return Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Expanded(child: leftColumn),
+            SizedBox(width: panel, child: rightColumn),
+          ]);
+        }
+        final liveShare = scoreboard ? 0.3 : (replays ? 0.42 : 0.6);
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          SizedBox(
-            height: (c.maxWidth * 9 / 16).clamp(120.0, c.maxHeight * (scoreboard ? 0.3 : 0.42)),
-            child: const _LiveWithTagPanel(),
-          ),
-          if (scoreboard) ViewerScoreboardPanel(compact: c.maxHeight < 900),
-          const ViewerBroadcastBar(),
-          const ViewerRecordingBar(),
-          SaveControls(compact: scoreboard || c.maxHeight < 760, tight: scoreboard && c.maxHeight < 760),
-          const Divider(height: 1),
-          const Expanded(child: ClipList()),
+          if (live)
+            SizedBox(
+              height: (c.maxWidth * 9 / 16).clamp(120.0, c.maxHeight * liveShare),
+              child: const _LiveWithTagPanel(),
+            ),
+          if (scoreboard) ViewerScoreboardPanel(compact: replays && c.maxHeight < 900),
+          ...bars,
+          if (replays) ...[
+            save(compact: scoreboard || c.maxHeight < 760, tight: scoreboard && c.maxHeight < 760),
+            const Divider(height: 1),
+            clips,
+          ] else
+            const Spacer(),
         ]);
       });
+}
+
+/// Every panel hidden: say how to bring them back.
+class _NothingShown extends StatelessWidget {
+  const _NothingShown();
+
+  @override
+  Widget build(BuildContext context) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            AppLocalizations.of(context).panelsNothingShown,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+        ),
+      );
+}
+
+/// The app bar menu that shows or hides the Viewer's panels on this device.
+class ViewerPanelsButton extends ConsumerWidget {
+  const ViewerPanelsButton({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final hidden = ref.watch(hiddenPanelsProvider);
+    final broadcast = ref.watch(viewerScoreboardProvider.select((s) => s != null));
+    final panels = [
+      (Panel.viewerLive, Icons.videocam_outlined, l10n.panelLive),
+      if (broadcast) (Panel.viewerScoreboard, Icons.scoreboard_outlined, l10n.panelScoreboard),
+      (Panel.viewerReplays, Icons.replay, l10n.panelReplays),
+    ];
+    return PopupMenuButton<Panel>(
+      key: const ValueKey('viewer-panels'),
+      tooltip: l10n.panelsTitle,
+      icon: const Icon(Icons.dashboard_customize_outlined),
+      onSelected: ref.read(hiddenPanelsProvider.notifier).toggle,
+      itemBuilder: (_) => [
+        for (final (panel, icon, label) in panels)
+          CheckedPopupMenuItem(
+            key: ValueKey('viewer-panel-${panel.name}'),
+            value: panel,
+            checked: !hidden.contains(panel),
+            child: Row(children: [Icon(icon), const SizedBox(width: 12), Text(label)]),
+          ),
+      ],
+    );
+  }
 }
 
 /// The live view, with the post-save tag panel sliding in over its left side: as wide as the

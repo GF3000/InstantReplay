@@ -45,6 +45,7 @@ class ScoreboardSettings {
     required this.periods,
     required this.periodMs,
     required this.countDown,
+    this.scale = ScoreboardState.defaultScale,
   });
 
   factory ScoreboardSettings.fromJson(Json j) => ScoreboardSettings(
@@ -55,6 +56,7 @@ class ScoreboardSettings {
         periods: j['periods']! as int,
         periodMs: j['periodMs']! as int,
         countDown: j['countDown']! as bool,
+        scale: j['scale'] as int? ?? ScoreboardState.defaultScale,
       );
 
   final String homeName;
@@ -67,6 +69,9 @@ class ScoreboardSettings {
   final int periodMs;
   final bool countDown;
 
+  /// Overlay size in percent of the base bar (SPEC §12.2).
+  final int scale;
+
   Json toJson() => {
         'homeName': homeName,
         'awayName': awayName,
@@ -75,6 +80,7 @@ class ScoreboardSettings {
         'periods': periods,
         'periodMs': periodMs,
         'countDown': countDown,
+        'scale': scale,
       };
 }
 
@@ -91,6 +97,7 @@ class ScoreboardState {
     this.clockMs = 0,
     this.clockRunning = false,
     this.visible = true,
+    this.scale = defaultScale,
   });
 
   factory ScoreboardState.fromJson(Json j) {
@@ -105,6 +112,7 @@ class ScoreboardState {
       clockMs: clock['ms'] as int? ?? 0,
       clockRunning: clock['running'] as bool? ?? false,
       visible: j['visible'] as bool? ?? true,
+      scale: j['scale'] as int? ?? defaultScale,
     );
   }
 
@@ -117,6 +125,10 @@ class ScoreboardState {
   static const maxNameLength = 5;
   static const maxPeriods = 4;
 
+  /// Overlay sizes offered to viewers, in percent of the base bar (56 px high at 1080p).
+  static const scales = [100, 130, 160];
+  static const defaultScale = 130;
+
   final TeamState home;
   final TeamState away;
 
@@ -128,6 +140,9 @@ class ScoreboardState {
   final int clockMs;
   final bool clockRunning;
   final bool visible;
+
+  /// Overlay size in percent of the base bar.
+  final int scale;
 
   TeamState team(Team t) => t == Team.home ? home : away;
 
@@ -182,6 +197,7 @@ class ScoreboardState {
       period: base.period.clamp(1, periods),
       periodMs: periodMs,
       countDown: s.countDown,
+      scale: s.scale.clamp(50, 250),
     );
     // A new clock mode or length restarts the period clock, paused.
     return clockChanged ? next._copy(clockMs: next.periodStartMs, clockRunning: false) : next;
@@ -202,6 +218,7 @@ class ScoreboardState {
         periods: periods,
         periodMs: periodMs,
         countDown: countDown,
+        scale: scale,
       );
 
   ScoreboardState _copy({
@@ -214,6 +231,7 @@ class ScoreboardState {
     int? clockMs,
     bool? clockRunning,
     bool? visible,
+    int? scale,
   }) =>
       ScoreboardState(
         home: home ?? this.home,
@@ -225,6 +243,7 @@ class ScoreboardState {
         clockMs: clockMs ?? this.clockMs,
         clockRunning: clockRunning ?? this.clockRunning,
         visible: visible ?? this.visible,
+        scale: scale ?? this.scale,
       );
 
   Json toJson() => {
@@ -236,6 +255,7 @@ class ScoreboardState {
         'countDown': countDown,
         'clock': {'ms': clockMs, 'running': clockRunning},
         'visible': visible,
+        'scale': scale,
       };
 
   @override
@@ -249,11 +269,12 @@ class ScoreboardState {
       other.countDown == countDown &&
       other.clockMs == clockMs &&
       other.clockRunning == clockRunning &&
-      other.visible == visible;
+      other.visible == visible &&
+      other.scale == scale;
 
   @override
   int get hashCode =>
-      Object.hash(home, away, period, periods, periodMs, countDown, clockMs, clockRunning, visible);
+      Object.hash(home, away, period, periods, periodMs, countDown, clockMs, clockRunning, visible, scale);
 }
 
 /// `mm:ss`, minutes not capped (e.g. `93:12` in added time).

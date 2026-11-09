@@ -626,6 +626,7 @@ class OverlayState {
     required this.clockMs,
     required this.clockRunning,
     required this.countDown,
+    required this.scalePercent,
   });
 
   bool visible;
@@ -655,6 +656,9 @@ class OverlayState {
   /// A running count-down clock stops at 0 on screen.
   bool countDown;
 
+  /// Bar size: 100 = 56 px high at 1080p.
+  int scalePercent;
+
   List<Object?> _toList() {
     return <Object?>[
       visible,
@@ -668,6 +672,7 @@ class OverlayState {
       clockMs,
       clockRunning,
       countDown,
+      scalePercent,
     ];
   }
 
@@ -688,6 +693,7 @@ class OverlayState {
       clockMs: result[8]! as int,
       clockRunning: result[9]! as bool,
       countDown: result[10]! as bool,
+      scalePercent: result[11]! as int,
     );
   }
 
@@ -700,7 +706,7 @@ class OverlayState {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(visible, other.visible) && _deepEquals(homeName, other.homeName) && _deepEquals(awayName, other.awayName) && _deepEquals(homeScore, other.homeScore) && _deepEquals(awayScore, other.awayScore) && _deepEquals(homeColor, other.homeColor) && _deepEquals(awayColor, other.awayColor) && _deepEquals(periodLabel, other.periodLabel) && _deepEquals(clockMs, other.clockMs) && _deepEquals(clockRunning, other.clockRunning) && _deepEquals(countDown, other.countDown);
+    return _deepEquals(visible, other.visible) && _deepEquals(homeName, other.homeName) && _deepEquals(awayName, other.awayName) && _deepEquals(homeScore, other.homeScore) && _deepEquals(awayScore, other.awayScore) && _deepEquals(homeColor, other.homeColor) && _deepEquals(awayColor, other.awayColor) && _deepEquals(periodLabel, other.periodLabel) && _deepEquals(clockMs, other.clockMs) && _deepEquals(clockRunning, other.clockRunning) && _deepEquals(countDown, other.countDown) && _deepEquals(scalePercent, other.scalePercent);
   }
 
   @override
@@ -709,7 +715,7 @@ class OverlayState {
 
   @override
   String toString() {
-    return 'OverlayState(visible: $visible, homeName: $homeName, awayName: $awayName, homeScore: $homeScore, awayScore: $awayScore, homeColor: $homeColor, awayColor: $awayColor, periodLabel: $periodLabel, clockMs: $clockMs, clockRunning: $clockRunning, countDown: $countDown)';
+    return 'OverlayState(visible: $visible, homeName: $homeName, awayName: $awayName, homeScore: $homeScore, awayScore: $awayScore, homeColor: $homeColor, awayColor: $awayColor, periodLabel: $periodLabel, clockMs: $clockMs, clockRunning: $clockRunning, countDown: $countDown, scalePercent: $scalePercent)';
   }
 }
 

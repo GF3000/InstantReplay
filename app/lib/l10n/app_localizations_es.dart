@@ -1211,6 +1211,40 @@ class AppLocalizationsEs extends AppLocalizations {
   String get scoreboardPeriodConfirm => 'Cambiar de periodo';
 
   @override
+  String get scoreboardSize => 'Tamaño del marcador';
+
+  @override
+  String get scoreboardSizeSmall => 'Pequeño';
+
+  @override
+  String get scoreboardSizeMedium => 'Mediano';
+
+  @override
+  String get scoreboardSizeLarge => 'Grande';
+
+  @override
+  String get panelsTitle => 'Paneles';
+
+  @override
+  String get panelLive => 'Directo';
+
+  @override
+  String get panelScoreboard => 'Marcador';
+
+  @override
+  String get panelReplays => 'Repeticiones';
+
+  @override
+  String get panelsNothingShown =>
+      'Está todo oculto. Usa el botón de paneles de arriba para mostrar el directo, el marcador o las repeticiones.';
+
+  @override
+  String get cameraScoreboardControls => 'Controles del marcador';
+
+  @override
+  String get cameraConnectViewer => 'Conectar un visor';
+
+  @override
   String get scoreboardSet => 'Ajustar';
 
   @override

@@ -8,6 +8,7 @@ import 'package:replay_capture_android/replay_capture_android.dart';
 import 'package:replay_protocol/replay_protocol.dart' show RecordingEndReason, ScoreboardState, formatClock, hotThermalStatus;
 
 import '../../core/orientation_lock.dart';
+import '../../core/panels.dart';
 import '../../l10n/app_localizations.dart';
 import '../broadcast/broadcast_host.dart';
 import '../broadcast/broadcast_providers.dart';
@@ -75,6 +76,8 @@ class _SetupView extends ConsumerWidget {
         child: LayoutBuilder(builder: (context, c) {
           final preview = _Preview(state: state);
           final panel = _Panel(state: state);
+          // Scoreboard controls on the phone need more room than pairing does.
+          final controls = state.broadcast && ref.watch(panelShownProvider(Panel.cameraScoreboard));
           // Portrait only before the landscape lock applies; keep it usable anyway.
           if (c.maxHeight > c.maxWidth) {
             return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -84,7 +87,10 @@ class _SetupView extends ConsumerWidget {
           }
           return Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Expanded(child: preview),
-            SizedBox(width: (c.maxWidth * 0.45).clamp(300.0, 420.0), child: panel),
+            SizedBox(
+              width: controls ? (c.maxWidth * 0.5).clamp(300.0, 560.0) : (c.maxWidth * 0.45).clamp(300.0, 420.0),
+              child: panel,
+            ),
           ]);
         }),
       ),
@@ -202,6 +208,16 @@ class _Panel extends ConsumerWidget {
         children: [
           Row(children: [
             Expanded(child: Text(l10n.roleCamera, style: theme.textTheme.titleLarge)),
+            if (state.broadcast)
+              IconButton(
+                key: const Key('camera-scoreboard-toggle'),
+                tooltip: l10n.cameraScoreboardControls,
+                isSelected: ref.watch(panelShownProvider(Panel.cameraScoreboard)),
+                icon: const Icon(Icons.scoreboard_outlined),
+                selectedIcon: const Icon(Icons.scoreboard),
+                constraints: const BoxConstraints(minWidth: 56, minHeight: 56),
+                onPressed: () => ref.read(hiddenPanelsProvider.notifier).toggle(Panel.cameraScoreboard),
+              ),
             IconButton(
               icon: const Icon(Icons.swap_horiz),
               tooltip: l10n.switchRole,
@@ -213,7 +229,14 @@ class _Panel extends ConsumerWidget {
             ),
           ]),
           // Pairing first: it is what the coach needs while mounting, even with warnings below it.
-          const PairingCard(),
+          // In broadcast mode the phone may run the match alone, so pairing folds away and the
+          // stream and the score come first.
+          if (state.broadcast) ...[
+            _BroadcastCard(state: state),
+            const SizedBox(height: 8),
+            const _FoldedPairing(),
+          ] else
+            const PairingCard(),
           const SizedBox(height: 8),
           if (state.errors.isNotEmpty) ...[
             _ErrorCard(errors: state.errors, onDismiss: notifier.dismissErrors),
@@ -225,11 +248,6 @@ class _Panel extends ConsumerWidget {
           if (state.notificationsDenied) _Warning(Icons.notifications_off, l10n.cameraNotificationsDenied),
           if (state.recovered.isNotEmpty) ...[
             _RecoveredCard(recovered: state.recovered, onDismiss: notifier.dismissRecovered),
-            const SizedBox(height: 8),
-          ],
-          // Broadcast mode: the stream and the score, below the warnings, which need action.
-          if (state.broadcast) ...[
-            _BroadcastCard(state: state),
             const SizedBox(height: 8),
           ],
           _Advanced(state: state),
@@ -593,25 +611,76 @@ class _ModeChoice extends ConsumerWidget {
   }
 }
 
-/// Broadcast mode on the setup screen: the stream with its controls, and the score on air.
-class _BroadcastCard extends StatelessWidget {
+/// Broadcast mode on the setup screen: the stream with its controls, then the scoreboard
+/// controls (or, when they are hidden because a viewer keeps the score, the score on air).
+class _BroadcastCard extends ConsumerWidget {
   const _BroadcastCard({required this.state});
 
   final CameraSessionState state;
 
   @override
-  Widget build(BuildContext context) => Card(
-        key: const Key('camera-broadcast-card'),
-        margin: EdgeInsets.zero,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 8, 12),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            _CameraBroadcastBar(enabled: state.phase == CameraPhase.running),
-            const Divider(height: 20),
-            const _CameraScoreLine(),
-          ]),
-        ),
-      );
+  Widget build(BuildContext context, WidgetRef ref) {
+    final running = state.phase == CameraPhase.running;
+    final controls = ref.watch(panelShownProvider(Panel.cameraScoreboard));
+    return Card(
+      key: const Key('camera-broadcast-card'),
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 8, 12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          _CameraBroadcastBar(enabled: running),
+          const Divider(height: 20),
+          if (controls) _CameraScoreboardControls(enabled: running) else const _CameraScoreLine(),
+        ]),
+      ),
+    );
+  }
+}
+
+/// The same scoreboard controls a viewer has, applied straight to the Camera's scoreboard; every
+/// viewer sees the change in its next status.
+class _CameraScoreboardControls extends ConsumerWidget {
+  const _CameraScoreboardControls({required this.enabled});
+
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final controller = ref.watch(scoreboardControllerProvider);
+    final ScoreboardState s = ref.watch(scoreboardStateProvider).value ?? controller.current;
+    return ScoreboardPanel(
+      key: const Key('camera-scoreboard'),
+      state: s,
+      enabled: enabled,
+      compact: true,
+      onCommand: controller.apply,
+    );
+  }
+}
+
+/// Pairing folded to one line (code and viewers); the QR and the address unfold on demand.
+class _FoldedPairing extends ConsumerWidget {
+  const _FoldedPairing();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final server = ref.watch(cameraServerProvider);
+    final code = server.code.length == 6 ? '${server.code.substring(0, 3)} ${server.code.substring(3)}' : server.code;
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: ExpansionTile(
+        key: const Key('camera-pairing-folded'),
+        leading: const Icon(Icons.qr_code_2),
+        title: Text(l10n.cameraConnectViewer),
+        subtitle: Text('$code · ${l10n.cameraViewersConnected(server.viewers)}'),
+        shape: const Border(),
+        childrenPadding: EdgeInsets.zero,
+        children: const [PairingCard()],
+      ),
+    );
+  }
 }
 
 /// The Camera's own Go live / Stop and stream settings, the same controls every viewer has.
