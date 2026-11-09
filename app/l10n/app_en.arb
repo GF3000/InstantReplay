@@ -737,7 +737,7 @@
       }
     }
   },
-  "broadcastKeyHelp": "In YouTube Studio: Create → Go live → Stream key.",
+  "broadcastKeyHelp": "In YouTube Studio: Create > Go live > Stream key.",
   "broadcastKeyShow": "Show the key",
   "broadcastKeyHide": "Hide the key",
   "broadcastPaste": "Paste",

@@ -1103,7 +1103,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get broadcastKeyHelp =>
-      'In YouTube Studio: Create → Go live → Stream key.';
+      'In YouTube Studio: Create > Go live > Stream key.';
 
   @override
   String get broadcastKeyShow => 'Show the key';

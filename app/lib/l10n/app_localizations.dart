@@ -1901,7 +1901,7 @@ abstract class AppLocalizations {
   /// No description provided for @broadcastKeyHelp.
   ///
   /// In en, this message translates to:
-  /// **'In YouTube Studio: Create → Go live → Stream key.'**
+  /// **'In YouTube Studio: Create > Go live > Stream key.'**
   String get broadcastKeyHelp;
 
   /// No description provided for @broadcastKeyShow.

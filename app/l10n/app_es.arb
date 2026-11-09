@@ -300,7 +300,7 @@
   "broadcastServer": "Servidor",
   "broadcastKey": "Clave de emisión",
   "broadcastKeyKeep": "Déjala vacía para mantener •••• {hint}",
-  "broadcastKeyHelp": "En YouTube Studio: Crear → Emitir en directo → Clave de emisión.",
+  "broadcastKeyHelp": "En YouTube Studio: Crear > Emitir en directo > Clave de emisión.",
   "broadcastKeyShow": "Mostrar la clave",
   "broadcastKeyHide": "Ocultar la clave",
   "broadcastPaste": "Pegar",

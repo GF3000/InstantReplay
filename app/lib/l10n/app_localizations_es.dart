@@ -1107,7 +1107,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get broadcastKeyHelp =>
-      'En YouTube Studio: Crear → Emitir en directo → Clave de emisión.';
+      'En YouTube Studio: Crear > Emitir en directo > Clave de emisión.';
 
   @override
   String get broadcastKeyShow => 'Mostrar la clave';
