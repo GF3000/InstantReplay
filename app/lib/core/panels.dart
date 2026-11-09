@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'preferences.dart';
 
 /// Parts of a screen the user can hide, so one device does only its job: the Camera operator
-/// keeps the score, or a bench tablet only reviews replays (SPEC §12.4). Remembered per device.
+/// keeps the score, or a bench tablet only reviews replays (SPEC §12.5). Remembered per device.
 enum Panel {
   /// Camera, broadcast mode: the scoreboard controls on the phone itself.
   cameraScoreboard,

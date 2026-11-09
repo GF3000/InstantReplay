@@ -53,7 +53,7 @@ class LiveControlView extends ConsumerWidget {
     );
   }
 
-  /// Each part can be hidden from the app bar (SPEC §12.4): e.g. only the scoreboard for a
+  /// Each part can be hidden from the app bar (SPEC §12.5): e.g. only the scoreboard for a
   /// scorekeeper, or only live + replays for the coach while the Camera keeps the score.
   Widget _layout({required bool live, required bool scoreboard, required bool replays}) =>
       LayoutBuilder(builder: (context, c) {

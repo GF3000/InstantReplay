@@ -485,3 +485,10 @@ Period label on air: 2 periods â†’ `1T`/`2T` (es) or `1H`/`2H` (en); 4 periods â
 ### 12.4 MVP acceptance (first real match)
 - 90 min streamed at 1080p30 to YouTube with the scoreboard updating from the tablet; at most a few seconds of interruption after a network drop, recovered automatically.
 - The field log shows whether the phone stayed below `THERMAL_STATUS_SEVERE`; this decides whether replays on the stream can also run on the Camera.
+
+### 12.5 Modular controls
+Each device shows only what its person does; the choice is remembered per device.
+- **Camera** (broadcast mode): the scoreboard controls on the phone itself, shown or hidden from the header. When hidden, the score on air is shown instead. Pairing folds to one line (code and connected viewers) and unfolds to the QR.
+- **Viewer**: a panels menu in the app bar shows or hides the **live view**, the **scoreboard** (broadcast mode only) and **replays** (Save, the clip list and tags). The stream and recording bars always stay.
+- Typical setups: (1) the Camera operator keeps the score, the bench tablet shows live + replays; (2) a second person keeps the score on a phone or tablet with only the scoreboard, no replays; (3) one bench device does everything.
+- Scoreboard settings include the overlay **size**: small (100 %), medium (130 %, default), large (160 %) of the base bar.

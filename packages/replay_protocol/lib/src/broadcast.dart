@@ -69,7 +69,7 @@ class ScoreboardSettings {
   final int periodMs;
   final bool countDown;
 
-  /// Overlay size in percent of the base bar (SPEC §12.2).
+  /// Overlay size in percent of the base bar (SPEC §12.5).
   final int scale;
 
   Json toJson() => {
