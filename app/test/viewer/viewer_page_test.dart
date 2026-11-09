@@ -268,13 +268,8 @@ void main() {
       expect(save.height, greaterThanOrEqualTo(56));
       expect(save.bottom, lessThanOrEqualTo(size.height));
       expect(find.text('Clip · 12:00'), findsOneWidget);
-      for (final b in ['record', 'record-menu', 'finish']) {
-        final r = tester.getRect(_vrec(b));
-        expect(r.height, greaterThanOrEqualTo(48), reason: b);
-        expect(r.right, lessThanOrEqualTo(size.width), reason: b);
-        expect(r.bottom, lessThanOrEqualTo(save.top), reason: '$b sits above Save');
-      }
-      expect(find.text('Low space: 8 min left'), findsOneWidget);
+      // The full-session recording moved to the app bar (ViewerRecordingButton).
+      expect(_vrec('button'), findsNothing);
       await tester.pump(PostSaveTagBarNotifier.visibleFor);
       await _settle(tester);
     });
@@ -321,7 +316,11 @@ void main() {
   group('full-session recording', () {
     Future<_FakeRecording> pump(WidgetTester tester, LinkStateNotifier Function() link) async {
       final remote = _FakeRecording([]);
-      await tester.pumpWidget(_app(const LiveControlView(), [
+      // The app bar's button over the live view, which shows the recording's notices.
+      await tester.pumpWidget(_app(const Column(children: [
+        Row(children: [Spacer(), ViewerRecordingButton()]),
+        Expanded(child: LiveControlView()),
+      ]), [
         sharedPreferencesProvider.overrideWithValue(await _prefs()),
         linkStateProvider.overrideWith(link),
         liveViewProvider.overrideWith(_PlayingLive.new),
@@ -336,22 +335,31 @@ void main() {
     testWidgets('hidden when the Camera does not send it (an older Camera)', (tester) async {
       await pump(tester, _ConnectedLink.new);
       expect(find.byKey(const ValueKey('viewer-recording')), findsNothing);
-      expect(_vrec('record'), findsNothing);
+      expect(_vrec('button'), findsNothing);
     });
 
-    testWidgets('idle: Record sends rec_start; the menu offers the last 30 s', (tester) async {
+    Future<void> openDialog(WidgetTester tester) async {
+      await tester.tap(_vrec('button'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('idle: an icon; its dialog shows the space and records from now or with the last 30 s',
+        (tester) async {
       final remote = await pump(tester, () => _RecLink(_rec(SessionRecordingState.idle, parts: 0)));
-      expect(find.text('Full recording'), findsOneWidget);
+      expect(find.byTooltip('Full recording'), findsOneWidget);
+      expect(remote.sent, isEmpty, reason: 'the button alone never records');
+
+      await openDialog(tester);
       expect(find.text('4 h left'), findsOneWidget);
       expect(_vrec('pause'), findsNothing);
       expect(_vrec('finish'), findsNothing);
-
       await tester.tap(_vrec('record'));
       await tester.pumpAndSettle();
-      await tester.tap(_vrec('record-menu'));
-      await tester.pumpAndSettle();
+      expect(_vrec('dialog'), findsNothing);
+
+      await openDialog(tester);
       expect(find.text('Record including the last 30 s'), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('rec-include-30')));
+      await tester.tap(_vrec('record-include'));
       await tester.pumpAndSettle();
       expect(remote.sent, ['record:0', 'record:30']);
     });
@@ -359,13 +367,17 @@ void main() {
     testWidgets('recording: elapsed time and part; Pause; Finish only after confirming', (tester) async {
       final remote =
           await pump(tester, () => _RecLink(_rec(SessionRecordingState.recording, elapsedMs: 3723000, parts: 2)));
+      // The button shows the time; the dialog the part too.
+      expect(find.text('1:02:03'), findsOneWidget);
+      await openDialog(tester);
       expect(find.text('1:02:03 · part 2'), findsOneWidget);
-      expect(_vrec('record-menu'), findsNothing);
+      expect(_vrec('record'), findsNothing);
 
       await tester.tap(_vrec('pause'));
       await tester.pumpAndSettle();
       expect(remote.sent, ['pause']);
 
+      await openDialog(tester);
       await tester.tap(_vrec('finish'));
       await tester.pumpAndSettle();
       expect(find.text('Finish the recording?'), findsOneWidget);
@@ -374,6 +386,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(remote.sent, ['pause']);
 
+      await openDialog(tester);
       await tester.tap(_vrec('finish'));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('rec-finish-confirm')));
@@ -381,15 +394,16 @@ void main() {
       expect(remote.sent, ['pause', 'finish']);
     });
 
-    testWidgets('paused: Resume, and a long-press resumes with the last 30 s', (tester) async {
+    testWidgets('paused: Resume, or resume with the last 30 s', (tester) async {
       final remote = await pump(tester, () => _RecLink(_rec(SessionRecordingState.paused, elapsedMs: 600000)));
+      expect(find.text('10:00'), findsOneWidget);
+      await openDialog(tester);
       expect(find.text('Paused · 10:00'), findsOneWidget);
       await tester.tap(_vrec('record'));
       await tester.pumpAndSettle();
-      await tester.longPress(_vrec('record'));
-      await tester.pumpAndSettle();
+      await openDialog(tester);
       expect(find.text('Resume including the last 30 s'), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('rec-include-30')));
+      await tester.tap(_vrec('record-include'));
       await tester.pumpAndSettle();
       expect(remote.sent, ['record:0', 'record:30']);
     });
@@ -399,6 +413,7 @@ void main() {
           tester,
           () => _RecLink(
               _rec(SessionRecordingState.recording, elapsedMs: 60000, lowSpace: true, remainingMs: 9 * 60000)));
+      await openDialog(tester);
       expect(find.text('Low space: 9 min left'), findsOneWidget);
       expect(find.byIcon(Icons.warning_rounded), findsOneWidget);
     });
@@ -406,8 +421,10 @@ void main() {
     testWidgets('disabled while reconnecting', (tester) async {
       final remote = await pump(
           tester, () => _RecLink(_rec(SessionRecordingState.recording), phase: LinkPhase.reconnecting));
-      await tester.tap(_vrec('pause'));
+      // The button is disabled: no dialog, nothing sent.
+      await tester.tap(_vrec('button'), warnIfMissed: false);
       await tester.pump();
+      expect(_vrec('dialog'), findsNothing);
       expect(remote.sent, isEmpty);
     });
 

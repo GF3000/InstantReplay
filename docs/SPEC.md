@@ -159,6 +159,8 @@ Every degradation is reported as a `thermal_state` event and in the UI. No autom
 ### 3.8 Full-session recording
 Besides the clip buffer, the Camera can record the **whole session** (the match, the training) into its own gallery, `Movies/InstantReplay`, to review it later on a bigger screen. Video only (D7).
 
+**Where.** A small control, not a bar: an icon while idle, the time recorded (`● 12:34`) while recording; tapping it opens a dialog with the state, the space left and the actions. On the Camera it sits at the top right of the preview (and on the operating screen), on viewers in the app bar.
+
 **Who controls it.** There is one recording, and it lives on the Camera. **Any paired Viewer** (native or web) and **the Camera itself** can Record, Pause and Finish it; they all see the same state. If a Viewer disconnects, the recording carries on. Leaving the Camera screen finishes it and saves what was recorded.
 
 **States.** `idle → recording ⇄ paused → idle`. A session starts **idle**: nothing is recorded until someone presses Record. Pausing cuts at the end of the fragment (second) in progress. Finish asks for confirmation on both roles. Record and Resume can also **include the last 30 s** of the ring buffer (`includeSeconds`), for when the coach presses a moment late.

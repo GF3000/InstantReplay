@@ -148,11 +148,8 @@ class _Preview extends ConsumerWidget {
           top: 8,
           end: 8,
           child: Align(
-            alignment: AlignmentDirectional.topStart,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: _CameraRecording(state: state),
-            ),
+            alignment: AlignmentDirectional.topEnd,
+            child: _CameraRecording(state: state),
           ),
         ),
         // The manual way in; the first viewer also starts operating mode by itself (UX §2.2).
@@ -317,7 +314,8 @@ class _CameraRecording extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(cameraSessionProvider.notifier);
-    final bar = RecordingBar(
+    // A small button, not a bar: recording the whole session is set up once, not used all match.
+    return RecordingButton(
       key: const Key('camera-recording'),
       recording: switch (state.recording) {
         final r? => sessionRecording(r),
@@ -325,17 +323,11 @@ class _CameraRecording extends ConsumerWidget {
       },
       enabled: state.phase == CameraPhase.running,
       keyPrefix: 'camera-rec',
-      buttonSize: 56,
       dim: dim,
+      overVideo: !dim,
       onRecord: (seconds) => _run(context, () => notifier.recordStart(includeSeconds: seconds)),
       onPause: () => _run(context, notifier.recordPause),
       onFinish: () => _run(context, notifier.recordStop),
-    );
-    if (dim) return bar;
-    return Card(
-      margin: EdgeInsets.zero,
-      color: Theme.of(context).colorScheme.surfaceContainer.withValues(alpha: 0.85),
-      child: Padding(padding: const EdgeInsets.fromLTRB(12, 4, 4, 4), child: bar),
     );
   }
 

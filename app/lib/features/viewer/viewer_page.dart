@@ -36,6 +36,7 @@ class ViewerPage extends ConsumerWidget {
         ),
         actions: [
           if (setup.paired) const CameraStatusIndicator(),
+          if (setup.paired) const ViewerRecordingButton(),
           if (setup.paired) const ViewerPanelsButton(),
           IconButton(
             key: const ValueKey('viewer-settings'),

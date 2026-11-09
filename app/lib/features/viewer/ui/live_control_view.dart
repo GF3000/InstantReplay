@@ -64,7 +64,8 @@ class LiveControlView extends ConsumerWidget {
   /// live view (which shows the replay then) gives it up.
   Widget _layout({required bool live, required bool scoreboard, required bool replays, required bool onAir}) =>
       LayoutBuilder(builder: (context, c) {
-        const bars = [ViewerBroadcastBar(), ViewerRecordingBar()];
+        // The full-session recording lives in the app bar (ViewerRecordingButton).
+        const bars = [ViewerBroadcastBar()];
         // A clip on air (SPEC §12.6): on top of the right panel, or above the scoreboard.
         const replayBar = ViewerReplayBar();
         Widget save({required bool compact, bool tight = false}) => SaveControls(compact: compact, tight: tight);
@@ -259,10 +260,10 @@ class LivePanel extends ConsumerWidget {
   }
 }
 
-/// Record / Pause / Finish for the Camera's full-session recording, with the time recorded and
-/// the space left (SPEC §3.8). Hidden when the Camera does not offer it (an older Camera).
-class ViewerRecordingBar extends ConsumerWidget {
-  const ViewerRecordingBar({super.key});
+/// The Camera's full-session recording as one small app-bar control (SPEC §3.8): an icon, or
+/// the time recorded; the actions are in its dialog. Hidden when the Camera does not offer it.
+class ViewerRecordingButton extends ConsumerWidget {
+  const ViewerRecordingButton({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -271,17 +272,14 @@ class ViewerRecordingBar extends ConsumerWidget {
     final connected = ref.watch(linkStateProvider.select((s) => s?.phase == LinkPhase.connected));
     final capturing = ref.watch(linkStateProvider.select((s) => s?.status?.recording ?? false));
     final remote = ref.read(viewerRecordingProvider.notifier);
-    return Padding(
+    return RecordingButton(
       key: const ValueKey('viewer-recording'),
-      padding: const EdgeInsets.fromLTRB(12, 6, 8, 0),
-      child: RecordingBar(
-        recording: recording,
-        enabled: connected && capturing,
-        keyPrefix: 'viewer-rec',
-        onRecord: (seconds) => remote.record(includeSeconds: seconds),
-        onPause: remote.pause,
-        onFinish: remote.finish,
-      ),
+      recording: recording,
+      enabled: connected && capturing,
+      keyPrefix: 'viewer-rec',
+      onRecord: (seconds) => remote.record(includeSeconds: seconds),
+      onPause: remote.pause,
+      onFinish: remote.finish,
     );
   }
 }
