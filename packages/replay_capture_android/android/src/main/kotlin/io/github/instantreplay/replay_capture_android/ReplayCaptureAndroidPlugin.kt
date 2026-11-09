@@ -18,6 +18,8 @@ import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.PluginRegistry
 import io.flutter.view.TextureRegistry
+import io.github.instantreplay.replay_capture_android.broadcast.Broadcaster
+import io.github.instantreplay.replay_capture_android.broadcast.ScoreboardState
 import io.github.instantreplay.replay_capture_android.buffer.RingBuffer
 import io.github.instantreplay.replay_capture_android.outbox.Outbox
 import io.github.instantreplay.replay_capture_android.recording.MediaStorePartStore
@@ -41,8 +43,16 @@ class ReplayCaptureAndroidPlugin :
     private var activityBinding: ActivityPluginBinding? = null
     private val activity: Activity? get() = activityBinding?.activity
     private var pendingPermission: ((Result<Boolean>) -> Unit)? = null
+    private var pendingMicPermission: ((Result<Boolean>) -> Unit)? = null
 
     private var engine: CaptureEngine? = null
+
+    /** Present while capture runs in broadcast mode (SPEC §12). */
+    private var broadcaster: Broadcaster? = null
+    private var serviceMicrophone = false
+
+    /** Latest engine stats, for the broadcast field log (written off the main thread). */
+    @Volatile private var lastEngineStats: Map<String, Any?> = emptyMap()
     private var live: LiveStreamer? = null
     private var preview: TextureRegistry.SurfaceProducer? = null
     private var previewEnabled = true
@@ -109,6 +119,14 @@ class ReplayCaptureAndroidPlugin :
         host.requestPermissions(arrayOf(Manifest.permission.CAMERA), PERMISSION_REQUEST)
     }
 
+    override fun requestMicPermission(callback: (Result<Boolean>) -> Unit) {
+        if (hasMicPermission()) return callback(Result.success(true))
+        val host = activity
+            ?: return callback(Result.failure(FlutterError("no_activity", "Plugin is not attached to an activity")))
+        pendingMicPermission = callback
+        host.requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), MIC_PERMISSION_REQUEST)
+    }
+
     override fun supportedProfiles(): List<CaptureProfile> = Profiles.supported(context)
 
     override fun start(request: StartRequest): StartResult {
@@ -123,6 +141,7 @@ class ReplayCaptureAndroidPlugin :
             fps = profile.fps.toInt(),
             bitrate = profile.bitrate.toInt(),
             windowSeconds = request.windowSeconds.toInt(),
+            broadcast = request.broadcast == true,
         )
         val ring = ringFor(config.windowSeconds)
         val producer = textures.createSurfaceProducer().apply { setSize(PREVIEW_WIDTH, PREVIEW_HEIGHT) }
@@ -152,12 +171,23 @@ class ReplayCaptureAndroidPlugin :
         engine = capture
         live = streamer
         preview = producer
+        if (config.broadcast) {
+            broadcaster = Broadcaster(
+                config = config,
+                logDir = context.getExternalFilesDir(null),
+                boottimeTimestamps = capture.boottimeTimestamps,
+                attachProgram = capture::setProgramSurface,
+                deviceStats = { lastEngineStats },
+                onStatus = { status -> mainHandler.post { onBroadcastStatus(status) } },
+            )
+        }
         outbox.attach(ring)
         recorder.attach(ring, config.bitrate)
         CaptureService.start(context)
+        serviceMicrophone = false
         activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         // The engine only reports changes; a phone that is already hot must degrade from the start.
-        thermalPolicy.reset()
+        thermalPolicy.reset(broadcast = config.broadcast)
         applyThermal(context.getSystemService(PowerManager::class.java).currentThermalStatus)
 
         return StartResult(
@@ -246,6 +276,57 @@ class ReplayCaptureAndroidPlugin :
         recorder.recover { r -> mainHandler.post { callback(r) } }
     }
 
+    override fun setOverlay(overlay: OverlayState) {
+        engine?.setOverlay(
+            ScoreboardState(
+                visible = overlay.visible,
+                homeName = overlay.homeName,
+                awayName = overlay.awayName,
+                homeScore = overlay.homeScore.toInt(),
+                awayScore = overlay.awayScore.toInt(),
+                homeColor = overlay.homeColor.toInt(),
+                awayColor = overlay.awayColor.toInt(),
+                periodLabel = overlay.periodLabel,
+                clockMs = overlay.clockMs,
+                clockRunning = overlay.clockRunning,
+                countDown = overlay.countDown,
+            ),
+        )
+    }
+
+    override fun broadcastStart(config: BroadcastConfig, callback: (Result<BroadcastStatus>) -> Unit) {
+        val b = broadcaster ?: return callback(
+            Result.failure(FlutterError("not_broadcast_mode", "Capture is not running in broadcast mode")),
+        )
+        // No microphone permission is not an error: the stream carries silence and says audio=false.
+        val useMic = config.audio && hasMicPermission()
+        val kbps = config.targetKbps.toInt().coerceIn(MIN_BROADCAST_KBPS, MAX_BROADCAST_KBPS)
+        b.start(config.url, kbps, useMic) { r ->
+            mainHandler.post {
+                callback(r.recoverCatching { throw FlutterError("broadcast_failed", it.message) })
+            }
+        }
+    }
+
+    override fun broadcastStop(callback: (Result<Unit>) -> Unit) {
+        val b = broadcaster ?: return callback(Result.success(Unit))
+        b.stop { mainHandler.post { callback(Result.success(Unit)) } }
+    }
+
+    override fun broadcastStatus(): BroadcastStatus = broadcaster?.status() ?: IDLE_BROADCAST
+
+    /** Main thread: forwards a broadcast state change and keeps the service type in step. */
+    private fun onBroadcastStatus(status: BroadcastStatus) {
+        // Null once capture stopped: the service is gone then, only the final state is forwarded.
+        val b = broadcaster
+        val microphone = b != null && b.isActive && status.audio
+        if (b != null && microphone != serviceMicrophone) {
+            serviceMicrophone = microphone
+            CaptureService.start(context, microphone)
+        }
+        events.onBroadcast(status) {}
+    }
+
     /** Free space on shared storage, where Movies/InstantReplay lives. */
     @Suppress("DEPRECATION")
     private fun sharedFreeBytes(): Long = StatFs(Environment.getExternalStorageDirectory().path).availableBytes
@@ -271,6 +352,10 @@ class ReplayCaptureAndroidPlugin :
     private fun stopCapture() {
         // Ends the epoch so saves waiting for a post-roll that will never come stop waiting now.
         ring?.newEpoch()
+        // The broadcast first: it detaches the program surface while the engine still runs.
+        broadcaster?.release()
+        broadcaster = null
+        serviceMicrophone = false
         // Engine first: it stops drawing into the live surface before the streamer is released.
         engine?.release()
         engine = null
@@ -288,6 +373,11 @@ class ReplayCaptureAndroidPlugin :
 
     /** Engine events arrive as maps from background threads; forward them typed on the main thread. */
     private fun emit(event: Map<String, Any?>) {
+        if (event["type"] == "stats") {
+            // Headroom is sampled every other interval; keep the last known value for the log.
+            val headroom = event["thermalHeadroom"] ?: lastEngineStats["thermalHeadroom"]
+            lastEngineStats = event + ("thermalHeadroom" to headroom)
+        }
         mainHandler.post {
             when (event["type"]) {
                 "stats" -> events.onStats(toStats(event)) {}
@@ -339,6 +429,7 @@ class ReplayCaptureAndroidPlugin :
             batteryPercent = (e["batteryPercent"] as Number?)?.toLong(),
             plugged = e["plugged"] == true,
             recording = recorder.currentStatus(),
+            broadcast = broadcaster?.status(),
         )
     }
 
@@ -357,10 +448,22 @@ class ReplayCaptureAndroidPlugin :
     private fun hasCameraPermission() =
         context.checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
 
+    private fun hasMicPermission() =
+        context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray): Boolean {
-        if (requestCode != PERMISSION_REQUEST) return false
-        pendingPermission?.invoke(Result.success(grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED))
-        pendingPermission = null
+        val granted = Result.success(grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED)
+        when (requestCode) {
+            PERMISSION_REQUEST -> {
+                pendingPermission?.invoke(granted)
+                pendingPermission = null
+            }
+            MIC_PERMISSION_REQUEST -> {
+                pendingMicPermission?.invoke(granted)
+                pendingMicPermission = null
+            }
+            else -> return false
+        }
         return true
     }
 
@@ -386,8 +489,17 @@ class ReplayCaptureAndroidPlugin :
 
     private companion object {
         const val PERMISSION_REQUEST = 4207
+        const val MIC_PERMISSION_REQUEST = 4208
         const val PREVIEW_WIDTH = 1280
         const val PREVIEW_HEIGHT = 720
         const val THERMAL_LIVE_BITRATE = 1_500_000
+        const val MIN_BROADCAST_KBPS = 2500
+        const val MAX_BROADCAST_KBPS = 6000
+        val IDLE_BROADCAST = BroadcastStatus(
+            state = BroadcastState.IDLE,
+            targetKbps = 0,
+            droppedFrames = 0,
+            audio = false,
+        )
     }
 }

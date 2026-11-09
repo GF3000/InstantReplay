@@ -25,10 +25,12 @@ import android.os.PowerManager
 import android.os.Process
 import android.util.Range
 import android.view.Surface
+import io.github.instantreplay.replay_capture_android.broadcast.ScoreboardState
 import io.github.instantreplay.replay_capture_android.buffer.RingBuffer
 import io.github.instantreplay.replay_capture_android.buffer.Segmenter
 import io.github.instantreplay.replay_capture_android.gl.EglCore
 import io.github.instantreplay.replay_capture_android.gl.FrameHandoff
+import io.github.instantreplay.replay_capture_android.gl.OverlayRenderer
 import io.github.instantreplay.replay_capture_android.gl.TexTransform
 import io.github.instantreplay.replay_capture_android.gl.TextureRenderer
 import java.util.concurrent.ExecutionException
@@ -41,6 +43,8 @@ data class CaptureConfig(
     val fps: Int,
     val bitrate: Int,
     val windowSeconds: Int,
+    /** Broadcast mode (SPEC §12.1): full-size camera texture, scoreboard overlay, program output. */
+    val broadcast: Boolean = false,
 )
 
 /**
@@ -51,6 +55,10 @@ data class CaptureConfig(
  * EGL context drawing preview and live view from a [FrameHandoff] copy, so their slow swaps never
  * delay the HQ path), `ir-camera` (Camera2 callbacks), `ir-encoder` (encoder output, segmenting,
  * ring writes), `ir-stats`.
+ *
+ * In broadcast mode the GL thread also draws the program (camera + scoreboard) into the broadcast
+ * encoder's surface while one is attached, and the scoreboard into the handoff copy. The HQ
+ * encoder stays on the direct camera path, so the ring buffer keeps the clean picture.
  */
 internal class CaptureEngine(
     context: Context,
@@ -82,7 +90,9 @@ internal class CaptureEngine(
     private var surfaceTexture: SurfaceTexture? = null
     private var cameraSurface: Surface? = null
     private var encoderEglSurface: EGLSurface? = null // GL fallback path only
+    private var programEglSurface: EGLSurface? = null // broadcast program encoder, while streaming
     private var glIdle: EGLSurface? = null
+    @Volatile private var overlay: OverlayRenderer? = null // broadcast mode only
     private val texMatrix = FloatArray(16)
     private var uprightRotation = 0
     @Volatile private var renderedFrames = 0L
@@ -108,6 +118,13 @@ internal class CaptureEngine(
     private var released = false
 
     var sensorOrientation = 0
+        private set
+
+    /**
+     * Camera (and so SurfaceTexture) timestamps are CLOCK_BOOTTIME instead of CLOCK_MONOTONIC.
+     * Broadcast audio must then stamp with `elapsedRealtimeNanos` to stay in sync.
+     */
+    var boottimeTimestamps = false
         private set
 
     /**
@@ -147,9 +164,15 @@ internal class CaptureEngine(
             cameraTexture = TextureRenderer.createExternalTexture()
             val outWidth = minOf(config.width, OUT_MAX_WIDTH)
             handoff = FrameHandoff(outWidth, outWidth * config.height / config.width, useFences = core.glVersion >= 3)
+            if (config.broadcast) overlay = OverlayRenderer(config.height)
             val st = SurfaceTexture(cameraTexture).apply {
-                // Preview/live only need 720p; the GL fallback raises this to the full size.
-                setDefaultBufferSize(handoff!!.width, handoff!!.height)
+                // Preview/live only need 720p; the program (broadcast) and the GL fallback need
+                // the full size.
+                if (config.broadcast) {
+                    setDefaultBufferSize(config.width, config.height)
+                } else {
+                    setDefaultBufferSize(handoff!!.width, handoff!!.height)
+                }
                 setOnFrameAvailableListener({ drawFrame() }, glHandler)
             }
             surfaceTexture = st
@@ -180,6 +203,29 @@ internal class CaptureEngine(
     fun setLiveSurface(surface: Surface?, width: Int, height: Int) = onOut {
         live = replaceOutput(live, surface, width, height)
         hasOutputs = preview != null || live != null
+    }
+
+    /** Scoreboard shown on the program and the handoff copy; ignored outside broadcast mode. */
+    fun setOverlay(state: ScoreboardState) {
+        overlay?.set(state)
+    }
+
+    /**
+     * Attaches the broadcast program encoder's input surface (null detaches it). Blocks until
+     * applied, so after a detach the GL thread no longer draws into the old surface.
+     */
+    fun setProgramSurface(surface: Surface?) = onGl {
+        val core = egl ?: return@onGl
+        programEglSurface?.let {
+            (encoderEglSurface ?: glIdle)?.let(core::makeCurrent)
+            core.releaseSurface(it)
+        }
+        programEglSurface = surface?.let {
+            core.createWindowSurface(it).also { programSurface ->
+                // Non-blocking swaps: a backed-up program encoder drops frames instead of stalling GL.
+                core.setSwapInterval(programSurface, 0)
+            }
+        }
     }
 
     // Output thread.
@@ -231,13 +277,17 @@ internal class CaptureEngine(
                 (encoderEglSurface ?: glIdle)?.let(core::makeCurrent)
                 handoff?.release()
                 renderer?.release()
+                overlay?.release()
                 GLES20.glDeleteTextures(1, intArrayOf(cameraTexture), 0)
                 // Destroying the current surface is deferred by EGL until release() unbinds it.
                 encoderEglSurface?.let { core.releaseSurface(it) }
+                programEglSurface?.let { core.releaseSurface(it) }
                 glIdle?.let { core.releaseSurface(it) }
                 core.release()
             }
             handoff = null
+            overlay = null
+            programEglSurface = null
             surfaceTexture?.release()
             cameraSurface?.release()
             egl = null
@@ -256,6 +306,8 @@ internal class CaptureEngine(
         } ?: error("No back camera")
         val chars = cameraManager.getCameraCharacteristics(id)
         sensorOrientation = chars.get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 0
+        boottimeTimestamps = chars.get(CameraCharacteristics.SENSOR_INFO_TIMESTAMP_SOURCE) ==
+            CameraCharacteristics.SENSOR_INFO_TIMESTAMP_SOURCE_REALTIME
         uprightRotation = TexTransform.uprightRotation(sensorOrientation, CAMERA_UI_ROTATION_DEG)
 
         val sizes = chars.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)!!
@@ -398,11 +450,28 @@ internal class CaptureEngine(
             core.swapBuffers(encSurface)
         }
         renderedFrames++
+        val at30 = config.fps <= 30 || renderedFrames % 2 == 0L
+        val program = programEglSurface
+        val board = if (at30 && (program != null || hasOutputs)) overlay?.takeIf { it.update() } else null
+
+        // Broadcast program at most 30 fps, after the HQ frame so it can never delay it. The swap
+        // doesn't block (swap interval 0): a backed-up encoder loses program frames, not HQ ones.
+        if (program != null && at30) {
+            core.makeCurrent(program)
+            gl.draw(cameraTexture, config.width, config.height, texMatrix)
+            board?.draw(config.width, config.height)
+            core.setPresentationTime(program, ts)
+            core.swapBuffers(program)
+        }
 
         // Preview and live view at most 30 fps. Only a cheap copy happens here; the output thread
         // draws and swaps them, so a slow consumer can never delay the next HQ frame.
-        if (hasOutputs && (config.fps <= 30 || renderedFrames % 2 == 0L)) {
-            val wake = frames.publish { gl.draw(cameraTexture, frames.width, frames.height, texMatrix) }
+        if (hasOutputs && at30) {
+            val wake = frames.publish {
+                gl.draw(cameraTexture, frames.width, frames.height, texMatrix)
+                // The viewers' live view shows what goes on air.
+                board?.draw(frames.width, frames.height)
+            }
             if (wake) outHandler.post(::drawOutputs)
         }
 
