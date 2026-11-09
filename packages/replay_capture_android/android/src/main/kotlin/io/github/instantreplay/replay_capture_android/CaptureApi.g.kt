@@ -380,7 +380,9 @@ data class StartResult (
   val textureId: Long,
   val encoder: String,
   val highProfile: Boolean,
-  val sensorOrientation: Long
+  val sensorOrientation: Long,
+  /** Highest zoom of the back camera (1 = none); null from an older plugin. */
+  val maxZoom: Double? = null
 )
  {
   companion object {
@@ -389,7 +391,8 @@ data class StartResult (
       val encoder = pigeonVar_list[1] as String
       val highProfile = pigeonVar_list[2] as Boolean
       val sensorOrientation = pigeonVar_list[3] as Long
-      return StartResult(textureId, encoder, highProfile, sensorOrientation)
+      val maxZoom = pigeonVar_list[4] as Double?
+      return StartResult(textureId, encoder, highProfile, sensorOrientation, maxZoom)
     }
   }
   fun toList(): List<Any?> {
@@ -398,6 +401,7 @@ data class StartResult (
       encoder,
       highProfile,
       sensorOrientation,
+      maxZoom,
     )
   }
   override fun equals(other: Any?): Boolean {
@@ -408,7 +412,7 @@ data class StartResult (
       return true
     }
     val other = other as StartResult
-    return CaptureApiPigeonUtils.deepEquals(this.textureId, other.textureId) && CaptureApiPigeonUtils.deepEquals(this.encoder, other.encoder) && CaptureApiPigeonUtils.deepEquals(this.highProfile, other.highProfile) && CaptureApiPigeonUtils.deepEquals(this.sensorOrientation, other.sensorOrientation)
+    return CaptureApiPigeonUtils.deepEquals(this.textureId, other.textureId) && CaptureApiPigeonUtils.deepEquals(this.encoder, other.encoder) && CaptureApiPigeonUtils.deepEquals(this.highProfile, other.highProfile) && CaptureApiPigeonUtils.deepEquals(this.sensorOrientation, other.sensorOrientation) && CaptureApiPigeonUtils.deepEquals(this.maxZoom, other.maxZoom)
   }
 
   override fun hashCode(): Int {
@@ -417,10 +421,11 @@ data class StartResult (
     result = 31 * result + CaptureApiPigeonUtils.deepHash(this.encoder)
     result = 31 * result + CaptureApiPigeonUtils.deepHash(this.highProfile)
     result = 31 * result + CaptureApiPigeonUtils.deepHash(this.sensorOrientation)
+    result = 31 * result + CaptureApiPigeonUtils.deepHash(this.maxZoom)
     return result
   }
   override fun toString(): String {
-    return "StartResult(textureId=$textureId, encoder=$encoder, highProfile=$highProfile, sensorOrientation=$sensorOrientation)"
+    return "StartResult(textureId=$textureId, encoder=$encoder, highProfile=$highProfile, sensorOrientation=$sensorOrientation, maxZoom=$maxZoom)"
   }
 }
 
@@ -1281,6 +1286,11 @@ interface CaptureHostApi {
   fun supportedProfiles(): List<CaptureProfile>
   fun start(request: StartRequest): StartResult
   fun stop()
+  /**
+   * Sensor zoom (1…maxZoom): applies to the buffer, the recording and the broadcast alike. Glides
+   * to the new value over a few frames.
+   */
+  fun setZoom(ratio: Double)
   /** Operating mode turns the local preview off to save power and heat. */
   fun setPreviewEnabled(enabled: Boolean)
   /** Completes when the clip is ready (after the post-roll). */
@@ -1407,6 +1417,24 @@ interface CaptureHostApi {
           channel.setMessageHandler { _, reply ->
             val wrapped: List<Any?> = try {
               api.stop()
+              listOf(null)
+            } catch (exception: Throwable) {
+              CaptureApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.replay_capture_android.CaptureHostApi.setZoom$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val ratioArg = args[0] as Double
+            val wrapped: List<Any?> = try {
+              api.setZoom(ratioArg)
               listOf(null)
             } catch (exception: Throwable) {
               CaptureApiPigeonUtils.wrapError(exception)

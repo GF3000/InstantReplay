@@ -146,6 +146,17 @@ void main() {
       const BroadcastConfigure(),
       const BroadcastStart(),
       const BroadcastStop(),
+      const CameraZoom(ratio: 1.5),
+      const StatusUpdate(
+        status: CameraStatus(
+          recording: true,
+          fps: 30,
+          bufferMs: 1,
+          outboxClips: 0,
+          thermalStatus: 0,
+          zoom: ZoomInfo(ratio: 1.5, max: 4),
+        ),
+      ),
       const Ping(),
       const Pong(),
     ];

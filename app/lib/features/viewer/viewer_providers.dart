@@ -299,6 +299,10 @@ final viewerScoreboardProvider = Provider.autoDispose<ScoreboardState?>(
 final viewerBroadcastProvider = Provider.autoDispose<BroadcastInfo?>(
     (ref) => ref.watch(linkStateProvider.select((s) => s?.status?.broadcast)));
 
+/// The Camera's zoom (SPEC §3.1); null from a Camera without it.
+final viewerZoomProvider =
+    Provider.autoDispose<ZoomInfo?>((ref) => ref.watch(linkStateProvider.select((s) => s?.status?.zoom)));
+
 /// A broadcast command the Camera refused (or a start without the microphone). A new object every
 /// time, so the same error twice is shown twice.
 final class BroadcastNotice {
@@ -337,6 +341,9 @@ class ViewerBroadcastNotifier extends Notifier<BroadcastNotice?> {
       _send(BroadcastConfigure(server: server, key: key, targetKbps: targetKbps, audio: audio));
 
   bool start() => _send(const BroadcastStart());
+
+  /// Zooms the Camera; not only for broadcast mode.
+  bool zoom(double ratio) => _send(CameraZoom(ratio: ratio));
 
   bool stop() => _send(const BroadcastStop());
 

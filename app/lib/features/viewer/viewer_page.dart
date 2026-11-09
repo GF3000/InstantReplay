@@ -6,6 +6,7 @@ import '../../l10n/app_localizations.dart';
 import '../library/library_providers.dart';
 import '../library/presentation/library_page.dart';
 import '../library/presentation/session_picker_view.dart';
+import '../role/confirm_switch_role.dart';
 import '../role/role.dart';
 import 'data/session_link.dart';
 import 'tags/tag_editor_page.dart';
@@ -55,6 +56,9 @@ class ViewerPage extends ConsumerWidget {
                 case _MenuItem.changeCamera:
                   await ref.read(viewerSetupProvider.notifier).changeCamera();
                 case _MenuItem.switchRole:
+                  // Connected: switching drops the live view and, on Android, the clip transfers.
+                  final connected = ref.read(linkStateProvider)?.phase == LinkPhase.connected;
+                  if (connected && !await confirmSwitchRole(context, l10n.switchRoleViewerBody)) return;
                   await ref.read(roleProvider.notifier).clear();
                   if (context.mounted) context.go('/');
               }

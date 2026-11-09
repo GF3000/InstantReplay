@@ -80,6 +80,8 @@ class ReplayCapture implements CaptureEventsApi {
 
   Future<void> setPreviewEnabled(bool enabled) => _host.setPreviewEnabled(enabled);
 
+  Future<void> setZoom(double ratio) => _host.setZoom(ratio);
+
   /// Completes when the clip is ready, after [postSeconds] of post-roll.
   Future<ClipInfo> saveClip({required String requestId, required double preSeconds, double postSeconds = 0}) =>
       _host.saveClip(SaveRequest(requestId: requestId, preSeconds: preSeconds, postSeconds: postSeconds));

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/panels.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../broadcast/broadcast_widgets.dart';
+import '../../camera/zoom_widgets.dart';
 import '../../recording/recording_widgets.dart';
 import '../data/session_link.dart';
 import '../tags/tag_widgets.dart';
@@ -193,10 +194,22 @@ class LivePanel extends ConsumerWidget {
       (_, LivePhase.interrupted) => l10n.viewerLiveInterrupted,
       _ => null,
     };
+    final zoom = ref.watch(viewerZoomProvider);
+    final connected = link == LinkPhase.connected;
+    final remote = ref.read(viewerBroadcastNoticeProvider.notifier);
     return ColoredBox(
       color: Colors.black,
       child: Stack(fit: StackFit.expand, children: [
-        if (live.peer case final peer?) peer.buildView(),
+        if (live.peer case final peer?)
+          zoom == null
+              ? peer.buildView()
+              : ZoomPinch(
+                  ratio: zoom.ratio,
+                  max: zoom.max,
+                  enabled: connected,
+                  onChanged: remote.zoom,
+                  child: peer.buildView(),
+                ),
         if (overlay != null)
           Center(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -204,6 +217,18 @@ class LivePanel extends ConsumerWidget {
               const SizedBox(height: 12),
               Text(overlay, style: const TextStyle(color: Colors.white)),
             ]),
+          ),
+        if (zoom != null && connected)
+          Positioned(
+            left: 4,
+            bottom: 4,
+            child: ZoomControl(
+              keyPrefix: 'viewer-zoom',
+              ratio: zoom.ratio,
+              max: zoom.max,
+              enabled: connected,
+              onChanged: remote.zoom,
+            ),
           ),
         if (link == LinkPhase.connected && live.phase != LivePhase.negotiating)
           Positioned(

@@ -87,7 +87,7 @@ class FakeCaptureLayer implements CaptureLayer {
     startModes.add(broadcast);
     final error = startError;
     if (error != null) throw error;
-    return StartResult(textureId: 7, encoder: 'fake', highProfile: true, sensorOrientation: 90);
+    return StartResult(textureId: 7, encoder: 'fake', highProfile: true, sensorOrientation: 90, maxZoom: 10);
   }
 
   @override
@@ -95,6 +95,9 @@ class FakeCaptureLayer implements CaptureLayer {
 
   @override
   Future<void> setPreviewEnabled(bool enabled) async => calls.add('preview:$enabled');
+
+  @override
+  Future<void> setZoom(double ratio) async => calls.add('zoom:$ratio');
 
   @override
   Future<ClipInfo> saveClip({required String requestId, required double preSeconds, double postSeconds = 0}) {

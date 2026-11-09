@@ -831,6 +831,18 @@
   "panelsNothingShown": "Everything is hidden. Use the panels button at the top to show the live view, the scoreboard or replays.",
   "cameraScoreboardControls": "Scoreboard controls",
   "cameraConnectViewer": "Connect a viewer",
+  "zoomOut": "Zoom out",
+  "zoomIn": "Zoom in",
+  "zoomReset": "Back to 1×",
+  "switchRoleTitle": "Switch role?",
+  "switchRoleBroadcastBody": "The camera is streaming. Switching role ends the stream on YouTube and disconnects every viewer.",
+  "switchRoleViewerBody": "You are connected to the camera. Switching role closes the live view and this connection.",
+  "switchRoleViewersBody": "{count, plural, =1{A viewer is connected. Switching role stops the camera and disconnects it.} other{{count} viewers are connected. Switching role stops the camera and disconnects them.}}",
+  "@switchRoleViewersBody": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
   "scoreboardSet": "Set",
   "scoreboardVisible": "On screen",
   "scoreboardReset": "Reset",

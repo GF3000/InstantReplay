@@ -195,6 +195,7 @@ class ReplayCaptureAndroidPlugin :
             encoder = capture.encoderName,
             highProfile = capture.highProfile,
             sensorOrientation = capture.sensorOrientation.toLong(),
+            maxZoom = capture.maxZoom.toDouble(),
         )
     }
 
@@ -274,6 +275,10 @@ class ReplayCaptureAndroidPlugin :
 
     override fun recoverRecordings(callback: (Result<List<RecordingSaved>>) -> Unit) {
         recorder.recover { r -> mainHandler.post { callback(r) } }
+    }
+
+    override fun setZoom(ratio: Double) {
+        engine?.setZoom(ratio.toFloat())
     }
 
     override fun setOverlay(overlay: OverlayState) {

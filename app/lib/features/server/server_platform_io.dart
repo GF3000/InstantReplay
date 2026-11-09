@@ -13,6 +13,7 @@ final serverPlatform = ServerPlatform(
     secrets: config.secrets,
     cameraInfo: config.cameraInfo,
     broadcast: config.broadcast,
+    zoom: config.zoom,
     webRoot: await extractWebBundle(),
   ),
   localAddress: localNetworkAddress,

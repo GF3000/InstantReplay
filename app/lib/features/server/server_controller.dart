@@ -110,6 +110,7 @@ class CameraServerNotifier extends Notifier<CameraServerState> {
         capture: ref.read(captureLayerProvider),
         secrets: secrets,
         broadcast: ref.read(broadcastHostProvider),
+        zoom: _SessionZoom(ref),
         cameraInfo: () => CameraInfo(
           protocolVersion: protocolVersion,
           cameraId: cameraId,
@@ -189,3 +190,27 @@ final cameraIdProvider = Provider<String>((ref) {
   unawaited(prefs.setString(key, id));
   return id;
 });
+
+/// [ZoomHost] over the Camera session.
+class _SessionZoom implements ZoomHost {
+  _SessionZoom(this._ref) {
+    _ref.listen(cameraSessionProvider.select((s) => (s.zoom, s.maxZoom)), (_, _) => _changes.add(null));
+    _ref.onDispose(_changes.close);
+  }
+
+  final Ref _ref;
+  final _changes = StreamController<void>.broadcast();
+
+  @override
+  ZoomInfo? get info {
+    final s = _ref.read(cameraSessionProvider);
+    if (s.phase != CameraPhase.running || s.maxZoom <= 1) return null;
+    return ZoomInfo(ratio: s.zoom, max: s.maxZoom);
+  }
+
+  @override
+  void set(double ratio) => _ref.read(cameraSessionProvider.notifier).setZoom(ratio);
+
+  @override
+  Stream<void> get changes => _changes.stream;
+}

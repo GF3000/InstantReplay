@@ -559,7 +559,9 @@ void main() {
       expect(fake.overlays, isNotEmpty);
       expect(fake.overlays.last.homeName, 'LOC');
       expect(find.byKey(const Key('camera-broadcast-card')), findsOneWidget);
-      expect(find.text('Enter the stream key first'), findsOneWidget);
+      // The header carries the stream; without a key, Go live opens the settings.
+      expect(find.byKey(const ValueKey('camera-broadcast-start')), findsOneWidget);
+      expect(find.byTooltip('Enter the stream key first'), findsOneWidget);
     });
 
     testWidgets('a remembered Broadcast mode starts in it; the Camera configures and goes live', (tester) async {
@@ -571,7 +573,7 @@ void main() {
       await tester.enterText(find.byKey(const ValueKey('broadcast-key')), 'abcd-efgh-WXYZ');
       await tester.tap(find.byKey(const ValueKey('broadcast-config-save')));
       await tester.pumpAndSettle();
-      expect(find.text('Ready · 4500 kbps'), findsOneWidget);
+      expect(find.byTooltip('Ready · 4500 kbps'), findsOneWidget);
 
       await _tapNow(tester, find.byKey(const ValueKey('camera-broadcast-start')));
       expect(fake.broadcastConfigs.single.url, 'rtmp://a.rtmp.youtube.com/live2/abcd-efgh-WXYZ');
@@ -600,6 +602,18 @@ void main() {
       await _tapNow(tester, find.byKey(const Key('camera-scoreboard-toggle')));
       expect(find.byKey(const Key('camera-scoreboard')), findsNothing);
       expect(find.byKey(const Key('camera-score')), findsOneWidget, reason: 'the score on air instead');
+    });
+
+    testWidgets('zoom: the buttons step it, remembered for the next start; 1× resets', (tester) async {
+      final fake = FakeCaptureLayer();
+      final prefs = await _pumpCamera(tester, fake, height: 2400);
+      await _tapNow(tester, find.byKey(const ValueKey('camera-zoom-in')));
+      await _tapNow(tester, find.byKey(const ValueKey('camera-zoom-in')));
+      expect(fake.calls.where((c) => c.startsWith('zoom:')), ['zoom:1.25', 'zoom:1.5']);
+      expect(find.text('1.5×'), findsOneWidget);
+      expect(prefs.getDouble('camera.zoom'), 1.5);
+      await _tapNow(tester, find.byKey(const ValueKey('camera-zoom-reset')));
+      expect(fake.calls.last, 'zoom:1.0');
     });
 
     testWidgets('the operating screen shows the score and the stream', (tester) async {

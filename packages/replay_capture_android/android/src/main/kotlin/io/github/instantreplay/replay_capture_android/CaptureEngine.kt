@@ -13,6 +13,7 @@ import android.hardware.camera2.CaptureFailure
 import android.hardware.camera2.CaptureRequest
 import android.hardware.camera2.CaptureResult
 import android.hardware.camera2.TotalCaptureResult
+import android.graphics.Rect
 import android.hardware.camera2.params.OutputConfiguration
 import android.hardware.camera2.params.SessionConfiguration
 import android.opengl.EGLSurface
@@ -112,6 +113,18 @@ internal class CaptureEngine(
     private val segmenter = Segmenter(ring, 1_000_000L / config.fps)
     private var camera: CameraDevice? = null
     private var session: CameraCaptureSession? = null
+
+    // Zoom (camera thread): the repeating request is rebuilt on every step of a ramp.
+    private var request: CaptureRequest.Builder? = null
+    private var activeArray: Rect? = null
+    private var zoomRatioSupported = false
+    private var zoomCurrent = 1f
+    private var zoomTarget = 1f
+    private var zoomTicking = false
+
+    /** Highest zoom the back camera offers in a regular session (1 = none). */
+    var maxZoom = 1f
+        private set
     @Volatile private var thermalStatus = PowerManager.THERMAL_STATUS_NONE
     private var lastStatsFrames = 0L
     private var statsTicks = 0
@@ -306,6 +319,10 @@ internal class CaptureEngine(
         } ?: error("No back camera")
         val chars = cameraManager.getCameraCharacteristics(id)
         sensorOrientation = chars.get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 0
+        activeArray = chars.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE)
+        val ratioRange = if (Build.VERSION.SDK_INT >= 30) chars.get(CameraCharacteristics.CONTROL_ZOOM_RATIO_RANGE) else null
+        zoomRatioSupported = ratioRange != null
+        maxZoom = ratioRange?.upper ?: chars.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM) ?: 1f
         boottimeTimestamps = chars.get(CameraCharacteristics.SENSOR_INFO_TIMESTAMP_SOURCE) ==
             CameraCharacteristics.SENSOR_INFO_TIMESTAMP_SOURCE_REALTIME
         uprightRotation = TexTransform.uprightRotation(sensorOrientation, CAMERA_UI_ROTATION_DEG)
@@ -352,12 +369,16 @@ internal class CaptureEngine(
             override fun onConfigured(s: CameraCaptureSession) {
                 if (released) return s.close()
                 session = s
-                val request = device.createCaptureRequest(CameraDevice.TEMPLATE_RECORD).apply {
+                val builder = device.createCaptureRequest(CameraDevice.TEMPLATE_RECORD).apply {
                     targets.forEach(::addTarget)
                     set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, fpsRange)
                     set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_VIDEO)
-                }.build()
-                s.setRepeatingRequest(request, captureCounter, cameraHandler)
+                }
+                request = builder
+                // A zoom asked for before the session existed starts there, without a ramp.
+                zoomCurrent = zoomTarget
+                applyZoom(builder, zoomCurrent)
+                s.setRepeatingRequest(builder.build(), captureCounter, cameraHandler)
                 emit(
                     mapOf(
                         "type" to "camera",
@@ -387,6 +408,45 @@ internal class CaptureEngine(
         if (direct && !supported) return useGlPath { createSession(device, fpsRange, direct = false) }
         hqDirect = direct
         device.createCaptureSession(configuration)
+    }
+
+    /**
+     * Zooms to [ratio] (clamped to 1…[maxZoom]), gliding over a few frames. Any thread; it is the
+     * sensor's zoom, so the ring buffer, the recording and the broadcast all get it.
+     */
+    fun setZoom(ratio: Float) = cameraHandler.post {
+        zoomTarget = ratio.coerceIn(1f, maxZoom)
+        if (!zoomTicking) zoomTick()
+    }
+
+    // Camera thread: one step of the ramp per frame until the target is reached.
+    private fun zoomTick() {
+        val s = session
+        val builder = request
+        if (released || s == null || builder == null) {
+            zoomTicking = false
+            return
+        }
+        zoomCurrent = Zoom.step(zoomCurrent, zoomTarget)
+        applyZoom(builder, zoomCurrent)
+        try {
+            s.setRepeatingRequest(builder.build(), captureCounter, cameraHandler)
+        } catch (e: Exception) {
+            zoomTicking = false // session closed meanwhile
+            return
+        }
+        zoomTicking = zoomCurrent != zoomTarget
+        if (zoomTicking) cameraHandler.postDelayed(::zoomTick, ZOOM_STEP_MS)
+    }
+
+    private fun applyZoom(builder: CaptureRequest.Builder, ratio: Float) {
+        if (zoomRatioSupported && Build.VERSION.SDK_INT >= 30) {
+            builder.set(CaptureRequest.CONTROL_ZOOM_RATIO, ratio)
+        } else {
+            val a = activeArray ?: return
+            val r = Zoom.cropRegion(a.left, a.top, a.width(), a.height(), ratio)
+            builder.set(CaptureRequest.SCALER_CROP_REGION, Rect(r[0], r[1], r[2], r[3]))
+        }
     }
 
     /** Switches to rendering into the encoder: full-size camera texture plus an EGL encoder surface. */
@@ -570,6 +630,7 @@ internal class CaptureEngine(
 
     private companion object {
         const val STATS_INTERVAL_MS = 1000L
+        const val ZOOM_STEP_MS = 33L
         // Preview and live view are at most 720p; the handoff copy needs no more.
         const val OUT_MAX_WIDTH = 1280
         // The Camera role UI is locked to landscapeLeft (Surface.ROTATION_90).

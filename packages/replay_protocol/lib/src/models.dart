@@ -172,6 +172,7 @@ class CameraStatus {
     this.sessionRecording,
     this.scoreboard,
     this.broadcast,
+    this.zoom,
   });
 
   factory CameraStatus.fromJson(Json j) => CameraStatus(
@@ -193,6 +194,10 @@ class CameraStatus {
         },
         broadcast: switch (j['broadcast']) {
           final Json b => BroadcastInfo.fromJson(b),
+          _ => null,
+        },
+        zoom: switch (j['zoom']) {
+          final Json z => ZoomInfo.fromJson(z),
           _ => null,
         },
       );
@@ -218,6 +223,25 @@ class CameraStatus {
   final ScoreboardState? scoreboard;
   final BroadcastInfo? broadcast;
 
+  /// Camera zoom; null from a Camera without it (viewers then hide the zoom controls).
+  final ZoomInfo? zoom;
+
+  /// This status with another [zoom]; every other field kept.
+  CameraStatus withZoom(ZoomInfo? zoom) => CameraStatus(
+        recording: recording,
+        fps: fps,
+        bufferMs: bufferMs,
+        outboxClips: outboxClips,
+        thermalStatus: thermalStatus,
+        batteryTempC: batteryTempC,
+        batteryPercent: batteryPercent,
+        plugged: plugged,
+        sessionRecording: sessionRecording,
+        scoreboard: scoreboard,
+        broadcast: broadcast,
+        zoom: zoom,
+      );
+
   Json toJson() => {
         'recording': recording,
         'fps': fps,
@@ -230,7 +254,32 @@ class CameraStatus {
         if (sessionRecording != null) 'sessionRecording': sessionRecording!.toJson(),
         if (scoreboard != null) 'scoreboard': scoreboard!.toJson(),
         if (broadcast != null) 'broadcast': broadcast!.toJson(),
+        if (zoom != null) 'zoom': zoom!.toJson(),
       };
+}
+
+/// The Camera's sensor zoom (SPEC §3.1): applies to clips, recording and broadcast alike.
+class ZoomInfo {
+  const ZoomInfo({required this.ratio, required this.max});
+
+  factory ZoomInfo.fromJson(Json j) => ZoomInfo(
+        ratio: (j['ratio']! as num).toDouble(),
+        max: (j['max']! as num).toDouble(),
+      );
+
+  /// Current target, 1…[max].
+  final double ratio;
+
+  /// Highest zoom offered (the Camera caps what the sensor allows).
+  final double max;
+
+  Json toJson() => {'ratio': ratio, 'max': max};
+
+  @override
+  bool operator ==(Object other) => other is ZoomInfo && other.ratio == ratio && other.max == max;
+
+  @override
+  int get hashCode => Object.hash(ratio, max);
 }
 
 enum SessionRecordingState { idle, recording, paused }

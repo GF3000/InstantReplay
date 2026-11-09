@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -39,6 +40,7 @@ class CameraSessionState {
     this.recovered = const [],
     this.lastSaved,
     this.broadcast = false,
+    this.zoom = 1,
   });
 
   final CameraPhase phase;
@@ -74,6 +76,12 @@ class CameraSessionState {
   /// YouTube stream are offered. Replay mode (false) is the default.
   final bool broadcast;
 
+  /// Sensor zoom target (SPEC §3.1), remembered so the framing survives a restart.
+  final double zoom;
+
+  /// Highest zoom offered: what the sensor allows, capped where a 1080p crop still looks sharp.
+  double get maxZoom => min(session?.maxZoom ?? 1, CameraSessionNotifier.zoomCap);
+
   CaptureProfile? get profile => profiles.where((p) => p.id == profileId).firstOrNull;
 
   CameraSessionState copyWith({
@@ -92,6 +100,7 @@ class CameraSessionState {
     List<RecordingSaved>? recovered,
     RecordingSavedNotice? lastSaved,
     bool? broadcast,
+    double? zoom,
   }) =>
       CameraSessionState(
         phase: phase ?? this.phase,
@@ -109,6 +118,7 @@ class CameraSessionState {
         recovered: recovered ?? this.recovered,
         lastSaved: lastSaved ?? this.lastSaved,
         broadcast: broadcast ?? this.broadcast,
+        zoom: zoom ?? this.zoom,
       );
 }
 
@@ -124,6 +134,10 @@ final class RecordingSavedNotice {
 class CameraSessionNotifier extends Notifier<CameraSessionState> {
   static const defaultProfileId = '1080p30';
   static const _profileKey = 'camera.profile';
+  static const _zoomKey = 'camera.zoom';
+
+  /// Above this the sensor crop gets soft; the UI offers up to here.
+  static const zoomCap = 4.0;
   static const modeKey = 'camera.mode';
   static const broadcastMode = 'broadcast';
   static const _maxErrors = 5;
@@ -171,7 +185,8 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
     });
     Future.microtask(enter);
     _broadcastMode = ref.read(sharedPreferencesProvider).getString(modeKey) == broadcastMode;
-    return CameraSessionState(broadcast: _broadcastMode);
+    final zoom = ref.read(sharedPreferencesProvider).getDouble(_zoomKey) ?? 1;
+    return CameraSessionState(broadcast: _broadcastMode, zoom: zoom);
   }
 
   /// Permissions → profiles → start the default profile. Also the "try again" action.
@@ -262,10 +277,23 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
       }
       _running = true;
       state = state.copyWith(phase: CameraPhase.running, session: () => session);
+      // The remembered framing; the native side applies it as soon as the camera session opens.
+      final zoom = state.zoom.clamp(1.0, state.maxZoom);
+      if (zoom > 1) unawaited(_capture.setZoom(zoom).catchError((Object _) {}));
     } catch (e) {
       if (!ref.mounted) return;
       state = state.copyWith(phase: CameraPhase.startFailed, startError: () => _describe(e));
     }
+  }
+
+  /// Zooms the camera (SPEC §3.1), from this screen or any viewer; clamped to 1…[maxZoom].
+  void setZoom(double ratio) {
+    if (state.phase != CameraPhase.running) return;
+    final zoom = (ratio.clamp(1.0, state.maxZoom) * 100).roundToDouble() / 100;
+    if (zoom == state.zoom) return;
+    state = state.copyWith(zoom: zoom);
+    unawaited(_capture.setZoom(zoom).catchError((Object _) {}));
+    unawaited(ref.read(sharedPreferencesProvider).setDouble(_zoomKey, zoom));
   }
 
   Future<void> startOperating() async {

@@ -30,6 +30,7 @@ class CameraServer implements ApiServer {
     required this.cameraInfo,
     this.webRoot,
     this.broadcast,
+    this.zoom,
     this.saveTimeout = const Duration(seconds: 5),
     this.silenceTimeout = const Duration(seconds: 15),
     AttemptLimiter? pairLimiter,
@@ -46,6 +47,9 @@ class CameraServer implements ApiServer {
 
   /// Broadcast mode (SPEC §12): the scoreboard and the stream; null leaves it out.
   final BroadcastHost? broadcast;
+
+  /// Camera zoom; null leaves it out of `status`.
+  final ZoomHost? zoom;
 
   /// How long `POST /clips` waits for the outbox to register the clip.
   final Duration saveTimeout;
@@ -88,6 +92,7 @@ class CameraServer implements ApiServer {
       ..add(capture.recording.listen(_onRecording))
       ..add(capture.recordingSaved.listen(_onRecordingSaved));
     if (broadcast case final b?) _subs.add(b.changes.listen((_) => _onBroadcastChanged()));
+    if (zoom case final z?) _subs.add(z.changes.listen((_) => _onBroadcastChanged()));
     final sweepEvery = Duration(milliseconds: max(100, silenceTimeout.inMilliseconds ~/ 3));
     _sweep = Timer.periodic(sweepEvery, (_) => _dropSilent());
     final server = await shelf_io.serve(handler, address ?? InternetAddress.anyIPv4, port);
@@ -395,6 +400,9 @@ compilación que incluya el visor web.</p>
           await capture.recordStop();
         // Broadcast mode (SPEC §12.3): any viewer drives the scoreboard and the stream; the new
         // state goes to every viewer at once (_onBroadcastChanged).
+        // Zoom (SPEC §3.1): any viewer, every viewer sees it at once.
+        case CameraZoom(:final ratio):
+          zoom?.set(ratio);
         case ScoreboardCmd(:final command):
           _broadcastHost().scoreboardCommand(command);
         case BroadcastConfigure(:final server, :final key, :final targetKbps, :final audio):
@@ -524,10 +532,10 @@ compilación que incluya el visor web.</p>
   /// them in replay mode.
   CameraStatus _withBroadcastNow(CameraStatus status) {
     final host = broadcast;
-    if (host == null || !host.active) {
-      return status.scoreboard == null && status.broadcast == null ? status : withBroadcast(status);
-    }
-    return withBroadcast(status, scoreboard: host.scoreboard, broadcast: host.info);
+    final withHost = host == null || !host.active
+        ? (status.scoreboard == null && status.broadcast == null ? status : withBroadcast(status))
+        : withBroadcast(status, scoreboard: host.scoreboard, broadcast: host.info);
+    return withHost.withZoom(zoom?.info);
   }
 
   /// A scoreboard or stream change (or a mode switch) goes out at once, like a recording change.

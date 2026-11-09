@@ -279,6 +279,7 @@ class StartResult {
     required this.encoder,
     required this.highProfile,
     required this.sensorOrientation,
+    this.maxZoom,
   });
 
   /// Flutter texture showing the local preview.
@@ -290,12 +291,16 @@ class StartResult {
 
   int sensorOrientation;
 
+  /// Highest zoom of the back camera (1 = none); null from an older plugin.
+  double? maxZoom;
+
   List<Object?> _toList() {
     return <Object?>[
       textureId,
       encoder,
       highProfile,
       sensorOrientation,
+      maxZoom,
     ];
   }
 
@@ -309,6 +314,7 @@ class StartResult {
       encoder: result[1]! as String,
       highProfile: result[2]! as bool,
       sensorOrientation: result[3]! as int,
+      maxZoom: result[4] as double?,
     );
   }
 
@@ -321,7 +327,7 @@ class StartResult {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(textureId, other.textureId) && _deepEquals(encoder, other.encoder) && _deepEquals(highProfile, other.highProfile) && _deepEquals(sensorOrientation, other.sensorOrientation);
+    return _deepEquals(textureId, other.textureId) && _deepEquals(encoder, other.encoder) && _deepEquals(highProfile, other.highProfile) && _deepEquals(sensorOrientation, other.sensorOrientation) && _deepEquals(maxZoom, other.maxZoom);
   }
 
   @override
@@ -330,7 +336,7 @@ class StartResult {
 
   @override
   String toString() {
-    return 'StartResult(textureId: $textureId, encoder: $encoder, highProfile: $highProfile, sensorOrientation: $sensorOrientation)';
+    return 'StartResult(textureId: $textureId, encoder: $encoder, highProfile: $highProfile, sensorOrientation: $sensorOrientation, maxZoom: $maxZoom)';
   }
 }
 
@@ -1358,6 +1364,26 @@ class CaptureHostApi {
       binaryMessenger: pigeonVar_binaryMessenger,
     );
     final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+  }
+
+  /// Sensor zoom (1…maxZoom): applies to the buffer, the recording and the broadcast alike. Glides
+  /// to the new value over a few frames.
+  Future<void> setZoom(double ratio) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.replay_capture_android.CaptureHostApi.setZoom$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[ratio]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(

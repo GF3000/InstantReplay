@@ -5,22 +5,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:replay_capture_android/replay_capture_android.dart';
-import 'package:replay_protocol/replay_protocol.dart' show RecordingEndReason, ScoreboardState, formatClock, hotThermalStatus;
+import 'package:replay_protocol/replay_protocol.dart'
+    show BroadcastInfo, RecordingEndReason, ScoreboardState, formatClock, hotThermalStatus;
 
 import '../../core/orientation_lock.dart';
 import '../../core/panels.dart';
 import '../../l10n/app_localizations.dart';
+import '../broadcast/broadcast_controller.dart';
 import '../broadcast/broadcast_host.dart';
 import '../broadcast/broadcast_providers.dart';
 import '../broadcast/broadcast_widgets.dart';
 import '../broadcast/scoreboard_controller.dart' show periodLabel;
 import '../recording/recording_widgets.dart';
+import '../role/confirm_switch_role.dart';
 import '../role/role.dart';
 import '../server/protocol_mapping.dart' show sessionRecording;
 import '../server/server_controller.dart';
 import 'camera_session.dart';
 import 'capture_layer.dart';
 import 'pairing_card.dart';
+import 'zoom_widgets.dart';
 
 /// Camera role (SPEC §3.5, D17; UX §2): a setup screen to frame the shot and pair a viewer, and a
 /// black operating mode that starts by itself when the first viewer connects.
@@ -111,8 +115,31 @@ class _Preview extends ConsumerWidget {
     if (session != null) {
       final profile = state.profile;
       final aspect = profile == null || profile.height == 0 ? 16 / 9 : profile.width / profile.height;
+      final notifier = ref.read(cameraSessionProvider.notifier);
+      final running = state.phase == CameraPhase.running;
+      final zoomable = state.maxZoom > 1;
       return Stack(children: [
-        Center(child: AspectRatio(aspectRatio: aspect, child: Texture(textureId: session.textureId))),
+        Positioned.fill(
+          child: ZoomPinch(
+            ratio: state.zoom,
+            max: state.maxZoom,
+            enabled: running && zoomable,
+            onChanged: notifier.setZoom,
+            child: Center(child: AspectRatio(aspectRatio: aspect, child: Texture(textureId: session.textureId))),
+          ),
+        ),
+        if (zoomable)
+          PositionedDirectional(
+            end: 12,
+            bottom: 12,
+            child: ZoomControl(
+              keyPrefix: 'camera-zoom',
+              ratio: state.zoom,
+              max: state.maxZoom,
+              enabled: running,
+              onChanged: notifier.setZoom,
+            ),
+          ),
         // The full-session recording rides on the preview, so the pairing panel keeps its room.
         PositionedDirectional(
           start: 8,
@@ -206,8 +233,18 @@ class _Panel extends ConsumerWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         children: [
+          // In broadcast mode the header carries the stream: Go live (or its bitrate on air) next
+          // to the scoreboard toggle and the role switch.
           Row(children: [
-            Expanded(child: Text(l10n.roleCamera, style: theme.textTheme.titleLarge)),
+            Expanded(
+              child: Text(
+                l10n.roleCamera,
+                style: theme.textTheme.titleLarge,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (state.broadcast) _CameraBroadcastBar(enabled: state.phase == CameraPhase.running, header: true),
             if (state.broadcast)
               IconButton(
                 key: const Key('camera-scoreboard-toggle'),
@@ -223,6 +260,17 @@ class _Panel extends ConsumerWidget {
               tooltip: l10n.switchRole,
               constraints: const BoxConstraints(minWidth: 56, minHeight: 56),
               onPressed: () async {
+                // Switching role stops capture, the stream and every viewer's connection.
+                final info = state.broadcast ? ref.read(broadcastControllerProvider).info : null;
+                final onAir = info?.active ?? false;
+                final viewers = ref.read(cameraServerProvider).viewers;
+                if ((onAir || viewers > 0) &&
+                    !await confirmSwitchRole(
+                      context,
+                      onAir ? l10n.switchRoleBroadcastBody : l10n.switchRoleViewersBody(viewers),
+                    )) {
+                  return;
+                }
                 await ref.read(roleProvider.notifier).clear();
                 if (context.mounted) context.go('/');
               },
@@ -611,8 +659,8 @@ class _ModeChoice extends ConsumerWidget {
   }
 }
 
-/// Broadcast mode on the setup screen: the stream with its controls, then the scoreboard
-/// controls (or, when they are hidden because a viewer keeps the score, the score on air).
+/// Broadcast mode on the setup screen: the scoreboard controls (or, when they are hidden because a
+/// viewer keeps the score, the score on air). The stream itself sits in the header.
 class _BroadcastCard extends ConsumerWidget {
   const _BroadcastCard({required this.state});
 
@@ -628,8 +676,6 @@ class _BroadcastCard extends ConsumerWidget {
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 8, 8, 12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          _CameraBroadcastBar(enabled: running),
-          const Divider(height: 20),
           if (controls) _CameraScoreboardControls(enabled: running) else const _CameraScoreLine(),
         ]),
       ),
@@ -685,15 +731,29 @@ class _FoldedPairing extends ConsumerWidget {
 
 /// The Camera's own Go live / Stop and stream settings, the same controls every viewer has.
 class _CameraBroadcastBar extends ConsumerWidget {
-  const _CameraBroadcastBar({required this.enabled, this.dim = false});
+  const _CameraBroadcastBar({required this.enabled, this.dim = false, this.header = false});
 
   final bool enabled;
   final bool dim;
+
+  /// Compact, for the setup screen's header: settings and one Go live / on-air button.
+  final bool header;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.watch(broadcastControllerProvider);
     final info = ref.watch(broadcastInfoProvider).value ?? controller.info;
+    if (header) {
+      return BroadcastHeaderControls(
+        key: const Key('camera-broadcast'),
+        info: info,
+        enabled: enabled,
+        keyPrefix: 'camera-broadcast',
+        onStart: () => _start(context, controller),
+        onStop: () => _run(context, controller.stop),
+        onConfigure: () => _configure(context, controller, info),
+      );
+    }
     return BroadcastBar(
       key: const Key('camera-broadcast'),
       info: info,
@@ -701,19 +761,22 @@ class _CameraBroadcastBar extends ConsumerWidget {
       keyPrefix: 'camera-broadcast',
       buttonSize: 56,
       dim: dim,
-      onStart: () => _run(context, () async {
+      onStart: () => _start(context, controller),
+      onStop: () => _run(context, controller.stop),
+      onConfigure: () => _configure(context, controller, info),
+    );
+  }
+
+  static void _start(BuildContext context, BroadcastController controller) => _run(context, () async {
         if (!await controller.start() && context.mounted) {
           _snack(context, AppLocalizations.of(context).broadcastMicDenied);
         }
-      }),
-      onStop: () => _run(context, controller.stop),
-      onConfigure: () async {
-        final result = await showBroadcastConfigDialog(context, info);
-        if (result == null) return;
-        await controller.configure(
-            server: result.server, key: result.key, targetKbps: result.targetKbps, audio: result.audio);
-      },
-    );
+      });
+
+  static Future<void> _configure(BuildContext context, BroadcastController controller, BroadcastInfo info) async {
+    final result = await showBroadcastConfigDialog(context, info);
+    if (result == null) return;
+    await controller.configure(server: result.server, key: result.key, targetKbps: result.targetKbps, audio: result.audio);
   }
 
   static Future<void> _run(BuildContext context, Future<void> Function() action) async {

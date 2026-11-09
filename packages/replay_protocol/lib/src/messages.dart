@@ -59,6 +59,7 @@ sealed class WsMessage {
         ),
       BroadcastStart.typeName => const BroadcastStart(),
       BroadcastStop.typeName => const BroadcastStop(),
+      CameraZoom.typeName => CameraZoom(ratio: (j['ratio']! as num).toDouble()),
       Ping.typeName => const Ping(),
       Pong.typeName => const Pong(),
       _ => null,
@@ -343,6 +344,21 @@ final class BroadcastStop extends WsMessage {
 
   @override
   Json fields() => const {};
+}
+
+/// Viewer → Camera: zoom the camera to [ratio] (clamped to 1…`status.zoom.max`). The new value
+/// arrives in the next [StatusUpdate], sent at once.
+final class CameraZoom extends WsMessage {
+  const CameraZoom({required this.ratio});
+
+  static const typeName = 'camera_zoom';
+  final double ratio;
+
+  @override
+  String get type => typeName;
+
+  @override
+  Json fields() => {'ratio': ratio};
 }
 
 /// Keep-alive: the Viewer pings every 5 s; the Camera drops a viewer silent for 15 s.

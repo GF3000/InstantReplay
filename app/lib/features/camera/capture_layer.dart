@@ -26,6 +26,9 @@ abstract interface class CaptureLayer {
 
   Future<void> setPreviewEnabled(bool enabled);
 
+  /// Sensor zoom, 1…[StartResult.maxZoom]; glides to the new value.
+  Future<void> setZoom(double ratio);
+
   /// Completes when the clip is ready, after [postSeconds] of post-roll. A repeated [requestId]
   /// returns the existing clip instead of cutting a new one.
   Future<ClipInfo> saveClip({required String requestId, required double preSeconds, double postSeconds = 0});
@@ -132,6 +135,9 @@ class PluginCaptureLayer implements CaptureLayer {
 
   @override
   Future<void> setPreviewEnabled(bool enabled) => _capture.setPreviewEnabled(enabled);
+
+  @override
+  Future<void> setZoom(double ratio) => _capture.setZoom(ratio);
 
   @override
   Future<ClipInfo> saveClip({required String requestId, required double preSeconds, double postSeconds = 0}) =>

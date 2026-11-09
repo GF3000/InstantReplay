@@ -2132,6 +2132,48 @@ abstract class AppLocalizations {
   /// **'Connect a viewer'**
   String get cameraConnectViewer;
 
+  /// No description provided for @zoomOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom out'**
+  String get zoomOut;
+
+  /// No description provided for @zoomIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom in'**
+  String get zoomIn;
+
+  /// No description provided for @zoomReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to 1×'**
+  String get zoomReset;
+
+  /// No description provided for @switchRoleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch role?'**
+  String get switchRoleTitle;
+
+  /// No description provided for @switchRoleBroadcastBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The camera is streaming. Switching role ends the stream on YouTube and disconnects every viewer.'**
+  String get switchRoleBroadcastBody;
+
+  /// No description provided for @switchRoleViewerBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You are connected to the camera. Switching role closes the live view and this connection.'**
+  String get switchRoleViewerBody;
+
+  /// No description provided for @switchRoleViewersBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{A viewer is connected. Switching role stops the camera and disconnects it.} other{{count} viewers are connected. Switching role stops the camera and disconnects them.}}'**
+  String switchRoleViewersBody(int count);
+
   /// No description provided for @scoreboardSet.
   ///
   /// In en, this message translates to:

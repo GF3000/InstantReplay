@@ -1240,6 +1240,39 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cameraConnectViewer => 'Connect a viewer';
 
   @override
+  String get zoomOut => 'Zoom out';
+
+  @override
+  String get zoomIn => 'Zoom in';
+
+  @override
+  String get zoomReset => 'Back to 1×';
+
+  @override
+  String get switchRoleTitle => 'Switch role?';
+
+  @override
+  String get switchRoleBroadcastBody =>
+      'The camera is streaming. Switching role ends the stream on YouTube and disconnects every viewer.';
+
+  @override
+  String get switchRoleViewerBody =>
+      'You are connected to the camera. Switching role closes the live view and this connection.';
+
+  @override
+  String switchRoleViewersBody(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count viewers are connected. Switching role stops the camera and disconnects them.',
+      one:
+          'A viewer is connected. Switching role stops the camera and disconnects it.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get scoreboardSet => 'Set';
 
   @override

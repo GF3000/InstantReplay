@@ -1245,6 +1245,39 @@ class AppLocalizationsEs extends AppLocalizations {
   String get cameraConnectViewer => 'Conectar un visor';
 
   @override
+  String get zoomOut => 'Alejar';
+
+  @override
+  String get zoomIn => 'Acercar';
+
+  @override
+  String get zoomReset => 'Volver a 1×';
+
+  @override
+  String get switchRoleTitle => '¿Cambiar de rol?';
+
+  @override
+  String get switchRoleBroadcastBody =>
+      'La cámara está emitiendo. Cambiar de rol corta la emisión en YouTube y desconecta a todos los visores.';
+
+  @override
+  String get switchRoleViewerBody =>
+      'Estás conectado a la cámara. Cambiar de rol cierra el directo y esta conexión.';
+
+  @override
+  String switchRoleViewersBody(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Hay $count visores conectados. Cambiar de rol para la cámara y los desconecta.',
+      one:
+          'Hay un visor conectado. Cambiar de rol para la cámara y lo desconecta.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get scoreboardSet => 'Ajustar';
 
   @override

@@ -23,8 +23,25 @@ abstract interface class ApiServer {
   void captureRestarted();
 }
 
+/// The Camera's zoom as the server sees it: rides on `status`, any viewer can change it.
+abstract interface class ZoomHost {
+  /// Null while capture is not running.
+  ZoomInfo? get info;
+
+  void set(double ratio);
+
+  /// After every change, so the server pushes a status at once.
+  Stream<void> get changes;
+}
+
 class ApiServerConfig {
-  const ApiServerConfig({required this.capture, required this.secrets, required this.cameraInfo, this.broadcast});
+  const ApiServerConfig({
+    required this.capture,
+    required this.secrets,
+    required this.cameraInfo,
+    this.broadcast,
+    this.zoom,
+  });
 
   final CaptureLayer capture;
   final PairingSecrets secrets;
@@ -32,6 +49,9 @@ class ApiServerConfig {
 
   /// Broadcast mode (SPEC §12): the scoreboard and the stream; null leaves it out.
   final BroadcastHost? broadcast;
+
+  /// Camera zoom; null leaves it out of `status`.
+  final ZoomHost? zoom;
 }
 
 /// Platform pieces of the server, injectable for tests. Web gets a stub that never runs (the

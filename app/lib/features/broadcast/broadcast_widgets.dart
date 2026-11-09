@@ -155,6 +155,87 @@ class BroadcastBar extends StatelessWidget {
   }
 }
 
+/// The stream in a header: settings, then one button that says Go live (red) when idle and, on
+/// air, shows the state with the bitrate and the time on air; tapping it then asks to stop.
+class BroadcastHeaderControls extends StatelessWidget {
+  const BroadcastHeaderControls({
+    super.key,
+    required this.info,
+    required this.enabled,
+    required this.onStart,
+    required this.onStop,
+    required this.onConfigure,
+    this.keyPrefix = 'broadcast',
+  });
+
+  final BroadcastInfo info;
+  final bool enabled;
+  final VoidCallback onStart;
+  final VoidCallback onStop;
+  final VoidCallback onConfigure;
+  final String keyPrefix;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    const red = Color(0xFFC62828);
+    final Widget button;
+    if (info.active) {
+      final color = broadcastStateColor(info.state);
+      final numbers = [
+        if (info.bitrateKbps case final kbps?) l10n.broadcastBitrate((kbps / 1000).toStringAsFixed(1)),
+        if (info.uptimeMs case final ms?) formatRecordingClock(ms),
+      ].join(' · ');
+      final label = info.state == BroadcastStreamState.live && numbers.isNotEmpty
+          ? numbers
+          : broadcastStateLabel(l10n, info.state);
+      button = OutlinedButton.icon(
+        key: ValueKey('$keyPrefix-stop'),
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(48, 48),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          foregroundColor: color,
+          side: BorderSide(color: color, width: 2),
+        ),
+        onPressed: enabled ? () => _stop(context) : null,
+        icon: Icon(info.state == BroadcastStreamState.live ? Icons.sensors : Icons.sync),
+        label: Text(
+          label,
+          key: ValueKey('$keyPrefix-state'),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontFeatures: [FontFeature.tabularFigures()]),
+        ),
+      );
+    } else {
+      button = FilledButton.icon(
+        key: ValueKey('$keyPrefix-start'),
+        style: FilledButton.styleFrom(
+          minimumSize: const Size(48, 48),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          backgroundColor: red,
+          foregroundColor: Colors.white,
+        ),
+        onPressed: enabled && info.configured ? onStart : (enabled ? onConfigure : null),
+        icon: const Icon(Icons.sensors),
+        label: Text(l10n.broadcastStart, style: const TextStyle(fontWeight: FontWeight.bold)),
+      );
+    }
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      IconButton(
+        key: ValueKey('$keyPrefix-settings'),
+        tooltip: l10n.broadcastSettings,
+        constraints: const BoxConstraints.tightFor(width: 48, height: 48),
+        onPressed: enabled ? onConfigure : null,
+        icon: const Icon(Icons.settings),
+      ),
+      Tooltip(message: broadcastDetail(l10n, info), child: button),
+    ]);
+  }
+
+  Future<void> _stop(BuildContext context) async {
+    if (await confirmStopBroadcast(context)) onStop();
+  }
+}
+
 /// True to end the stream.
 Future<bool> confirmStopBroadcast(BuildContext context) async {
   final l10n = AppLocalizations.of(context);

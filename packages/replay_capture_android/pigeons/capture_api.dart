@@ -46,6 +46,7 @@ class StartResult {
     required this.encoder,
     required this.highProfile,
     required this.sensorOrientation,
+    this.maxZoom,
   });
 
   /// Flutter texture showing the local preview.
@@ -53,6 +54,9 @@ class StartResult {
   String encoder;
   bool highProfile;
   int sensorOrientation;
+
+  /// Highest zoom of the back camera (1 = none); null from an older plugin.
+  double? maxZoom;
 }
 
 /// Outbox lifecycle (SPEC §3.4).
@@ -343,6 +347,10 @@ abstract class CaptureHostApi {
   StartResult start(StartRequest request);
 
   void stop();
+
+  /// Sensor zoom (1…maxZoom): applies to the buffer, the recording and the broadcast alike. Glides
+  /// to the new value over a few frames.
+  void setZoom(double ratio);
 
   /// Operating mode turns the local preview off to save power and heat.
   void setPreviewEnabled(bool enabled);
