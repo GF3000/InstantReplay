@@ -790,11 +790,37 @@
   "scoreboardStartClock": "Start the clock",
   "scoreboardPauseClock": "Stop the clock",
   "scoreboardSetClock": "Set the clock",
-  "scoreboardSetClockHint": "mm:ss",
-  "scoreboardInvalidTime": "Use minutes:seconds, e.g. 12:30",
+  "scoreboardHoldToSetClock": "Press and hold the clock to set it",
+  "scoreboardMinutes": "Minutes",
+  "scoreboardSeconds": "Seconds",
+  "scoreboardMore": "Period, show and settings",
+  "scoreboardHidden": "Scoreboard hidden",
+  "scoreboardGoToPeriod": "Go to {period}",
+  "@scoreboardGoToPeriod": {
+    "placeholders": {
+      "period": {"type": "String"}
+    }
+  },
+  "scoreboardBackToPeriod": "Back to {period}",
+  "@scoreboardBackToPeriod": {
+    "placeholders": {
+      "period": {"type": "String"}
+    }
+  },
+  "scoreboardPeriodConfirmTitle": "Go to {period}?",
+  "@scoreboardPeriodConfirmTitle": {
+    "placeholders": {
+      "period": {"type": "String"}
+    }
+  },
+  "scoreboardPeriodConfirmBody": "The clock stops and goes to {time}.",
+  "@scoreboardPeriodConfirmBody": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "scoreboardPeriodConfirm": "Change period",
   "scoreboardSet": "Set",
-  "scoreboardPeriodPrev": "Previous period",
-  "scoreboardPeriodNext": "Next period",
   "scoreboardVisible": "On screen",
   "scoreboardReset": "Reset",
   "scoreboardResetTitle": "Reset the scoreboard?",

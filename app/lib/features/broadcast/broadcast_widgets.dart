@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:replay_protocol/replay_protocol.dart';
@@ -509,14 +510,15 @@ class _CentreControl extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
-    final label = periodLabel(l10n, period: state.period, periods: state.periods);
     final play = compact ? 52.0 : 60.0;
     return Column(mainAxisSize: MainAxisSize.min, children: [
       Row(mainAxisSize: MainAxisSize.min, children: [
+        // A long press, so a stray tap during the match never opens the editor.
         InkWell(
           key: const ValueKey('score-clock'),
           borderRadius: BorderRadius.circular(8),
-          onTap: enabled ? () => _setClock(context) : null,
+          onTap: enabled ? () => _holdHint(context) : null,
+          onLongPress: enabled ? () => _setClock(context) : null,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             child: ScoreboardClock(
@@ -552,137 +554,216 @@ class _CentreControl extends StatelessWidget {
           ),
         ),
       ]),
-      Row(mainAxisSize: MainAxisSize.min, children: [
-        if (state.periods > 1) ...[
-          IconButton(
-            key: const ValueKey('score-period-prev'),
-            tooltip: l10n.scoreboardPeriodPrev,
-            constraints: const BoxConstraints.tightFor(width: 48, height: 48),
-            onPressed: enabled && state.period > 1 ? () => onCommand(const PeriodCommand(delta: -1)) : null,
-            icon: const Icon(Icons.chevron_left),
-          ),
-          SizedBox(
-            width: 40,
-            child: Text(
-              label,
-              key: const ValueKey('score-period'),
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
-          ),
-          IconButton(
-            key: const ValueKey('score-period-next'),
-            tooltip: l10n.scoreboardPeriodNext,
-            constraints: const BoxConstraints.tightFor(width: 48, height: 48),
-            onPressed: enabled && state.period < state.periods ? () => onCommand(const PeriodCommand(delta: 1)) : null,
-            icon: const Icon(Icons.chevron_right),
-          ),
-          const SizedBox(width: 4),
-        ],
-        IconButton(
-          key: const ValueKey('score-visible'),
-          tooltip: l10n.scoreboardVisible,
-          isSelected: state.visible,
-          constraints: const BoxConstraints.tightFor(width: 48, height: 48),
-          onPressed: enabled ? () => onCommand(VisibleCommand(visible: !state.visible)) : null,
-          icon: const Icon(Icons.visibility_off),
-          selectedIcon: const Icon(Icons.visibility),
-        ),
-        IconButton(
-          key: const ValueKey('score-reset'),
-          tooltip: l10n.scoreboardReset,
-          constraints: const BoxConstraints.tightFor(width: 48, height: 48),
-          onPressed: enabled ? () => _reset(context) : null,
-          icon: const Icon(Icons.restart_alt),
-        ),
-        IconButton(
-          key: const ValueKey('score-settings'),
-          tooltip: l10n.scoreboardSettings,
-          constraints: const BoxConstraints.tightFor(width: 48, height: 48),
-          onPressed: enabled ? () => _settings(context) : null,
-          icon: const Icon(Icons.tune),
-        ),
-      ]),
+      // Period changes, hiding, reset and settings happen a few times per match: one menu, out of
+      // the way of the buttons used under pressure.
+      _ScoreboardMenu(state: state, enabled: enabled, onCommand: onCommand),
     ]);
   }
 
+  void _holdHint(BuildContext context) {
+    final text = AppLocalizations.of(context).scoreboardHoldToSetClock;
+    ScaffoldMessenger.maybeOf(context)
+      ?..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(text)));
+  }
+
   Future<void> _setClock(BuildContext context) async {
+    unawaited(HapticFeedback.mediumImpact());
     final ms = await showClockSetDialog(context, state.clockAt(0));
     if (ms != null) onCommand(ClockSetCommand(ms: ms));
   }
+}
 
-  Future<void> _reset(BuildContext context) async {
-    if (await confirmScoreboardReset(context)) onCommand(const ResetCommand());
+enum _MenuAction { nextPeriod, prevPeriod, visible, reset, settings }
+
+/// The period label plus a menu with the actions used a few times per match.
+class _ScoreboardMenu extends StatelessWidget {
+  const _ScoreboardMenu({required this.state, required this.enabled, required this.onCommand});
+
+  final ScoreboardState state;
+  final bool enabled;
+  final void Function(ScoreboardCommand) onCommand;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    String label(int period) => periodLabel(l10n, period: period, periods: state.periods);
+    final hasPeriods = state.periods > 1;
+    return PopupMenuButton<_MenuAction>(
+      key: const ValueKey('score-menu'),
+      enabled: enabled,
+      tooltip: l10n.scoreboardMore,
+      onSelected: (action) => _onSelected(context, action),
+      itemBuilder: (context) => [
+        if (hasPeriods && state.period < state.periods)
+          PopupMenuItem(
+            key: const ValueKey('score-period-next'),
+            value: _MenuAction.nextPeriod,
+            child: ListTile(
+              leading: const Icon(Icons.skip_next),
+              title: Text(l10n.scoreboardGoToPeriod(label(state.period + 1))),
+            ),
+          ),
+        if (hasPeriods && state.period > 1)
+          PopupMenuItem(
+            key: const ValueKey('score-period-prev'),
+            value: _MenuAction.prevPeriod,
+            child: ListTile(
+              leading: const Icon(Icons.skip_previous),
+              title: Text(l10n.scoreboardBackToPeriod(label(state.period - 1))),
+            ),
+          ),
+        if (hasPeriods) const PopupMenuDivider(),
+        CheckedPopupMenuItem(
+          key: const ValueKey('score-visible'),
+          value: _MenuAction.visible,
+          checked: state.visible,
+          child: Text(l10n.scoreboardVisible),
+        ),
+        PopupMenuItem(
+          key: const ValueKey('score-reset'),
+          value: _MenuAction.reset,
+          child: ListTile(leading: const Icon(Icons.restart_alt), title: Text(l10n.scoreboardReset)),
+        ),
+        PopupMenuItem(
+          key: const ValueKey('score-settings'),
+          value: _MenuAction.settings,
+          child: ListTile(leading: const Icon(Icons.tune), title: Text(l10n.scoreboardSettings)),
+        ),
+      ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          if (hasPeriods) ...[
+            Text(
+              label(state.period),
+              key: const ValueKey('score-period'),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+            const SizedBox(width: 8),
+          ],
+          if (!state.visible) ...[
+            Icon(Icons.visibility_off, size: 20, semanticLabel: l10n.scoreboardHidden),
+            const SizedBox(width: 8),
+          ],
+          const Icon(Icons.more_horiz),
+        ]),
+      ),
+    );
   }
 
-  Future<void> _settings(BuildContext context) async {
-    final settings = await showScoreboardSettingsDialog(context, state.settings);
-    if (settings != null) onCommand(SettingsCommand(settings));
+  Future<void> _onSelected(BuildContext context, _MenuAction action) async {
+    switch (action) {
+      case _MenuAction.nextPeriod:
+      case _MenuAction.prevPeriod:
+        final delta = action == _MenuAction.nextPeriod ? 1 : -1;
+        if (await _confirmPeriod(context, state.period + delta)) onCommand(PeriodCommand(delta: delta));
+      case _MenuAction.visible:
+        onCommand(VisibleCommand(visible: !state.visible));
+      case _MenuAction.reset:
+        if (await confirmScoreboardReset(context)) onCommand(const ResetCommand());
+      case _MenuAction.settings:
+        final settings = await showScoreboardSettingsDialog(context, state.settings);
+        if (settings != null) onCommand(SettingsCommand(settings));
+    }
+  }
+
+  /// A period change stops and resets the clock, so it asks first.
+  Future<bool> _confirmPeriod(BuildContext context, int period) async {
+    final l10n = AppLocalizations.of(context);
+    final label = periodLabel(l10n, period: period, periods: state.periods);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.scoreboardPeriodConfirmTitle(label)),
+        content: Text(l10n.scoreboardPeriodConfirmBody(formatClock(state.periodStartMs))),
+        actions: [
+          TextButton(
+            style: TextButton.styleFrom(minimumSize: const Size(64, 48)),
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l10n.broadcastCancel),
+          ),
+          FilledButton(
+            key: const ValueKey('score-period-confirm'),
+            style: FilledButton.styleFrom(minimumSize: const Size(64, 48)),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(l10n.scoreboardPeriodConfirm),
+          ),
+        ],
+      ),
+    );
+    return ok ?? false;
   }
 }
 
-/// `12:30` → 750000 ms; also plain minutes (`45`). Null when it does not parse.
-int? parseClock(String text) {
-  final m = RegExp(r'^\s*(\d{1,3})(?:\s*[:.,]\s*(\d{1,2}))?\s*$').firstMatch(text);
-  if (m == null) return null;
-  final minutes = int.parse(m[1]!);
-  final seconds = m[2] == null ? 0 : int.parse(m[2]!);
-  if (seconds >= 60) return null;
-  return (minutes * 60 + seconds) * 1000;
-}
-
-/// Asks for a clock value as `mm:ss`; null when cancelled.
+/// Asks for a clock value with minute and second wheels, like the Android alarm picker; null when
+/// cancelled.
 Future<int?> showClockSetDialog(BuildContext context, int currentMs) =>
-    showDialog<int>(context: context, builder: (_) => _ClockSetDialog(initial: formatClock(currentMs)));
+    showDialog<int>(context: context, builder: (_) => _ClockSetDialog(initialMs: currentMs));
 
 class _ClockSetDialog extends StatefulWidget {
-  const _ClockSetDialog({required this.initial});
+  const _ClockSetDialog({required this.initialMs});
 
-  final String initial;
+  final int initialMs;
 
   @override
   State<_ClockSetDialog> createState() => _ClockSetDialogState();
 }
 
 class _ClockSetDialogState extends State<_ClockSetDialog> {
-  late final _text = TextEditingController(text: widget.initial)
-    ..selection = TextSelection(baseOffset: 0, extentOffset: widget.initial.length);
-  bool _invalid = false;
+  static const maxMinutes = 199;
+
+  late final _minutes = FixedExtentScrollController(initialItem: (widget.initialMs ~/ 60000).clamp(0, maxMinutes));
+  late final _seconds = FixedExtentScrollController(initialItem: widget.initialMs ~/ 1000 % 60);
 
   @override
   void dispose() {
-    _text.dispose();
+    _minutes.dispose();
+    _seconds.dispose();
     super.dispose();
   }
 
   void _submit() {
-    final ms = parseClock(_text.text);
-    if (ms == null) {
-      setState(() => _invalid = true);
-      return;
-    }
+    // The seconds wheel loops, so its index can run past 59 or below 0.
+    final ms = (_minutes.selectedItem * 60 + _seconds.selectedItem % 60) * 1000;
     Navigator.of(context).pop(ms);
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
     return AlertDialog(
       title: Text(l10n.scoreboardSetClock),
-      content: TextField(
-        key: const ValueKey('score-clock-field'),
-        controller: _text,
-        autofocus: true,
-        keyboardType: TextInputType.datetime,
-        textAlign: TextAlign.center,
-        style: const TextStyle(fontSize: 32, fontFeatures: [FontFeature.tabularFigures()]),
-        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9:.,]'))],
-        decoration: InputDecoration(
-          hintText: l10n.scoreboardSetClockHint,
-          errorText: _invalid ? l10n.scoreboardInvalidTime : null,
-          border: const OutlineInputBorder(),
-        ),
-        onSubmitted: (_) => _submit(),
+      content: SizedBox(
+        height: _Wheel.itemExtent * 5,
+        child: Stack(alignment: Alignment.center, children: [
+          // The selection band, as in the Android alarm picker.
+          Container(
+            height: _Wheel.itemExtent,
+            decoration: BoxDecoration(color: scheme.secondaryContainer, borderRadius: BorderRadius.circular(12)),
+          ),
+          Row(mainAxisSize: MainAxisSize.min, children: [
+            _Wheel(
+              key: const ValueKey('score-clock-minutes'),
+              controller: _minutes,
+              count: maxMinutes + 1,
+              looping: false,
+              semanticLabel: l10n.scoreboardMinutes,
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 4),
+              child: Text(':', style: TextStyle(fontSize: _Wheel.fontSize, fontWeight: FontWeight.w700)),
+            ),
+            _Wheel(
+              key: const ValueKey('score-clock-seconds'),
+              controller: _seconds,
+              count: 60,
+              looping: true,
+              semanticLabel: l10n.scoreboardSeconds,
+            ),
+          ]),
+        ]),
       ),
       actions: [
         TextButton(
@@ -697,6 +778,60 @@ class _ClockSetDialogState extends State<_ClockSetDialog> {
           child: Text(l10n.scoreboardSet),
         ),
       ],
+    );
+  }
+}
+
+/// One two-digit wheel. Dragged with a finger, a mouse (web viewer) or the mouse wheel.
+class _Wheel extends StatelessWidget {
+  const _Wheel({
+    super.key,
+    required this.controller,
+    required this.count,
+    required this.looping,
+    required this.semanticLabel,
+  });
+
+  static const itemExtent = 56.0;
+  static const fontSize = 36.0;
+
+  final FixedExtentScrollController controller;
+  final int count;
+  final bool looping;
+  final String semanticLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget item(int i) => Center(
+          child: Text(
+            (i % count).toString().padLeft(2, '0'),
+            style: const TextStyle(
+              fontSize: fontSize,
+              fontWeight: FontWeight.w700,
+              fontFeatures: [FontFeature.tabularFigures()],
+            ),
+          ),
+        );
+    return Semantics(
+      label: semanticLabel,
+      child: SizedBox(
+        width: 84,
+        child: ScrollConfiguration(
+          // Flutter web doesn't drag scrollables with a mouse by default.
+          behavior: ScrollConfiguration.of(context).copyWith(dragDevices: {...PointerDeviceKind.values}, scrollbars: false),
+          child: ListWheelScrollView.useDelegate(
+            controller: controller,
+            itemExtent: itemExtent,
+            diameterRatio: 1.6,
+            overAndUnderCenterOpacity: 0.45,
+            physics: const FixedExtentScrollPhysics(),
+            onSelectedItemChanged: (_) => HapticFeedback.selectionClick(),
+            childDelegate: looping
+                ? ListWheelChildLoopingListDelegate(children: [for (var i = 0; i < count; i++) item(i)])
+                : ListWheelChildBuilderDelegate(childCount: count, builder: (context, i) => item(i)),
+          ),
+        ),
+      ),
     );
   }
 }

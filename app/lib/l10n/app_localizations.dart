@@ -2006,35 +2006,71 @@ abstract class AppLocalizations {
   /// **'Set the clock'**
   String get scoreboardSetClock;
 
-  /// No description provided for @scoreboardSetClockHint.
+  /// No description provided for @scoreboardHoldToSetClock.
   ///
   /// In en, this message translates to:
-  /// **'mm:ss'**
-  String get scoreboardSetClockHint;
+  /// **'Press and hold the clock to set it'**
+  String get scoreboardHoldToSetClock;
 
-  /// No description provided for @scoreboardInvalidTime.
+  /// No description provided for @scoreboardMinutes.
   ///
   /// In en, this message translates to:
-  /// **'Use minutes:seconds, e.g. 12:30'**
-  String get scoreboardInvalidTime;
+  /// **'Minutes'**
+  String get scoreboardMinutes;
+
+  /// No description provided for @scoreboardSeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'Seconds'**
+  String get scoreboardSeconds;
+
+  /// No description provided for @scoreboardMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Period, show and settings'**
+  String get scoreboardMore;
+
+  /// No description provided for @scoreboardHidden.
+  ///
+  /// In en, this message translates to:
+  /// **'Scoreboard hidden'**
+  String get scoreboardHidden;
+
+  /// No description provided for @scoreboardGoToPeriod.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to {period}'**
+  String scoreboardGoToPeriod(String period);
+
+  /// No description provided for @scoreboardBackToPeriod.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to {period}'**
+  String scoreboardBackToPeriod(String period);
+
+  /// No description provided for @scoreboardPeriodConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to {period}?'**
+  String scoreboardPeriodConfirmTitle(String period);
+
+  /// No description provided for @scoreboardPeriodConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The clock stops and goes to {time}.'**
+  String scoreboardPeriodConfirmBody(String time);
+
+  /// No description provided for @scoreboardPeriodConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Change period'**
+  String get scoreboardPeriodConfirm;
 
   /// No description provided for @scoreboardSet.
   ///
   /// In en, this message translates to:
   /// **'Set'**
   String get scoreboardSet;
-
-  /// No description provided for @scoreboardPeriodPrev.
-  ///
-  /// In en, this message translates to:
-  /// **'Previous period'**
-  String get scoreboardPeriodPrev;
-
-  /// No description provided for @scoreboardPeriodNext.
-  ///
-  /// In en, this message translates to:
-  /// **'Next period'**
-  String get scoreboardPeriodNext;
 
   /// No description provided for @scoreboardVisible.
   ///

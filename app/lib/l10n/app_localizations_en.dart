@@ -1168,19 +1168,45 @@ class AppLocalizationsEn extends AppLocalizations {
   String get scoreboardSetClock => 'Set the clock';
 
   @override
-  String get scoreboardSetClockHint => 'mm:ss';
+  String get scoreboardHoldToSetClock => 'Press and hold the clock to set it';
 
   @override
-  String get scoreboardInvalidTime => 'Use minutes:seconds, e.g. 12:30';
+  String get scoreboardMinutes => 'Minutes';
+
+  @override
+  String get scoreboardSeconds => 'Seconds';
+
+  @override
+  String get scoreboardMore => 'Period, show and settings';
+
+  @override
+  String get scoreboardHidden => 'Scoreboard hidden';
+
+  @override
+  String scoreboardGoToPeriod(String period) {
+    return 'Go to $period';
+  }
+
+  @override
+  String scoreboardBackToPeriod(String period) {
+    return 'Back to $period';
+  }
+
+  @override
+  String scoreboardPeriodConfirmTitle(String period) {
+    return 'Go to $period?';
+  }
+
+  @override
+  String scoreboardPeriodConfirmBody(String time) {
+    return 'The clock stops and goes to $time.';
+  }
+
+  @override
+  String get scoreboardPeriodConfirm => 'Change period';
 
   @override
   String get scoreboardSet => 'Set';
-
-  @override
-  String get scoreboardPeriodPrev => 'Previous period';
-
-  @override
-  String get scoreboardPeriodNext => 'Next period';
 
   @override
   String get scoreboardVisible => 'On screen';

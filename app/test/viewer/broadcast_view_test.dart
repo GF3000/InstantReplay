@@ -145,13 +145,14 @@ void main() {
     await tester.tap(_key('score-home-plus'));
     await tester.tap(_key('score-away-minus'));
     await tester.tap(_key('score-clock-toggle'));
-    await tester.tap(_key('score-period-prev'));
+    await tester.tap(_key('score-menu'));
+    await tester.pumpAndSettle();
     await tester.tap(_key('score-visible'));
+    await tester.pumpAndSettle();
     expect(remote.sent, [
       isA<ScoreCommand>().having((c) => (c.team, c.delta), 'team, delta', (Team.home, 1)),
       isA<ScoreCommand>().having((c) => (c.team, c.delta), 'team, delta', (Team.away, -1)),
       isA<ClockStartCommand>(),
-      isA<PeriodCommand>().having((c) => c.delta, 'delta', -1),
       isA<VisibleCommand>().having((c) => c.visible, 'visible', false),
     ]);
   });
@@ -167,18 +168,42 @@ void main() {
     }
   });
 
-  testWidgets('tap the clock to set it', (tester) async {
+  testWidgets('a tap on the clock only hints; a long press opens the wheels', (tester) async {
     final remote = await _pump(tester);
     await tester.tap(_key('score-clock'));
+    await tester.pump();
+    expect(find.text('Press and hold the clock to set it'), findsOneWidget);
+    expect(_key('score-clock-set'), findsNothing);
+
+    await tester.longPress(_key('score-clock'));
     await tester.pumpAndSettle();
-    await tester.enterText(_key('score-clock-field'), '12:7x');
+    // Starts at the current 01:01; one row up on the minutes, two down on the seconds.
+    await tester.drag(_key('score-clock-minutes'), const Offset(0, -56));
+    await tester.pumpAndSettle();
+    await tester.drag(_key('score-clock-seconds'), const Offset(0, 112));
+    await tester.pumpAndSettle();
     await tester.tap(_key('score-clock-set'));
     await tester.pumpAndSettle();
-    expect(remote.sent.single, isA<ClockSetCommand>().having((c) => c.ms, 'ms', 727000));
+    expect(remote.sent.single, isA<ClockSetCommand>().having((c) => c.ms, 'ms', (2 * 60 + 59) * 1000));
+  });
+
+  testWidgets('period changes live in the menu and ask first', (tester) async {
+    final remote = await _pump(tester);
+    await tester.tap(_key('score-menu'));
+    await tester.pumpAndSettle();
+    expect(_key('score-period-next'), findsNothing, reason: 'already in the last period');
+    await tester.tap(_key('score-period-prev'));
+    await tester.pumpAndSettle();
+    expect(remote.sent, isEmpty);
+    await tester.tap(_key('score-period-confirm'));
+    await tester.pumpAndSettle();
+    expect(remote.sent.single, isA<PeriodCommand>().having((c) => c.delta, 'delta', -1));
   });
 
   testWidgets('reset and stop ask first', (tester) async {
     final remote = await _pump(tester);
+    await tester.tap(_key('score-menu'));
+    await tester.pumpAndSettle();
     await tester.tap(_key('score-reset'));
     await tester.pumpAndSettle();
     expect(remote.sent, isEmpty);
@@ -200,6 +225,8 @@ void main() {
 
   testWidgets('settings: names, colours, periods, minutes and direction', (tester) async {
     final remote = await _pump(tester);
+    await tester.tap(_key('score-menu'));
+    await tester.pumpAndSettle();
     await tester.tap(_key('score-settings'));
     await tester.pumpAndSettle();
     await tester.enterText(_key('score-settings-home-name'), 'lions');
