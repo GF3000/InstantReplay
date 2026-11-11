@@ -814,7 +814,10 @@ void main() {
     await startServer(webRoot: temp.path);
 
     expect(utf8.decode((await call('GET', '/?k=$_token', auth: false)).body), '<html>viewer</html>');
-    expect(utf8.decode((await call('GET', '/main.dart.js', auth: false)).body), 'console.log(1)');
+    final script = await call('GET', '/main.dart.js', auth: false);
+    expect(utf8.decode(script.body), 'console.log(1)');
+    // An app update must reach browsers that loaded the previous viewer.
+    expect(script.headers.value(HttpHeaders.cacheControlHeader), 'no-cache');
     final route = await call('GET', '/review/42', auth: false);
     expect(route.status, 200);
     expect(utf8.decode(route.body), '<html>viewer</html>');

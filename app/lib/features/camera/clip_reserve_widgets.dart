@@ -12,7 +12,11 @@ class ClipReserveStepper extends StatelessWidget {
     required this.onChanged,
     this.max = 10,
     this.keyPrefix = 'clip-reserve',
+    this.vertical = false,
   });
+
+  /// For a dialog: − N + centred on top, the explanation below; no title (the dialog has one).
+  final bool vertical;
 
   final int size;
   final bool enabled;
@@ -24,6 +28,40 @@ class ClipReserveStepper extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
+    final hint = Text(
+      size == 0 ? l10n.clipReserveOff : l10n.clipReserveHint(size),
+      textAlign: vertical ? TextAlign.center : null,
+      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+    );
+    if (vertical) {
+      return Column(mainAxisSize: MainAxisSize.min, children: [
+        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          IconButton.outlined(
+            key: ValueKey('$keyPrefix-minus'),
+            tooltip: l10n.clipReserveLess,
+            onPressed: enabled && size > 0 ? () => onChanged(size - 1) : null,
+            icon: const Icon(Icons.remove),
+          ),
+          SizedBox(
+            width: 72,
+            child: Text(
+              '$size',
+              key: ValueKey('$keyPrefix-size'),
+              textAlign: TextAlign.center,
+              style: theme.textTheme.displaySmall?.copyWith(fontWeight: FontWeight.bold),
+            ),
+          ),
+          IconButton.outlined(
+            key: ValueKey('$keyPrefix-plus'),
+            tooltip: l10n.clipReserveMore,
+            onPressed: enabled && size < max ? () => onChanged(size + 1) : null,
+            icon: const Icon(Icons.add),
+          ),
+        ]),
+        const SizedBox(height: 12),
+        hint,
+      ]);
+    }
     return Row(children: [
       Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
