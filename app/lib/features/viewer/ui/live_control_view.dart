@@ -394,8 +394,18 @@ class SaveControls extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: OutlinedButton(
               key: ValueKey('viewer-save-$s'),
+              // Narrow panels (phone landscape, small windows): never split "10 s" over two lines.
+              style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8)),
               onPressed: enabled ? () => save(s) : null,
-              child: Text(l10n.viewerSaveQuick(s), style: const TextStyle(fontSize: 16)),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  l10n.viewerSaveQuick(s),
+                  style: const TextStyle(fontSize: 16),
+                  maxLines: 1,
+                  softWrap: false,
+                ),
+              ),
             ),
           ),
         ),

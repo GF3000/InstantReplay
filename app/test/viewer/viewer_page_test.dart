@@ -237,7 +237,7 @@ void main() {
     expect(ref.read(clipTagsProvider), {'r2': TagsNotifier.bad});
   });
 
-  for (final size in const [Size(360, 640), Size(640, 360), Size(768, 1024), Size(1280, 800)]) {
+  for (final size in const [Size(360, 640), Size(640, 360), Size(768, 1024), Size(1280, 800), Size(800, 416)]) {
     testWidgets('live screen fits ${size.width.toInt()}x${size.height.toInt()} without overflow', (tester) async {
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1;
@@ -270,6 +270,12 @@ void main() {
       expect(find.text('Clip · 12:00'), findsOneWidget);
       // The full-session recording moved to the app bar (ViewerRecordingButton).
       expect(_vrec('button'), findsNothing);
+      // Quick-save labels stay on one line, however narrow the panel.
+      for (final chip in find.byWidgetPredicate((w) => w.key is ValueKey<String> &&
+          RegExp(r'^viewer-save-\d+$').hasMatch((w.key! as ValueKey<String>).value)).evaluate()) {
+        final label = find.descendant(of: find.byWidget(chip.widget), matching: find.byType(Text));
+        expect(tester.getSize(label).height, lessThan(26), reason: 'one line');
+      }
       await tester.pump(PostSaveTagBarNotifier.visibleFor);
       await _settle(tester);
     });
