@@ -81,6 +81,8 @@ class ReplayCapture implements CaptureEventsApi {
 
   Future<bool> requestMicPermission() => _host.requestMicPermission();
 
+  Future<bool> micPermissionGranted() => _host.micPermissionGranted();
+
   /// [broadcast] starts in broadcast mode (SPEC §12): the program encoder can then be started.
   Future<StartResult> start(String profileId, {int windowSeconds = 80, bool broadcast = false}) =>
       _host.start(StartRequest(profileId: profileId, windowSeconds: windowSeconds, broadcast: broadcast));

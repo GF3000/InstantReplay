@@ -1315,6 +1315,71 @@ class AppLocalizationsEs extends AppLocalizations {
       'Desactivado: la repetición en antena solo muestra el cartel REPETICIÓN.';
 
   @override
+  String get roleBroadcast => 'Retransmisión';
+
+  @override
+  String get roleBroadcastEntry => 'Retransmitir partido · beta';
+
+  @override
+  String get roleBroadcastDescription =>
+      'Emite en YouTube con marcador y repeticiones.';
+
+  @override
+  String get checkTitle => 'Antes de emitir';
+
+  @override
+  String get checkKeyOk => 'Clave de YouTube guardada';
+
+  @override
+  String get checkKeyMissing => 'Falta la clave de emisión de YouTube';
+
+  @override
+  String get checkKeyAction => 'Añadir';
+
+  @override
+  String get checkQualityUnknown => 'Calidad: la cámara está arrancando';
+
+  @override
+  String checkQualityOk(String profile) {
+    return 'Calidad $profile';
+  }
+
+  @override
+  String checkQualityLow(String profile) {
+    return 'Calidad $profile: en YouTube se ve mejor a 1080p';
+  }
+
+  @override
+  String get checkQualityAction => 'Usar 1080p';
+
+  @override
+  String get checkInternetOk => 'Hay Internet';
+
+  @override
+  String get checkInternetMissing =>
+      'Sin Internet: usa una Wi-Fi con Internet o comparte datos móviles';
+
+  @override
+  String get checkInternetChecking => 'Comprobando Internet…';
+
+  @override
+  String get checkPowerOk => 'Cargando';
+
+  @override
+  String get checkPowerMissing =>
+      'No está cargando: enchúfalo para un partido entero';
+
+  @override
+  String get checkMicOk => 'Micrófono permitido';
+
+  @override
+  String get checkMicMissing =>
+      'Micrófono sin permiso: la emisión irá sin sonido';
+
+  @override
+  String get checkMicAction => 'Permitir';
+
+  @override
   String get scoreboardSet => 'Ajustar';
 
   @override

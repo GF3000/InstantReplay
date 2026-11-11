@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:replay_capture_android/replay_capture_android.dart';
 
 import '../../core/preferences.dart';
+import '../role/role.dart';
 import 'capture_layer.dart';
 
 enum CameraPhase {
@@ -147,8 +148,6 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
 
   /// Above this the sensor crop gets soft; the UI offers up to here.
   static const zoomCap = 4.0;
-  static const modeKey = 'camera.mode';
-  static const broadcastMode = 'broadcast';
   static const _maxErrors = 5;
 
   late CaptureLayer _capture;
@@ -193,7 +192,8 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
       }());
     });
     Future.microtask(enter);
-    _broadcastMode = ref.read(sharedPreferencesProvider).getString(modeKey) == broadcastMode;
+    // Broadcast mode is a role of its own (SPEC §12.7): chosen on the start screen, not here.
+    _broadcastMode = ref.read(roleProvider) == AppRole.broadcast;
     final prefs = ref.read(sharedPreferencesProvider);
     final zoom = prefs.getDouble(_zoomKey) ?? 1;
     final reserve = prefs.getInt(_reserveKey) ?? defaultClipReserve;
@@ -263,17 +263,6 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
     state = state.copyWith(profileId: id);
     unawaited(ref.read(sharedPreferencesProvider).setString(_profileKey, id));
     await _start(id);
-  }
-
-  /// Switches between replay and broadcast mode (SPEC §12), remembered for the next session.
-  /// Capture restarts like on a profile change.
-  Future<void> setBroadcastMode(bool broadcast) async {
-    if (broadcast == state.broadcast) return;
-    _broadcastMode = broadcast;
-    state = state.copyWith(broadcast: broadcast);
-    unawaited(ref.read(sharedPreferencesProvider).setString(modeKey, broadcast ? broadcastMode : 'replay'));
-    final id = state.profileId;
-    if (id != null && state.phase != CameraPhase.initializing) await _start(id);
   }
 
   Future<void> _start(String id) async {

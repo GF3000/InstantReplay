@@ -120,6 +120,8 @@ class ReplayCaptureAndroidPlugin :
         host.requestPermissions(arrayOf(Manifest.permission.CAMERA), PERMISSION_REQUEST)
     }
 
+    override fun micPermissionGranted(): Boolean = hasMicPermission()
+
     override fun requestMicPermission(callback: (Result<Boolean>) -> Unit) {
         if (hasMicPermission()) return callback(Result.success(true))
         val host = activity

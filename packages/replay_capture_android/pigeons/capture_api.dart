@@ -362,6 +362,9 @@ abstract class CaptureHostApi {
   @async
   bool requestMicPermission();
 
+  /// RECORD_AUDIO already granted; never asks (for the broadcast checklist, SPEC §12.7).
+  bool micPermissionGranted();
+
   /// Profiles the back camera supports in a regular session, best first.
   List<CaptureProfile> supportedProfiles();
 

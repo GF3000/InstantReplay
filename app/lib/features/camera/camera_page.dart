@@ -23,7 +23,7 @@ import '../role/role.dart';
 import '../server/protocol_mapping.dart' show sessionRecording;
 import '../server/server_controller.dart';
 import 'camera_session.dart';
-import 'capture_layer.dart';
+import 'broadcast_checklist.dart';
 import 'clip_reserve_widgets.dart';
 import 'pairing_card.dart';
 import 'zoom_widgets.dart';
@@ -237,7 +237,7 @@ class _Panel extends ConsumerWidget {
           Row(children: [
             Expanded(
               child: Text(
-                l10n.roleCamera,
+                state.broadcast ? l10n.roleBroadcast : l10n.roleCamera,
                 style: theme.textTheme.titleLarge,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -279,6 +279,8 @@ class _Panel extends ConsumerWidget {
           // In broadcast mode the phone may run the match alone, so pairing folds away and the
           // stream and the score come first.
           if (state.broadcast) ...[
+            const BroadcastChecklist(),
+            const SizedBox(height: 8),
             _BroadcastCard(state: state),
             const SizedBox(height: 8),
             const _FoldedPairing(),
@@ -415,8 +417,6 @@ class _Advanced extends ConsumerWidget {
       collapsedShape: const Border(),
       expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _ModeChoice(state: state),
-        const SizedBox(height: 12),
         ClipReserveStepper(
           keyPrefix: 'camera-clip-reserve',
           size: state.clipReserve,
@@ -605,61 +605,6 @@ class _StatRow extends StatelessWidget {
 bool _streaming(WidgetRef ref) =>
     ref.watch(cameraSessionProvider.select((s) => s.broadcast)) &&
     (ref.watch(broadcastInfoProvider).value?.active ?? false);
-
-/// Replay (default) or Broadcast (experimental), under Advanced: most sessions never change it.
-class _ModeChoice extends ConsumerWidget {
-  const _ModeChoice({required this.state});
-
-  final CameraSessionState state;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
-    final streaming = _streaming(ref);
-    final busy = state.phase == CameraPhase.starting || state.phase == CameraPhase.initializing;
-    return InputDecorator(
-      decoration: InputDecoration(
-        labelText: l10n.cameraMode,
-        border: const OutlineInputBorder(),
-        contentPadding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        SegmentedButton<bool>(
-          key: const Key('camera-mode-choice'),
-          showSelectedIcon: false,
-          style: SegmentedButton.styleFrom(minimumSize: const Size(0, 48)),
-          segments: [
-            ButtonSegment(value: false, icon: const Icon(Icons.replay), label: Text(l10n.cameraModeReplay)),
-            ButtonSegment(value: true, icon: const Icon(Icons.sensors), label: Text(l10n.cameraModeBroadcast)),
-          ],
-          selected: {state.broadcast},
-          onSelectionChanged: busy || streaming ? null : (s) => _setMode(ref, s.single),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          streaming ? l10n.cameraModeLocked : l10n.cameraModeBroadcastHint,
-          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-        ),
-      ]),
-    );
-  }
-
-  static Future<void> _setMode(WidgetRef ref, bool broadcast) async {
-    final capture = ref.read(captureLayerProvider);
-    final audio = ref.read(broadcastControllerProvider).audio;
-    await ref.read(cameraSessionProvider.notifier).setBroadcastMode(broadcast);
-    // Ask for the microphone now, while someone is at the Camera, rather than when a viewer
-    // presses Go live with the phone on its tripod.
-    if (broadcast && audio) {
-      try {
-        await capture.requestMicPermission();
-      } catch (_) {
-        // Asked again on Go live.
-      }
-    }
-  }
-}
 
 /// Broadcast mode on the setup screen: the scoreboard controls (or, when they are hidden because a
 /// viewer keeps the score, the score on air). The stream itself sits in the header.

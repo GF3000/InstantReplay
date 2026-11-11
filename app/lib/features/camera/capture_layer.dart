@@ -83,6 +83,9 @@ abstract interface class CaptureLayer {
   /// RECORD_AUDIO; true when granted.
   Future<bool> requestMicPermission();
 
+  /// Never asks.
+  Future<bool> micPermissionGranted();
+
   /// What the scoreboard overlay shows. Cheap; call on every change.
   Future<void> setOverlay(OverlayState overlay);
 
@@ -218,6 +221,9 @@ class PluginCaptureLayer implements CaptureLayer {
 
   @override
   Future<bool> requestMicPermission() => _capture.requestMicPermission();
+
+  @override
+  Future<bool> micPermissionGranted() => _capture.micPermissionGranted();
 
   @override
   Future<void> setOverlay(OverlayState overlay) => _capture.setOverlay(overlay);

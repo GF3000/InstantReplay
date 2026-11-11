@@ -299,6 +299,9 @@ class FakeCaptureLayer implements CaptureLayer {
   }
 
   @override
+  Future<bool> micPermissionGranted() async => micGranted;
+
+  @override
   Future<void> setOverlay(OverlayState overlay) async => overlays.add(overlay);
 
   @override

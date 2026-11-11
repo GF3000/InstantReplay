@@ -15,6 +15,8 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: '/', builder: (_, _) => const RoleGatePage()),
       GoRoute(path: '/camera', builder: (_, _) => const CameraPage()),
+      // The same Camera screen; the session reads the role to start in broadcast mode.
+      GoRoute(path: '/broadcast', builder: (_, _) => const CameraPage()),
       GoRoute(
         path: '/viewer',
         builder: (_, _) => const ViewerPage(),
@@ -31,7 +33,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             null => null,
             final role => '/${role.name}',
           },
-        '/camera' when !caps.canCapture => '/',
+        '/camera' || '/broadcast' when !caps.canCapture => '/',
         '/lab' when !(kDebugMode && caps.canCapture) => '/',
         _ => null,
       };

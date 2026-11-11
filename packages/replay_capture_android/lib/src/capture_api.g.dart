@@ -1397,6 +1397,26 @@ class CaptureHostApi {
     return pigeonVar_replyValue! as bool;
   }
 
+  /// RECORD_AUDIO already granted; never asks (for the broadcast checklist, SPEC §12.7).
+  Future<bool> micPermissionGranted() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.replay_capture_android.CaptureHostApi.micPermissionGranted$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return pigeonVar_replyValue! as bool;
+  }
+
   /// Profiles the back camera supports in a regular session, best first.
   Future<List<CaptureProfile>> supportedProfiles() async {
     final pigeonVar_channelName = 'dev.flutter.pigeon.replay_capture_android.CaptureHostApi.supportedProfiles$pigeonVar_messageChannelSuffix';

@@ -49,6 +49,34 @@ class RoleGatePage extends ConsumerWidget {
                   description: l10n.roleViewerDescription,
                   onPressed: () => choose(AppRole.viewer),
                 ),
+                if (caps.canCapture) ...[
+                  const SizedBox(height: 24),
+                  // Smaller on purpose: most sessions are replays; streaming is one tap away.
+                  OutlinedButton(
+                    key: const ValueKey('role-broadcast'),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(56),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                      alignment: AlignmentDirectional.centerStart,
+                    ),
+                    onPressed: () => choose(AppRole.broadcast),
+                    child: Row(children: [
+                      const Icon(Icons.sensors, size: 28, color: Color(0xFFE53935)),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(l10n.roleBroadcastEntry, style: text.titleMedium),
+                          Text(
+                            l10n.roleBroadcastDescription,
+                            style: text.bodySmall,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ]),
+                      ),
+                    ]),
+                  ),
+                ],
                 if (kDebugMode && caps.canCapture) ...[
                   const SizedBox(height: 32),
                   TextButton.icon(
