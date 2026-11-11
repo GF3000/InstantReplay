@@ -66,4 +66,34 @@ void main() {
     expect(broadcast.top, greaterThan(camera.bottom), reason: 'below the main two');
     expect(broadcast.height, lessThan(camera.height), reason: 'smaller than the main buttons');
   });
+
+  testWidgets('landscape phone: Camera | Viewer side by side and Broadcast below, all on screen', (tester) async {
+    tester.view.physicalSize = const Size(2400, 1080);
+    tester.view.devicePixelRatio = 2.5;
+    addTearDown(tester.view.reset);
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        capabilitiesProvider.overrideWithValue(Capabilities.nativeAndroid),
+      ],
+      child: const MaterialApp(
+        locale: Locale('es'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: RoleGatePage(),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    Rect button(String label) =>
+        tester.getRect(find.ancestor(of: find.text(label), matching: find.byType(FilledButton)));
+    final camera = button('Cámara'), viewer = button('Visor');
+    final broadcast = tester.getRect(find.byKey(const ValueKey('role-broadcast')));
+    expect(camera.top, viewer.top, reason: 'side by side');
+    expect(viewer.left, greaterThan(camera.right));
+    expect(broadcast.top, greaterThan(camera.bottom));
+    expect(broadcast.bottom, lessThanOrEqualTo(1080 / 2.5), reason: 'visible without scrolling');
+  });
 }

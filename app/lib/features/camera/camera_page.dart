@@ -417,14 +417,17 @@ class _Advanced extends ConsumerWidget {
       collapsedShape: const Border(),
       expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ClipReserveStepper(
-          keyPrefix: 'camera-clip-reserve',
-          size: state.clipReserve,
-          max: CameraSessionNotifier.maxClipReserve,
-          enabled: true,
-          onChanged: notifier.setClipReserve,
-        ),
-        const SizedBox(height: 12),
+        // Replays on air exist only in broadcast mode, and so does their reserve.
+        if (state.broadcast) ...[
+          ClipReserveStepper(
+            keyPrefix: 'camera-clip-reserve',
+            size: state.clipReserve,
+            max: CameraSessionNotifier.maxClipReserve,
+            enabled: true,
+            onChanged: notifier.setClipReserve,
+          ),
+          const SizedBox(height: 12),
+        ],
         if (state.profiles.isNotEmpty) ...[
           InputDecorator(
             decoration: InputDecoration(

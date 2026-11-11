@@ -31,8 +31,8 @@ abstract interface class CameraControls {
 
   void setZoom(double ratio);
 
-  /// Replay reserve size (SPEC §3.4).
-  int get reserve;
+  /// Replay reserve size (SPEC §3.4); null outside broadcast mode, where there is none.
+  int? get reserve;
 
   void setReserve(int size);
 

@@ -838,7 +838,7 @@ class _FakeControls implements CameraControls {
   ZoomInfo? zoom = const ZoomInfo(ratio: 1, max: 4);
 
   @override
-  int reserve = 3;
+  int? reserve = 3;
 
   @override
   void setZoom(double ratio) {

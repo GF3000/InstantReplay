@@ -194,7 +194,10 @@ final cameraIdProvider = Provider<String>((ref) {
 /// [CameraControls] over the Camera session.
 class _SessionControls implements CameraControls {
   _SessionControls(this._ref) {
-    _ref.listen(cameraSessionProvider.select((s) => (s.zoom, s.maxZoom, s.clipReserve)), (_, _) => _changes.add(null));
+    _ref.listen(
+      cameraSessionProvider.select((s) => (s.zoom, s.maxZoom, s.clipReserve, s.broadcast)),
+      (_, _) => _changes.add(null),
+    );
     _ref.onDispose(_changes.close);
   }
 
@@ -212,7 +215,10 @@ class _SessionControls implements CameraControls {
   void setZoom(double ratio) => _ref.read(cameraSessionProvider.notifier).setZoom(ratio);
 
   @override
-  int get reserve => _ref.read(cameraSessionProvider).clipReserve;
+  int? get reserve {
+    final s = _ref.read(cameraSessionProvider);
+    return s.broadcast ? s.clipReserve : null;
+  }
 
   @override
   void setReserve(int size) => _ref.read(cameraSessionProvider.notifier).setClipReserve(size);

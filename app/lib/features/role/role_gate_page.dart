@@ -21,74 +21,82 @@ class RoleGatePage extends ConsumerWidget {
       if (context.mounted) context.go('/${role.name}');
     }
 
+    final camera = _RoleButton(
+      icon: Icons.videocam,
+      label: l10n.roleCamera,
+      description: l10n.roleCameraDescription,
+      onPressed: () => choose(AppRole.camera),
+    );
+    final viewer = _RoleButton(
+      icon: Icons.live_tv,
+      label: l10n.roleViewer,
+      description: l10n.roleViewerDescription,
+      onPressed: () => choose(AppRole.viewer),
+    );
+    // Smaller on purpose: most sessions are replays; streaming is one tap away.
+    final broadcast = OutlinedButton(
+      key: const ValueKey('role-broadcast'),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size.fromHeight(56),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+        alignment: AlignmentDirectional.centerStart,
+      ),
+      onPressed: () => choose(AppRole.broadcast),
+      child: Row(children: [
+        const Icon(Icons.sensors, size: 28, color: Color(0xFFE53935)),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(l10n.roleBroadcastEntry, style: text.titleMedium),
+            Text(l10n.roleBroadcastDescription, style: text.bodySmall, maxLines: 2, overflow: TextOverflow.ellipsis),
+          ]),
+        ),
+      ]),
+    );
+
     return Scaffold(
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 480),
-            child: ListView(
-              shrinkWrap: true,
-              padding: const EdgeInsets.all(24),
-              children: [
-                Text(l10n.roleGateTitle, style: text.headlineMedium, textAlign: TextAlign.center),
-                const SizedBox(height: 8),
-                Text(l10n.roleGateSubtitle, style: text.bodyLarge, textAlign: TextAlign.center),
-                const SizedBox(height: 32),
-                if (caps.canCapture) ...[
-                  _RoleButton(
-                    icon: Icons.videocam,
-                    label: l10n.roleCamera,
-                    description: l10n.roleCameraDescription,
-                    onPressed: () => choose(AppRole.camera),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-                _RoleButton(
-                  icon: Icons.live_tv,
-                  label: l10n.roleViewer,
-                  description: l10n.roleViewerDescription,
-                  onPressed: () => choose(AppRole.viewer),
-                ),
-                if (caps.canCapture) ...[
-                  const SizedBox(height: 24),
-                  // Smaller on purpose: most sessions are replays; streaming is one tap away.
-                  OutlinedButton(
-                    key: const ValueKey('role-broadcast'),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(56),
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-                      alignment: AlignmentDirectional.centerStart,
+        child: LayoutBuilder(builder: (context, c) {
+          // Landscape (a phone on its side, a tablet): Camera | Viewer side by side, so all three
+          // fit without scrolling; portrait: one above the other.
+          final wide = caps.canCapture && c.maxWidth > c.maxHeight && c.maxWidth >= 600;
+          return Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: wide ? 900 : 480),
+              child: ListView(
+                shrinkWrap: true,
+                padding: EdgeInsets.all(wide ? 16 : 24),
+                children: [
+                  Text(l10n.roleGateTitle, style: text.headlineMedium, textAlign: TextAlign.center),
+                  const SizedBox(height: 8),
+                  Text(l10n.roleGateSubtitle, style: text.bodyLarge, textAlign: TextAlign.center),
+                  SizedBox(height: wide ? 20 : 32),
+                  if (wide)
+                    IntrinsicHeight(
+                      child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                        Expanded(child: camera),
+                        const SizedBox(width: 16),
+                        Expanded(child: viewer),
+                      ]),
+                    )
+                  else ...[
+                    if (caps.canCapture) ...[camera, const SizedBox(height: 16)],
+                    viewer,
+                  ],
+                  if (caps.canCapture) ...[SizedBox(height: wide ? 16 : 24), broadcast],
+                  if (kDebugMode && caps.canCapture) ...[
+                    const SizedBox(height: 32),
+                    TextButton.icon(
+                      icon: const Icon(Icons.science),
+                      label: Text(l10n.labEntry),
+                      onPressed: () => context.push('/lab'),
                     ),
-                    onPressed: () => choose(AppRole.broadcast),
-                    child: Row(children: [
-                      const Icon(Icons.sensors, size: 28, color: Color(0xFFE53935)),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(l10n.roleBroadcastEntry, style: text.titleMedium),
-                          Text(
-                            l10n.roleBroadcastDescription,
-                            style: text.bodySmall,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ]),
-                      ),
-                    ]),
-                  ),
+                  ],
                 ],
-                if (kDebugMode && caps.canCapture) ...[
-                  const SizedBox(height: 32),
-                  TextButton.icon(
-                    icon: const Icon(Icons.science),
-                    label: Text(l10n.labEntry),
-                    onPressed: () => context.push('/lab'),
-                  ),
-                ],
-              ],
+              ),
             ),
-          ),
-        ),
+          );
+        }),
       ),
     );
   }

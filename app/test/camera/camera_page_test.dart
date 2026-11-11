@@ -86,7 +86,8 @@ void main() {
     await _pumpCamera(tester, fake);
 
     // The replay reserve size goes to the outbox on entry (SPEC §3.4), before anything else.
-    expect(fake.calls.take(3), ['reserve:3', 'cameraPermission', 'notificationPermission']);
+    // The Camera role keeps no replay reserve: there are no replays on air without a stream.
+    expect(fake.calls.take(3), ['reserve:0', 'cameraPermission', 'notificationPermission']);
     expect(fake.starts, ['1080p30']);
     expect(find.byType(Texture), findsOneWidget);
   });
@@ -553,15 +554,17 @@ void main() {
   });
 
   group('broadcast mode', () {
-    testWidgets('the Camera role is replay mode, with no mode choice in Advanced', (tester) async {
+    testWidgets('the Camera role is replay mode: no mode choice and no replay reserve', (tester) async {
       final fake = FakeCaptureLayer();
-      await _pumpCamera(tester, fake, height: 2400);
+      await _pumpCamera(tester, fake, height: 2400, saved: {'camera.clipReserve': 5});
       expect(fake.startModes, [false]);
+      expect(fake.calls, contains('reserve:0'));
       expect(find.byKey(const Key('camera-broadcast-card')), findsNothing);
       expect(find.byKey(const Key('broadcast-checklist')), findsNothing);
       expect(find.text('Camera'), findsOneWidget);
       await _openAdvanced(tester);
       expect(find.byKey(const Key('camera-mode-choice')), findsNothing);
+      expect(find.byKey(const ValueKey('camera-clip-reserve-plus')), findsNothing);
     });
 
     testWidgets('the Broadcast role starts capture in broadcast mode, with its checklist', (tester) async {
@@ -654,7 +657,7 @@ void main() {
 
     testWidgets('the replay reserve is set from Advanced and remembered', (tester) async {
       final fake = FakeCaptureLayer();
-      final prefs = await _pumpCamera(tester, fake, height: 2400);
+      final prefs = await _pumpCamera(tester, fake, height: 2400, saved: {'role': 'broadcast'});
       await _openAdvanced(tester);
       await _tapVisible(tester, find.byKey(const ValueKey('camera-clip-reserve-plus')));
       expect(fake.calls.last, 'reserve:4');

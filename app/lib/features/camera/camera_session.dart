@@ -82,6 +82,7 @@ class CameraSessionState {
   final double zoom;
 
   /// How many acknowledged clips the Camera keeps for replays on air (SPEC §3.4); 0 = none.
+  /// Applies in broadcast mode only: the Camera role keeps none, whatever this says.
   final int clipReserve;
 
   /// Highest zoom offered: what the sensor allows, capped where a 1080p crop still looks sharp.
@@ -197,8 +198,9 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
     final prefs = ref.read(sharedPreferencesProvider);
     final zoom = prefs.getDouble(_zoomKey) ?? 1;
     final reserve = prefs.getInt(_reserveKey) ?? defaultClipReserve;
-    // The outbox outlives capture: its reserve size is set once on entry.
-    unawaited(_capture.setClipReserve(reserve).catchError((Object _) {}));
+    // The outbox outlives capture: its reserve size is set once on entry. Only broadcast mode
+    // puts clips on air, so the Camera role keeps none (clips go once the tablet has them).
+    unawaited(_capture.setClipReserve(_broadcastMode ? reserve : 0).catchError((Object _) {}));
     return CameraSessionState(broadcast: _broadcastMode, zoom: zoom, clipReserve: reserve);
   }
 
@@ -301,7 +303,7 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
   /// Replay reserve size (SPEC §3.4), from this screen or any viewer; remembered.
   void setClipReserve(int size) {
     final n = size.clamp(0, maxClipReserve);
-    if (n == state.clipReserve) return;
+    if (!state.broadcast || n == state.clipReserve) return;
     state = state.copyWith(clipReserve: n);
     unawaited(_capture.setClipReserve(n).catchError((Object _) {}));
     unawaited(ref.read(sharedPreferencesProvider).setInt(_reserveKey, n));
