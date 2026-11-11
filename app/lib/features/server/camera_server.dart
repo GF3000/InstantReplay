@@ -333,7 +333,11 @@ class CameraServer implements ApiServer {
       if (request.url.path.startsWith('api/')) return _error(HttpStatus.notFound, 'not_found');
       if (request.method != 'GET' && request.method != 'HEAD') return Response(HttpStatus.methodNotAllowed);
       final response = await files(request);
-      if (response.statusCode != HttpStatus.notFound) return response;
+      // Revalidate every time (a cheap 304 when unchanged): after an app update the browser must
+      // not keep running the previous viewer from its cache.
+      if (response.statusCode != HttpStatus.notFound) {
+        return response.change(headers: {HttpHeaders.cacheControlHeader: 'no-cache'});
+      }
       return Response.ok(
         request.method == 'HEAD' ? null : index.openRead(),
         headers: {HttpHeaders.contentTypeHeader: 'text/html; charset=utf-8', HttpHeaders.cacheControlHeader: 'no-cache'},

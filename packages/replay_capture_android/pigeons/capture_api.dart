@@ -362,6 +362,9 @@ abstract class CaptureHostApi {
   @async
   bool requestMicPermission();
 
+  /// RECORD_AUDIO already granted; never asks (for the broadcast checklist, SPEC §12.7).
+  bool micPermissionGranted();
+
   /// Profiles the back camera supports in a regular session, best first.
   List<CaptureProfile> supportedProfiles();
 
@@ -445,6 +448,10 @@ abstract class CaptureHostApi {
   void broadcastStop();
 
   BroadcastStatus broadcastStatus();
+
+  /// Turns the microphone on air on or off at once, without restarting the stream. False when
+  /// it cannot be turned on (no permission, or no stream).
+  bool broadcastSetAudio(bool audio);
 
   // Replays on air (SPEC §12.6). Only while a broadcast is active.
 

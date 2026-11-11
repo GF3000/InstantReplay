@@ -1356,6 +1356,8 @@ interface CaptureHostApi {
   fun requestPermission(callback: (Result<Boolean>) -> Unit)
   /** RECORD_AUDIO, asked only before a broadcast with audio (SPEC §12.1). */
   fun requestMicPermission(callback: (Result<Boolean>) -> Unit)
+  /** RECORD_AUDIO already granted; never asks (for the broadcast checklist, SPEC §12.7). */
+  fun micPermissionGranted(): Boolean
   /** Profiles the back camera supports in a regular session, best first. */
   fun supportedProfiles(): List<CaptureProfile>
   fun start(request: StartRequest): StartResult
@@ -1413,6 +1415,11 @@ interface CaptureHostApi {
   fun broadcastStop(callback: (Result<Unit>) -> Unit)
   fun broadcastStatus(): BroadcastStatus
   /**
+   * Turns the microphone on air on or off at once, without restarting the stream. False when
+   * it cannot be turned on (no permission, or no stream).
+   */
+  fun broadcastSetAudio(audio: Boolean): Boolean
+  /**
    * Puts clip [clipId] (ready or in the reserve) on air at [speed], replacing any running
    * replay; [label] is drawn over it (e.g. `REPETICIÓN`); the scoreboard too only when
    * [scoreboard]. Completes once the first frame is
@@ -1465,6 +1472,21 @@ interface CaptureHostApi {
                 reply.reply(CaptureApiPigeonUtils.wrapResult(data))
               }
             }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.replay_capture_android.CaptureHostApi.micPermissionGranted$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            val wrapped: List<Any?> = try {
+              listOf(api.micPermissionGranted())
+            } catch (exception: Throwable) {
+              CaptureApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
           }
         } else {
           channel.setMessageHandler(null)
@@ -1890,6 +1912,23 @@ interface CaptureHostApi {
           channel.setMessageHandler { _, reply ->
             val wrapped: List<Any?> = try {
               listOf(api.broadcastStatus())
+            } catch (exception: Throwable) {
+              CaptureApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.replay_capture_android.CaptureHostApi.broadcastSetAudio$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val audioArg = args[0] as Boolean
+            val wrapped: List<Any?> = try {
+              listOf(api.broadcastSetAudio(audioArg))
             } catch (exception: Throwable) {
               CaptureApiPigeonUtils.wrapError(exception)
             }

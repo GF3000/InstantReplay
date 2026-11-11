@@ -120,6 +120,8 @@ class ReplayCaptureAndroidPlugin :
         host.requestPermissions(arrayOf(Manifest.permission.CAMERA), PERMISSION_REQUEST)
     }
 
+    override fun micPermissionGranted(): Boolean = hasMicPermission()
+
     override fun requestMicPermission(callback: (Result<Boolean>) -> Unit) {
         if (hasMicPermission()) return callback(Result.success(true))
         val host = activity
@@ -308,9 +310,11 @@ class ReplayCaptureAndroidPlugin :
             Result.failure(FlutterError("not_broadcast_mode", "Capture is not running in broadcast mode")),
         )
         // No microphone permission is not an error: the stream carries silence and says audio=false.
-        val useMic = config.audio && hasMicPermission()
+        // With permission the mic is always opened, muted when audio is off, so it can be turned
+        // on live from the stream's controls.
+        val useMic = hasMicPermission()
         val kbps = config.targetKbps.toInt().coerceIn(MIN_BROADCAST_KBPS, MAX_BROADCAST_KBPS)
-        b.start(config.url, kbps, useMic) { r ->
+        b.start(config.url, kbps, useMic, muted = !config.audio) { r ->
             mainHandler.post {
                 callback(r.recoverCatching { throw FlutterError("broadcast_failed", it.message) })
             }
@@ -324,6 +328,8 @@ class ReplayCaptureAndroidPlugin :
     }
 
     override fun broadcastStatus(): BroadcastStatus = broadcaster?.status() ?: IDLE_BROADCAST
+
+    override fun broadcastSetAudio(audio: Boolean): Boolean = broadcaster?.setMuted(!audio) ?: false
 
     // Replays on air (SPEC §12.6).
 

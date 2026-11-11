@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/services.dart' show PlatformException;
-import 'package:replay_capture_android/replay_capture_android.dart' show BroadcastConfig, BroadcastStatus;
+import 'package:replay_capture_android/replay_capture_android.dart' show BroadcastConfig, BroadcastState, BroadcastStatus;
 import 'package:replay_protocol/replay_protocol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -57,7 +57,8 @@ class BroadcastController {
       server: server,
       keyHint: keyHint(_key),
       targetKbps: targetKbps,
-      audio: audio,
+      // While live: whether the mic really is on air (it may lack permission).
+      audio: n != null && _live(n) ? n.audio : audio,
       replayScoreboard: replayScoreboard,
       bitrateKbps: n?.bitrateKbps,
       uptimeMs: n?.uptimeMs,
@@ -84,9 +85,39 @@ class BroadcastController {
     final k = key?.trim();
     if (k != null && k.isNotEmpty) await _prefs.setString(streamKeyKey, k);
     await _prefs.setInt(kbpsKey, clampKbps(targetKbps));
+    final audioChanged = audio != this.audio;
     await _prefs.setBool(audioKey, audio);
+    if (audioChanged) await _applyAudioLive(audio);
     _emit(significant: true);
   }
+
+  /// The microphone button (SPEC §12.7): on or off at once, also on air, and remembered for the
+  /// next stream. Returns false when it could not go on air (no microphone permission; asked).
+  Future<bool> setAudio(bool on) async {
+    await _prefs.setBool(audioKey, on);
+    final ok = await _applyAudioLive(on);
+    _emit(significant: true);
+    return ok;
+  }
+
+  Future<bool> _applyAudioLive(bool on) async {
+    final n = _native;
+    if (n == null || !_live(n)) return true;
+    var ok = await capture.broadcastSetAudio(on).catchError((Object _) => false);
+    if (on && !ok) {
+      // The stream started without the mic: ask now; it is open from the next stream on.
+      await capture.requestMicPermission().catchError((Object _) => false);
+      ok = false;
+    }
+    try {
+      _onNative(await capture.broadcastStatus(), significant: true);
+    } catch (_) {
+      // The event stream brings it anyway.
+    }
+    return ok;
+  }
+
+  static bool _live(BroadcastStatus n) => n.state != BroadcastState.idle && n.state != BroadcastState.failed;
 
   /// Goes live. Returns false when the microphone permission was denied: the stream then carries
   /// a silent track. Throws [BroadcastException] `not_configured` or `broadcast_failed`.

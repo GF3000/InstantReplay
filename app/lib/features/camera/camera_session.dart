@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:replay_capture_android/replay_capture_android.dart';
 
 import '../../core/preferences.dart';
+import '../role/role.dart';
 import 'capture_layer.dart';
 
 enum CameraPhase {
@@ -81,6 +82,7 @@ class CameraSessionState {
   final double zoom;
 
   /// How many acknowledged clips the Camera keeps for replays on air (SPEC §3.4); 0 = none.
+  /// Applies in broadcast mode only: the Camera role keeps none, whatever this says.
   final int clipReserve;
 
   /// Highest zoom offered: what the sensor allows, capped where a 1080p crop still looks sharp.
@@ -147,8 +149,6 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
 
   /// Above this the sensor crop gets soft; the UI offers up to here.
   static const zoomCap = 4.0;
-  static const modeKey = 'camera.mode';
-  static const broadcastMode = 'broadcast';
   static const _maxErrors = 5;
 
   late CaptureLayer _capture;
@@ -193,12 +193,14 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
       }());
     });
     Future.microtask(enter);
-    _broadcastMode = ref.read(sharedPreferencesProvider).getString(modeKey) == broadcastMode;
+    // Broadcast mode is a role of its own (SPEC §12.7): chosen on the start screen, not here.
+    _broadcastMode = ref.read(roleProvider) == AppRole.broadcast;
     final prefs = ref.read(sharedPreferencesProvider);
     final zoom = prefs.getDouble(_zoomKey) ?? 1;
     final reserve = prefs.getInt(_reserveKey) ?? defaultClipReserve;
-    // The outbox outlives capture: its reserve size is set once on entry.
-    unawaited(_capture.setClipReserve(reserve).catchError((Object _) {}));
+    // The outbox outlives capture: its reserve size is set once on entry. Only broadcast mode
+    // puts clips on air, so the Camera role keeps none (clips go once the tablet has them).
+    unawaited(_capture.setClipReserve(_broadcastMode ? reserve : 0).catchError((Object _) {}));
     return CameraSessionState(broadcast: _broadcastMode, zoom: zoom, clipReserve: reserve);
   }
 
@@ -265,17 +267,6 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
     await _start(id);
   }
 
-  /// Switches between replay and broadcast mode (SPEC §12), remembered for the next session.
-  /// Capture restarts like on a profile change.
-  Future<void> setBroadcastMode(bool broadcast) async {
-    if (broadcast == state.broadcast) return;
-    _broadcastMode = broadcast;
-    state = state.copyWith(broadcast: broadcast);
-    unawaited(ref.read(sharedPreferencesProvider).setString(modeKey, broadcast ? broadcastMode : 'replay'));
-    final id = state.profileId;
-    if (id != null && state.phase != CameraPhase.initializing) await _start(id);
-  }
-
   Future<void> _start(String id) async {
     state = state.copyWith(phase: CameraPhase.starting, session: () => null, stats: () => null, startError: () => null);
     try {
@@ -312,7 +303,7 @@ class CameraSessionNotifier extends Notifier<CameraSessionState> {
   /// Replay reserve size (SPEC §3.4), from this screen or any viewer; remembered.
   void setClipReserve(int size) {
     final n = size.clamp(0, maxClipReserve);
-    if (n == state.clipReserve) return;
+    if (!state.broadcast || n == state.clipReserve) return;
     state = state.copyWith(clipReserve: n);
     unawaited(_capture.setClipReserve(n).catchError((Object _) {}));
     unawaited(ref.read(sharedPreferencesProvider).setInt(_reserveKey, n));

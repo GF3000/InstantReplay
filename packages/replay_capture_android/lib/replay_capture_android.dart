@@ -81,6 +81,8 @@ class ReplayCapture implements CaptureEventsApi {
 
   Future<bool> requestMicPermission() => _host.requestMicPermission();
 
+  Future<bool> micPermissionGranted() => _host.micPermissionGranted();
+
   /// [broadcast] starts in broadcast mode (SPEC §12): the program encoder can then be started.
   Future<StartResult> start(String profileId, {int windowSeconds = 80, bool broadcast = false}) =>
       _host.start(StartRequest(profileId: profileId, windowSeconds: windowSeconds, broadcast: broadcast));
@@ -135,6 +137,9 @@ class ReplayCapture implements CaptureEventsApi {
   Future<void> broadcastStop() => _host.broadcastStop();
 
   Future<BroadcastStatus> broadcastStatus() => _host.broadcastStatus();
+
+  /// Microphone on air on/off, live; false when it cannot be turned on.
+  Future<bool> broadcastSetAudio(bool audio) => _host.broadcastSetAudio(audio);
 
   /// [scoreboard]: keep the scoreboard over the replay (off: only the [label] badge).
   Future<ReplayStatus> replayStart(String clipId, {double speed = 1, required String label, bool scoreboard = false}) =>

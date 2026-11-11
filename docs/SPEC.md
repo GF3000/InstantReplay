@@ -454,7 +454,7 @@ flowchart LR
   RTMP -->|Wi-Fi with Internet or mobile data| YT[YouTube Live]
 ```
 
-- **Mode.** Chosen on the Camera before starting capture: *Replay* (default, unchanged) or *Broadcast*. Broadcast passes `broadcast: true` in `StartRequest`; the camera texture is then 1080p instead of 720p. The HQ encoder stays on the direct path, so the clean ring buffer, clip saving and full-session recording keep working in broadcast mode.
+- **Mode.** A role of its own (§12.7): *Camera* is replay mode (unchanged), *Broadcast a match* is broadcast mode. Broadcast passes `broadcast: true` in `StartRequest`; the camera texture is then 1080p instead of 720p. The HQ encoder stays on the direct path, so the clean ring buffer, clip saving and full-session recording keep working in broadcast mode.
 - **Program encoder.** Created when streaming starts, released when it stops. Fed by the GL thread every frame: camera texture + scoreboard quad (alpha-blended). H.264 High (fallback Main), 1080p30, CBR when supported (else VBR), **GOP 2 s**, target bitrate configurable (default **4500 kbps**, range 2500–6000).
 - **Overlay.** Drawn with Android `Canvas` into a bitmap only when its content changes (at most once per second while the clock runs), uploaded as a GL texture, drawn top-left with a safe margin. The same overlay is drawn on the 720p handoff, so the Viewer's live view shows what goes on air.
 - **Audio.** Phone microphone → `AudioRecord` 48 kHz mono → AAC-LC 128 kbps. With the microphone off (or no permission) a **silent** AAC track is sent, because YouTube expects audio. `RECORD_AUDIO` is requested only when a broadcast with audio starts; the foreground service adds the `microphone` type.
@@ -514,4 +514,12 @@ A viewer can put a clip that is still on the Camera on air: the Camera decodes i
 - At the end of the clip (or on `replay_stop`), the program goes back to the camera; the clip is unpinned.
 - The HQ ring buffer and the full-session recording keep the clean camera picture (direct path, untouched).
 - The field log gains a `replay` column (1 while a replay is on air) to measure the extra decoder's heat.
+
+### 12.7 Getting in: the Broadcast role
+- The start screen offers **Camera** and **Viewer** as the two main buttons and, smaller below them, **Broadcast a match · beta**. One tap each; the device remembers it. Broadcast is the Camera screen in broadcast mode (same capture, pairing and viewers); viewers need no role of their own, they adapt to a Camera that broadcasts.
+- There is no mode switch in the Camera's Advanced section any more. A device left in the old broadcast mode (`camera.mode = broadcast`) becomes the Broadcast role once.
+- In broadcast mode the Camera's header has no title: the red **Go live** button (or the bitrate on air) already says which mode this is, and the header needs the room; leaving it is the role switch (which asks first while streaming or with viewers).
+- **Checklist** above the stream controls, while something is missing and the stream is off: YouTube stream key (Add), quality 1080p (Use 1080p when the profile is lower), Internet (the stream server's host resolves; checked every 15 s), charging, and the microphone permission (Allow, asked here and not on entry). It disappears once everything is green.
+- **Microphone button** in the Camera's header (next to the scoreboard toggle) and in viewers' app bar while the Camera broadcasts: mutes or unmutes the stream's microphone **live**, without restarting the stream, and is remembered for the next one. With permission the mic is always opened when the stream starts (muted if off), so it can be turned on at any time; without permission it is asked, and the mic is on air from the next stream.
+- In the Camera role (no stream) the replay reserve is 0 and its setting is hidden: replays on air need a stream.
 

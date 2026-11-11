@@ -36,6 +36,7 @@ class ViewerPage extends ConsumerWidget {
         ),
         actions: [
           if (setup.paired) const CameraStatusIndicator(),
+          if (setup.paired) const ViewerMicButton(),
           if (setup.paired) const ViewerRecordingButton(),
           if (setup.paired) const ViewerPanelsButton(),
           IconButton(
@@ -129,10 +130,12 @@ class _ClipReserveDialog extends ConsumerWidget {
     final connected = ref.watch(linkStateProvider.select((s) => s?.phase == LinkPhase.connected));
     return AlertDialog(
       title: Text(l10n.clipReserveTitle),
-      content: SizedBox(
-        width: 360,
+      // Compact: the number between − and +, the explanation below; the dialog sizes to it.
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 320),
         child: ClipReserveStepper(
           keyPrefix: 'viewer-clip-reserve',
+          vertical: true,
           size: size ?? 0,
           enabled: connected && size != null,
           onChanged: ref.read(viewerBroadcastNoticeProvider.notifier).reserve,

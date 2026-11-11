@@ -1310,6 +1310,80 @@ class AppLocalizationsEn extends AppLocalizations {
       'Off: a replay on air shows only its REPLAY badge.';
 
   @override
+  String get roleBroadcast => 'Broadcast';
+
+  @override
+  String get roleBroadcastEntry => 'Broadcast a match · beta';
+
+  @override
+  String get roleBroadcastDescription =>
+      'Streams to YouTube with a scoreboard and replays.';
+
+  @override
+  String get checkTitle => 'Before going live';
+
+  @override
+  String get checkKeyOk => 'YouTube stream key saved';
+
+  @override
+  String get checkKeyMissing => 'No YouTube stream key yet';
+
+  @override
+  String get checkKeyAction => 'Add';
+
+  @override
+  String get checkQualityUnknown => 'Quality: the camera is starting';
+
+  @override
+  String checkQualityOk(String profile) {
+    return 'Quality $profile';
+  }
+
+  @override
+  String checkQualityLow(String profile) {
+    return 'Quality $profile: YouTube looks better at 1080p';
+  }
+
+  @override
+  String get checkQualityAction => 'Use 1080p';
+
+  @override
+  String get checkInternetOk => 'Internet reachable';
+
+  @override
+  String get checkInternetMissing =>
+      'No Internet: use Wi-Fi with Internet, or share mobile data';
+
+  @override
+  String get checkInternetChecking => 'Checking Internet…';
+
+  @override
+  String get checkPowerOk => 'Charging';
+
+  @override
+  String get checkPowerMissing => 'Not charging: plug it in for a whole match';
+
+  @override
+  String get checkMicOk => 'Microphone allowed';
+
+  @override
+  String get checkMicMissing =>
+      'Microphone not allowed: the stream will be silent';
+
+  @override
+  String get checkMicAction => 'Allow';
+
+  @override
+  String get broadcastMicMute => 'Mute the microphone on air';
+
+  @override
+  String get broadcastMicUnmute => 'Turn the microphone on air on';
+
+  @override
+  String get broadcastMicNextStream =>
+      'No microphone permission yet: it will be on air from the next stream';
+
+  @override
   String get scoreboardSet => 'Set';
 
   @override

@@ -857,6 +857,38 @@
   },
   "broadcastReplayScoreboard": "Scoreboard during replays",
   "broadcastReplayScoreboardHint": "Off: a replay on air shows only its REPLAY badge.",
+  "roleBroadcast": "Broadcast",
+  "roleBroadcastEntry": "Broadcast a match · beta",
+  "roleBroadcastDescription": "Streams to YouTube with a scoreboard and replays.",
+  "checkTitle": "Before going live",
+  "checkKeyOk": "YouTube stream key saved",
+  "checkKeyMissing": "No YouTube stream key yet",
+  "checkKeyAction": "Add",
+  "checkQualityUnknown": "Quality: the camera is starting",
+  "checkQualityOk": "Quality {profile}",
+  "@checkQualityOk": {
+    "placeholders": {
+      "profile": {"type": "String"}
+    }
+  },
+  "checkQualityLow": "Quality {profile}: YouTube looks better at 1080p",
+  "@checkQualityLow": {
+    "placeholders": {
+      "profile": {"type": "String"}
+    }
+  },
+  "checkQualityAction": "Use 1080p",
+  "checkInternetOk": "Internet reachable",
+  "checkInternetMissing": "No Internet: use Wi-Fi with Internet, or share mobile data",
+  "checkInternetChecking": "Checking Internet…",
+  "checkPowerOk": "Charging",
+  "checkPowerMissing": "Not charging: plug it in for a whole match",
+  "checkMicOk": "Microphone allowed",
+  "checkMicMissing": "Microphone not allowed: the stream will be silent",
+  "checkMicAction": "Allow",
+  "broadcastMicMute": "Mute the microphone on air",
+  "broadcastMicUnmute": "Turn the microphone on air on",
+  "broadcastMicNextStream": "No microphone permission yet: it will be on air from the next stream",
   "scoreboardSet": "Set",
   "scoreboardVisible": "On screen",
   "scoreboardReset": "Reset",

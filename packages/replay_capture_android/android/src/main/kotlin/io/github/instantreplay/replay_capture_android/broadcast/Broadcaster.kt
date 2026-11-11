@@ -53,7 +53,7 @@ internal class Broadcaster(
     )
 
     // Broadcast-thread state.
-    private var session: Session? = null
+    @Volatile private var session: Session? = null
     private var sessionIds = 0
     private var ticks = 0L
     private var lastProgramFrames = 0L
@@ -70,6 +70,21 @@ internal class Broadcaster(
     @Volatile private var programFps: Double? = null
     @Volatile private var droppedFrames = 0L
     @Volatile private var audioActive = false
+    /** The current session's mic is open, so it can be unmuted live. */
+    @Volatile private var micOpen = false
+
+    /**
+     * Mutes or unmutes the microphone on air at once; false when there is no open mic to unmute
+     * (no permission, or the stream is off). Any thread.
+     */
+    fun setMuted(muted: Boolean): Boolean {
+        val audio = session?.audio ?: return false
+        if (!micOpen) return muted
+        audio.muted = muted
+        audioActive = !muted
+        onStatus(status())
+        return true
+    }
 
     private val programFrameRate = minOf(config.fps, 30)
 
@@ -77,8 +92,12 @@ internal class Broadcaster(
      * Starts streaming to [url] (replacing a running broadcast). [done] gets the status once
      * connecting has started, or the error if the encoders can't be created.
      */
-    fun start(url: String, targetKbps: Int, useMic: Boolean, done: (Result<BroadcastStatus>) -> Unit) {
-        handler.post { done(runCatching { startNow(url, targetKbps, useMic) }) }
+    /**
+     * [useMic]: open the microphone (permission granted); [muted]: start with it silenced. A mic
+     * that is open can be muted and unmuted live with [setMuted].
+     */
+    fun start(url: String, targetKbps: Int, useMic: Boolean, muted: Boolean, done: (Result<BroadcastStatus>) -> Unit) {
+        handler.post { done(runCatching { startNow(url, targetKbps, useMic, muted) }) }
     }
 
     /** Disconnects and releases the encoders, then calls [done]; no-op when idle. */
@@ -95,7 +114,7 @@ internal class Broadcaster(
         thread.quitSafely()
     }
 
-    private fun startNow(url: String, targetKbps: Int, useMic: Boolean): BroadcastStatus {
+    private fun startNow(url: String, targetKbps: Int, useMic: Boolean, muted: Boolean): BroadcastStatus {
         session?.let(::teardown)
         state = BroadcastState.IDLE
         val id = ++sessionIds
@@ -124,7 +143,7 @@ internal class Broadcaster(
                 nowNs = if (boottimeTimestamps) SystemClock::elapsedRealtimeNanos else System::nanoTime,
                 onFrame = ::sendAudio,
                 onError = { reportError(id, it) },
-            )
+            ).also { it.muted = muted }
             rtmp.setVideoCodec(VideoCodec.H264)
             rtmp.setAudioInfo(AudioEncoder.SAMPLE_RATE, false)
             rtmp.setVideoResolution(config.width, config.height)
@@ -147,7 +166,8 @@ internal class Broadcaster(
         val s = Session(id, rtmp, program, audio, BitrateController(targetKbps), log)
         session = s
         current = s
-        audioActive = audio.micActive
+        micOpen = audio.micActive
+        audioActive = audio.micActive && !muted
         clock.reset()
         connected = false
         audio.start()

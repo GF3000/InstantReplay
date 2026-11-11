@@ -2228,6 +2228,138 @@ abstract class AppLocalizations {
   /// **'Off: a replay on air shows only its REPLAY badge.'**
   String get broadcastReplayScoreboardHint;
 
+  /// No description provided for @roleBroadcast.
+  ///
+  /// In en, this message translates to:
+  /// **'Broadcast'**
+  String get roleBroadcast;
+
+  /// No description provided for @roleBroadcastEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'Broadcast a match · beta'**
+  String get roleBroadcastEntry;
+
+  /// No description provided for @roleBroadcastDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Streams to YouTube with a scoreboard and replays.'**
+  String get roleBroadcastDescription;
+
+  /// No description provided for @checkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Before going live'**
+  String get checkTitle;
+
+  /// No description provided for @checkKeyOk.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube stream key saved'**
+  String get checkKeyOk;
+
+  /// No description provided for @checkKeyMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'No YouTube stream key yet'**
+  String get checkKeyMissing;
+
+  /// No description provided for @checkKeyAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get checkKeyAction;
+
+  /// No description provided for @checkQualityUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Quality: the camera is starting'**
+  String get checkQualityUnknown;
+
+  /// No description provided for @checkQualityOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Quality {profile}'**
+  String checkQualityOk(String profile);
+
+  /// No description provided for @checkQualityLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Quality {profile}: YouTube looks better at 1080p'**
+  String checkQualityLow(String profile);
+
+  /// No description provided for @checkQualityAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Use 1080p'**
+  String get checkQualityAction;
+
+  /// No description provided for @checkInternetOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Internet reachable'**
+  String get checkInternetOk;
+
+  /// No description provided for @checkInternetMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'No Internet: use Wi-Fi with Internet, or share mobile data'**
+  String get checkInternetMissing;
+
+  /// No description provided for @checkInternetChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking Internet…'**
+  String get checkInternetChecking;
+
+  /// No description provided for @checkPowerOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Charging'**
+  String get checkPowerOk;
+
+  /// No description provided for @checkPowerMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Not charging: plug it in for a whole match'**
+  String get checkPowerMissing;
+
+  /// No description provided for @checkMicOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone allowed'**
+  String get checkMicOk;
+
+  /// No description provided for @checkMicMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone not allowed: the stream will be silent'**
+  String get checkMicMissing;
+
+  /// No description provided for @checkMicAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow'**
+  String get checkMicAction;
+
+  /// No description provided for @broadcastMicMute.
+  ///
+  /// In en, this message translates to:
+  /// **'Mute the microphone on air'**
+  String get broadcastMicMute;
+
+  /// No description provided for @broadcastMicUnmute.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn the microphone on air on'**
+  String get broadcastMicUnmute;
+
+  /// No description provided for @broadcastMicNextStream.
+  ///
+  /// In en, this message translates to:
+  /// **'No microphone permission yet: it will be on air from the next stream'**
+  String get broadcastMicNextStream;
+
   /// No description provided for @scoreboardSet.
   ///
   /// In en, this message translates to:

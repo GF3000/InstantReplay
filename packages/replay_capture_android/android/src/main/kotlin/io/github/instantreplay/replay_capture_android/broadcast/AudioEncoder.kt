@@ -32,6 +32,9 @@ internal class AudioEncoder(
     private val record: AudioRecord? = if (useMic) openMic() else null
     val micActive: Boolean get() = record != null
 
+    /** Muted from the stream's controls: the mic keeps running (and the clock), silence goes out. */
+    @Volatile var muted = false
+
     private val codec: MediaCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC).apply {
         val format = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, SAMPLE_RATE, 1).apply {
             setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC)
@@ -98,6 +101,7 @@ internal class AudioEncoder(
                     CHUNK_BYTES
                 }
                 if (bytes == 0) continue
+                if (record != null && muted) pcm.fill(0, 0, bytes)
                 val ptsUs = clock.next(nowNs(), bytes / 2)
                 val input = codec.dequeueInputBuffer(INPUT_TIMEOUT_US)
                 if (input >= 0) {
