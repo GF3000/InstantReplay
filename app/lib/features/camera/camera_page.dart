@@ -244,6 +244,7 @@ class _Panel extends ConsumerWidget {
               ),
             ),
             if (state.broadcast) _CameraBroadcastBar(enabled: state.phase == CameraPhase.running, header: true),
+            if (state.broadcast) const _CameraMicButton(),
             if (state.broadcast)
               IconButton(
                 key: const Key('camera-scoreboard-toggle'),
@@ -676,6 +677,29 @@ class _CameraScoreboardControls extends ConsumerWidget {
       enabled: enabled,
       compact: true,
       onCommand: controller.apply,
+    );
+  }
+}
+
+/// The stream's microphone from the Camera's header.
+class _CameraMicButton extends ConsumerWidget {
+  const _CameraMicButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final controller = ref.watch(broadcastControllerProvider);
+    final info = ref.watch(broadcastInfoProvider).value ?? controller.info;
+    return BroadcastMicButton(
+      keyPrefix: 'camera-broadcast',
+      on: info.audio,
+      enabled: true,
+      onChanged: (on) async {
+        final ok = await controller.setAudio(on);
+        if (!ok && context.mounted) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).broadcastMicNextStream)));
+        }
+      },
     );
   }
 }

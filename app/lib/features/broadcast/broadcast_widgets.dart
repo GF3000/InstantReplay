@@ -1134,3 +1134,29 @@ class _Palette extends StatelessWidget {
 }
 
 // endregion
+
+/// The stream's microphone, on or off with one tap (SPEC §12.7): on air at once while
+/// streaming, and remembered for the next stream.
+class BroadcastMicButton extends StatelessWidget {
+  const BroadcastMicButton({super.key, required this.on, required this.enabled, required this.onChanged, this.keyPrefix = 'broadcast'});
+
+  final bool on;
+  final bool enabled;
+  final ValueChanged<bool> onChanged;
+  final String keyPrefix;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return IconButton(
+      key: ValueKey('$keyPrefix-mic'),
+      tooltip: on ? l10n.broadcastMicMute : l10n.broadcastMicUnmute,
+      isSelected: on,
+      constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+      onPressed: enabled ? () => onChanged(!on) : null,
+      icon: Icon(Icons.mic_off, color: Theme.of(context).colorScheme.error),
+      selectedIcon: const Icon(Icons.mic),
+    );
+  }
+}
+

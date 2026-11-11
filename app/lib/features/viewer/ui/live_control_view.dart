@@ -141,6 +141,26 @@ class _NothingShown extends StatelessWidget {
       );
 }
 
+/// The stream's microphone from a viewer's app bar (SPEC §12.7); nothing outside broadcast mode.
+class ViewerMicButton extends ConsumerWidget {
+  const ViewerMicButton({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final info = ref.watch(viewerBroadcastProvider);
+    if (info == null) return const SizedBox.shrink();
+    final connected = ref.watch(linkStateProvider.select((s) => s?.phase == LinkPhase.connected));
+    final remote = ref.read(viewerBroadcastNoticeProvider.notifier);
+    return BroadcastMicButton(
+      keyPrefix: 'viewer-broadcast',
+      on: info.audio,
+      enabled: connected,
+      // The stored key stays (key: null); the Camera applies it on air at once.
+      onChanged: (on) => remote.configure(server: info.server, targetKbps: info.targetKbps, audio: on),
+    );
+  }
+}
+
 /// The app bar menu that shows or hides the Viewer's panels on this device.
 class ViewerPanelsButton extends ConsumerWidget {
   const ViewerPanelsButton({super.key});

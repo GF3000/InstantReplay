@@ -449,6 +449,10 @@ abstract class CaptureHostApi {
 
   BroadcastStatus broadcastStatus();
 
+  /// Turns the microphone on air on or off at once, without restarting the stream. False when
+  /// it cannot be turned on (no permission, or no stream).
+  bool broadcastSetAudio(bool audio);
+
   // Replays on air (SPEC §12.6). Only while a broadcast is active.
 
   /// Puts clip [clipId] (ready or in the reserve) on air at [speed], replacing any running

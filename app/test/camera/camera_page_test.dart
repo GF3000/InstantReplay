@@ -681,6 +681,23 @@ void main() {
       expect(fake.calls.last, 'zoom:1.0');
     });
 
+    testWidgets('the header mic button mutes and unmutes the stream live, remembered', (tester) async {
+      final fake = FakeCaptureLayer();
+      final prefs =
+          await _pumpCamera(tester, fake, height: 2400, saved: {'role': 'broadcast', 'broadcast.key': 'abcd'});
+      await _tapNow(tester, find.byKey(const ValueKey('camera-broadcast-start')));
+      expect(find.byTooltip('Mute the microphone on air'), findsOneWidget);
+
+      await _tapNow(tester, find.byKey(const ValueKey('camera-broadcast-mic')));
+      expect(fake.calls, contains('broadcastAudio:false'));
+      expect(prefs.getBool('broadcast.audio'), isFalse);
+      expect(find.byTooltip('Turn the microphone on air on'), findsOneWidget);
+
+      await _tapNow(tester, find.byKey(const ValueKey('camera-broadcast-mic')));
+      expect(fake.calls.last, 'broadcastAudio:true');
+      expect(find.byTooltip('Mute the microphone on air'), findsOneWidget);
+    });
+
     testWidgets('the operating screen shows the score and the stream', (tester) async {
       final fake = FakeCaptureLayer();
       await _pumpCamera(tester, fake, saved: {'role': 'broadcast'});

@@ -2342,6 +2342,24 @@ abstract class AppLocalizations {
   /// **'Allow'**
   String get checkMicAction;
 
+  /// No description provided for @broadcastMicMute.
+  ///
+  /// In en, this message translates to:
+  /// **'Mute the microphone on air'**
+  String get broadcastMicMute;
+
+  /// No description provided for @broadcastMicUnmute.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn the microphone on air on'**
+  String get broadcastMicUnmute;
+
+  /// No description provided for @broadcastMicNextStream.
+  ///
+  /// In en, this message translates to:
+  /// **'No microphone permission yet: it will be on air from the next stream'**
+  String get broadcastMicNextStream;
+
   /// No description provided for @scoreboardSet.
   ///
   /// In en, this message translates to:

@@ -1380,6 +1380,16 @@ class AppLocalizationsEs extends AppLocalizations {
   String get checkMicAction => 'Permitir';
 
   @override
+  String get broadcastMicMute => 'Silenciar el micrófono en la emisión';
+
+  @override
+  String get broadcastMicUnmute => 'Activar el micrófono en la emisión';
+
+  @override
+  String get broadcastMicNextStream =>
+      'Aún sin permiso de micrófono: sonará a partir de la próxima emisión';
+
+  @override
   String get scoreboardSet => 'Ajustar';
 
   @override

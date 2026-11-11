@@ -138,6 +138,9 @@ class ReplayCapture implements CaptureEventsApi {
 
   Future<BroadcastStatus> broadcastStatus() => _host.broadcastStatus();
 
+  /// Microphone on air on/off, live; false when it cannot be turned on.
+  Future<bool> broadcastSetAudio(bool audio) => _host.broadcastSetAudio(audio);
+
   /// [scoreboard]: keep the scoreboard over the replay (off: only the [label] badge).
   Future<ReplayStatus> replayStart(String clipId, {double speed = 1, required String label, bool scoreboard = false}) =>
       _host.replayStart(clipId, speed, label, scoreboard);

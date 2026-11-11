@@ -1415,6 +1415,11 @@ interface CaptureHostApi {
   fun broadcastStop(callback: (Result<Unit>) -> Unit)
   fun broadcastStatus(): BroadcastStatus
   /**
+   * Turns the microphone on air on or off at once, without restarting the stream. False when
+   * it cannot be turned on (no permission, or no stream).
+   */
+  fun broadcastSetAudio(audio: Boolean): Boolean
+  /**
    * Puts clip [clipId] (ready or in the reserve) on air at [speed], replacing any running
    * replay; [label] is drawn over it (e.g. `REPETICIÓN`); the scoreboard too only when
    * [scoreboard]. Completes once the first frame is
@@ -1907,6 +1912,23 @@ interface CaptureHostApi {
           channel.setMessageHandler { _, reply ->
             val wrapped: List<Any?> = try {
               listOf(api.broadcastStatus())
+            } catch (exception: Throwable) {
+              CaptureApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.replay_capture_android.CaptureHostApi.broadcastSetAudio$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val audioArg = args[0] as Boolean
+            val wrapped: List<Any?> = try {
+              listOf(api.broadcastSetAudio(audioArg))
             } catch (exception: Throwable) {
               CaptureApiPigeonUtils.wrapError(exception)
             }

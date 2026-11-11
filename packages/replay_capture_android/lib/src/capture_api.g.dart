@@ -1886,6 +1886,27 @@ class CaptureHostApi {
     return pigeonVar_replyValue! as BroadcastStatus;
   }
 
+  /// Turns the microphone on air on or off at once, without restarting the stream. False when
+  /// it cannot be turned on (no permission, or no stream).
+  Future<bool> broadcastSetAudio(bool audio) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.replay_capture_android.CaptureHostApi.broadcastSetAudio$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[audio]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return pigeonVar_replyValue! as bool;
+  }
+
   /// Puts clip [clipId] (ready or in the reserve) on air at [speed], replacing any running
   /// replay; [label] is drawn over it (e.g. `REPETICIÓN`); the scoreboard too only when
   /// [scoreboard]. Completes once the first frame is

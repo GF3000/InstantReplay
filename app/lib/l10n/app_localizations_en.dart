@@ -1374,6 +1374,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get checkMicAction => 'Allow';
 
   @override
+  String get broadcastMicMute => 'Mute the microphone on air';
+
+  @override
+  String get broadcastMicUnmute => 'Turn the microphone on air on';
+
+  @override
+  String get broadcastMicNextStream =>
+      'No microphone permission yet: it will be on air from the next stream';
+
+  @override
   String get scoreboardSet => 'Set';
 
   @override
