@@ -235,17 +235,12 @@ class _Panel extends ConsumerWidget {
           // In broadcast mode the header carries the stream: Go live (or its bitrate on air) next
           // to the scoreboard toggle and the role switch.
           Row(children: [
-            // Shrinks rather than truncates: the broadcast header carries five buttons.
+            // Broadcast mode needs no title: the red Go live button says it, and the header has
+            // five buttons to fit.
             Expanded(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: AlignmentDirectional.centerStart,
-                child: Text(
-                  state.broadcast ? l10n.roleBroadcast : l10n.roleCamera,
-                  style: theme.textTheme.titleLarge,
-                  maxLines: 1,
-                ),
-              ),
+              child: state.broadcast
+                  ? const SizedBox.shrink()
+                  : Text(l10n.roleCamera, style: theme.textTheme.titleLarge, maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
             if (state.broadcast) _CameraBroadcastBar(enabled: state.phase == CameraPhase.running, header: true),
             if (state.broadcast) const _CameraMicButton(),

@@ -572,7 +572,8 @@ void main() {
       final fake = FakeCaptureLayer()..micGranted = false;
       await _pumpCamera(tester, fake, server: server, height: 2400, saved: {'role': 'broadcast'});
       expect(fake.startModes, [true]);
-      expect(find.text('Broadcast'), findsOneWidget, reason: 'the header says which mode this is');
+      expect(find.text('Broadcast'), findsNothing, reason: 'no title: the Go live button says it');
+      expect(find.byKey(const ValueKey('camera-broadcast-start')), findsOneWidget);
       expect(server.last!.config.broadcast!.active, isTrue);
       expect(fake.calls, isNot(contains('micPermission')), reason: 'asked from the checklist, not on entry');
       expect(fake.overlays, isNotEmpty);
