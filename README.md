@@ -6,6 +6,15 @@
 
 Offline instant replay for team sports. One Android phone on a tripod films continuously and keeps the last minute in a rolling buffer; the coach's phone or tablet watches the live feed and, with one tap, pulls the last 10–60 seconds to review in slow motion, tag and share. No Internet connection needed: everything runs over a local Wi-Fi network (a phone hotspot or a travel router).
 
+<p align="center">
+  <img src="docs/screenshots/phone-viewer-en.png" height="360" alt="Viewer on a phone: live view, Save button and tagged clips">
+  <img src="docs/screenshots/tablet-broadcast-en.png" height="360" alt="Broadcast mode on a tablet: live on YouTube with the scoreboard">
+</p>
+<p align="center">
+  <img src="docs/screenshots/tablet-telestrator-en.png" width="49%" alt="Reviewing a clip with the telestrator">
+  <img src="docs/screenshots/laptop-viewer-en.png" width="49%" alt="The Viewer in a laptop browser">
+</p>
+
 > **Status:** MVP ([v0.3.0](https://github.com/GF3000/InstantReplay/releases/latest)): the Camera records, serves a live view and clips, and can record the whole session; the Viewer (Android app or any browser on the same Wi-Fi) watches live, saves, tags and reviews clips, and on Android keeps a clip library. New in [v0.4.0](docs/releases/v0.4.0.md) (beta): **Broadcast a match** streams to YouTube Live with a scoreboard and replays on air. Field testing is next. Design: [docs/SPEC.md](docs/SPEC.md) · UX: [docs/UX.md](docs/UX.md) · Plan: [docs/PLAN-v0.1.md](docs/PLAN-v0.1.md).
 >
 > **Try it:** install the APK on an Android phone (10+), follow the [setup guide](docs/setup-guide.md) (Spanish: [guía de montaje](docs/guia-de-montaje.md)).
