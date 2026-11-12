@@ -6,6 +6,15 @@
 
 Repeticiones instantáneas para deportes de equipo, sin conexión a Internet. Un móvil Android en un trípode graba de forma continua y guarda el último minuto en un búfer circular. Desde el móvil o la tablet del entrenador se ve el directo y, con un toque, se recuperan los últimos 10–60 segundos para revisarlos a cámara lenta, etiquetarlos y compartirlos. Todo funciona en una red Wi-Fi local (hotspot de un móvil o router de viaje).
 
+<p align="center">
+  <img src="docs/screenshots/phone-viewer-es.png" height="360" alt="Visor en el móvil: directo, botón Guardar y clips etiquetados">
+  <img src="docs/screenshots/tablet-broadcast-es.png" height="360" alt="Modo retransmisión en la tablet: en directo en YouTube con marcador">
+</p>
+<p align="center">
+  <img src="docs/screenshots/tablet-telestrator-es.png" width="49%" alt="Revisión de un clip con el telestrator">
+  <img src="docs/screenshots/laptop-viewer-es.png" width="49%" alt="El Visor en el navegador de un portátil">
+</p>
+
 > **Estado:** MVP ([v0.3.0](https://github.com/GF3000/InstantReplay/releases/latest)): la Cámara graba, sirve el directo y los clips y puede grabar la sesión completa; el Visor (app Android o cualquier navegador en la misma Wi-Fi) ve el directo, guarda, etiqueta y revisa clips, y en Android tiene una biblioteca de clips. Novedad en [v0.4.0](docs/releases/v0.4.0.md) (beta): **Retransmitir partido** emite en YouTube Live con marcador y repeticiones en antena. Lo siguiente es probarlo en entrenamientos reales. Diseño (en inglés): [docs/SPEC.md](docs/SPEC.md) · UX: [docs/UX.md](docs/UX.md) · Plan: [docs/PLAN-v0.1.md](docs/PLAN-v0.1.md).
 >
 > **Probarlo:** instala el APK en un móvil Android (10 o superior) y sigue la [guía de montaje](docs/guia-de-montaje.md).
