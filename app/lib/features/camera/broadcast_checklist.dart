@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:replay_capture_android/replay_capture_android.dart' show CaptureProfile;
 
+import '../../core/ui/ir_colors.dart';
 import '../../l10n/app_localizations.dart';
 import '../broadcast/broadcast_providers.dart';
 import '../broadcast/broadcast_widgets.dart';
@@ -13,10 +14,15 @@ import 'capture_layer.dart';
 import '../broadcast/youtube/youtube_providers.dart';
 
 /// What to check before going live (SPEC §12.7): stream key, 1080p, Internet, charging and the
-/// microphone, each with the fix at hand. Shown while something is missing and the stream is
-/// off; it disappears once everything is green.
+/// microphone, each with the fix at hand: a green check, or an amber warning with its button.
+/// Hidden on air. On the Camera's screen it shrinks to one green "Ready to go live" line once
+/// everything is fine; inside "Prepare the stream" ([inPage]) every line stays.
 class BroadcastChecklist extends ConsumerStatefulWidget {
-  const BroadcastChecklist({super.key});
+  const BroadcastChecklist({super.key, this.inPage = false});
+
+  /// Inside the stream settings page: no title, no "add the key" button (the page is where it
+  /// goes), and the green lines stay.
+  final bool inPage;
 
   /// How often Internet and the microphone permission are checked again.
   static const recheckEvery = Duration(seconds: 15);
@@ -64,10 +70,11 @@ class _BroadcastChecklistState extends ConsumerState<BroadcastChecklist> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final c = context.ir;
     final session = ref.watch(cameraSessionProvider);
     final controller = ref.watch(broadcastControllerProvider);
     final info = ref.watch(broadcastInfoProvider).value ?? controller.info;
-    if (info.active) return const SizedBox.shrink();
+    if (info.active && !widget.inPage) return const SizedBox.shrink();
 
     final profile = session.profile;
     final hd = _hd(session.profiles);
@@ -77,7 +84,7 @@ class _BroadcastChecklistState extends ConsumerState<BroadcastChecklist> {
         key: 'key',
         ok: info.configured,
         label: info.configured ? l10n.checkKeyOk : l10n.checkKeyMissing,
-        action: info.configured ? null : l10n.checkKeyAction,
+        action: info.configured || widget.inPage ? null : l10n.checkKeyAction,
         onAction: () async {
           final result = await showBroadcastConfigDialog(context, info, youtube: ref.read(youtubeAccountProvider));
           if (result == null) return;
@@ -99,7 +106,7 @@ class _BroadcastChecklistState extends ConsumerState<BroadcastChecklist> {
             : profile.height >= 1080
                 ? l10n.checkQualityOk(profile.id)
                 : l10n.checkQualityLow(profile.id),
-        action: profile != null && profile.height < 1080 && hd != null ? l10n.checkQualityAction : null,
+        action: profile != null && profile.height < 1080 && hd != null && !info.active ? l10n.checkQualityAction : null,
         onAction: () => ref.read(cameraSessionProvider.notifier).selectProfile(hd!.id),
       ),
       _Item(
@@ -131,45 +138,118 @@ class _BroadcastChecklistState extends ConsumerState<BroadcastChecklist> {
           },
         ),
     ];
-    if (items.every((i) => i.ok)) return const SizedBox.shrink();
+    final ready = items.every((i) => i.ok);
 
-    final theme = Theme.of(context);
-    return Card(
-      key: const Key('broadcast-checklist'),
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 10, 8, 6),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text(l10n.checkTitle, style: theme.textTheme.titleSmall),
-          const SizedBox(height: 4),
-          for (final item in items)
-            Row(key: ValueKey('check-${item.key}'), children: [
-              Icon(
-                item.pending
-                    ? Icons.more_horiz
-                    : item.ok
-                        ? Icons.check_circle
-                        : Icons.warning_amber_rounded,
-                size: 20,
-                color: item.pending
-                    ? theme.colorScheme.onSurfaceVariant
-                    : item.ok
-                        ? Colors.green
-                        : theme.colorScheme.tertiary,
+    final rows = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      for (final (i, item) in items.indexed)
+        Container(
+          key: ValueKey('check-${item.key}'),
+          constraints: const BoxConstraints(minHeight: 52),
+          padding: const EdgeInsets.fromLTRB(12, 6, 8, 6),
+          decoration: BoxDecoration(border: i == 0 ? null : Border(top: BorderSide(color: c.line))),
+          child: Row(children: [
+            _Mark(ok: item.ok, pending: item.pending),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                item.label,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: item.ok || item.pending ? c.text : c.warnText,
+                ),
               ),
+            ),
+            if (item.action != null) ...[
               const SizedBox(width: 8),
-              Expanded(child: Text(item.label, style: theme.textTheme.bodyMedium)),
-              if (item.action != null)
-                TextButton(
-                  key: ValueKey('check-${item.key}-action'),
-                  style: TextButton.styleFrom(minimumSize: const Size(48, 40)),
-                  onPressed: item.onAction,
-                  child: Text(item.action!),
-                )
-              else
-                const SizedBox(height: 40),
+              OutlinedButton(
+                key: ValueKey('check-${item.key}-action'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(64, 48),
+                  foregroundColor: c.signal,
+                  side: BorderSide(color: c.signal),
+                  textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                ),
+                onPressed: item.onAction,
+                child: Text(item.action!),
+              ),
+            ],
+          ]),
+        ),
+    ]);
+
+    if (widget.inPage) {
+      return Container(
+        key: const Key('broadcast-checklist'),
+        decoration: BoxDecoration(border: Border.all(color: c.line), borderRadius: BorderRadius.circular(4)),
+        child: rows,
+      );
+    }
+
+    if (ready) {
+      // The "ready to go live" moment: one green line instead of five.
+      return Container(
+        key: const Key('broadcast-checklist-ready'),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: c.surface,
+          border: Border.all(color: c.ok),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Row(children: [
+          Icon(Icons.check_circle, color: c.ok, size: 28),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(l10n.camReadyTitle, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: c.text)),
+              Text(l10n.camReadySub, style: TextStyle(fontSize: 13, color: c.muted)),
             ]),
+          ),
         ]),
+      );
+    }
+
+    return Container(
+      key: const Key('broadcast-checklist'),
+      decoration: BoxDecoration(
+        color: c.surface,
+        border: Border.all(color: c.line),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+          child: Text(l10n.checkTitle, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: c.text)),
+        ),
+        Container(decoration: BoxDecoration(border: Border(top: BorderSide(color: c.line))), child: rows),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+          child: Text(l10n.camAmberHint, style: TextStyle(fontSize: 13, color: c.muted)),
+        ),
+      ]),
+    );
+  }
+}
+
+/// A round mark: green check, amber warning, or a muted dot while it is being checked.
+class _Mark extends StatelessWidget {
+  const _Mark({required this.ok, required this.pending});
+
+  final bool ok;
+  final bool pending;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ir;
+    final color = pending ? c.lineStrong : (ok ? c.ok : c.warn);
+    return Container(
+      width: 24,
+      height: 24,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      child: Icon(
+        pending ? Icons.more_horiz : (ok ? Icons.check : Icons.priority_high),
+        size: 16,
+        color: c.bg,
       ),
     );
   }

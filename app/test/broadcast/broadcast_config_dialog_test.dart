@@ -88,7 +88,7 @@ const _info = BroadcastInfo(
 
 void main() {
   Future<Future<BroadcastConfigResult?>> open(WidgetTester tester,
-      {YouTubeAccount? youtube, Size size = const Size(1000, 1400)}) async {
+      {YouTubeAccount? youtube, Size size = const Size(1000, 1400), bool canGoLive = false, Widget? checklist}) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -100,7 +100,8 @@ void main() {
       home: Scaffold(
         body: Builder(
           builder: (context) => TextButton(
-            onPressed: () => result = showBroadcastConfigDialog(context, _info, youtube: youtube),
+            onPressed: () => result =
+                showBroadcastConfigDialog(context, _info, youtube: youtube, canGoLive: canGoLive, checklist: checklist),
             child: const Text('open'),
           ),
         ),
@@ -149,9 +150,8 @@ void main() {
     expect(find.byKey(const ValueKey('youtube-will-create')), findsOneWidget);
 
     await tester.enterText(find.byKey(const ValueKey('youtube-title')), 'Coras vs Alcobendas');
-    await tester.tap(find.byKey(const ValueKey('youtube-privacy')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Public').last);
+    // Visibility: three choice tiles.
+    await tester.tap(find.byKey(const ValueKey('youtube-privacy-public')));
     await tester.pumpAndSettle();
     await tester.tap(save);
     await tester.pumpAndSettle();
@@ -198,41 +198,120 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('youtube-error')), findsOneWidget);
     expect(find.textContaining("can't go live yet"), findsOneWidget);
-    await tester.tap(find.text('Cancel'));
+    await tester.tap(find.byTooltip('Cancel'));
     await tester.pumpAndSettle();
     expect(await result, isNull);
   });
 
-  testWidgets('a phone on its side gets full screen: Save on top, two columns', (tester) async {
-    final result = await open(tester, youtube: _FakeAccount(), size: const Size(915, 412));
-    expect(find.byKey(const ValueKey('broadcast-config-fullscreen')), findsOneWidget);
+  testWidgets('a phone on its side gets a stepper: Save on top, a summary beside', (tester) async {
+    final result = await open(tester, youtube: _FakeAccount(), size: const Size(844, 390));
+    expect(find.byKey(const ValueKey('broadcast-config-stepper')), findsOneWidget);
     expect(find.byType(AlertDialog), findsNothing);
-    // Everything shows at once: destination on the left, quality on the right.
     final save = tester.getRect(find.byKey(const ValueKey('broadcast-config-save')));
     final key = tester.getRect(find.byKey(const ValueKey('broadcast-key')));
-    final audio = tester.getRect(find.byKey(const ValueKey('broadcast-audio')));
-    expect(save.top, lessThan(60));
-    expect(key.right, lessThanOrEqualTo(audio.left));
-    expect(audio.bottom, lessThan(412));
+    final summary = tester.getRect(find.byKey(const ValueKey('broadcast-config-summary')));
+    expect(save.top, lessThan(52));
+    expect(key.right, lessThanOrEqualTo(summary.left));
     expect(tester.takeException(), isNull);
 
+    // Next: picture and sound, with the three presets and the microphone.
+    await tester.tap(find.byKey(const ValueKey('broadcast-config-next')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('broadcast-kbps-6000')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('broadcast-kbps-6000')));
+    await tester.pumpAndSettle();
+    expect(find.text('6 Mbps'), findsOneWidget, reason: 'the summary follows');
+    expect(tester.takeException(), isNull);
+
+    // Without canGoLive (a viewer, or already live) the last step saves.
+    await tester.tap(find.byKey(const ValueKey('broadcast-config-next')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('broadcast-replay-scoreboard')), findsOneWidget);
+    expect(find.byKey(const ValueKey('broadcast-config-next')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('broadcast-step-destination')));
+    await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const ValueKey('broadcast-key')), 'landscape-key');
     await tester.tap(find.byKey(const ValueKey('broadcast-config-save')));
     await tester.pumpAndSettle();
-    expect((await result)!.key, 'landscape-key');
+    final r = (await result)!;
+    expect(r.key, 'landscape-key');
+    expect(r.targetKbps, 6000);
+    expect(r.goLive, isFalse);
   });
 
-  testWidgets('full screen closes with the X, saving nothing', (tester) async {
+  testWidgets('with canGoLive the last step goes live, and Check shows the checklist', (tester) async {
+    final result = await open(tester,
+        size: const Size(844, 390), canGoLive: true, checklist: const SizedBox(key: ValueKey('the-checklist'), height: 40));
+    for (var i = 0; i < 3; i++) {
+      await tester.tap(find.byKey(const ValueKey('broadcast-config-next')));
+      await tester.pumpAndSettle();
+    }
+    expect(find.byKey(const ValueKey('the-checklist')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('broadcast-config-golive')));
+    await tester.pumpAndSettle();
+    expect((await result)!.goLive, isTrue);
+  });
+
+  testWidgets('a stored key offers to go live as last time', (tester) async {
+    tester.view.physicalSize = const Size(844, 390);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    late Future<BroadcastConfigResult?> result;
+    const stored = BroadcastInfo(
+      state: BroadcastStreamState.idle,
+      configured: true,
+      keyHint: 'WXYZ',
+      server: BroadcastInfo.defaultServer,
+      targetKbps: 2500,
+      audio: false,
+    );
+    await tester.pumpWidget(MaterialApp(
+      locale: const Locale('en'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Builder(
+        builder: (context) => TextButton(
+          onPressed: () => result = showBroadcastConfigDialog(context, stored, canGoLive: true),
+          child: const Text('open'),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('broadcast-config-golive-last')));
+    await tester.pumpAndSettle();
+    final r = (await result)!;
+    expect((r.key, r.targetKbps, r.audio, r.goLive), (null, 2500, false, true));
+  });
+
+  testWidgets('the back arrow closes it, saving nothing', (tester) async {
     final result = await open(tester, size: const Size(915, 412));
-    await tester.tap(find.byIcon(Icons.close));
+    await tester.tap(find.byKey(const ValueKey('broadcast-config-back')));
     await tester.pumpAndSettle();
     expect(await result, isNull);
   });
 
-  testWidgets('tablets and portrait keep the dialog', (tester) async {
-    await open(tester, size: const Size(1280, 800));
-    expect(find.byType(AlertDialog), findsOneWidget);
-    expect(find.byKey(const ValueKey('broadcast-config-fullscreen')), findsNothing);
+  testWidgets('a tablet gets tabs and the "Before going live" column', (tester) async {
+    final result = await open(tester,
+        size: const Size(1180, 820), canGoLive: true, checklist: const SizedBox(key: ValueKey('the-checklist'), height: 40));
+    expect(find.byKey(const ValueKey('broadcast-config-page')), findsOneWidget);
+    expect(find.byKey(const ValueKey('the-checklist')), findsOneWidget);
+    expect(find.text('Before going live'), findsOneWidget);
+    expect(find.byKey(const ValueKey('broadcast-audio')), findsNothing, reason: 'on the second tab');
+    await tester.tap(find.byKey(const ValueKey('broadcast-tab-image')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('broadcast-audio')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('broadcast-kbps-2500')));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.byKey(const ValueKey('broadcast-tab-destination')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('broadcast-key')), 'k');
+    await tester.tap(find.byKey(const ValueKey('broadcast-config-golive')));
+    await tester.pumpAndSettle();
+    final r = (await result)!;
+    expect((r.key, r.audio, r.targetKbps, r.goLive), ('k', false, 2500, true));
   });
 
   testWidgets('the live link opens as a QR code', (tester) async {
@@ -248,6 +327,8 @@ void main() {
       ),
     );
     await open(tester, youtube: account, size: const Size(915, 412));
+    await tester.ensureVisible(find.byKey(const ValueKey('youtube-qr')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('youtube-qr')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('youtube-qr-code')), findsOneWidget);

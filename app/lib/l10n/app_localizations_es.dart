@@ -1586,4 +1586,297 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get youtubeShare => 'Compartir';
+
+  @override
+  String get camWhatYouTubeSees => 'Lo que ve YouTube';
+
+  @override
+  String get camNoSound => 'SIN SONIDO';
+
+  @override
+  String get camStreamTitle => 'Emisión';
+
+  @override
+  String get camOnAirYouTube => 'En directo en YouTube';
+
+  @override
+  String get camOnAirFor => 'en el aire';
+
+  @override
+  String get camMbps => 'Mbps';
+
+  @override
+  String get camViewersLabel => 'visores';
+
+  @override
+  String get camStopStream => 'Parar emisión';
+
+  @override
+  String get camStopShort => 'Parar';
+
+  @override
+  String get camMicOpen => 'Micro abierto';
+
+  @override
+  String get camMicOpenHint => 'Toca para cerrarlo';
+
+  @override
+  String get camMicClosed => 'Micro cerrado';
+
+  @override
+  String get camMicClosedHint => 'YouTube no oye nada · toca para abrirlo';
+
+  @override
+  String get camTileTemperature => 'Temperatura';
+
+  @override
+  String get camTileMemory => 'Memoria';
+
+  @override
+  String get camTileViewers => 'Visores';
+
+  @override
+  String get camTileOutbox => 'Por enviar';
+
+  @override
+  String get camTileCharging => 'Cargando';
+
+  @override
+  String camConnectViewerSub(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count conectados',
+      one: '1 conectado',
+      zero: 'nadie conectado',
+    );
+    return 'QR y código · $_temp0';
+  }
+
+  @override
+  String get camPairSheetSub =>
+      'Escanéalo desde InstantReplay en la tablet o el móvil del banquillo';
+
+  @override
+  String get camPairOrCode => 'O escribe este código en el visor';
+
+  @override
+  String get camConnectedNow => 'Conectados ahora';
+
+  @override
+  String get camClose => 'Cerrar';
+
+  @override
+  String get camShareLive => 'Compartir el directo';
+
+  @override
+  String get camShareLiveSub => 'Enlace de YouTube para familias';
+
+  @override
+  String get camShareSheetSub =>
+      'Que lo escaneen con la cámara del móvil: abre el directo en YouTube';
+
+  @override
+  String get camShareHint =>
+      '«Compartir…» abre WhatsApp, correo y el resto de apps del móvil.';
+
+  @override
+  String get camShareAction => 'Compartir…';
+
+  @override
+  String get camPrivacyChangeHint => 'Cámbialo en Preparar la emisión.';
+
+  @override
+  String get camPrepareStream => 'Preparar la emisión';
+
+  @override
+  String get camBlackScreen => 'Pantalla negra';
+
+  @override
+  String get camScoreboardShort => 'Ajustes marcador';
+
+  @override
+  String get camReadyTitle => 'Todo listo para emitir';
+
+  @override
+  String get camReadySub => 'Todo comprobado. Emite cuando quieras.';
+
+  @override
+  String get camAmberHint => 'Los avisos en ámbar no impiden emitir.';
+
+  @override
+  String get camOperatingTitle =>
+      'Grabando · pantalla apagada para ahorrar batería';
+
+  @override
+  String get camSavedForNext => 'Se guarda para el próximo partido';
+
+  @override
+  String get camTabDestination => 'Destino';
+
+  @override
+  String get camTabDestinationSub => 'YouTube · cuenta o clave';
+
+  @override
+  String get camTabImage => 'Imagen y sonido';
+
+  @override
+  String get camTabImageSub => 'Calidad y micrófono';
+
+  @override
+  String get camTabReplays => 'Repeticiones';
+
+  @override
+  String get camTabReplaysSub => 'Cómo salen en antena';
+
+  @override
+  String get camStepImage => 'Imagen';
+
+  @override
+  String get camStepCheck => 'Comprobar';
+
+  @override
+  String get camWhereStream => '¿Dónde se emite?';
+
+  @override
+  String get camQualityTitle => 'Calidad de la imagen';
+
+  @override
+  String get camQualityLow => 'Ahorro';
+
+  @override
+  String get camQualityNormal => 'Normal';
+
+  @override
+  String get camQualityHigh => 'Alta';
+
+  @override
+  String get camQualityLowSub => 'datos móviles';
+
+  @override
+  String get camQualityNormalSub => 'recomendado';
+
+  @override
+  String get camQualityHighSub => 'wifi buena';
+
+  @override
+  String camQualityPerHour(String gigabytes) {
+    return '≈ $gigabytes GB por hora';
+  }
+
+  @override
+  String get camQualityAuto =>
+      'Si la conexión baja, la emisión reduce la calidad sola para no cortarse.';
+
+  @override
+  String get camFineTune => 'Ajuste fino';
+
+  @override
+  String get camSoundTitle => 'Sonido';
+
+  @override
+  String get camMicTitle => 'Micrófono de la cámara';
+
+  @override
+  String get camMicSub =>
+      'Ambiente del pabellón. Se puede silenciar en directo.';
+
+  @override
+  String get camReplaysTitle => 'Cómo salen las repeticiones';
+
+  @override
+  String get camGoLiveNow => 'Empezar a emitir';
+
+  @override
+  String get camGoLiveLast => 'Emitir ya, como la última vez';
+
+  @override
+  String get camNext => 'Siguiente';
+
+  @override
+  String get camSummary => 'RESUMEN';
+
+  @override
+  String get camSumKey => 'Clave';
+
+  @override
+  String camSumYouTube(String privacy) {
+    return 'YouTube · $privacy';
+  }
+
+  @override
+  String get camSumReplay => 'Repetición';
+
+  @override
+  String get camSumScoreboardOn => 'con marcador';
+
+  @override
+  String get camSumScoreboardOff => 'solo el cartel';
+
+  @override
+  String get camYes => 'Sí';
+
+  @override
+  String get camNo => 'No';
+
+  @override
+  String get camWhoCanSee => 'Quién puede verlo';
+
+  @override
+  String get camPrivacyPublicSub => 'Cualquiera la encuentra';
+
+  @override
+  String get camPrivacyUnlistedSub => 'Solo con el enlace';
+
+  @override
+  String get camPrivacyPrivateSub => 'Solo tu cuenta';
+
+  @override
+  String get camBack => 'Volver';
+
+  @override
+  String get sbPageTitle => 'Marcador de la emisión';
+
+  @override
+  String get sbStyle => 'Estilo';
+
+  @override
+  String get sbClassic => 'Clásico';
+
+  @override
+  String get sbClassicSub => 'Una barra fina. Nombres de hasta 5 letras.';
+
+  @override
+  String get sbPlate => 'Placa';
+
+  @override
+  String get sbPlateSub => 'Dos filas. Nombres completos de hasta 16 letras.';
+
+  @override
+  String get sbDefault => 'POR DEFECTO';
+
+  @override
+  String get sbClassicCut =>
+      'El estilo Clásico corta los nombres a 5 letras. En Placa se ven completos.';
+
+  @override
+  String get sbPreview => 'VISTA PREVIA';
+
+  @override
+  String get sbHomeTeam => 'Equipo local';
+
+  @override
+  String get sbAwayTeam => 'Equipo visitante';
+
+  @override
+  String get sbTeamName => 'Nombre';
+
+  @override
+  String get sbSizeOnScreen => 'Tamaño en pantalla';
+
+  @override
+  String get sbMatch => 'Partido';
+
+  @override
+  String get sbReplayBadge => 'REPETICIÓN';
 }

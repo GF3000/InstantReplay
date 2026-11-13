@@ -177,7 +177,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(fake.calls.last, 'preview:false');
     expect(find.byType(Texture), findsNothing);
-    expect(find.text('REC · buffer 42 s · outbox 3 · 36.5 °C'), findsOneWidget);
+    // Status tiles readable at a glance: memory, clips to send, temperature, battery.
+    Finder tile(String key, String text) => find.descendant(of: find.byKey(Key(key)), matching: find.text(text));
+    expect(tile('camera-op-capture', '42 s'), findsOneWidget);
+    expect(tile('camera-op-outbox', '3'), findsOneWidget);
+    expect(tile('camera-op-temperature', '36.5 °C'), findsOneWidget);
+    expect(tile('camera-op-battery', '80 %'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('camera-operating')));
     await tester.pumpAndSettle();
@@ -587,8 +592,8 @@ void main() {
       expect(fake.calls, contains('micPermission'));
       expect(find.text('Microphone allowed'), findsOneWidget);
       expect(fake.overlays.last.homeName, 'LOC');
-      expect(find.byKey(const Key('camera-broadcast-card')), findsOneWidget);
-      // The header carries the stream; without a key, Go live opens the settings.
+      expect(find.byKey(const Key('camera-scoreboard')), findsOneWidget);
+      // Without a key, Go live opens the settings.
       expect(find.byKey(const ValueKey('camera-broadcast-start')), findsOneWidget);
       expect(find.byTooltip('Enter the stream key first'), findsOneWidget);
     });
@@ -616,19 +621,37 @@ void main() {
       expect(fake.calls.last, 'broadcastStop');
     });
 
-    testWidgets('the phone keeps the score itself; pairing folds; the controls can be hidden', (tester) async {
+    testWidgets('the phone keeps the score itself; pairing opens in a sheet', (tester) async {
+      final server = FakeServerPlatform();
       final fake = FakeCaptureLayer();
-      await _pumpCamera(tester, fake, height: 2400, saved: {'role': 'broadcast'});
+      await _pumpCamera(tester, fake, height: 2400, server: server, saved: {'role': 'broadcast'});
+      // The strip is always there: no toggle to hide it.
       expect(find.byKey(const Key('camera-scoreboard')), findsOneWidget);
-      expect(find.byKey(const Key('camera-pairing-qr')), findsNothing, reason: 'folded');
-      expect(find.byKey(const Key('camera-pairing-folded')), findsOneWidget);
+      expect(find.byKey(const Key('camera-scoreboard-toggle')), findsNothing);
+      expect(find.byKey(const Key('camera-pairing-qr')), findsNothing, reason: 'in the sheet');
 
       await _tapNow(tester, find.byKey(const ValueKey('score-home-plus')));
       expect(fake.overlays.last.homeScore, 1);
 
-      await _tapNow(tester, find.byKey(const Key('camera-scoreboard-toggle')));
-      expect(find.byKey(const Key('camera-scoreboard')), findsNothing);
-      expect(find.byKey(const Key('camera-score')), findsOneWidget, reason: 'the score on air instead');
+      await _tapVisible(tester, find.byKey(const Key('camera-pairing-open')));
+      final code = server.last!.config.secrets.code;
+      expect(find.byKey(const Key('camera-pairing-sheet')), findsOneWidget);
+      expect(find.text('${code.substring(0, 3)} ${code.substring(3)}'), findsOneWidget);
+      expect(find.byKey(const Key('camera-pairing-sheet-qr')), findsOneWidget);
+      await _tapNow(tester, find.byKey(const Key('camera-pairing-sheet-close')));
+      expect(find.byKey(const Key('camera-pairing-sheet')), findsNothing);
+    });
+
+    testWidgets('scoreboard settings: the style is kept and sent with the rest', (tester) async {
+      final fake = FakeCaptureLayer();
+      await _pumpCamera(tester, fake, height: 2400, saved: {'role': 'broadcast'});
+      await _tapNow(tester, find.byKey(const Key('camera-scoreboard-settings')));
+      await tester.tap(find.byKey(const ValueKey('score-settings-style-plate')));
+      await tester.enterText(find.byKey(const ValueKey('score-settings-home-name')), 'leones');
+      await tester.pump();
+      expect(find.text('6 / 16'), findsOneWidget);
+      await _tapNow(tester, find.byKey(const ValueKey('score-settings-save')));
+      expect(fake.overlays.last.homeName, 'LEONES');
     });
 
     testWidgets('a replay on air shows on the broadcast card; speed and Back to live act on the Camera', (tester) async {
@@ -702,7 +725,7 @@ void main() {
     testWidgets('the operating screen shows the score and the stream', (tester) async {
       final fake = FakeCaptureLayer();
       await _pumpCamera(tester, fake, saved: {'role': 'broadcast'});
-      await _tapNow(tester, find.text('Start operating'));
+      await _tapVisible(tester, find.text('Black screen'));
       expect(_operating(tester), isTrue);
       expect(find.byKey(const Key('camera-score')), findsOneWidget);
       expect(find.text('0 – 0'), findsOneWidget);
@@ -715,6 +738,69 @@ void main() {
       fake.thermalController.add(ThermalEvent(status: 3, action: ThermalAction.reduceFps));
       await tester.pumpAndSettle();
       expect(fake.starts, ['1080p60']);
+    });
+
+    // A phone on its side (844×390, 640×360) and a tablet (1180×820), off air and on air.
+    for (final size in const [Size(844, 390), Size(640, 360), Size(1180, 820)]) {
+      testWidgets('broadcasting fits ${size.width.toInt()}x${size.height.toInt()}', (tester) async {
+        final fake = FakeCaptureLayer();
+        await _pumpCamera(tester, fake,
+            width: size.width * 2.5, height: size.height * 2.5, saved: {'role': 'broadcast', 'broadcast.key': 'abcd'});
+        fake.statsController.add(stats(plugged: false));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        void onScreen(String key) {
+          final r = tester.getRect(find.byKey(ValueKey(key)));
+          expect(r.bottom, lessThanOrEqualTo(size.height), reason: key);
+          expect(r.right, lessThanOrEqualTo(size.width), reason: key);
+          expect(r.height, greaterThanOrEqualTo(47.9), reason: key);
+        }
+
+        for (final k in ['score-home-plus', 'score-away-plus', 'score-home-minus', 'score-clock-toggle', 'camera-broadcast-start']) {
+          onScreen(k);
+        }
+
+        await _tapNow(tester, find.byKey(const ValueKey('camera-broadcast-start')));
+        fake.broadcastState = BroadcastStatus(
+            state: BroadcastState.live, targetKbps: 4500, droppedFrames: 0, audio: false, bitrateKbps: 4400, uptimeMs: 3151000);
+        fake.broadcastController.add(fake.broadcastState);
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        // On air: uptime and bitrate in figures, an explicit Stop, the red microphone row.
+        expect(find.textContaining('52:31'), findsOneWidget);
+        expect(find.textContaining('4.4'), findsWidgets);
+        for (final k in ['camera-broadcast-stop', 'camera-broadcast-mic', 'score-home-plus', 'score-clock-toggle']) {
+          onScreen(k);
+        }
+        expect(find.text('NO SOUND'), findsOneWidget, reason: 'the preview says YouTube hears nothing');
+      });
+    }
+
+    testWidgets('Prepare the stream: its red button saves and goes live', (tester) async {
+      final fake = FakeCaptureLayer();
+      await _pumpCamera(tester, fake, width: 844 * 2.5, height: 390 * 2.5, saved: {'role': 'broadcast'});
+      await _tapVisible(tester, find.byKey(const ValueKey('camera-broadcast-settings')));
+      expect(find.byKey(const ValueKey('broadcast-config-stepper')), findsOneWidget);
+      await tester.enterText(find.byKey(const ValueKey('broadcast-key')), 'abcd-efgh');
+      for (var i = 0; i < 3; i++) {
+        await _tapNow(tester, find.byKey(const ValueKey('broadcast-config-next')));
+      }
+      // The last step is the checklist, every line shown.
+      expect(find.byKey(const ValueKey('check-key')), findsOneWidget);
+      expect(find.byKey(const ValueKey('check-key-action')), findsNothing, reason: 'the key is typed on this page');
+      expect(tester.takeException(), isNull);
+      await _tapNow(tester, find.byKey(const ValueKey('broadcast-config-golive')));
+      expect(fake.broadcastConfigs.single.url, 'rtmp://a.rtmp.youtube.com/live2/abcd-efgh');
+    });
+
+    testWidgets('once everything is checked the list turns into one green line', (tester) async {
+      final fake = FakeCaptureLayer();
+      await _pumpCamera(tester, fake, height: 2400, saved: {'role': 'broadcast', 'broadcast.key': 'abcd'});
+      fake.statsController.add(stats(plugged: true));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('broadcast-checklist')), findsNothing);
+      expect(find.byKey(const Key('broadcast-checklist-ready')), findsOneWidget);
+      expect(find.text('Ready to go live'), findsOneWidget);
     });
   });
 }

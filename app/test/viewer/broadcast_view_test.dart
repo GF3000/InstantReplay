@@ -268,17 +268,26 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(_key('score-settings'));
     await tester.pumpAndSettle();
+    // A full page now: scroll each field into view before touching it.
+    Future<void> tap(Finder f) async {
+      await tester.ensureVisible(f);
+      await tester.pumpAndSettle();
+      await tester.tap(f);
+      await tester.pumpAndSettle();
+    }
+
     await tester.enterText(_key('score-settings-home-name'), 'lions');
-    await tester.tap(_key('score-settings-away-color-4'));
-    await tester.tap(find.text('4'));
+    await tap(_key('score-settings-away-color-4'));
+    await tap(find.descendant(of: _key('score-settings-periods'), matching: find.text('4')));
+    await tester.ensureVisible(_key('score-settings-minutes'));
     await tester.enterText(_key('score-settings-minutes'), '10');
-    await tester.tap(find.text('Counts down'));
-    await tester.pumpAndSettle();
+    await tap(find.text('Counts down'));
+    await tap(_key('score-settings-style-plate'));
     await tester.tap(_key('score-settings-save'));
     await tester.pumpAndSettle();
     final s = (remote.sent.single as SettingsCommand).settings;
-    expect((s.homeName, s.awayName, s.awayColor, s.periods, s.periodMs, s.countDown),
-        ('LIONS', 'RIV', teamPalette[4], 4, 600000, true));
+    expect((s.homeName, s.awayName, s.awayColor, s.periods, s.periodMs, s.countDown, s.style),
+        ('LIONS', 'RIV', teamPalette[4], 4, 600000, true, ScoreboardStyle.plate));
   });
 
   testWidgets('stream settings: an empty key keeps the stored one', (tester) async {
@@ -296,6 +305,9 @@ void main() {
     await tester.tap(_key('viewer-broadcast-settings'));
     await tester.pumpAndSettle();
     expect(find.text('Leave empty to keep •••• WXYZ'), findsOneWidget);
+    // The microphone is on the "Picture and sound" tab.
+    await tester.tap(_key('broadcast-tab-image'));
+    await tester.pumpAndSettle();
     await tester.tap(_key('broadcast-audio'));
     await tester.tap(_key('broadcast-config-save'));
     await tester.pumpAndSettle();
