@@ -12,7 +12,7 @@ import 'package:instant_replay/features/broadcast/scoreboard_controller.dart';
 import 'package:instant_replay/features/server/api_server.dart' show CameraControls;
 import 'package:instant_replay/features/server/camera_server.dart';
 import 'package:instant_replay/features/server/pairing.dart';
-import 'package:replay_capture_android/replay_capture_android.dart' show RecordingEnd, RecordingSaved, RecordingState;
+import 'package:replay_capture_android/replay_capture_android.dart' show OverlayStyle, RecordingEnd, RecordingSaved, RecordingState;
 import 'package:instant_replay/l10n/app_localizations.dart';
 import 'package:replay_protocol/replay_protocol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -543,9 +543,9 @@ void main() {
       final scoreboard = ScoreboardController(
         prefs: prefs,
         clockMs: () => 0,
-        setOverlay: (_) async {},
+        setOverlay: capture.setOverlay,
         l10n: () => lookupAppLocalizations(const Locale('en')),
-      );
+      )..overlayEnabled = true;
       final stream = BroadcastController(prefs: prefs, capture: capture);
       final replay = ReplayController(
         capture: capture,
@@ -611,6 +611,40 @@ void main() {
       expect((await a.next<StatusUpdate>()).status.scoreboard!.clockRunning, isTrue);
       await a.close();
       await b.close();
+    });
+
+    test('the style chosen by a viewer reaches the burned-in overlay with the names as drawn', () async {
+      final v = await greeted('viewer-a');
+      ScoreboardSettings settings(ScoreboardStyle style) => ScoreboardSettings(
+            homeName: 'Halcones',
+            awayName: 'Leones de Madrid',
+            homeColor: 0xFF0000FF,
+            awayColor: 0xFFFF0000,
+            periods: 2,
+            periodMs: 30 * 60000,
+            countDown: false,
+            style: style,
+          );
+      Future<void> overlayIn(OverlayStyle style) async {
+        for (var i = 0; i < 200 && capture.overlays.last.style != style; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+        }
+      }
+
+      expect(capture.overlays.last.style, OverlayStyle.classic);
+      v.send(ScoreboardCmd(SettingsCommand(settings(ScoreboardStyle.plate))));
+      await overlayIn(OverlayStyle.plate);
+      expect(host.scoreboard.style, ScoreboardStyle.plate);
+      var o = capture.overlays.last;
+      expect(o.style, OverlayStyle.plate);
+      expect((o.homeName, o.awayName), ('HALCONES', 'LEONES DE MADRID'));
+
+      v.send(ScoreboardCmd(SettingsCommand(settings(ScoreboardStyle.classic))));
+      await overlayIn(OverlayStyle.classic);
+      o = capture.overlays.last;
+      expect(o.style, OverlayStyle.classic);
+      expect((o.homeName, o.awayName), ('HALCO', 'LEONE'));
+      await v.close();
     });
 
     test('a viewer joining later gets the scoreboard at once', () async {

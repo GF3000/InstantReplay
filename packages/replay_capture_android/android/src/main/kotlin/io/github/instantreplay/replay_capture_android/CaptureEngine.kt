@@ -33,6 +33,7 @@ import io.github.instantreplay.replay_capture_android.buffer.RingBuffer
 import io.github.instantreplay.replay_capture_android.buffer.Segmenter
 import io.github.instantreplay.replay_capture_android.gl.EglCore
 import io.github.instantreplay.replay_capture_android.gl.FrameHandoff
+import io.github.instantreplay.replay_capture_android.gl.OverlayFonts
 import io.github.instantreplay.replay_capture_android.gl.OverlayRenderer
 import io.github.instantreplay.replay_capture_android.gl.TexTransform
 import io.github.instantreplay.replay_capture_android.gl.TextureRenderer
@@ -194,8 +195,9 @@ internal class CaptureEngine(
             val outWidth = minOf(config.width, OUT_MAX_WIDTH)
             handoff = FrameHandoff(outWidth, outWidth * config.height / config.width, useFences = core.glVersion >= 3)
             if (config.broadcast) {
-                overlay = OverlayRenderer(config.height)
-                label = LabelRenderer(config.height)
+                val fonts = OverlayFonts(appContext.assets)
+                overlay = OverlayRenderer(config.height, fonts)
+                label = LabelRenderer(config.height, fonts)
             }
             val st = SurfaceTexture(cameraTexture).apply {
                 // Preview/live only need 720p; the program (broadcast) and the GL fallback need
@@ -632,6 +634,9 @@ internal class CaptureEngine(
         } else {
             null
         }
+
+        // The replay badge follows the scoreboard style (classic box or plate).
+        if (replayShowing) label?.plate = overlay?.plate == true
 
         // Broadcast program at most 30 fps, after the HQ frame so it can never delay it. The swap
         // doesn't block (swap interval 0): a backed-up encoder loses program frames, not HQ ones.

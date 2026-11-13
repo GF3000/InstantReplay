@@ -92,6 +92,68 @@ class ScoreboardTest {
     }
 
     @Test
+    fun namesAreCutToFiveOnTheBarAndKeptOnThePlate() {
+        val long = state.copy(homeName = "Halcones", awayName = "Leones de Madrid")
+        val bar = Scoreboard.text(long, 0)
+        assertEquals("HALCO", bar.homeName)
+        assertEquals("LEONE", bar.awayName)
+        assertEquals(false, bar.plate)
+        val plate = Scoreboard.text(long.copy(plate = true), 0)
+        assertEquals("HALCONES", plate.homeName)
+        assertEquals("LEONES DE MADRID", plate.awayName)
+        assertTrue(plate.plate)
+        assertTrue(bar != plate, "a style change redraws the texture")
+    }
+
+    private val plateMeasure = { font: PlateFont, s: String ->
+        s.length * when (font) {
+            PlateFont.NAME -> 10f
+            PlateFont.MONO -> 12f
+            PlateFont.PERIOD -> 6f
+        }
+    }
+
+    @Test
+    fun plateFitsTheLongerNameAndSpansTheClockOverBothRows() {
+        val text = Scoreboard.text(state.copy(plate = true, homeName = "Halcones"), 0)
+        val row = 44f
+        val l = Scoreboard.plateLayout(text, row, plateMeasure)
+        assertEquals(88, l.height)
+        // Name column: padding, stripe, gap, the longer name (8 letters), padding.
+        assertTrue(l.stripeX > 0 && l.nameX > l.stripeX + l.stripeWidth)
+        assertEquals(l.nameX + 80f + row * 0.41f, l.scoreX, 0.001f)
+        // Score cell reserves two digits; the clock column follows a 1 px line.
+        assertEquals(24f + 2 * l.scorePad, l.scoreWidth, 0.001f)
+        assertEquals(l.scoreX + l.scoreWidth, l.dividerX, 0.001f)
+        assertEquals(1f, l.border)
+        assertEquals(l.dividerX + l.border, l.clockX, 0.001f)
+        assertEquals(kotlin.math.ceil(l.clockX + l.clockWidth).toInt(), l.width)
+        assertEquals(row * 0.07f, l.radius, 0.001f)
+
+        val longer = Scoreboard.plateLayout(
+            Scoreboard.text(state.copy(plate = true, awayName = "Leones de Madrid"), 0), row, plateMeasure,
+        )
+        assertEquals(l.scoreX + 80f, longer.scoreX, 0.001f, "the plate widens with the longest name")
+    }
+
+    @Test
+    fun plateWidthIsStableAsTheScoreAndClockTick() {
+        val base = state.copy(plate = true)
+        val a = Scoreboard.plateLayout(Scoreboard.text(base, 0), 44f, plateMeasure)
+        val b = Scoreboard.plateLayout(Scoreboard.text(base.copy(homeScore = 19), 7_000), 44f, plateMeasure)
+        assertEquals(a.width, b.width)
+        val noPeriod = Scoreboard.plateLayout(Scoreboard.text(base.copy(periodLabel = ""), 0), 44f, plateMeasure)
+        assertEquals(a.width, noPeriod.width, "the clock is wider than a short period label")
+    }
+
+    @Test
+    fun plateScalesLikeTheBar() {
+        assertEquals(56 * Scoreboard.PLATE_ROW, Scoreboard.plateRow(1080), 0.001f)
+        assertEquals(84 * Scoreboard.PLATE_ROW, Scoreboard.plateRow(1080, 150), 0.001f)
+        assertEquals(2f, Scoreboard.plateLayout(Scoreboard.text(state.copy(plate = true), 0), 88f, plateMeasure).border)
+    }
+
+    @Test
     fun scalesWithTheFrame() {
         assertEquals(56, Scoreboard.barHeight(1080))
         assertEquals(37, Scoreboard.barHeight(720))

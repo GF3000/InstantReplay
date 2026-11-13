@@ -13,6 +13,7 @@ export 'src/capture_api.g.dart'
         ClipState,
         LiveViewerStats,
         OverlayState,
+        OverlayStyle,
         RecordingEnd,
         RecordingSaved,
         RecordingState,
