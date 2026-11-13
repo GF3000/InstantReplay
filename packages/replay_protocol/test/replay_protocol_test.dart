@@ -296,8 +296,29 @@ void main() {
         )),
         elapsedMs: 3000,
       );
-      expect(renamed.home.name, 'BARCE');
+      // Names are kept whole (up to 16); the classic bar draws only the first 5 letters.
+      expect(renamed.home.name, 'BARCELONA');
+      expect(ScoreboardState.displayName(renamed.home.name, ScoreboardStyle.classic), 'BARCE');
+      expect(ScoreboardState.displayName(renamed.home.name, ScoreboardStyle.plate), 'BARCELONA');
+      expect(renamed.style, ScoreboardStyle.classic);
       expect(renamed.away.name, 'VIS');
+      expect(ScoreboardState.normalizeName('a' * 30, 'X').length, ScoreboardState.maxNameLength);
+      final plate = renamed.apply(
+        SettingsCommand(ScoreboardSettings(
+          homeName: 'barcelona',
+          awayName: 'vis',
+          homeColor: 5,
+          awayColor: 6,
+          periods: 2,
+          periodMs: s0.periodMs,
+          countDown: false,
+          style: ScoreboardStyle.plate,
+        )),
+        elapsedMs: 0,
+      );
+      expect(plate.style, ScoreboardStyle.plate);
+      expect(ScoreboardState.fromJson(plate.toJson()).style, ScoreboardStyle.plate);
+      expect(ScoreboardState.fromJson(s0.toJson()..remove('style')).style, ScoreboardStyle.classic);
       expect(renamed.periods, 4);
       expect((renamed.clockMs, renamed.clockRunning), (3000, true));
     });
