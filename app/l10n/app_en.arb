@@ -1094,5 +1094,39 @@
   "libError": "Couldn't open the library",
   "libRetry": "Retry",
   "libTemplatesBuiltIn": "Built-in",
-  "libTemplatesImported": "Imported"
+  "libTemplatesImported": "Imported",
+  "liveSaveTitle": "Save play",
+  "liveSaveSubtitle": "the last {seconds} s and {post} s more",
+  "@liveSaveSubtitle": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      },
+      "post": {
+        "type": "int"
+      }
+    }
+  },
+  "liveOnAirBadge": "LIVE",
+  "liveNoSoundBadge": "STREAM WITHOUT SOUND",
+  "liveMicOpen": "Mic on",
+  "liveMicClosed": "Mic off",
+  "liveMenu": "Menu",
+  "liveRestart": "Restart",
+  "liveClipsEmptyHint": "Tap Save play right after a good moment.",
+  "liveTagPanelTitle": "Saved · what was it?",
+  "livePlayClip": "Watch",
+  "liveTeams": "{home} vs {away}",
+  "@liveTeams": {
+    "placeholders": {
+      "home": {
+        "type": "String"
+      },
+      "away": {
+        "type": "String"
+      }
+    }
+  },
+  "liveGlanceTitle": "Match at a glance",
+  "liveGlanceHint": "Tap a mark to review it"
 }

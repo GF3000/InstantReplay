@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:instant_replay/core/preferences.dart';
 import 'package:instant_replay/features/viewer/clips/clip_transfers.dart';
+import 'package:instant_replay/features/viewer/tags/tag_editor_page.dart';
 import 'package:instant_replay/features/viewer/tags/tags.dart';
 import 'package:instant_replay/features/viewer/ui/clip_list.dart';
 import 'package:instant_replay/l10n/app_localizations.dart';
@@ -16,12 +17,8 @@ Future<ProviderContainer> _container([Map<String, Object> prefs = const {}]) asy
   return c;
 }
 
-SessionClip _clip(String id, {DateTime? at, SessionClipPhase phase = SessionClipPhase.ready}) => SessionClip(
-      requestId: id,
-      seconds: 20,
-      requestedAt: at ?? DateTime(2026, 10, 29, 12, 41),
-      phase: phase,
-    );
+SessionClip _clip(String id, {DateTime? at, SessionClipPhase phase = SessionClipPhase.ready}) =>
+    SessionClip(requestId: id, seconds: 20, requestedAt: at ?? DateTime(2026, 10, 29, 12, 41), phase: phase);
 
 void main() {
   final en = lookupAppLocalizations(const Locale('en'));
@@ -125,14 +122,48 @@ void main() {
     });
 
     test('a save made while filtering stays visible until it is ready', () {
-      final clips = [
-        _clip('new', phase: SessionClipPhase.downloading),
-        _clip('a'),
-        _clip('b'),
-      ];
+      final clips = [_clip('new', phase: SessionClipPhase.downloading), _clip('a'), _clip('b')];
       final clipTags = {'a': TagsNotifier.good, 'b': TagsNotifier.bad};
       expect([for (final c in filterClips(clips, clipTags, TagsNotifier.good)) c.requestId], ['new', 'a']);
     });
+  });
+
+  testWidgets('tag editor: add a tag picking a palette colour, marked with a check', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        child: MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const TagEditorPage(),
+        ),
+      ),
+    );
+    expect(find.text('Good'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('tag-add')));
+    await tester.pumpAndSettle();
+    // The next palette colour is preselected.
+    Finder check(int color) =>
+        find.descendant(of: find.byKey(ValueKey('tag-color-$color')), matching: find.byIcon(Icons.check));
+    expect(check(tagPalette[3]), findsOneWidget);
+    await tester.tap(find.byKey(ValueKey('tag-color-${tagPalette[4]}')));
+    await tester.pump();
+    expect(check(tagPalette[3]), findsNothing);
+    expect(check(tagPalette[4]), findsOneWidget);
+    expect(tester.getSize(find.byKey(ValueKey('tag-color-${tagPalette[4]}'))).width, greaterThanOrEqualTo(48));
+    await tester.enterText(find.byKey(const ValueKey('tag-name')), 'Serve');
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('tag-ok')));
+    await tester.pumpAndSettle();
+    final container = ProviderScope.containerOf(tester.element(find.byType(TagEditorPage)));
+    expect(
+      container.read(tagsProvider).last,
+      isA<ViewerTag>().having((t) => (t.name, t.color), 'name, color', ('Serve', tagPalette[4])),
+    );
+    expect(find.text('Serve'), findsOneWidget);
   });
 
   group('tag delete undo', () {

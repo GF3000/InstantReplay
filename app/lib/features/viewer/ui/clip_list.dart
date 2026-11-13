@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/ui/ir_colors.dart';
+import '../../../core/ui/ir_widgets.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../library/library_providers.dart';
 import '../clips/clip_transfers.dart';
@@ -48,14 +52,57 @@ List<SessionClip> filterClips(List<SessionClip> clips, Map<String, String> clipT
           if (clipTags[c.requestId] == filter || c.phase != SessionClipPhase.ready) c,
       ];
 
-/// Newest first, with filter chips by tag on top. On Android a resumed session also lists the
-/// clips saved into it before ([liveClipsProvider]).
+/// Opens [clip] in the review, or null while it is not stored yet. While streaming, a clip still
+/// on the Camera can also go on air (SPEC §12.6).
+VoidCallback? clipOpener(BuildContext context, WidgetRef ref, SessionClip clip) => clip.stored == null
+    ? null
+    : () => openClipReview(
+        context,
+        ref,
+        clip,
+        ({required onAir}) => ReviewPage.route(clip, replayBar: true, onAir: onAir),
+      );
+
+/// The newest save, for a short amber highlight of its row, its quick choice and the live view.
+@immutable
+class RecentSave {
+  const RecentSave(this.requestId, this.seconds);
+
+  final String requestId;
+
+  /// The quick choice used, or null for the main Save key.
+  final int? seconds;
+}
+
+class RecentSaveNotifier extends Notifier<RecentSave?> {
+  static const highlightFor = Duration(milliseconds: 1500);
+
+  Timer? _timer;
+
+  @override
+  RecentSave? build() {
+    ref.onDispose(() => _timer?.cancel());
+    return null;
+  }
+
+  void mark(String requestId, int? seconds) {
+    _timer?.cancel();
+    state = RecentSave(requestId, seconds);
+    _timer = Timer(highlightFor, () => state = null);
+  }
+}
+
+final recentSaveProvider = NotifierProvider<RecentSaveNotifier, RecentSave?>(RecentSaveNotifier.new);
+
+/// Newest first, with filter chips by tag (and their counts) on top. On Android a resumed session
+/// also lists the clips saved into it before ([liveClipsProvider]).
 class ClipList extends ConsumerWidget {
   const ClipList({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final c = context.ir;
     final clips = ref.watch(liveClipsProvider);
     final clipTags = ref.watch(clipTagsProvider);
     final inUse = tagsInUse(clips, clipTags, ref.watch(tagsProvider));
@@ -67,61 +114,108 @@ class ClipList extends ConsumerWidget {
       Future.microtask(() => ref.read(clipFilterProvider.notifier).select(null));
     }
     final shown = filterClips(clips, clipTags, filter);
-    final small = Theme.of(context).textTheme.bodySmall;
+    final small = TextStyle(fontSize: 13, color: c.muted);
     void select(String? id) => ref.read(clipFilterProvider.notifier).select(id);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (inUse.isNotEmpty)
-          SizedBox(
-            height: 52,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              children: [
-                ChoiceChip(
-                  key: const ValueKey('filter-all'),
-                  label: Text(l10n.viewerFilterAll),
-                  selected: filter == null,
-                  onSelected: (_) => select(null),
-                ),
-                for (final t in inUse)
-                  Padding(
-                    padding: const EdgeInsetsDirectional.only(start: 8),
-                    child: ChoiceChip(
-                      key: ValueKey('filter-${t.id}'),
-                      avatar: Icon(Icons.circle, size: 14, color: t.colour),
-                      label: Text(t.label(l10n)),
-                      selected: filter == t.id,
-                      onSelected: (_) => select(filter == t.id ? null : t.id),
-                    ),
+    int count(String id) => clips.where((x) => clipTags[x.requestId] == id).length;
+    return LayoutBuilder(
+      // A very short list (broadcast mode on a small phone) keeps its room for the clips.
+      builder: (context, box) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (inUse.isNotEmpty && box.maxHeight >= 120)
+            SizedBox(
+              height: 52,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                children: [
+                  IrFilterChip(
+                    key: const ValueKey('filter-all'),
+                    label: l10n.viewerFilterAll,
+                    color: c.muted,
+                    count: clips.length,
+                    selected: filter == null,
+                    onTap: () => select(null),
                   ),
-              ],
+                  for (final t in inUse)
+                    Padding(
+                      padding: const EdgeInsetsDirectional.only(start: 6),
+                      child: IrFilterChip(
+                        key: ValueKey('filter-${t.id}'),
+                        label: t.label(l10n),
+                        color: t.colour,
+                        count: count(t.id),
+                        selected: filter == t.id,
+                        onTap: () => select(filter == t.id ? null : t.id),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          Expanded(
+            child: clips.isEmpty
+                ? _Empty(web: kIsWeb)
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(12, 2, 12, 12),
+                    itemCount: shown.length + (kIsWeb ? 1 : 0),
+                    itemBuilder: (context, i) => i < shown.length
+                        ? Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: _Deletable(key: ValueKey(shown[i].requestId), clip: shown[i]),
+                          )
+                        : Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Text(l10n.viewerSessionOnlyNotice, style: small, textAlign: TextAlign.center),
+                          ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// No clips yet: an icon, one line and a hint.
+class _Empty extends StatelessWidget {
+  const _Empty({required this.web});
+
+  final bool web;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final c = context.ir;
+    return LayoutBuilder(
+      builder: (context, box) => SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: box.maxHeight),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (box.maxHeight >= 140) ...[
+                    Icon(Icons.video_library_outlined, size: 32, color: c.muted),
+                    const SizedBox(height: 8),
+                  ],
+                  Text(
+                    l10n.viewerClipsEmpty,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    [l10n.liveClipsEmptyHint, if (web) l10n.viewerSessionOnlyNotice].join('\n'),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 13, color: c.muted),
+                  ),
+                ],
+              ),
             ),
           ),
-        Expanded(
-          child: clips.isEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(
-                      [l10n.viewerClipsEmpty, if (kIsWeb) l10n.viewerSessionOnlyNotice].join('\n'),
-                      style: small,
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                )
-              : ListView.builder(
-                  itemCount: shown.length + (kIsWeb ? 1 : 0),
-                  itemBuilder: (context, i) => i < shown.length
-                      ? _Deletable(key: ValueKey(shown[i].requestId), clip: shown[i])
-                      : Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Text(l10n.viewerSessionOnlyNotice, style: small, textAlign: TextAlign.center),
-                        ),
-                ),
         ),
-      ],
+      ),
     );
   }
 }
@@ -139,17 +233,21 @@ class _Deletable extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tile = ClipTile(clip: clip);
     if (!canDelete(clip)) return tile;
-    final scheme = Theme.of(context).colorScheme;
+    final c = context.ir;
     return Dismissible(
       key: ValueKey('clip-delete-${clip.requestId}'),
       direction: DismissDirection.endToStart,
-      background: ColoredBox(
-        color: scheme.errorContainer,
+      background: DecoratedBox(
+        decoration: BoxDecoration(
+          color: c.liveSoft,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: c.live),
+        ),
         child: Align(
           alignment: AlignmentDirectional.centerEnd,
           child: Padding(
             padding: const EdgeInsetsDirectional.only(end: 24),
-            child: Icon(Icons.delete_outline, color: scheme.onErrorContainer),
+            child: Icon(Icons.delete_outline, color: c.liveText),
           ),
         ),
       ),
@@ -167,22 +265,27 @@ void deleteClipWithUndo(BuildContext context, WidgetRef ref, SessionClip clip) {
   final messenger = ScaffoldMessenger.of(context)..hideCurrentSnackBar();
   final tag = ref.read(clipTagProvider(clip.requestId));
   messenger
-      .showSnackBar(SnackBar(
-        content: Text(l10n.viewerClipDeleted(clipName(l10n, tag, clip.requestedAt))),
-        action: SnackBarAction(label: l10n.viewerClipUndo, onPressed: () {}),
-        // A SnackBar with an action stays until dismissed by default; this one must go away so
-        // the deletion stands.
-        persist: false,
-        duration: const Duration(seconds: 5),
-      ))
+      .showSnackBar(
+        SnackBar(
+          content: Text(l10n.viewerClipDeleted(clipName(l10n, tag, clip.requestedAt))),
+          action: SnackBarAction(label: l10n.viewerClipUndo, onPressed: () {}),
+          // A SnackBar with an action stays until dismissed by default; this one must go away so
+          // the deletion stands.
+          persist: false,
+          duration: const Duration(seconds: 5),
+        ),
+      )
       .closed
-      .then((reason) => reason == SnackBarClosedReason.action
-          ? clips.undoDelete(clip.requestId)
-          : clips.commitDelete(clip.requestId));
+      .then(
+        (reason) => reason == SnackBarClosedReason.action
+            ? clips.undoDelete(clip.requestId)
+            : clips.commitDelete(clip.requestId),
+      );
 }
 
-/// Thumbnail, name (tag + time), duration, tag colour and state. Tap to review; long-press or the
-/// tag button to change the tag.
+/// One row of the cue list: thumbnail (tag-colour bar, duration badge), the tag as title, time
+/// and state in mono, a visible tag button and a play button. Tap to review; long-press or the
+/// tag button to change the tag. The newest save is highlighted for a moment.
 class ClipTile extends ConsumerWidget {
   const ClipTile({super.key, required this.clip});
 
@@ -191,111 +294,158 @@ class ClipTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    final scheme = Theme.of(context).colorScheme;
+    final c = context.ir;
     final tag = ref.watch(clipTagProvider(clip.requestId));
+    final fresh = ref.watch(recentSaveProvider.select((r) => r?.requestId == clip.requestId));
     final (state, stateColor) = switch (clip.phase) {
-      SessionClipPhase.requesting => (l10n.viewerClipRequesting, null),
-      SessionClipPhase.recording => (l10n.viewerClipRecording, null),
+      SessionClipPhase.requesting => (l10n.viewerClipRequesting, c.muted),
+      SessionClipPhase.recording => (l10n.viewerClipRecording, c.muted),
       SessionClipPhase.downloading => (
-          clip.progress == null || clip.received == 0
-              ? l10n.viewerClipDownloadingStarted
-              : l10n.viewerClipDownloading((clip.progress! * 100).round()),
-          null,
-        ),
-      SessionClipPhase.ready => (l10n.viewerClipReady, scheme.primary),
+        clip.progress == null || clip.received == 0
+            ? l10n.viewerClipDownloadingStarted
+            : l10n.viewerClipDownloading((clip.progress! * 100).round()),
+        c.muted,
+      ),
+      SessionClipPhase.ready => (l10n.viewerClipReady, c.ok),
       SessionClipPhase.failed => (
-          switch (clip.failure) {
-            ClipFailure.request || null => l10n.viewerClipFailedRequest,
-            ClipFailure.download => l10n.viewerClipFailedDownload,
-            ClipFailure.checksum => l10n.viewerClipFailedChecksum,
-            ClipFailure.expired => l10n.viewerClipExpired,
-          },
-          scheme.error,
-        ),
+        switch (clip.failure) {
+          ClipFailure.request || null => l10n.viewerClipFailedRequest,
+          ClipFailure.download => l10n.viewerClipFailedDownload,
+          ClipFailure.checksum => l10n.viewerClipFailedChecksum,
+          ClipFailure.expired => l10n.viewerClipExpired,
+        },
+        c.liveText,
+      ),
     };
     final stored = clip.stored;
     void changeTag() => showClipTagPicker(context, clip.requestId);
+    final open = clipOpener(context, ref, clip);
+    final still = MediaQuery.of(context).disableAnimations;
     return LayoutBuilder(
-      builder: (context, c) {
-        final roomy = c.maxWidth >= 420;
-        return InkWell(
-          // While streaming, a clip still on the Camera can also go on air (SPEC §12.6).
-          onTap: stored == null
-              ? null
-              : () => openClipReview(
-                    context,
-                    ref,
-                    clip,
-                    ({required onAir}) => ReviewPage.route(clip, replayBar: true, onAir: onAir),
-                  ),
-          onLongPress: changeTag,
-          child: Container(
-            height: 72,
-            decoration: BoxDecoration(
-              border: BorderDirectional(start: BorderSide(color: tag?.colour ?? Colors.transparent, width: 5)),
-            ),
-            padding: const EdgeInsetsDirectional.only(start: 7, end: 4),
-            child: Row(
-              children: [
-                // Narrow panels (phone landscape) need the room for the name.
-                _Thumbnail(clip: clip, width: roomy ? 96 : 64),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        clipName(l10n, tag, clip.requestedAt),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-                      ),
-                      Row(children: [
-                        Flexible(
-                          child: Text(
-                            '${l10n.viewerClipDuration(clipSeconds(clip))} · $state',
+      builder: (context, box) {
+        final roomy = box.maxWidth >= 420;
+        // Narrow panels (phone landscape) need the room for the name: the play icon sits on the
+        // thumbnail instead of in its own button.
+        final playButton = box.maxWidth >= 330;
+        return AnimatedContainer(
+          key: ValueKey('clip-row-${clip.requestId}'),
+          duration: still ? Duration.zero : const Duration(milliseconds: 600),
+          curve: Curves.easeOut,
+          decoration: BoxDecoration(
+            color: fresh ? c.signalSoft : c.surface,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: fresh ? c.signal : c.line),
+          ),
+          child: Material(
+            type: MaterialType.transparency,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(4),
+              onTap: open,
+              onLongPress: changeTag,
+              child: Padding(
+                padding: const EdgeInsetsDirectional.fromSTEB(6, 6, 4, 6),
+                child: Row(
+                  children: [
+                    _Thumbnail(clip: clip, tag: tag, width: roomy ? 96 : (playButton ? 80 : 64), playIcon: !playButton),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            tag?.label(l10n) ?? l10n.viewerClipNoTag,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(color: stateColor),
-                          ),
-                        ),
-                        // Still on the Camera: it can go on air (SPEC §12.6).
-                        if (clip.onCamera && clip.phase == SessionClipPhase.ready) ...[
-                          const SizedBox(width: 6),
-                          Tooltip(
-                            message: l10n.clipOnCamera,
-                            child: Icon(
-                              Icons.videocam_outlined,
-                              key: ValueKey('clip-on-camera-${clip.requestId}'),
-                              size: 16,
-                              color: scheme.primary,
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: tag == null ? c.muted : c.text,
                             ),
                           ),
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      TextSpan(text: '${DateFormat('HH:mm').format(clip.requestedAt)} · '),
+                                      TextSpan(
+                                        text: state,
+                                        style: TextStyle(color: stateColor),
+                                      ),
+                                    ],
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: irMono(12, weight: FontWeight.w500, color: c.muted),
+                                ),
+                              ),
+                              // Still on the Camera: it can go on air (SPEC §12.6).
+                              if (clip.onCamera && clip.phase == SessionClipPhase.ready) ...[
+                                const SizedBox(width: 6),
+                                Tooltip(
+                                  message: l10n.clipOnCamera,
+                                  child: Icon(
+                                    Icons.videocam_outlined,
+                                    key: ValueKey('clip-on-camera-${clip.requestId}'),
+                                    size: 16,
+                                    color: c.signal,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
                         ],
-                      ]),
-                    ],
-                  ),
+                      ),
+                    ),
+                    if (clip.phase == SessionClipPhase.failed &&
+                        clip.failure != ClipFailure.expired &&
+                        clip.clipId != null)
+                      IconButton(
+                        tooltip: l10n.viewerClipRetry,
+                        icon: const Icon(Icons.refresh),
+                        onPressed: () => ref.read(viewerClipsProvider.notifier).retry(clip.requestId),
+                      ),
+                    if (roomy && stored != null && stored.canDownload)
+                      IconButton(
+                        tooltip: l10n.viewerClipDownload,
+                        icon: const Icon(Icons.download),
+                        onPressed: () => stored.download(clipFileName(clip)),
+                      ),
+                    IconButton(
+                      key: ValueKey('clip-tag-${clip.requestId}'),
+                      tooltip: l10n.viewerClipChangeTag,
+                      icon: Icon(tag == null ? Icons.sell_outlined : Icons.sell, color: tag?.colour ?? c.muted),
+                      onPressed: changeTag,
+                    ),
+                    if (playButton)
+                      Padding(
+                        padding: const EdgeInsetsDirectional.only(start: 2, end: 2),
+                        child: Tooltip(
+                          message: l10n.livePlayClip,
+                          child: Material(
+                            color: c.bg,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                              side: BorderSide(color: c.line),
+                            ),
+                            child: InkWell(
+                              key: ValueKey('clip-play-${clip.requestId}'),
+                              borderRadius: BorderRadius.circular(4),
+                              onTap: open,
+                              child: SizedBox.square(
+                                dimension: 44,
+                                child: Icon(Icons.play_arrow, color: open == null ? c.lineStrong : c.text),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-                if (clip.phase == SessionClipPhase.failed && clip.failure != ClipFailure.expired && clip.clipId != null)
-                  IconButton(
-                    tooltip: l10n.viewerClipRetry,
-                    icon: const Icon(Icons.refresh),
-                    onPressed: () => ref.read(viewerClipsProvider.notifier).retry(clip.requestId),
-                  ),
-                if (roomy && stored != null && stored.canDownload)
-                  IconButton(
-                    tooltip: l10n.viewerClipDownload,
-                    icon: const Icon(Icons.download),
-                    onPressed: () => stored.download(clipFileName(clip)),
-                  ),
-                IconButton(
-                  key: ValueKey('clip-tag-${clip.requestId}'),
-                  tooltip: l10n.viewerClipChangeTag,
-                  icon: Icon(tag == null ? Icons.sell_outlined : Icons.sell, color: tag?.colour),
-                  onPressed: changeTag,
-                ),
-              ],
+              ),
             ),
           ),
         );
@@ -305,47 +455,70 @@ class ClipTile extends ConsumerWidget {
 }
 
 class _Thumbnail extends ConsumerWidget {
-  const _Thumbnail({required this.clip, required this.width});
+  const _Thumbnail({required this.clip, required this.tag, required this.width, required this.playIcon});
 
   final SessionClip clip;
+  final ViewerTag? tag;
   final double width;
+
+  /// Draw a play icon over a finished clip (when the row has no play button).
+  final bool playIcon;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
+    final c = context.ir;
     final stored = clip.stored;
     final image = stored == null ? null : ref.watch(clipThumbnailProvider(stored)).value;
     final busy = switch (clip.phase) {
       SessionClipPhase.requesting || SessionClipPhase.recording || SessionClipPhase.downloading => true,
       _ => false,
     };
+    final Widget? centre = busy
+        ? SizedBox.square(
+            dimension: 24,
+            child: CircularProgressIndicator(
+              value: clip.phase == SessionClipPhase.downloading && clip.received > 0 ? clip.progress : null,
+              strokeWidth: 3,
+            ),
+          )
+        : clip.phase == SessionClipPhase.failed
+        ? Icon(Icons.error_outline, color: c.live, size: 26)
+        : playIcon || image == null
+        ? Icon(Icons.play_circle, size: 26, color: image == null ? c.muted : Colors.white.withValues(alpha: 0.85))
+        : null;
     return ClipRRect(
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: BorderRadius.circular(2),
       child: SizedBox(
         width: width,
         height: width * 9 / 16,
         child: ColoredBox(
-          color: scheme.surfaceContainerHighest,
+          color: c.surfaceHigh,
           child: Stack(
             fit: StackFit.expand,
             children: [
               if (image != null) Image.memory(image, fit: BoxFit.cover, gaplessPlayback: true),
-              Center(
-                child: busy
-                    ? SizedBox.square(
-                        dimension: 28,
-                        child: CircularProgressIndicator(
-                          value: clip.phase == SessionClipPhase.downloading && clip.received > 0 ? clip.progress : null,
-                          strokeWidth: 3,
-                        ),
-                      )
-                    : clip.phase == SessionClipPhase.failed
-                        ? Icon(Icons.error_outline, color: scheme.error, size: 28)
-                        : Icon(
-                            Icons.play_circle,
-                            size: 28,
-                            color: image == null ? scheme.onSurfaceVariant : Colors.white.withValues(alpha: 0.85),
-                          ),
+              if (centre != null) Center(child: centre),
+              PositionedDirectional(
+                end: 3,
+                top: 3,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.75),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                  child: Text(
+                    AppLocalizations.of(context).viewerClipDuration(clipSeconds(clip)),
+                    style: irMono(10, weight: FontWeight.w600, color: Colors.white),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: 3,
+                child: ColoredBox(color: tag?.colour ?? c.lineStrong),
               ),
             ],
           ),

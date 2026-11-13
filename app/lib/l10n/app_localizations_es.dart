@@ -1751,4 +1751,51 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get libTemplatesImported => 'Importadas';
+
+  @override
+  String get liveSaveTitle => 'Guardar jugada';
+
+  @override
+  String liveSaveSubtitle(int seconds, int post) {
+    return 'los últimos $seconds s y $post s más';
+  }
+
+  @override
+  String get liveOnAirBadge => 'EN VIVO';
+
+  @override
+  String get liveNoSoundBadge => 'EMISIÓN SIN SONIDO';
+
+  @override
+  String get liveMicOpen => 'Micro abierto';
+
+  @override
+  String get liveMicClosed => 'Micro cerrado';
+
+  @override
+  String get liveMenu => 'Menú';
+
+  @override
+  String get liveRestart => 'Reiniciar';
+
+  @override
+  String get liveClipsEmptyHint =>
+      'Toca Guardar jugada justo después de la jugada.';
+
+  @override
+  String get liveTagPanelTitle => 'Guardado · ¿qué ha sido?';
+
+  @override
+  String get livePlayClip => 'Ver';
+
+  @override
+  String liveTeams(String home, String away) {
+    return '$home vs $away';
+  }
+
+  @override
+  String get liveGlanceTitle => 'Partido de un vistazo';
+
+  @override
+  String get liveGlanceHint => 'Toca una marca para revisarla';
 }

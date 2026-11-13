@@ -488,5 +488,19 @@
   "libError": "No se pudo abrir la biblioteca",
   "libRetry": "Reintentar",
   "libTemplatesBuiltIn": "Incluidas",
-  "libTemplatesImported": "Importadas"
+  "libTemplatesImported": "Importadas",
+  "liveSaveTitle": "Guardar jugada",
+  "liveSaveSubtitle": "los últimos {seconds} s y {post} s más",
+  "liveOnAirBadge": "EN VIVO",
+  "liveNoSoundBadge": "EMISIÓN SIN SONIDO",
+  "liveMicOpen": "Micro abierto",
+  "liveMicClosed": "Micro cerrado",
+  "liveMenu": "Menú",
+  "liveRestart": "Reiniciar",
+  "liveClipsEmptyHint": "Toca Guardar jugada justo después de la jugada.",
+  "liveTagPanelTitle": "Guardado · ¿qué ha sido?",
+  "livePlayClip": "Ver",
+  "liveTeams": "{home} vs {away}",
+  "liveGlanceTitle": "Partido de un vistazo",
+  "liveGlanceHint": "Toca una marca para revisarla"
 }
