@@ -248,7 +248,7 @@ class GoogleYouTubeAccount implements YouTubeAccount {
           await _api.bind(broadcast.id, stream.id);
         }
         await _remember(broadcast);
-        await _prefs.setBool(_activeKey, true);
+        await setActive(true);
         return (server: stream.server, key: stream.key, broadcast: broadcast);
       });
 
@@ -261,7 +261,7 @@ class GoogleYouTubeAccount implements YouTubeAccount {
       return _guard(() async {
         final stream = await _stream();
         if (current.boundStreamId != stream.id) await _api.bind(current.id, stream.id);
-        await _prefs.setBool(_activeKey, true);
+        await setActive(true);
         return (server: stream.server, key: stream.key, broadcast: current);
       });
     }

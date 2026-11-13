@@ -117,6 +117,16 @@ void main() {
     expect(yt.bound['b1'], 's1');
   });
 
+  test('saving tells listeners once account mode is on (the stream bar shows the QR at once)', () async {
+    final a = account();
+    final seen = <bool>[];
+    final sub = a.changes.listen((_) => seen.add(a.active));
+    await a.save(title: 'Final', description: '', privacy: YouTubePrivacy.public, fresh: true);
+    await Future<void>.delayed(Duration.zero);
+    await sub.cancel();
+    expect(seen.last, isTrue);
+  });
+
   test('account mode is remembered across restarts', () async {
     await account().setActive(true);
     expect(account().active, isTrue);
