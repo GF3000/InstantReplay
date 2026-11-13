@@ -1468,4 +1468,122 @@ class AppLocalizationsEs extends AppLocalizations {
   String replayFailed(String message) {
     return 'No se pudo emitir la repetición: $message';
   }
+
+  @override
+  String get broadcastModeKey => 'Clave';
+
+  @override
+  String get broadcastModeAccount => 'Cuenta de YouTube';
+
+  @override
+  String get youtubeAccountHelp =>
+      'Inicia sesión con la cuenta de Google del canal: la app crea el directo (título y visibilidad), envía la clave a la cámara y el directo empieza y termina solo con la emisión.';
+
+  @override
+  String get youtubeSignIn => 'Iniciar sesión con Google';
+
+  @override
+  String get youtubeSignOut => 'Cerrar sesión';
+
+  @override
+  String get youtubeWillCreate =>
+      'Al guardar se crea un directo nuevo en el canal.';
+
+  @override
+  String get youtubeTitle => 'Título';
+
+  @override
+  String get youtubeDescription => 'Descripción';
+
+  @override
+  String get youtubePrivacy => 'Visibilidad';
+
+  @override
+  String get youtubePrivacyPublic => 'Público';
+
+  @override
+  String get youtubePrivacyUnlisted => 'Oculto';
+
+  @override
+  String get youtubePrivacyPrivate => 'Privado';
+
+  @override
+  String youtubeDefaultTitle(String date) {
+    return 'Partido $date';
+  }
+
+  @override
+  String get youtubeLifeReady => 'Preparado: empieza en cuanto llegue la señal';
+
+  @override
+  String get youtubeLifeStarting => 'YouTube está arrancando el directo';
+
+  @override
+  String get youtubeLifeLive => 'En directo en YouTube';
+
+  @override
+  String get youtubeLifeComplete => 'Terminado: al guardar se crea uno nuevo';
+
+  @override
+  String get youtubeIngestGood => 'YouTube está recibiendo la señal';
+
+  @override
+  String get youtubeIngestBad => 'YouTube recibe la señal con problemas';
+
+  @override
+  String get youtubeIngestNone => 'YouTube no está recibiendo nada';
+
+  @override
+  String get youtubeCopyLink => 'Copiar enlace';
+
+  @override
+  String get youtubeLinkCopied => 'Enlace copiado';
+
+  @override
+  String get youtubeRefresh => 'Actualizar';
+
+  @override
+  String get youtubeNewLive => 'Nuevo directo';
+
+  @override
+  String get youtubeErrorLiveNotEnabled =>
+      'Este canal todavía no puede emitir en directo. Actívalo en YouTube Studio > Emitir en directo (puede tardar 24 h).';
+
+  @override
+  String get youtubeErrorQuota =>
+      'Se ha agotado la cuota diaria de la API de YouTube. De momento usa una clave de emisión.';
+
+  @override
+  String get youtubeErrorForbidden =>
+      'YouTube ha denegado el acceso. Vuelve a iniciar sesión.';
+
+  @override
+  String get youtubeErrorNetwork =>
+      'No se puede conectar con YouTube. Revisa la conexión a internet.';
+
+  @override
+  String youtubeErrorSignIn(String message) {
+    return 'No se pudo iniciar sesión: $message';
+  }
+
+  @override
+  String youtubeErrorApi(String message) {
+    return 'Error de YouTube: $message';
+  }
+
+  @override
+  String get youtubeQr => 'QR';
+
+  @override
+  String get youtubeQrTitle => 'Ver el directo';
+
+  @override
+  String get youtubeQrClose => 'Cerrar';
+
+  @override
+  String get youtubeNeedSignIn =>
+      'La emisión va a tu cuenta de YouTube: vuelve a iniciar sesión en los ajustes de emisión o cambia a Clave.';
+
+  @override
+  String get youtubeShare => 'Compartir';
 }

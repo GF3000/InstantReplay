@@ -27,6 +27,8 @@ import 'broadcast_checklist.dart';
 import 'clip_reserve_widgets.dart';
 import 'pairing_card.dart';
 import 'zoom_widgets.dart';
+import '../broadcast/youtube/youtube_account.dart';
+import '../broadcast/youtube/youtube_providers.dart';
 
 /// Camera role (SPEC §3.5, D17; UX §2): a setup screen to frame the shot and pair a viewer, and a
 /// black operating mode that starts by itself when the first viewer connects.
@@ -742,15 +744,18 @@ class _CameraBroadcastBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.watch(broadcastControllerProvider);
     final info = ref.watch(broadcastInfoProvider).value ?? controller.info;
+    final youtube = ref.watch(youtubeActiveAccountProvider).value;
+    final onShare = youtube == null ? null : () => shareYouTubeLive(context, youtube);
     if (header) {
       return BroadcastHeaderControls(
         key: const Key('camera-broadcast'),
         info: info,
         enabled: enabled,
         keyPrefix: 'camera-broadcast',
-        onStart: () => _start(context, controller),
+        onStart: () => _start(context, controller, ref.read(youtubeAccountProvider)),
         onStop: () => _run(context, controller.stop),
-        onConfigure: () => _configure(context, controller, info),
+        onConfigure: () => _configure(context, controller, info, ref.read(youtubeAccountProvider)),
+        onShare: onShare,
       );
     }
     return BroadcastBar(
@@ -760,20 +765,39 @@ class _CameraBroadcastBar extends ConsumerWidget {
       keyPrefix: 'camera-broadcast',
       buttonSize: 56,
       dim: dim,
-      onStart: () => _start(context, controller),
+      onStart: () => _start(context, controller, ref.read(youtubeAccountProvider)),
       onStop: () => _run(context, controller.stop),
-      onConfigure: () => _configure(context, controller, info),
+      onConfigure: () => _configure(context, controller, info, ref.read(youtubeAccountProvider)),
+      onShare: onShare,
     );
   }
 
-  static void _start(BuildContext context, BroadcastController controller) => _run(context, () async {
+  static void _start(BuildContext context, BroadcastController controller, YouTubeAccount? youtube) =>
+      _run(context, () async {
+        // Account mode: a live must be there to receive the stream, and the Camera must use its key.
+        if (youtube != null && youtube.active) {
+          if (youtube.email == null) {
+            _snack(context, AppLocalizations.of(context).youtubeNeedSignIn);
+            return;
+          }
+          final target = await prepareYouTubeLive(context, youtube);
+          if (target == null) return;
+          await controller.configure(
+            server: target.server,
+            key: target.key,
+            targetKbps: controller.targetKbps,
+            audio: controller.audio,
+          );
+        }
+        if (!context.mounted) return;
         if (!await controller.start() && context.mounted) {
           _snack(context, AppLocalizations.of(context).broadcastMicDenied);
         }
       });
 
-  static Future<void> _configure(BuildContext context, BroadcastController controller, BroadcastInfo info) async {
-    final result = await showBroadcastConfigDialog(context, info);
+  static Future<void> _configure(
+      BuildContext context, BroadcastController controller, BroadcastInfo info, YouTubeAccount? youtube) async {
+    final result = await showBroadcastConfigDialog(context, info, youtube: youtube);
     if (result == null) return;
     await controller.configure(
       server: result.server,

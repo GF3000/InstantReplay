@@ -2509,6 +2509,216 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not put the replay on air: {message}'**
   String replayFailed(String message);
+
+  /// No description provided for @broadcastModeKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Stream key'**
+  String get broadcastModeKey;
+
+  /// No description provided for @broadcastModeAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube account'**
+  String get broadcastModeAccount;
+
+  /// No description provided for @youtubeAccountHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with the channel\'s Google account: the app creates the live (title and visibility), sends the key to the Camera, and the live starts and ends by itself with the stream.'**
+  String get youtubeAccountHelp;
+
+  /// No description provided for @youtubeSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with Google'**
+  String get youtubeSignIn;
+
+  /// No description provided for @youtubeSignOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get youtubeSignOut;
+
+  /// No description provided for @youtubeWillCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving creates a new live on the channel.'**
+  String get youtubeWillCreate;
+
+  /// No description provided for @youtubeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get youtubeTitle;
+
+  /// No description provided for @youtubeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get youtubeDescription;
+
+  /// No description provided for @youtubePrivacy.
+  ///
+  /// In en, this message translates to:
+  /// **'Visibility'**
+  String get youtubePrivacy;
+
+  /// No description provided for @youtubePrivacyPublic.
+  ///
+  /// In en, this message translates to:
+  /// **'Public'**
+  String get youtubePrivacyPublic;
+
+  /// No description provided for @youtubePrivacyUnlisted.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlisted'**
+  String get youtubePrivacyUnlisted;
+
+  /// No description provided for @youtubePrivacyPrivate.
+  ///
+  /// In en, this message translates to:
+  /// **'Private'**
+  String get youtubePrivacyPrivate;
+
+  /// No description provided for @youtubeDefaultTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Match {date}'**
+  String youtubeDefaultTitle(String date);
+
+  /// No description provided for @youtubeLifeReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready: goes live as soon as the stream arrives'**
+  String get youtubeLifeReady;
+
+  /// No description provided for @youtubeLifeStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube is starting the live'**
+  String get youtubeLifeStarting;
+
+  /// No description provided for @youtubeLifeLive.
+  ///
+  /// In en, this message translates to:
+  /// **'Live on YouTube'**
+  String get youtubeLifeLive;
+
+  /// No description provided for @youtubeLifeComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Finished: saving creates a new live'**
+  String get youtubeLifeComplete;
+
+  /// No description provided for @youtubeIngestGood.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube is receiving the stream'**
+  String get youtubeIngestGood;
+
+  /// No description provided for @youtubeIngestBad.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube is receiving the stream with problems'**
+  String get youtubeIngestBad;
+
+  /// No description provided for @youtubeIngestNone.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube is not receiving anything'**
+  String get youtubeIngestNone;
+
+  /// No description provided for @youtubeCopyLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get youtubeCopyLink;
+
+  /// No description provided for @youtubeLinkCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Link copied'**
+  String get youtubeLinkCopied;
+
+  /// No description provided for @youtubeRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get youtubeRefresh;
+
+  /// No description provided for @youtubeNewLive.
+  ///
+  /// In en, this message translates to:
+  /// **'New live'**
+  String get youtubeNewLive;
+
+  /// No description provided for @youtubeErrorLiveNotEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'This channel can\'t go live yet. Enable it in YouTube Studio > Go live (it can take 24 h).'**
+  String get youtubeErrorLiveNotEnabled;
+
+  /// No description provided for @youtubeErrorQuota.
+  ///
+  /// In en, this message translates to:
+  /// **'The YouTube API daily quota is used up. Use a stream key for now.'**
+  String get youtubeErrorQuota;
+
+  /// No description provided for @youtubeErrorForbidden.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube refused access. Sign in again.'**
+  String get youtubeErrorForbidden;
+
+  /// No description provided for @youtubeErrorNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t reach YouTube. Check the internet connection.'**
+  String get youtubeErrorNetwork;
+
+  /// No description provided for @youtubeErrorSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t sign in: {message}'**
+  String youtubeErrorSignIn(String message);
+
+  /// No description provided for @youtubeErrorApi.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube error: {message}'**
+  String youtubeErrorApi(String message);
+
+  /// No description provided for @youtubeQr.
+  ///
+  /// In en, this message translates to:
+  /// **'QR'**
+  String get youtubeQr;
+
+  /// No description provided for @youtubeQrTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch the live'**
+  String get youtubeQrTitle;
+
+  /// No description provided for @youtubeQrClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get youtubeQrClose;
+
+  /// No description provided for @youtubeNeedSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'The stream goes to your YouTube account: sign in again in the stream settings, or switch to Stream key.'**
+  String get youtubeNeedSignIn;
+
+  /// No description provided for @youtubeShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get youtubeShare;
 }
 
 class _AppLocalizationsDelegate

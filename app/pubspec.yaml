@@ -47,6 +47,7 @@ dependencies:
   flutter_webrtc: ^1.6.3
   gal: ^2.3.3
   go_router: ^18.1.1
+  google_sign_in: ^7.2.0
   http: ^1.6.0
   intl: ^0.20.2
   meta: ^1.18.0
