@@ -1586,4 +1586,83 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get youtubeShare => 'Compartir';
+
+  @override
+  String get reviewDraw => 'Dibujar';
+
+  @override
+  String get reviewDrawActive => 'Pizarra activa';
+
+  @override
+  String get reviewChangeTag => 'Cambiar etiqueta';
+
+  @override
+  String get reviewExport => 'Exportar';
+
+  @override
+  String get reviewMore => 'Más';
+
+  @override
+  String get reviewAirSend => 'Emitir repetición';
+
+  @override
+  String get reviewAirStop => 'Quitar de antena';
+
+  @override
+  String get reviewOnAirBanner => 'EN ANTENA · LO VE YOUTUBE';
+
+  @override
+  String reviewClipOf(int index, int count) {
+    return 'clip $index de $count';
+  }
+
+  @override
+  String reviewFrameCounter(int frame, int total) {
+    return 'F $frame / $total';
+  }
+
+  @override
+  String get reviewFrameBack => '−1 fot.';
+
+  @override
+  String get reviewFrameForward => '+1 fot.';
+
+  @override
+  String get reviewLoading => 'Cargando el clip…';
+
+  @override
+  String get reviewRetry => 'Reintentar';
+
+  @override
+  String get reviewToolArrow => 'Flecha';
+
+  @override
+  String get reviewToolCircle => 'Círculo';
+
+  @override
+  String get reviewToolLine => 'Línea';
+
+  @override
+  String get reviewToolPen => 'Lápiz';
+
+  @override
+  String get reviewToolEraser => 'Goma';
+
+  @override
+  String get reviewToolSelect => 'Mover';
+
+  @override
+  String get reviewThick => 'Gruesa';
+
+  @override
+  String get reviewUndo => 'Deshacer';
+
+  @override
+  String get reviewClearAll => 'Borrar todo';
+
+  @override
+  String get reviewDeleteMark => 'Borrar';
+
+  @override
+  String get reviewDone => 'Hecho';
 }
