@@ -1242,5 +1242,8 @@
   "sbMatch": "Match",
   "sbReplayBadge": "REPLAY",
   "sbClockStart": "Start clock",
-  "sbClockPause": "Pause clock"
+  "sbClockPause": "Pause clock",
+  "camShareLoading": "Preparing the YouTube link…",
+  "camShareLoadingSub": "It takes a few seconds the first time; then it opens at once.",
+  "camShareRetry": "Try again"
 }

@@ -735,6 +735,11 @@ class ViewerBroadcastBar extends ConsumerWidget {
     final connected = ref.watch(linkStateProvider.select((s) => s?.phase == LinkPhase.connected));
     final remote = ref.read(viewerBroadcastNoticeProvider.notifier);
     final youtube = ref.watch(youtubeActiveAccountProvider).value;
+    if (youtube != null) {
+      // Ask YouTube for the live's link now, so "Share the live" opens at once (no-op when known).
+      final title = youtubeDefaultTitle(AppLocalizations.of(context), DateTime.now());
+      WidgetsBinding.instance.addPostFrameCallback((_) => YouTubeLinkCache.prefetch(youtube, title));
+    }
     return Padding(
       key: const ValueKey('viewer-broadcast'),
       padding: const EdgeInsets.fromLTRB(12, 6, 8, 0),

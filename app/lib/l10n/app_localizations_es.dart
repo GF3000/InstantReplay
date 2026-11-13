@@ -2097,4 +2097,14 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get sbClockPause => 'Pausar reloj';
+
+  @override
+  String get camShareLoading => 'Preparando el enlace de YouTube…';
+
+  @override
+  String get camShareLoadingSub =>
+      'La primera vez tarda unos segundos; luego se abre al momento.';
+
+  @override
+  String get camShareRetry => 'Reintentar';
 }

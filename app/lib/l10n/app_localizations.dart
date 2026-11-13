@@ -3673,6 +3673,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pause clock'**
   String get sbClockPause;
+
+  /// No description provided for @camShareLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing the YouTube link…'**
+  String get camShareLoading;
+
+  /// No description provided for @camShareLoadingSub.
+  ///
+  /// In en, this message translates to:
+  /// **'It takes a few seconds the first time; then it opens at once.'**
+  String get camShareLoadingSub;
+
+  /// No description provided for @camShareRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get camShareRetry;
 }
 
 class _AppLocalizationsDelegate

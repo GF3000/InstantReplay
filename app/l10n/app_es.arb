@@ -595,5 +595,8 @@
   "sbMatch": "Partido",
   "sbReplayBadge": "REPETICIÓN",
   "sbClockStart": "Arrancar reloj",
-  "sbClockPause": "Pausar reloj"
+  "sbClockPause": "Pausar reloj",
+  "camShareLoading": "Preparando el enlace de YouTube…",
+  "camShareLoadingSub": "La primera vez tarda unos segundos; luego se abre al momento.",
+  "camShareRetry": "Reintentar"
 }
