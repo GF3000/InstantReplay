@@ -63,7 +63,7 @@ class IrKey extends StatelessWidget {
               borderRadius: radius,
               child: ConstrainedBox(
                 constraints: BoxConstraints(minHeight: minHeight),
-                child: Stack(children: [
+                child: Stack(alignment: Alignment.center, children: [
                   if (led != null)
                     Positioned(
                       left: 10,
