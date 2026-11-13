@@ -138,6 +138,10 @@ void main() {
     }
   }
 
+  /// The cue-list row of [requestId] shows [title] (the tag's name).
+  Finder titled(String requestId, String title) =>
+      find.descendant(of: find.byKey(ValueKey('clip-row-$requestId')), matching: find.text(title));
+
   Iterable<String> tiles(WidgetTester tester) => [
         for (final t in tester.widgetList<ClipTile>(find.byType(ClipTile))) t.clip.requestId,
       ];
@@ -147,8 +151,8 @@ void main() {
     await pump(tester, overrides: [viewerClipsProvider.overrideWith(() => live)]);
 
     expect(tiles(tester), ['r-goal', 'c-attack']);
-    expect(find.text('Goal · 12:01'), findsOneWidget);
-    expect(find.text('Attack · 12:00'), findsOneWidget);
+    expect(titled('r-goal', 'Goal'), findsOneWidget);
+    expect(titled('c-attack', 'Attack'), findsOneWidget);
     // Tags under the same keys as this run's clips, and not written back.
     expect(container.read(clipTagsProvider), {'r-goal': 'football.tag.goal', 'c-attack': 'football.cat.attack'});
     final rows = await query(tester, () => db.select(db.clips).get());
@@ -179,7 +183,7 @@ void main() {
     await settle(tester);
     final entries = await query(tester, () => db.watchSessionClips('s1').first);
     expect(entries.firstWhere((e) => e.clip.id == 'c-attack').tagIds, ['football.tag.shot']);
-    expect(find.text('Shot · 12:00'), findsOneWidget);
+    expect(titled('c-attack', 'Shot'), findsOneWidget);
 
     await close(tester);
   });
@@ -204,7 +208,7 @@ void main() {
       }
     }
 
-    await tester.drag(find.text('Goal · 12:01'), const Offset(-600, 0));
+    await tester.drag(find.byKey(const ValueKey('clip-row-r-goal')), const Offset(-600, 0));
     await step();
     expect(tiles(tester), ['c-attack']);
     expect(find.text('Goal · 12:01 deleted'), findsOneWidget);
@@ -214,7 +218,7 @@ void main() {
     expect(tiles(tester), ['r-goal', 'c-attack']);
     expect(deletedFiles, isEmpty);
 
-    await tester.drag(find.text('Goal · 12:01'), const Offset(-600, 0));
+    await tester.drag(find.byKey(const ValueKey('clip-row-r-goal')), const Offset(-600, 0));
     await step();
     await tester.pump(const Duration(seconds: 10));
     await step();

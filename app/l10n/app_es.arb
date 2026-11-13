@@ -436,5 +436,19 @@
   "youtubeQrTitle": "Ver el directo",
   "youtubeQrClose": "Cerrar",
   "youtubeNeedSignIn": "La emisión va a tu cuenta de YouTube: vuelve a iniciar sesión en los ajustes de emisión o cambia a Clave.",
-  "youtubeShare": "Compartir"
+  "youtubeShare": "Compartir",
+  "liveSaveTitle": "Guardar jugada",
+  "liveSaveSubtitle": "los últimos {seconds} s y {post} s más",
+  "liveOnAirBadge": "EN VIVO",
+  "liveNoSoundBadge": "EMISIÓN SIN SONIDO",
+  "liveMicOpen": "Micro abierto",
+  "liveMicClosed": "Micro cerrado",
+  "liveMenu": "Menú",
+  "liveRestart": "Reiniciar",
+  "liveClipsEmptyHint": "Toca Guardar jugada justo después de la jugada.",
+  "liveTagPanelTitle": "Guardado · ¿qué ha sido?",
+  "livePlayClip": "Ver",
+  "liveTeams": "{home} vs {away}",
+  "liveGlanceTitle": "Partido de un vistazo",
+  "liveGlanceHint": "Toca una marca para revisarla"
 }

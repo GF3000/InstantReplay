@@ -1580,4 +1580,50 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get youtubeShare => 'Share';
+
+  @override
+  String get liveSaveTitle => 'Save play';
+
+  @override
+  String liveSaveSubtitle(int seconds, int post) {
+    return 'the last $seconds s and $post s more';
+  }
+
+  @override
+  String get liveOnAirBadge => 'LIVE';
+
+  @override
+  String get liveNoSoundBadge => 'STREAM WITHOUT SOUND';
+
+  @override
+  String get liveMicOpen => 'Mic on';
+
+  @override
+  String get liveMicClosed => 'Mic off';
+
+  @override
+  String get liveMenu => 'Menu';
+
+  @override
+  String get liveRestart => 'Restart';
+
+  @override
+  String get liveClipsEmptyHint => 'Tap Save play right after a good moment.';
+
+  @override
+  String get liveTagPanelTitle => 'Saved · what was it?';
+
+  @override
+  String get livePlayClip => 'Watch';
+
+  @override
+  String liveTeams(String home, String away) {
+    return '$home vs $away';
+  }
+
+  @override
+  String get liveGlanceTitle => 'Match at a glance';
+
+  @override
+  String get liveGlanceHint => 'Tap a mark to review it';
 }

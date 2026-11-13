@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:instant_replay/core/ui/ir_colors.dart';
 import 'package:instant_replay/features/viewer/data/session_link.dart';
 import 'package:instant_replay/features/viewer/ui/camera_status.dart';
 import 'package:instant_replay/features/viewer/viewer_providers.dart';
@@ -58,11 +59,13 @@ void main() {
     expect(CameraHealth.of(_link(LinkPhase.connected, _status(battery: 15, plugged: true))).ok, isTrue);
   });
 
-  testWidgets('green REC when recording; tap shows the details with icons', (tester) async {
+  testWidgets('green REC pill when recording; tap shows the gauges', (tester) async {
     await tester.pumpWidget(_app(_link(LinkPhase.connected, _status(battery: 80, plugged: true))));
     expect(find.text('REC'), findsOneWidget);
-    final dot = tester.widget<Icon>(find.byIcon(Icons.fiber_manual_record));
-    expect(dot.color, CameraStatusIndicator.okColor);
+    final dot = tester.widget<Container>(find.byKey(const ValueKey('viewer-status-dot')));
+    expect((dot.decoration! as BoxDecoration).color, IrColors.dark.ok);
+    expect(find.byIcon(Icons.warning_rounded), findsNothing);
+    expect(tester.getSize(find.byKey(const ValueKey('viewer-status'))).height, greaterThanOrEqualTo(44));
 
     await tester.tap(find.byKey(const ValueKey('viewer-status')));
     await tester.pumpAndSettle();
@@ -70,9 +73,32 @@ void main() {
     expect(find.text('30 fps'), findsOneWidget);
     expect(find.text('60 s'), findsOneWidget);
     expect(find.text('2'), findsOneWidget);
-    expect(find.textContaining('31 °C'), findsOneWidget);
-    expect(find.text('80% · charging'), findsOneWidget);
+    expect(find.text('31 °C'), findsOneWidget);
+    expect(find.text('Normal'), findsOneWidget);
+    expect(find.text('80%'), findsOneWidget);
+    expect(find.text('charging'), findsOneWidget);
     expect(find.byIcon(Icons.battery_charging_full), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the pill shows the full recording clock while it runs', (tester) async {
+    const status = CameraStatus(
+      recording: true,
+      fps: 30,
+      bufferMs: 60000,
+      outboxClips: 0,
+      thermalStatus: 0,
+      sessionRecording: SessionRecording(
+        state: SessionRecordingState.recording,
+        elapsedMs: 3151000,
+        parts: 1,
+        freeBytes: 1,
+        lowSpace: false,
+      ),
+    );
+    await tester.pumpWidget(_app(_link(LinkPhase.connected, status)));
+    expect(find.text('REC'), findsOneWidget);
+    expect(find.text('52:31'), findsOneWidget);
   });
 
   testWidgets('details include the full-session recording when the Camera sends it', (tester) async {

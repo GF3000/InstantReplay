@@ -2719,6 +2719,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Share'**
   String get youtubeShare;
+
+  /// No description provided for @liveSaveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Save play'**
+  String get liveSaveTitle;
+
+  /// No description provided for @liveSaveSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'the last {seconds} s and {post} s more'**
+  String liveSaveSubtitle(int seconds, int post);
+
+  /// No description provided for @liveOnAirBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'LIVE'**
+  String get liveOnAirBadge;
+
+  /// No description provided for @liveNoSoundBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'STREAM WITHOUT SOUND'**
+  String get liveNoSoundBadge;
+
+  /// No description provided for @liveMicOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Mic on'**
+  String get liveMicOpen;
+
+  /// No description provided for @liveMicClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Mic off'**
+  String get liveMicClosed;
+
+  /// No description provided for @liveMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Menu'**
+  String get liveMenu;
+
+  /// No description provided for @liveRestart.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart'**
+  String get liveRestart;
+
+  /// No description provided for @liveClipsEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap Save play right after a good moment.'**
+  String get liveClipsEmptyHint;
+
+  /// No description provided for @liveTagPanelTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved · what was it?'**
+  String get liveTagPanelTitle;
+
+  /// No description provided for @livePlayClip.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch'**
+  String get livePlayClip;
+
+  /// No description provided for @liveTeams.
+  ///
+  /// In en, this message translates to:
+  /// **'{home} vs {away}'**
+  String liveTeams(String home, String away);
+
+  /// No description provided for @liveGlanceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Match at a glance'**
+  String get liveGlanceTitle;
+
+  /// No description provided for @liveGlanceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a mark to review it'**
+  String get liveGlanceHint;
 }
 
 class _AppLocalizationsDelegate

@@ -172,7 +172,8 @@ void main() {
       linkStateProvider.overrideWith(_ConnectedLink.new),
       viewerClipsProvider.overrideWith(() => _RecordingClips(saved)),
     ]));
-    expect(find.text('SAVE 20 s'), findsOneWidget);
+    expect(find.text('Save play'), findsOneWidget);
+    expect(find.text('the last 20 s and 2 s more'), findsOneWidget);
     expect(find.text('10 s'), findsOneWidget);
     expect(find.text('30 s'), findsOneWidget);
     expect(find.text('60 s'), findsOneWidget);
@@ -183,6 +184,17 @@ void main() {
     await tester.tap(find.text('10 s'));
     await tester.tap(find.byKey(const ValueKey('viewer-save')));
     expect(saved, [null, 30, 10, null]);
+    // The choice just used lights up, then goes back to normal.
+    await tester.tap(find.text('30 s'));
+    await tester.pump();
+    bool selected(String key) => tester
+        .widget<Semantics>(find.descendant(of: find.byKey(ValueKey(key)), matching: find.byType(Semantics)).first)
+        .properties
+        .selected!;
+    expect(selected('viewer-save-30'), isTrue);
+    expect(selected('viewer-save-10'), isFalse);
+    await tester.pump(RecentSaveNotifier.highlightFor);
+    expect(selected('viewer-save-30'), isFalse);
     await tester.pump(PostSaveTagBarNotifier.visibleFor);
   });
 
@@ -207,9 +219,14 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('viewer-save'))); // r1
     await _settle(tester);
     expect(bar, findsOneWidget);
-    // On the left, over the live view, clear of the Save button.
+    // Over the bottom-left of the live view, clear of the Save button.
     final panel = tester.getRect(find.byKey(const ValueKey('viewer-tag-panel')));
-    expect(panel.left, 0);
+    final live = tester.getRect(find.byType(LivePanel));
+    expect(live.contains(panel.topLeft) && live.contains(panel.bottomRight - const Offset(1, 1)), isTrue);
+    expect(panel.left - live.left, lessThan(20));
+    expect(live.bottom - panel.bottom, lessThan(20));
+    // The live view flashes amber.
+    expect(find.byKey(const ValueKey('viewer-save-flash')), findsOneWidget);
     expect(panel.overlaps(tester.getRect(find.byKey(const ValueKey('viewer-save')))), isFalse);
     // The chips stay usable while the bar is up.
     await tester.tap(find.text('30 s')); // r2
@@ -235,6 +252,9 @@ void main() {
     await _settle(tester);
     expect(bar, findsNothing);
     expect(ref.read(clipTagsProvider), {'r2': TagsNotifier.bad});
+    // The save highlight fades on its own.
+    await tester.pump(RecentSaveNotifier.highlightFor);
+    expect(find.byKey(const ValueKey('viewer-save-flash')), findsNothing);
   });
 
   for (final size in const [Size(360, 640), Size(640, 360), Size(768, 1024), Size(1280, 800), Size(800, 416)]) {
@@ -267,7 +287,12 @@ void main() {
       final save = tester.getRect(find.byKey(const ValueKey('viewer-save')));
       expect(save.height, greaterThanOrEqualTo(56));
       expect(save.bottom, lessThanOrEqualTo(size.height));
-      expect(find.text('Clip · 12:00'), findsOneWidget);
+      expect(find.byKey(const ValueKey('clip-row-r0')), findsOneWidget);
+      // On a phone the tag panel drops over the live view, inside it.
+      final live = tester.getRect(find.byType(LivePanel));
+      final panel = tester.getRect(find.byKey(const ValueKey('viewer-tag-panel')));
+      expect(panel.top, greaterThanOrEqualTo(live.top));
+      expect(panel.bottom, lessThanOrEqualTo(live.bottom + 0.5));
       // The full-session recording moved to the app bar (ViewerRecordingButton).
       expect(_vrec('button'), findsNothing);
       // Quick-save labels stay on one line, however narrow the panel.
@@ -503,26 +528,26 @@ void main() {
       }
     }
 
-    await tester.drag(find.text('Clip · 12:02'), const Offset(-600, 0));
+    await tester.drag(find.byKey(const ValueKey('clip-row-busy')), const Offset(-600, 0));
     await step();
-    expect(find.text('Clip · 12:02'), findsOneWidget, reason: 'still downloading');
+    expect(find.byKey(const ValueKey('clip-row-busy')), findsOneWidget, reason: 'still downloading');
     expect(clips.calls, isEmpty);
 
-    await tester.drag(find.text('Clip · 12:01'), const Offset(-600, 0));
+    await tester.drag(find.byKey(const ValueKey('clip-row-b')), const Offset(-600, 0));
     await step();
-    expect(find.text('Clip · 12:01'), findsNothing);
+    expect(find.byKey(const ValueKey('clip-row-b')), findsNothing);
     expect(find.text('Clip · 12:01 deleted'), findsOneWidget);
     await tester.tap(find.text('Undo'));
     await step();
-    expect(find.text('Clip · 12:01'), findsOneWidget);
+    expect(find.byKey(const ValueKey('clip-row-b')), findsOneWidget);
     expect(clips.calls, ['delete:b', 'undo:b']);
 
     // A failed clip too; without Undo the deletion stands once the SnackBar goes.
-    await tester.drag(find.text('Clip · 12:00'), const Offset(-600, 0));
+    await tester.drag(find.byKey(const ValueKey('clip-row-a')), const Offset(-600, 0));
     await step();
     await tester.pump(const Duration(seconds: 10));
     await step();
-    expect(find.text('Clip · 12:00'), findsNothing);
+    expect(find.byKey(const ValueKey('clip-row-a')), findsNothing);
     expect(clips.calls.skip(2), ['delete:a', 'commit:a']);
   });
 }
