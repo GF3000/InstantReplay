@@ -68,6 +68,11 @@ void main() {
     await pump(tester, _FakeScanner());
     expect(scanButton, findsOneWidget);
     expect(find.text('Scan QR'), findsOneWidget);
+    // Scanning is the way: typing the address waits behind a link.
+    expect(find.byType(TextField), findsNothing);
+    await tester.tap(find.text('Type the address by hand'));
+    await tester.pump();
+    expect(find.byType(TextField), findsOneWidget);
   });
 
   testWidgets('permission denied: a message, and the address field stays', (tester) async {

@@ -1665,4 +1665,90 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get reviewDone => 'Hecho';
+
+  @override
+  String get connectStepCamera => 'Cámara';
+
+  @override
+  String get connectStepCode => 'Código';
+
+  @override
+  String get connectStepSession => 'Sesión';
+
+  @override
+  String get connectScanSubtitle => 'Lo muestra la pantalla de la cámara';
+
+  @override
+  String get connectManual => 'Escribir la dirección a mano';
+
+  @override
+  String get connectCodeHint =>
+      'Son los 6 números grandes bajo el QR de la cámara';
+
+  @override
+  String get connectOtherCamera => 'Elegir otra cámara';
+
+  @override
+  String connectPickerConnectedTo(String name) {
+    return 'Conectado a $name';
+  }
+
+  @override
+  String get connectPickerQuestion => '¿Qué vas a grabar?';
+
+  @override
+  String get connectPickerContinue => 'Continuar esta sesión';
+
+  @override
+  String get connectPickerNewMatch => 'Nuevo partido';
+
+  @override
+  String get connectPickerNewTraining => 'Nuevo entreno';
+
+  @override
+  String get connectPickerNewOther => 'Otra sesión';
+
+  @override
+  String get connectPickerNameHint => 'Vacío: tipo y fecha';
+
+  @override
+  String get libFilterAll => 'Todo';
+
+  @override
+  String get libFilterMatches => 'Partidos';
+
+  @override
+  String get libFilterTrainings => 'Entrenos';
+
+  @override
+  String get libSelect => 'Seleccionar';
+
+  @override
+  String get libSelectCancel => 'Cancelar';
+
+  @override
+  String libExportCount(int count) {
+    return 'Exportar $count';
+  }
+
+  @override
+  String get libShare => 'Compartir';
+
+  @override
+  String get libEmptyHint => 'Los clips que guardes en directo aparecen aquí.';
+
+  @override
+  String get libFilterEmpty => 'Nada con este filtro.';
+
+  @override
+  String get libError => 'No se pudo abrir la biblioteca';
+
+  @override
+  String get libRetry => 'Reintentar';
+
+  @override
+  String get libTemplatesBuiltIn => 'Incluidas';
+
+  @override
+  String get libTemplatesImported => 'Importadas';
 }

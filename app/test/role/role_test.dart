@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:instant_replay/core/capabilities.dart';
 import 'package:instant_replay/core/preferences.dart';
+import 'package:instant_replay/core/ui/bucle_logo.dart';
 import 'package:instant_replay/features/role/role.dart';
 import 'package:instant_replay/features/role/role_gate_page.dart';
 import 'package:instant_replay/l10n/app_localizations.dart';
@@ -61,7 +62,9 @@ void main() {
     expect(find.text('Cámara'), findsOneWidget);
     expect(find.text('Visor'), findsOneWidget);
     expect(find.text('Retransmitir partido · beta'), findsOneWidget);
-    final camera = tester.getRect(find.ancestor(of: find.text('Cámara'), matching: find.byType(FilledButton)));
+    expect(find.byType(BucleLogo), findsOneWidget);
+    expect(find.text('InstantReplay'), findsOneWidget);
+    final camera = tester.getRect(find.byKey(const ValueKey('role-camera')));
     final broadcast = tester.getRect(find.byKey(const ValueKey('role-broadcast')));
     expect(broadcast.top, greaterThan(camera.bottom), reason: 'below the main two');
     expect(broadcast.height, lessThan(camera.height), reason: 'smaller than the main buttons');
@@ -87,13 +90,37 @@ void main() {
     ));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
-    Rect button(String label) =>
-        tester.getRect(find.ancestor(of: find.text(label), matching: find.byType(FilledButton)));
-    final camera = button('Cámara'), viewer = button('Visor');
+    Rect button(String key) => tester.getRect(find.byKey(ValueKey(key)));
+    final camera = button('role-camera'), viewer = button('role-viewer');
     final broadcast = tester.getRect(find.byKey(const ValueKey('role-broadcast')));
     expect(camera.top, viewer.top, reason: 'side by side');
     expect(viewer.left, greaterThan(camera.right));
     expect(broadcast.top, greaterThan(camera.bottom));
     expect(broadcast.bottom, lessThanOrEqualTo(1080 / 2.5), reason: 'visible without scrolling');
   });
+
+  for (final size in const [Size(360, 640), Size(640, 360), Size(800, 416), Size(1280, 800)]) {
+    testWidgets('no overflow at ${size.width.toInt()}×${size.height.toInt()}', (tester) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          capabilitiesProvider.overrideWithValue(Capabilities.nativeAndroid),
+        ],
+        child: const MaterialApp(
+          locale: Locale('es'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: RoleGatePage(),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const ValueKey('role-broadcast')), findsOneWidget);
+    });
+  }
 }

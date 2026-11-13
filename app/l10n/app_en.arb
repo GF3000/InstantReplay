@@ -252,8 +252,12 @@
   "viewerReviewPlaylistPosition": "{index} / {count}",
   "@viewerReviewPlaylistPosition": {
     "placeholders": {
-      "index": {"type": "int"},
-      "count": {"type": "int"}
+      "index": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
     }
   },
   "viewerReviewPlay": "Play",
@@ -569,7 +573,9 @@
   "libraryWatchAll": "{count, plural, =1{Watch 1 clip} other{Watch all ({count})}}",
   "@libraryWatchAll": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "libraryDelete": "Delete",
@@ -798,25 +804,33 @@
   "scoreboardGoToPeriod": "Go to {period}",
   "@scoreboardGoToPeriod": {
     "placeholders": {
-      "period": {"type": "String"}
+      "period": {
+        "type": "String"
+      }
     }
   },
   "scoreboardBackToPeriod": "Back to {period}",
   "@scoreboardBackToPeriod": {
     "placeholders": {
-      "period": {"type": "String"}
+      "period": {
+        "type": "String"
+      }
     }
   },
   "scoreboardPeriodConfirmTitle": "Go to {period}?",
   "@scoreboardPeriodConfirmTitle": {
     "placeholders": {
-      "period": {"type": "String"}
+      "period": {
+        "type": "String"
+      }
     }
   },
   "scoreboardPeriodConfirmBody": "The clock stops and goes to {time}.",
   "@scoreboardPeriodConfirmBody": {
     "placeholders": {
-      "time": {"type": "String"}
+      "time": {
+        "type": "String"
+      }
     }
   },
   "scoreboardPeriodConfirm": "Change period",
@@ -840,7 +854,9 @@
   "switchRoleViewersBody": "{count, plural, =1{A viewer is connected. Switching role stops the camera and disconnects it.} other{{count} viewers are connected. Switching role stops the camera and disconnects them.}}",
   "@switchRoleViewersBody": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "clipReserveTitle": "Replay reserve",
@@ -852,7 +868,9 @@
   "clipOnCamera": "On the camera",
   "@clipReserveHint": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "broadcastReplayScoreboard": "Scoreboard during replays",
@@ -868,13 +886,17 @@
   "checkQualityOk": "Quality {profile}",
   "@checkQualityOk": {
     "placeholders": {
-      "profile": {"type": "String"}
+      "profile": {
+        "type": "String"
+      }
     }
   },
   "checkQualityLow": "Quality {profile}: YouTube looks better at 1080p",
   "@checkQualityLow": {
     "placeholders": {
-      "profile": {"type": "String"}
+      "profile": {
+        "type": "String"
+      }
     }
   },
   "checkQualityAction": "Use 1080p",
@@ -944,7 +966,13 @@
   "youtubePrivacyUnlisted": "Unlisted",
   "youtubePrivacyPrivate": "Private",
   "youtubeDefaultTitle": "Match {date}",
-  "@youtubeDefaultTitle": {"placeholders": {"date": {"type": "String"}}},
+  "@youtubeDefaultTitle": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "youtubeLifeReady": "Ready: goes live as soon as the stream arrives",
   "youtubeLifeStarting": "YouTube is starting the live",
   "youtubeLifeLive": "Live on YouTube",
@@ -961,9 +989,21 @@
   "youtubeErrorForbidden": "YouTube refused access. Sign in again.",
   "youtubeErrorNetwork": "Can't reach YouTube. Check the internet connection.",
   "youtubeErrorSignIn": "Couldn't sign in: {message}",
-  "@youtubeErrorSignIn": {"placeholders": {"message": {"type": "String"}}},
+  "@youtubeErrorSignIn": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
   "youtubeErrorApi": "YouTube error: {message}",
-  "@youtubeErrorApi": {"placeholders": {"message": {"type": "String"}}},
+  "@youtubeErrorApi": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
   "youtubeQr": "QR",
   "youtubeQrTitle": "Watch the live",
   "youtubeQrClose": "Close",
@@ -978,9 +1018,27 @@
   "reviewAirStop": "Take off air",
   "reviewOnAirBanner": "ON AIR · YOUTUBE SEES IT",
   "reviewClipOf": "clip {index} of {count}",
-  "@reviewClipOf": {"placeholders": {"index": {"type": "int"}, "count": {"type": "int"}}},
+  "@reviewClipOf": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "reviewFrameCounter": "F {frame} / {total}",
-  "@reviewFrameCounter": {"placeholders": {"frame": {"type": "int"}, "total": {"type": "int"}}},
+  "@reviewFrameCounter": {
+    "placeholders": {
+      "frame": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
   "reviewFrameBack": "−1 fr",
   "reviewFrameForward": "+1 fr",
   "reviewLoading": "Loading the clip…",
@@ -995,5 +1053,46 @@
   "reviewUndo": "Undo",
   "reviewClearAll": "Clear",
   "reviewDeleteMark": "Delete",
-  "reviewDone": "Done"
+  "reviewDone": "Done",
+  "connectStepCamera": "Camera",
+  "connectStepCode": "Code",
+  "connectStepSession": "Session",
+  "connectScanSubtitle": "It's on the camera's screen",
+  "connectManual": "Type the address by hand",
+  "connectCodeHint": "The 6 big digits under the camera's QR",
+  "connectOtherCamera": "Choose another camera",
+  "connectPickerConnectedTo": "Connected to {name}",
+  "@connectPickerConnectedTo": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "connectPickerQuestion": "What are you recording?",
+  "connectPickerContinue": "Continue this session",
+  "connectPickerNewMatch": "New match",
+  "connectPickerNewTraining": "New training",
+  "connectPickerNewOther": "Other session",
+  "connectPickerNameHint": "Empty: type and date",
+  "libFilterAll": "All",
+  "libFilterMatches": "Matches",
+  "libFilterTrainings": "Training",
+  "libSelect": "Select",
+  "libSelectCancel": "Cancel",
+  "libExportCount": "Export {count}",
+  "@libExportCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "libShare": "Share",
+  "libEmptyHint": "Clips you save live appear here.",
+  "libFilterEmpty": "Nothing with this filter.",
+  "libError": "Couldn't open the library",
+  "libRetry": "Retry",
+  "libTemplatesBuiltIn": "Built-in",
+  "libTemplatesImported": "Imported"
 }

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/ui/ir_colors.dart';
+import '../../core/ui/ir_widgets.dart';
 import '../../l10n/app_localizations.dart';
 import 'role.dart';
 
@@ -32,7 +34,17 @@ class RolePlaceholderPage extends ConsumerWidget {
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Text(message, style: Theme.of(context).textTheme.titleMedium, textAlign: TextAlign.center),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: IrPanel(
+              padding: const EdgeInsets.all(20),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.construction, size: 36, color: context.ir.muted),
+                const SizedBox(height: 12),
+                Text(message, style: Theme.of(context).textTheme.titleMedium, textAlign: TextAlign.center),
+              ]),
+            ),
+          ),
         ),
       ),
     );
