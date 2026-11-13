@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../core/ui/ir_colors.dart';
 import '../../l10n/app_localizations.dart';
 
 /// `−  1.5×  +` over a video: steps the Camera's zoom (SPEC §3.1). Tap the value for 1×. Used on
@@ -52,11 +53,7 @@ class ZoomControl extends StatelessWidget {
               child: Text(
                 formatZoom(ratio),
                 semanticsLabel: l10n.zoomReset,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontFeatures: [FontFeature.tabularFigures()],
-                ),
+                style: irMono(15, color: Colors.white),
               ),
             ),
           ),
