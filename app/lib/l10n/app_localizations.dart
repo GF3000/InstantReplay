@@ -2719,6 +2719,156 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Share'**
   String get youtubeShare;
+
+  /// No description provided for @reviewDraw.
+  ///
+  /// In en, this message translates to:
+  /// **'Draw'**
+  String get reviewDraw;
+
+  /// No description provided for @reviewDrawActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Drawing on'**
+  String get reviewDrawActive;
+
+  /// No description provided for @reviewChangeTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Change tag'**
+  String get reviewChangeTag;
+
+  /// No description provided for @reviewExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Export'**
+  String get reviewExport;
+
+  /// No description provided for @reviewMore.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get reviewMore;
+
+  /// No description provided for @reviewAirSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Air replay'**
+  String get reviewAirSend;
+
+  /// No description provided for @reviewAirStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Take off air'**
+  String get reviewAirStop;
+
+  /// No description provided for @reviewOnAirBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'ON AIR · YOUTUBE SEES IT'**
+  String get reviewOnAirBanner;
+
+  /// No description provided for @reviewClipOf.
+  ///
+  /// In en, this message translates to:
+  /// **'clip {index} of {count}'**
+  String reviewClipOf(int index, int count);
+
+  /// No description provided for @reviewFrameCounter.
+  ///
+  /// In en, this message translates to:
+  /// **'F {frame} / {total}'**
+  String reviewFrameCounter(int frame, int total);
+
+  /// No description provided for @reviewFrameBack.
+  ///
+  /// In en, this message translates to:
+  /// **'−1 fr'**
+  String get reviewFrameBack;
+
+  /// No description provided for @reviewFrameForward.
+  ///
+  /// In en, this message translates to:
+  /// **'+1 fr'**
+  String get reviewFrameForward;
+
+  /// No description provided for @reviewLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading the clip…'**
+  String get reviewLoading;
+
+  /// No description provided for @reviewRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get reviewRetry;
+
+  /// No description provided for @reviewToolArrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrow'**
+  String get reviewToolArrow;
+
+  /// No description provided for @reviewToolCircle.
+  ///
+  /// In en, this message translates to:
+  /// **'Circle'**
+  String get reviewToolCircle;
+
+  /// No description provided for @reviewToolLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Line'**
+  String get reviewToolLine;
+
+  /// No description provided for @reviewToolPen.
+  ///
+  /// In en, this message translates to:
+  /// **'Pen'**
+  String get reviewToolPen;
+
+  /// No description provided for @reviewToolEraser.
+  ///
+  /// In en, this message translates to:
+  /// **'Eraser'**
+  String get reviewToolEraser;
+
+  /// No description provided for @reviewToolSelect.
+  ///
+  /// In en, this message translates to:
+  /// **'Move'**
+  String get reviewToolSelect;
+
+  /// No description provided for @reviewThick.
+  ///
+  /// In en, this message translates to:
+  /// **'Thick'**
+  String get reviewThick;
+
+  /// No description provided for @reviewUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get reviewUndo;
+
+  /// No description provided for @reviewClearAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get reviewClearAll;
+
+  /// No description provided for @reviewDeleteMark.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get reviewDeleteMark;
+
+  /// No description provided for @reviewDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get reviewDone;
 }
 
 class _AppLocalizationsDelegate

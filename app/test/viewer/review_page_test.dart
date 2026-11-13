@@ -27,7 +27,12 @@ void main() {
     FrameTimeline? timeline,
     SeekRule rule = SeekRule.atOrAfter,
     ReviewPlaylist? playlist,
+    Size size = const Size(1280, 800),
+    VideoPlayerController Function()? player,
   }) async {
+    tester.view.physicalSize = size;
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     video = FakeVideo();
     platform = FakePlatform(video, timeline, rule);
     final clip = SessionClip(
@@ -49,7 +54,7 @@ void main() {
           home: ReviewPage(
             clip: clip,
             playlist: playlist,
-            playerFactory: () => video,
+            playerFactory: player ?? () => video,
             platformFactory: (_) => platform,
           ),
         ),
@@ -57,6 +62,9 @@ void main() {
     );
     await tester.pumpAndSettle();
   }
+
+  Finder speedButton(String label) =>
+      find.descendant(of: find.byKey(const ValueKey('review-speed')), matching: find.text(label));
 
   Future<void> tapTooltip(WidgetTester tester, String tooltip) async {
     await tester.tap(find.byTooltip(tooltip));
@@ -146,11 +154,117 @@ void main() {
     expect(video.seeks.last, last);
   });
 
-  testWidgets('speed buttons set the playback rate', (tester) async {
+  testWidgets('speed buttons set the playback rate; the video shows it', (tester) async {
     await pump(tester);
-    await tester.tap(find.textContaining('0.25'));
+    await tester.tap(speedButton('0.25×'));
     await tester.pumpAndSettle();
     expect(video.value.playbackSpeed, 0.25);
+    expect(find.text('0.25×'), findsNWidgets(2));
+  });
+
+  testWidgets('the frame counter and the timecode follow the frame on screen', (tester) async {
+    await pump(tester);
+    platform.shown = const Duration(milliseconds: 1010);
+    await tapTooltip(tester, 'Next frame');
+    expect(find.text('F 32 / 300'), findsOneWidget);
+    expect(find.text('00:01.0'), findsOneWidget);
+  });
+
+  testWidgets('the scrubber pauses, shows the frame under the finger and resumes on release', (tester) async {
+    await pump(tester);
+    platform.shown = Duration.zero;
+    final scrubber = find.byKey(const ValueKey('review-scrubber'));
+    final rect = tester.getRect(scrubber);
+    final drag = await tester.startGesture(rect.centerLeft + const Offset(10, 0));
+    await drag.moveTo(rect.center);
+    await tester.pumpAndSettle();
+    await drag.moveTo(rect.center + Offset(rect.width / 4, 0));
+    await tester.pumpAndSettle();
+    expect(video.value.isPlaying, isFalse);
+    // Three quarters of a 10 s clip.
+    expect(video.seeks.last.inMilliseconds, closeTo(7500, 50));
+    await drag.up();
+    await tester.pumpAndSettle();
+    expect(video.value.isPlaying, isTrue);
+
+    // A tap jumps there.
+    await tester.tapAt(rect.centerLeft + Offset(rect.width / 4, 0));
+    await tester.pumpAndSettle();
+    expect(video.seeks.last.inMilliseconds, closeTo(2500, 50));
+  });
+
+  testWidgets('a clip that cannot play says so, and Retry tries a new player', (tester) async {
+    var attempts = 0;
+    await pump(tester, player: () => attempts++ == 0 ? _BrokenVideo() : video);
+    expect(find.byKey(const ValueKey('review-error')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('review-retry')));
+    await tester.pumpAndSettle();
+    expect(attempts, 2);
+    expect(find.byKey(const ValueKey('review-error')), findsNothing);
+    expect(video.value.isPlaying, isTrue);
+  });
+
+  testWidgets('on a phone, Tag and Export are in the menu', (tester) async {
+    await pump(tester, size: const Size(360, 640));
+    expect(find.byKey(const ValueKey('review-draw')), findsOneWidget);
+    expect(find.byKey(const ValueKey('review-tag')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('review-more')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('review-tag')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('tag-${TagsNotifier.bad}')).last);
+    await tester.pumpAndSettle();
+    expect(find.text('Bad · 12:41'), findsOneWidget);
+  });
+
+  group('fits', () {
+    for (final size in const [Size(360, 640), Size(640, 360), Size(800, 416), Size(1280, 800), Size(800, 1280)]) {
+      final name = '${size.width.toInt()}x${size.height.toInt()}';
+      testWidgets('$name, playing and drawing, without overflow', (tester) async {
+        final log = <String>[];
+        await pump(
+          tester,
+          size: size,
+          playlist: ReviewPlaylist(
+            index: 1,
+            length: 3,
+            onPrevious: () => log.add('previous'),
+            onNext: () => log.add('next'),
+            speed: 1,
+            onSpeed: (_) {},
+          ),
+        );
+        expect(tester.takeException(), isNull);
+        void inside(Finder f) {
+          final r = tester.getRect(f);
+          expect(r.left, greaterThanOrEqualTo(0), reason: '$f');
+          expect(r.top, greaterThanOrEqualTo(0), reason: '$f');
+          expect(r.right, lessThanOrEqualTo(size.width), reason: '$f');
+          expect(r.bottom, lessThanOrEqualTo(size.height), reason: '$f');
+        }
+
+        for (final k in ['review-play', 'review-scrubber', 'review-speed', 'review-next-clip', 'review-draw']) {
+          inside(find.byKey(ValueKey(k)));
+        }
+        inside(find.byTooltip('Next frame'));
+        expect(tester.getSize(find.byKey(const ValueKey('review-play'))).height, greaterThanOrEqualTo(48));
+        // The video keeps a useful height.
+        expect(tester.getSize(find.byKey(const ValueKey('review-video'))).height, greaterThan(150));
+
+        await tester.tap(find.byKey(const ValueKey('review-draw')));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        for (final k in ['draw-tool-arrow', 'draw-tool-select', 'draw-tool-eraser', 'draw-color-4', 'draw-thick', 'draw-done']) {
+          inside(find.byKey(ValueKey(k)));
+          expect(tester.getSize(find.byKey(ValueKey(k))).height, greaterThanOrEqualTo(48), reason: k);
+        }
+        inside(find.byTooltip('Undo'));
+        inside(find.byTooltip('Clear drawing'));
+        await tester.tap(find.byKey(const ValueKey('draw-done')));
+        await tester.pumpAndSettle();
+        expect(find.byType(TelestratorToolbar), findsNothing);
+      });
+    }
   });
 
   group('zoom', () {
@@ -227,7 +341,7 @@ void main() {
       await pump(tester, playlist: playlist(1, log));
       expect(video.value.isLooping, isFalse);
       expect(video.value.playbackSpeed, 0.5);
-      expect(find.textContaining('2 / 3 · '), findsOneWidget);
+      expect(find.textContaining('clip 2 of 3'), findsOneWidget);
       finish();
       await tester.pump();
       finish(); // reported again: still one move
@@ -236,7 +350,7 @@ void main() {
 
       await tester.tap(find.byKey(const ValueKey('review-prev-clip')));
       await tester.tap(find.byKey(const ValueKey('review-next-clip')));
-      await tester.tap(find.textContaining('0.25'));
+      await tester.tap(speedButton('0.25×'));
       await tester.pumpAndSettle();
       expect(log, ['next', 'previous', 'next', 'speed 0.25']);
     });
@@ -276,7 +390,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(video.value.isPlaying, isFalse);
       expect(find.byType(TelestratorToolbar), findsOneWidget);
-      expect(find.byType(Slider), findsNothing);
+      expect(find.text('Drawing on'), findsOneWidget);
 
       await tester.tap(find.byKey(const ValueKey('draw-tool-pen')));
       await tester.tap(find.byKey(const ValueKey('draw-color-1')));
@@ -516,6 +630,12 @@ List<int> _u32(int v) => [v >> 24 & 0xFF, v >> 16 & 0xFF, v >> 8 & 0xFF, v & 0xF
 
 extension on Iterable<int> {
   Uint8List toUint8List() => Uint8List.fromList(toList());
+}
+
+/// A clip the player cannot open.
+class _BrokenVideo extends FakeVideo {
+  @override
+  Future<void> initialize() async => throw Exception('no codec');
 }
 
 /// A 10 s, 30 fps controller without a platform player.

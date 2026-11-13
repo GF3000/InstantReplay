@@ -6,8 +6,74 @@ import '../../../l10n/app_localizations.dart';
 import '../clips/clip_export.dart';
 import '../clips/clip_store.dart';
 
-/// Save to gallery and Share buttons for the review app bar (SPEC §5.4, UX §3.4), per [Capabilities].
-/// Empty on web, which downloads instead.
+/// Ways a reviewed clip leaves the app (SPEC §5.4, UX §3.4).
+enum ClipExportKind {
+  /// The browser downloads the file (web).
+  download,
+
+  /// A copy in the phone's gallery (Android).
+  gallery,
+
+  /// The system share sheet (Android).
+  share;
+
+  String label(AppLocalizations l10n) => switch (this) {
+        download => l10n.viewerClipDownload,
+        gallery => l10n.viewerClipSaveToGallery,
+        share => l10n.viewerClipShare,
+      };
+
+  IconData get icon => switch (this) {
+        download => Icons.download,
+        gallery => Icons.save_alt,
+        share => Icons.share,
+      };
+
+  /// `review-download`, `review-gallery`, `review-share`.
+  ValueKey<String> get key => ValueKey('review-$name');
+}
+
+/// The exports [stored] allows here, per [Capabilities]: Download on web, Save to gallery and Share
+/// on Android (with the clip on file).
+List<ClipExportKind> clipExportKinds(Capabilities caps, StoredClip stored) => [
+      if (stored.canDownload) ClipExportKind.download,
+      if (stored.filePath != null && caps.canExportToGallery) ClipExportKind.gallery,
+      if (stored.filePath != null && caps.canShare) ClipExportKind.share,
+    ];
+
+/// Runs exports one at a time (a second tap while the copy or the sheet is up does nothing) and
+/// says how they went in a snackbar.
+class ClipExporter {
+  bool _busy = false;
+
+  bool get busy => _busy;
+
+  Future<void> run(BuildContext context, ClipExportKind kind, StoredClip stored, String fileName) async {
+    if (_busy) return;
+    final l10n = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    _busy = true;
+    try {
+      final (result, done) = switch (kind) {
+        ClipExportKind.download => (await stored.download(fileName).then((_) => ClipExportResult.done), null),
+        ClipExportKind.gallery => (await ClipExport.saveToGallery(stored, fileName), l10n.viewerClipSavedToGallery),
+        ClipExportKind.share => (await ClipExport.share(stored, fileName), null),
+      };
+      final message = switch (result) {
+        ClipExportResult.done => done,
+        ClipExportResult.denied => l10n.viewerClipGalleryDenied,
+        ClipExportResult.noSpace => l10n.viewerClipExportNoSpace,
+        ClipExportResult.failed => l10n.viewerClipExportFailed,
+      };
+      if (message != null) messenger?.showSnackBar(SnackBar(content: Text(message)));
+    } finally {
+      _busy = false;
+    }
+  }
+}
+
+/// The review's "Export" button: a menu of [clipExportKinds] (a single way is the button itself).
+/// Nothing when the clip cannot leave the app here.
 class ClipExportActions extends ConsumerStatefulWidget {
   const ClipExportActions({super.key, required this.stored, required this.fileName});
 
@@ -19,50 +85,46 @@ class ClipExportActions extends ConsumerStatefulWidget {
 }
 
 class _ClipExportActionsState extends ConsumerState<ClipExportActions> {
-  /// One export at a time: a second tap while the copy or the sheet is up does nothing.
-  bool _busy = false;
+  final _exporter = ClipExporter();
 
-  Future<void> _run(Future<ClipExportResult> Function() export, {String? doneMessage}) async {
-    if (_busy) return;
-    setState(() => _busy = true);
-    final result = await export();
-    if (!mounted) return;
-    setState(() => _busy = false);
-    final l10n = AppLocalizations.of(context);
-    final message = switch (result) {
-      ClipExportResult.done => doneMessage,
-      ClipExportResult.denied => l10n.viewerClipGalleryDenied,
-      ClipExportResult.noSpace => l10n.viewerClipExportNoSpace,
-      ClipExportResult.failed => l10n.viewerClipExportFailed,
-    };
-    if (message != null) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  Future<void> _run(ClipExportKind kind) async {
+    setState(() {});
+    await _exporter.run(context, kind, widget.stored, widget.fileName);
+    if (mounted) setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    final caps = ref.watch(capabilitiesProvider);
-    if (widget.stored.filePath == null) return const SizedBox.shrink();
+    final kinds = clipExportKinds(ref.watch(capabilitiesProvider), widget.stored);
+    if (kinds.isEmpty) return const SizedBox.shrink();
     final l10n = AppLocalizations.of(context);
-    return Row(mainAxisSize: MainAxisSize.min, children: [
-      if (caps.canExportToGallery)
-        IconButton(
-          key: const ValueKey('review-gallery'),
-          tooltip: l10n.viewerClipSaveToGallery,
-          icon: const Icon(Icons.save_alt),
-          onPressed: _busy
-              ? null
-              : () => _run(
-                    () => ClipExport.saveToGallery(widget.stored, widget.fileName),
-                    doneMessage: l10n.viewerClipSavedToGallery,
-                  ),
-        ),
-      if (caps.canShare)
-        IconButton(
-          key: const ValueKey('review-share'),
-          tooltip: l10n.viewerClipShare,
-          icon: const Icon(Icons.share),
-          onPressed: _busy ? null : () => _run(() => ClipExport.share(widget.stored, widget.fileName)),
-        ),
-    ]);
+    const style = ButtonStyle(minimumSize: WidgetStatePropertyAll(Size(48, 44)));
+    if (kinds case [final only]) {
+      return OutlinedButton.icon(
+        key: only.key,
+        style: style,
+        onPressed: _exporter.busy ? null : () => _run(only),
+        icon: Icon(only.icon),
+        label: Text(only.label(l10n)),
+      );
+    }
+    return MenuAnchor(
+      menuChildren: [
+        for (final k in kinds)
+          MenuItemButton(
+            key: k.key,
+            leadingIcon: Icon(k.icon),
+            onPressed: () => _run(k),
+            child: Text(k.label(l10n)),
+          ),
+      ],
+      builder: (context, menu, _) => OutlinedButton.icon(
+        key: const ValueKey('review-export'),
+        style: style,
+        onPressed: _exporter.busy ? null : () => menu.isOpen ? menu.close() : menu.open(),
+        icon: const Icon(Icons.ios_share),
+        label: Text(l10n.reviewExport),
+      ),
+    );
   }
 }

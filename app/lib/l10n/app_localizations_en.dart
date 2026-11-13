@@ -1580,4 +1580,83 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get youtubeShare => 'Share';
+
+  @override
+  String get reviewDraw => 'Draw';
+
+  @override
+  String get reviewDrawActive => 'Drawing on';
+
+  @override
+  String get reviewChangeTag => 'Change tag';
+
+  @override
+  String get reviewExport => 'Export';
+
+  @override
+  String get reviewMore => 'More';
+
+  @override
+  String get reviewAirSend => 'Air replay';
+
+  @override
+  String get reviewAirStop => 'Take off air';
+
+  @override
+  String get reviewOnAirBanner => 'ON AIR · YOUTUBE SEES IT';
+
+  @override
+  String reviewClipOf(int index, int count) {
+    return 'clip $index of $count';
+  }
+
+  @override
+  String reviewFrameCounter(int frame, int total) {
+    return 'F $frame / $total';
+  }
+
+  @override
+  String get reviewFrameBack => '−1 fr';
+
+  @override
+  String get reviewFrameForward => '+1 fr';
+
+  @override
+  String get reviewLoading => 'Loading the clip…';
+
+  @override
+  String get reviewRetry => 'Retry';
+
+  @override
+  String get reviewToolArrow => 'Arrow';
+
+  @override
+  String get reviewToolCircle => 'Circle';
+
+  @override
+  String get reviewToolLine => 'Line';
+
+  @override
+  String get reviewToolPen => 'Pen';
+
+  @override
+  String get reviewToolEraser => 'Eraser';
+
+  @override
+  String get reviewToolSelect => 'Move';
+
+  @override
+  String get reviewThick => 'Thick';
+
+  @override
+  String get reviewUndo => 'Undo';
+
+  @override
+  String get reviewClearAll => 'Clear';
+
+  @override
+  String get reviewDeleteMark => 'Delete';
+
+  @override
+  String get reviewDone => 'Done';
 }

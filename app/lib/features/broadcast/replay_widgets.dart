@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:replay_protocol/replay_protocol.dart';
 
+import '../../core/ui/ir_colors.dart';
+import '../../core/ui/ir_widgets.dart';
 import '../../l10n/app_localizations.dart';
 
 // Replays on air (SPEC §12.6) as both roles show them: every Viewer from status.replay, the Camera
@@ -21,8 +23,8 @@ int replayPositionAt(ReplayInfo replay, int elapsedMs) {
   return replay.durationMs > 0 ? position.clamp(0, replay.durationMs) : position;
 }
 
-/// A compact bar while a clip is on air: the label and the clip's progress, the speed
-/// (0.25× / 0.5× / 1×, changeable at any time) and a big Back to live.
+/// A compact bar while a clip is on air, outlined in live red: "REPLAY ON AIR" and the clip's
+/// progress, the speed (0.25× / 0.5× / 1×, changeable at any time) and a big Back to live.
 class ReplayBar extends StatefulWidget {
   const ReplayBar({
     super.key,
@@ -45,8 +47,6 @@ class ReplayBar extends StatefulWidget {
 
   /// Prefix of the keys, e.g. `viewer-replay` → `viewer-replay-stop`, `viewer-replay-speed-0.5`.
   final String keyPrefix;
-
-  static const _onAir = Color(0xFFE53935);
 
   @override
   State<ReplayBar> createState() => _ReplayBarState();
@@ -99,114 +99,168 @@ class _ReplayBarState extends State<ReplayBar> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
+    final c = context.ir;
     final r = widget.replay;
     final prefix = widget.keyPrefix;
     final position = _position;
     final progress = r.durationMs > 0 ? position / r.durationMs : 0.0;
     final selected = ReplayInfo.speeds.contains(r.speed) ? r.speed : null;
-    final speed = SegmentedButton<double>(
-      key: ValueKey('$prefix-speed'),
-      showSelectedIcon: false,
-      emptySelectionAllowed: selected == null,
-      style: SegmentedButton.styleFrom(
-        visualDensity: VisualDensity.compact,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        minimumSize: const Size(0, 40),
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-      ),
-      segments: [
-        for (final s in ReplayInfo.speeds)
-          ButtonSegment(
-            value: s,
-            label: Text(l10n.viewerReviewSpeed(s), key: ValueKey('$prefix-speed-$s')),
+    final onSpeed = widget.onSpeed;
+    final speed = onSpeed == null
+        ? null
+        : _SpeedStrip(
+            key: ValueKey('$prefix-speed'),
+            prefix: prefix,
+            selected: selected,
             tooltip: l10n.replaySpeed,
-          ),
-      ],
-      selected: {?selected},
-      onSelectionChanged: widget.enabled ? (s) => s.isEmpty ? null : widget.onSpeed?.call(s.first) : null,
-    );
-    final showSpeed = widget.onSpeed != null;
+            label: (s) => l10n.viewerReviewSpeed(s),
+            onChanged: widget.enabled ? onSpeed : null,
+          );
     final back = FilledButton.icon(
       key: ValueKey('$prefix-stop'),
       style: FilledButton.styleFrom(
         minimumSize: const Size(0, 48),
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        backgroundColor: ReplayBar._onAir,
-        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        backgroundColor: c.live,
+        foregroundColor: c.onLive,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       ),
       onPressed: widget.enabled ? widget.onStop : null,
       icon: const Icon(Icons.live_tv),
       label: FittedBox(
         fit: BoxFit.scaleDown,
-        child: Text(l10n.replayBackToLive, style: const TextStyle(fontWeight: FontWeight.bold)),
+        child: Text(l10n.replayBackToLive, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
       ),
     );
     final header = Row(
       children: [
-        const Icon(Icons.fiber_manual_record, size: 14, color: ReplayBar._onAir),
-        const SizedBox(width: 4),
+        IrLiveDot(color: c.live, size: 9),
+        const SizedBox(width: 8),
         Expanded(
           child: Text(
             l10n.replayOnAir,
             key: ValueKey('$prefix-label'),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: ReplayBar._onAir, fontWeight: FontWeight.w800, fontSize: 13),
+            style: irMono(13, color: c.liveText).copyWith(letterSpacing: 1.2),
           ),
         ),
         Text(
           '${formatReplayTime(position)} / ${formatReplayTime(r.durationMs)}',
           key: ValueKey('$prefix-time'),
-          style: theme.textTheme.bodySmall?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+          style: irMono(13, weight: FontWeight.w600, color: c.text),
         ),
       ],
     );
     final bar = ClipRRect(
       borderRadius: BorderRadius.circular(2),
-      child: LinearProgressIndicator(value: progress.clamp(0.0, 1.0), minHeight: 3, color: ReplayBar._onAir),
+      child: LinearProgressIndicator(
+        value: progress.clamp(0.0, 1.0),
+        minHeight: 3,
+        color: c.live,
+        backgroundColor: c.line,
+      ),
     );
-    return Material(
+    return Container(
       key: ValueKey(prefix),
-      color: theme.colorScheme.surfaceContainerHigh,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
-        child: LayoutBuilder(
-          builder: (context, c) {
-            // Wide: one row. Narrow (a phone, a side panel): progress on top, controls below.
-            if (c.maxWidth >= 560) {
-              return Row(
-                children: [
-                  Expanded(
-                    child: Column(mainAxisSize: MainAxisSize.min, children: [header, const SizedBox(height: 4), bar]),
-                  ),
-                  if (showSpeed) ...[const SizedBox(width: 8), speed],
-                  const SizedBox(width: 8),
-                  back,
-                ],
-              );
-            }
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+      decoration: BoxDecoration(
+        color: c.liveSoft,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: c.live),
+      ),
+      padding: const EdgeInsets.fromLTRB(10, 3, 4, 3),
+      child: LayoutBuilder(
+        builder: (context, box) {
+          // Wide: one row. Narrow (a phone, a side panel): progress on top, controls below.
+          if (box.maxWidth >= 560) {
+            return Row(
               children: [
-                header,
-                const SizedBox(height: 2),
-                bar,
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    if (showSpeed) speed,
-                    const SizedBox(width: 4),
-                    Expanded(child: back),
-                  ],
+                Expanded(
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [header, const SizedBox(height: 6), bar]),
                 ),
+                if (speed != null) ...[const SizedBox(width: 10), SizedBox(width: 180, child: speed)],
+                const SizedBox(width: 8),
+                back,
               ],
             );
-          },
+          }
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(padding: const EdgeInsets.only(right: 4), child: header),
+              const SizedBox(height: 2),
+              Padding(padding: const EdgeInsets.only(right: 4), child: bar),
+              const SizedBox(height: 3),
+              Row(
+                children: [
+                  if (speed != null) ...[SizedBox(width: 150, child: speed), const SizedBox(width: 6)],
+                  Expanded(child: back),
+                ],
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// 0.25× / 0.5× / 1× in the control-room style, with a key per speed (`<prefix>-speed-0.5`).
+class _SpeedStrip extends StatelessWidget {
+  const _SpeedStrip({
+    super.key,
+    required this.prefix,
+    required this.selected,
+    required this.tooltip,
+    required this.label,
+    required this.onChanged,
+  });
+
+  final String prefix;
+  final double? selected;
+  final String tooltip;
+  final String Function(double) label;
+  final ValueChanged<double>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ir;
+    return Tooltip(
+      message: tooltip,
+      child: Container(
+        height: 48,
+        decoration: BoxDecoration(
+          color: c.surface,
+          border: Border.all(color: c.line),
+          borderRadius: BorderRadius.circular(4),
         ),
+        clipBehavior: Clip.antiAlias,
+        child: Row(children: [
+          for (final (i, s) in ReplayInfo.speeds.indexed) ...[
+            if (i > 0) VerticalDivider(width: 1, thickness: 1, color: c.line),
+            Expanded(
+              child: Semantics(
+                selected: s == selected,
+                button: true,
+                child: Material(
+                  color: s == selected ? c.signal : c.surface,
+                  child: InkWell(
+                    onTap: onChanged == null ? null : () => onChanged!(s),
+                    child: Center(
+                      child: Text(
+                        label(s),
+                        key: ValueKey('$prefix-speed-$s'),
+                        maxLines: 1,
+                        style: irMono(14, weight: FontWeight.w600, color: s == selected ? c.onSignal : c.text),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ]),
       ),
     );
   }
