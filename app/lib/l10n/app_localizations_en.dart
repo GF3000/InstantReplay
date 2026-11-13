@@ -1871,4 +1871,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sbReplayBadge => 'REPLAY';
+
+  @override
+  String get sbClockStart => 'Start clock';
+
+  @override
+  String get sbClockPause => 'Pause clock';
 }

@@ -527,5 +527,7 @@
   "sbTeamName": "Nombre",
   "sbSizeOnScreen": "Tamaño en pantalla",
   "sbMatch": "Partido",
-  "sbReplayBadge": "REPETICIÓN"
+  "sbReplayBadge": "REPETICIÓN",
+  "sbClockStart": "Arrancar reloj",
+  "sbClockPause": "Pausar reloj"
 }

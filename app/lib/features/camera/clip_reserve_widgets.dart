@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/ui/ir_colors.dart';
 import '../../l10n/app_localizations.dart';
 
 /// `Replay reserve  −  3  +`: how many acknowledged clips the Camera keeps so they can go on air
@@ -48,7 +49,7 @@ class ClipReserveStepper extends StatelessWidget {
               '$size',
               key: ValueKey('$keyPrefix-size'),
               textAlign: TextAlign.center,
-              style: theme.textTheme.displaySmall?.copyWith(fontWeight: FontWeight.bold),
+              style: irMono(36, color: theme.colorScheme.onSurface),
             ),
           ),
           IconButton.outlined(
@@ -84,7 +85,7 @@ class ClipReserveStepper extends StatelessWidget {
           '$size',
           key: ValueKey('$keyPrefix-size'),
           textAlign: TextAlign.center,
-          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          style: irMono(22, color: theme.colorScheme.onSurface),
         ),
       ),
       IconButton.outlined(

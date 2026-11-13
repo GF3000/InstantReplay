@@ -334,7 +334,7 @@ class _StreamSetupPageState extends State<_StreamSetupPage> {
 
     final next = FilledButton(
       key: const ValueKey('broadcast-config-next'),
-      style: FilledButton.styleFrom(minimumSize: const Size(64, 56), textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+      style: FilledButton.styleFrom(minimumSize: const Size(64, 56), textStyle: const TextStyle(fontFamily: IrFonts.sans, fontSize: 18, fontWeight: FontWeight.w700)),
       onPressed: () => setState(() => _section = sections[index + 1]),
       child: Text(l10n.camNext),
     );
@@ -435,7 +435,7 @@ class _StreamSetupPageState extends State<_StreamSetupPage> {
       key: key,
       style: FilledButton.styleFrom(
         minimumSize: Size(small ? 88 : 64, small ? 44 : 56),
-        textStyle: TextStyle(fontSize: small ? 16 : 18, fontWeight: FontWeight.w700),
+        textStyle: TextStyle(fontFamily: IrFonts.sans, fontSize: small ? 16 : 18, fontWeight: FontWeight.w700),
       ),
       onPressed: _canSave ? _save : null,
       child: Text(l10n.broadcastSave),
@@ -453,7 +453,7 @@ class _StreamSetupPageState extends State<_StreamSetupPage> {
           backgroundColor: c.live,
           foregroundColor: c.onLive,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-          textStyle: TextStyle(fontSize: height >= 72 ? 22 : 19, fontWeight: FontWeight.w700),
+          textStyle: TextStyle(fontFamily: IrFonts.sans, fontSize: height >= 72 ? 22 : 19, fontWeight: FontWeight.w700),
         ),
         onPressed: _canSave ? () => _save(goLive: true) : null,
         child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -578,17 +578,17 @@ class _StreamSetupPageState extends State<_StreamSetupPage> {
           ),
         ),
         const SizedBox(width: 8),
-        IrKey(
+        SizedBox(height: 52, child: IrKey(
           key: const ValueKey('broadcast-key-paste'),
           minHeight: 52,
           semanticLabel: l10n.broadcastPaste,
           onPressed: _paste,
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
+          child: Center(child: Row(mainAxisSize: MainAxisSize.min, children: [
             Icon(Icons.content_paste, size: 20, color: c.text),
             const SizedBox(width: 6),
             Text(l10n.broadcastPaste, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: c.text)),
-          ]),
-        ),
+          ])),
+        )),
         const SizedBox(width: 8),
         SizedBox(
           width: 52,
@@ -598,10 +598,10 @@ class _StreamSetupPageState extends State<_StreamSetupPage> {
             padding: EdgeInsets.zero,
             semanticLabel: _showKey ? l10n.broadcastKeyHide : l10n.broadcastKeyShow,
             onPressed: () => setState(() => _showKey = !_showKey),
-            child: Tooltip(
+            child: Center(child: Tooltip(
               message: _showKey ? l10n.broadcastKeyHide : l10n.broadcastKeyShow,
               child: Icon(_showKey ? Icons.visibility_off : Icons.visibility, color: c.text),
-            ),
+            )),
           ),
         ),
       ]),
@@ -632,17 +632,17 @@ class _StreamSetupPageState extends State<_StreamSetupPage> {
       return [
         Text(l10n.youtubeAccountHelp, style: TextStyle(fontSize: 14, color: c.muted)),
         const SizedBox(height: 12),
-        IrKey(
+        SizedBox(height: 56, child: IrKey(
           key: const ValueKey('youtube-sign-in'),
           onPressed: _busy ? null : _signIn,
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
+          child: Center(child: Row(mainAxisSize: MainAxisSize.min, children: [
             _busy
                 ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))
                 : Icon(Icons.login, color: c.text),
             const SizedBox(width: 8),
             Text(l10n.youtubeSignIn, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: c.text)),
-          ]),
-        ),
+          ])),
+        )),
         ?errorText,
       ];
     }

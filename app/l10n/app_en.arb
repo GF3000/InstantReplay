@@ -1062,5 +1062,7 @@
   "sbTeamName": "Name",
   "sbSizeOnScreen": "Size on screen",
   "sbMatch": "Match",
-  "sbReplayBadge": "REPLAY"
+  "sbReplayBadge": "REPLAY",
+  "sbClockStart": "Start clock",
+  "sbClockPause": "Pause clock"
 }

@@ -1879,4 +1879,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get sbReplayBadge => 'REPETICIÓN';
+
+  @override
+  String get sbClockStart => 'Arrancar reloj';
+
+  @override
+  String get sbClockPause => 'Pausar reloj';
 }

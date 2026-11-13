@@ -109,7 +109,7 @@ class ScoreboardPanel extends StatelessWidget {
             team: Team.away, state: state, enabled: enabled, onCommand: onCommand, compact: compact, mirrored: true);
         final centre = _CentreControl(state: state, enabled: enabled, onCommand: onCommand, compact: compact);
         final gap = compact ? 8.0 : 16.0;
-        if (c.maxWidth >= (compact ? 340 : 620)) {
+        if (c.maxWidth >= (compact ? 400 : 620)) {
           return Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
             Expanded(child: home),
             SizedBox(width: gap),
@@ -161,7 +161,7 @@ class _TeamControl extends StatelessWidget {
         padding: EdgeInsets.zero,
         semanticLabel: l10n.scoreboardMinus(t.name),
         onPressed: enabled && t.score > 0 ? () => onCommand(ScoreCommand(team: team, delta: -1)) : null,
-        child: Text('−1', style: irMono(compact ? 16 : 22, color: c.text)),
+        child: Center(child: Text('−1', style: irMono(compact ? 16 : 22, color: c.text))),
       ),
     );
     final plus = SizedBox(
@@ -175,7 +175,7 @@ class _TeamControl extends StatelessWidget {
         led: color,
         semanticLabel: l10n.scoreboardPlus(t.name),
         onPressed: enabled ? () => onCommand(ScoreCommand(team: team, delta: 1)) : null,
-        child: Text('+1', style: irMono(compact ? 18 : 24, color: c.text)),
+        child: Center(child: Text('+1', style: irMono(compact ? 18 : 24, color: c.text))),
       ),
     );
     final score = Expanded(
@@ -185,7 +185,7 @@ class _TeamControl extends StatelessWidget {
           '${t.score}',
           key: ValueKey('score-${team.name}'),
           textAlign: TextAlign.center,
-          style: irMono(compact ? 34 : 64, color: c.text, height: 1),
+          style: irMono(compact ? 34 : 76, color: c.text, height: 1),
         ),
       ),
     );
@@ -229,24 +229,24 @@ class _CentreControl extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final c = context.ir;
     final running = state.clockRunning;
-    final toggle = IrKey(
+    final toggle = SizedBox(height: 48, child: IrKey(
       key: const ValueKey('score-clock-toggle'),
       minHeight: 48,
-      padding: EdgeInsets.symmetric(horizontal: compact ? 12 : 16),
+      padding: EdgeInsets.symmetric(horizontal: compact ? 14 : 16),
       borderColor: running ? c.ok : null,
       semanticLabel: running ? l10n.scoreboardPauseClock : l10n.scoreboardStartClock,
       onPressed: enabled ? () => onCommand(running ? const ClockPauseCommand() : const ClockStartCommand()) : null,
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
+      child: Center(child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(running ? Icons.pause : Icons.play_arrow, size: compact ? 22 : 24, color: running ? c.ok : c.text),
         if (!compact) ...[
           const SizedBox(width: 6),
           Text(
-            running ? l10n.scoreboardPauseClock : l10n.scoreboardStartClock,
+            running ? l10n.sbClockPause : l10n.sbClockStart,
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: running ? c.ok : c.text),
           ),
         ],
-      ]),
-    );
+      ])),
+    ));
     final menu = _ScoreboardMenu(state: state, enabled: enabled, onCommand: onCommand, compact: compact);
     return Column(mainAxisSize: MainAxisSize.min, children: [
       // A long press, so a stray tap during the match never opens the editor.

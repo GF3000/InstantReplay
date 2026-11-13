@@ -168,7 +168,7 @@ class _BroadcastChecklistState extends ConsumerState<BroadcastChecklist> {
                   minimumSize: const Size(64, 48),
                   foregroundColor: c.signal,
                   side: BorderSide(color: c.signal),
-                  textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  textStyle: const TextStyle(fontFamily: IrFonts.sans, fontSize: 15, fontWeight: FontWeight.w700),
                 ),
                 onPressed: item.onAction,
                 child: Text(item.action!),

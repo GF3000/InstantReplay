@@ -3265,6 +3265,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'REPLAY'**
   String get sbReplayBadge;
+
+  /// No description provided for @sbClockStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start clock'**
+  String get sbClockStart;
+
+  /// No description provided for @sbClockPause.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause clock'**
+  String get sbClockPause;
 }
 
 class _AppLocalizationsDelegate

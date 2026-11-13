@@ -440,18 +440,18 @@ Future<void> showRecordingDialog(
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: primary
-                ? IrKey(
+                ? SizedBox(height: 56, child: IrKey(
                     key: ValueKey('$keyPrefix-$key'),
                     led: color,
                     onPressed: onTap,
-                    child: Row(children: [
+                    child: Center(child: Row(children: [
                       Icon(icon, color: color ?? c.text),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(label, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: c.text)),
                       ),
-                    ]),
-                  )
+                    ])),
+                  ))
                 : OutlinedButton(
                     key: ValueKey('$keyPrefix-$key'),
                     style: OutlinedButton.styleFrom(

@@ -195,7 +195,7 @@ class _CopyLinkButtonState extends State<_CopyLinkButton> {
     final l10n = AppLocalizations.of(context);
     final c = context.ir;
     final fg = _copied ? c.ok : c.text;
-    return IrKey(
+    return SizedBox(height: 56, child: IrKey(
       key: const ValueKey('youtube-qr-copy'),
       borderColor: _copied ? c.ok : null,
       onPressed: () async {
@@ -207,15 +207,15 @@ class _CopyLinkButtonState extends State<_CopyLinkButton> {
           if (mounted) setState(() => _copied = false);
         });
       },
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
+      child: Center(child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(_copied ? Icons.check : Icons.content_copy, size: 20, color: fg),
         const SizedBox(width: 8),
         Flexible(
           child: Text(_copied ? l10n.youtubeLinkCopied : l10n.youtubeCopyLink,
               overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: fg)),
         ),
-      ]),
-    );
+      ])),
+    ));
   }
 }
 

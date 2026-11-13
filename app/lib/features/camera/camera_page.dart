@@ -110,7 +110,7 @@ class _SetupView extends ConsumerWidget {
             ]);
           }
           final panelWidth = broadcast
-              ? (box.maxWidth * 0.36).clamp(240.0, 360.0)
+              ? (box.maxWidth * 0.34).clamp(220.0, 360.0)
               : (box.maxWidth * 0.45).clamp(300.0, 420.0);
           return Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Expanded(child: broadcast ? _BroadcastStage(state: state) : _Preview(state: state)),
@@ -158,7 +158,7 @@ class _BroadcastStage extends StatelessWidget {
             decoration: BoxDecoration(color: c.surface, border: Border(top: BorderSide(color: c.line))),
             child: Center(
               child: SingleChildScrollView(
-                padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 20, vertical: compact ? 6 : 12),
+                padding: EdgeInsets.symmetric(horizontal: compact ? 4 : 20, vertical: compact ? 6 : 12),
                 child: _CameraScoreboardControls(state: state, compact: compact),
               ),
             ),
@@ -279,19 +279,19 @@ class _BlackScreenButton extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final c = context.ir;
-    return IrKey(
+    return SizedBox(height: 48, child: IrKey(
       key: const Key('camera-black-screen'),
       minHeight: 48,
       onPressed: state.phase == CameraPhase.running ? () => ref.read(cameraSessionProvider.notifier).startOperating() : null,
-      child: Row(mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
+      child: Center(child: Row(mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
         Icon(Icons.dark_mode, size: 20, color: c.text),
         const SizedBox(width: 8),
         Flexible(
           child: Text(state.broadcast ? l10n.camBlackScreen : l10n.cameraStartOperating,
               overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: c.text)),
         ),
-      ]),
-    );
+      ])),
+    ));
   }
 }
 
@@ -313,16 +313,16 @@ class _Message extends ConsumerWidget {
           Text(text, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: c.text), textAlign: TextAlign.center),
           if (retry) ...[
             const SizedBox(height: 24),
-            IrKey(
+            SizedBox(height: 56, child: IrKey(
               onPressed: () => ref.read(cameraSessionProvider.notifier).enter(),
               led: c.signal,
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
+              child: Center(child: Row(mainAxisSize: MainAxisSize.min, children: [
                 Icon(Icons.refresh, color: c.text),
                 const SizedBox(width: 8),
                 Text(AppLocalizations.of(context).cameraRetry,
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: c.text)),
-              ]),
-            ),
+              ])),
+            )),
           ],
         ]),
       ),
@@ -790,12 +790,12 @@ class _BroadcastPanel extends ConsumerWidget {
     final gap = SizedBox(height: compact ? 8 : 12);
 
     Widget bigKey({required Key key, required IconData icon, required Color iconColor, required String title, required String sub, VoidCallback? onTap}) =>
-        IrKey(
+        SizedBox(height: compact ? 60 : 64, child: IrKey(
           key: key,
           minHeight: compact ? 60 : 64,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           onPressed: onTap,
-          child: Row(children: [
+          child: Center(child: Row(children: [
             Icon(icon, size: 30, color: iconColor),
             const SizedBox(width: 12),
             Expanded(
@@ -805,8 +805,8 @@ class _BroadcastPanel extends ConsumerWidget {
                 Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, color: c.muted)),
               ]),
             ),
-          ]),
-        );
+          ])),
+        ));
 
     return ListView(
       padding: EdgeInsets.fromLTRB(12, compact ? 6 : 12, 12, 12),
@@ -905,13 +905,11 @@ class _BroadcastPanel extends ConsumerWidget {
           ),
         ],
         const SizedBox(height: 8),
-        Row(children: [
-          if (info.active) ...[
-            Expanded(child: _SettingsButton(info: info, enabled: running)),
-            const SizedBox(width: 8),
-          ],
-          Expanded(child: _BlackScreenButton(state: state, expand: true)),
-        ]),
+        if (info.active) ...[
+          _SettingsButton(info: info, enabled: running),
+          const SizedBox(height: 8),
+        ],
+        _BlackScreenButton(state: state, expand: true),
         gap,
         ..._notices(context, ref, state),
         _Advanced(state: state),
@@ -955,7 +953,7 @@ class _GoLive extends ConsumerWidget {
               backgroundColor: c.live,
               foregroundColor: c.onLive,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-              textStyle: TextStyle(fontSize: compact ? 18 : 20, fontWeight: FontWeight.w700),
+              textStyle: TextStyle(fontFamily: IrFonts.sans, fontSize: compact ? 18 : 20, fontWeight: FontWeight.w700),
             ),
             onPressed: !enabled
                 ? null
@@ -987,20 +985,20 @@ class _SettingsButton extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final c = context.ir;
-    return IrKey(
+    return SizedBox(height: 48, child: IrKey(
       key: const ValueKey('camera-broadcast-settings'),
       minHeight: 48,
       semanticLabel: l10n.broadcastSettings,
       onPressed: enabled ? () => _BroadcastActions.configure(context, ref, info) : null,
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
+      child: Center(child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(Icons.tune, size: 20, color: c.text),
         const SizedBox(width: 8),
         Flexible(
           child: Text(l10n.camPrepareStream,
               overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: c.text)),
         ),
-      ]),
-    );
+      ])),
+    ));
   }
 }
 
@@ -1066,7 +1064,7 @@ class _OnAirCard extends ConsumerWidget {
               Flexible(child: state),
               const SizedBox(width: 6),
               Flexible(
-                child: Text('$uptime · $mbps ${l10n.camMbps}',
+                child: Text('$uptime · $mbps',
                     maxLines: 1, overflow: TextOverflow.ellipsis, style: irMono(13, weight: FontWeight.w500, color: c.muted)),
               ),
             ]),

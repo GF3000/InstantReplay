@@ -741,7 +741,7 @@ void main() {
     });
 
     // A phone on its side (844×390, 640×360) and a tablet (1180×820), off air and on air.
-    for (final size in const [Size(844, 390), Size(640, 360), Size(1180, 820)]) {
+    for (final size in const [Size(844, 390), Size(640, 360), Size(800, 416), Size(1180, 820), Size(1280, 800)]) {
       testWidgets('broadcasting fits ${size.width.toInt()}x${size.height.toInt()}', (tester) async {
         final fake = FakeCaptureLayer();
         await _pumpCamera(tester, fake,
