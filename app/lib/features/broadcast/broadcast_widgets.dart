@@ -784,37 +784,66 @@ Future<void> showYouTubeLinkQr(BuildContext context, YouTubeBroadcast live) => s
       context: context,
       builder: (context) {
         final l10n = AppLocalizations.of(context);
+        final theme = Theme.of(context);
         final size = MediaQuery.sizeOf(context);
-        // As big as fits, leaving room for the title, the link and the button.
-        final qrSize = (size.shortestSide - 200).clamp(160.0, 420.0);
-        return AlertDialog(
-          key: const ValueKey('youtube-qr-dialog'),
-          scrollable: true,
-          title: Text(live.title.isEmpty ? l10n.youtubeQrTitle : live.title, textAlign: TextAlign.center),
-          content: Column(mainAxisSize: MainAxisSize.min, children: [
-            // Fixed size: the dialog measures its content, which QrImageView can't answer.
-            SizedBox.square(
-              dimension: qrSize,
+        final title = live.title.isEmpty ? l10n.youtubeQrTitle : live.title;
+        // Fixed size: dialogs measure their content, which QrImageView can't answer.
+        Widget code(double side) => SizedBox.square(
+              dimension: side,
               child: QrImageView(
                 key: const ValueKey('youtube-qr-code'),
                 data: live.url,
-                size: qrSize,
+                size: side,
                 padding: const EdgeInsets.all(12),
                 backgroundColor: Colors.white,
                 semanticsLabel: live.url,
               ),
+            );
+        final close = FilledButton(
+          key: const ValueKey('youtube-qr-close'),
+          style: FilledButton.styleFrom(minimumSize: const Size(64, 48)),
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l10n.youtubeQrClose),
+        );
+
+        if (size.width > size.height) {
+          // On its side: the code as tall as the screen allows, the words beside it.
+          final side = (size.height - 64).clamp(160.0, 480.0);
+          return Dialog(
+            key: const ValueKey('youtube-qr-dialog'),
+            insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                code(side),
+                const SizedBox(width: 24),
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: (size.width - side - 140).clamp(160.0, 360.0)),
+                  child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(title, style: theme.textTheme.headlineSmall, maxLines: 3, overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 12),
+                    SelectableText(live.url, style: theme.textTheme.titleMedium),
+                    const SizedBox(height: 24),
+                    close,
+                  ]),
+                ),
+              ]),
             ),
+          );
+        }
+
+        final side = (size.shortestSide - 96).clamp(160.0, 420.0);
+        return AlertDialog(
+          key: const ValueKey('youtube-qr-dialog'),
+          scrollable: true,
+          title: Text(title, textAlign: TextAlign.center),
+          content: Column(mainAxisSize: MainAxisSize.min, children: [
+            code(side),
             const SizedBox(height: 8),
             SelectableText(live.url, textAlign: TextAlign.center),
           ]),
           actionsAlignment: MainAxisAlignment.center,
-          actions: [
-            FilledButton(
-              style: FilledButton.styleFrom(minimumSize: const Size(64, 48)),
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(l10n.youtubeQrClose),
-            ),
-          ],
+          actions: [close],
         );
       },
     );

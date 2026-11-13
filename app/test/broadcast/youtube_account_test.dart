@@ -14,13 +14,22 @@ class _FakeYouTube {
   final bound = <String, String>{};
   var nextId = 0;
 
-  static const _stream = {
-    'id': 's1',
-    'cdn': {
-      'ingestionInfo': {'ingestionAddress': 'rtmp://yt/live2', 'streamName': 'key-s1'},
-    },
-    'status': {'streamStatus': 'inactive'},
-  };
+  /// The Camera is already streaming to the account's key.
+  var receiving = false;
+
+  /// Transitions YouTube refuses (lives made with the monitor stream on can't skip testing).
+  final refuse = <String>{};
+
+  Map<String, Object?> get _stream => {
+        'id': 's1',
+        'cdn': {
+          'ingestionInfo': {'ingestionAddress': 'rtmp://yt/live2', 'streamName': 'key-s1'},
+        },
+        'status': {
+          'streamStatus': receiving ? 'active' : 'inactive',
+          'healthStatus': {'status': receiving ? 'good' : 'noData'},
+        },
+      };
 
   Map<String, Object?> _broadcast(String id) => {
         'id': id,
@@ -52,6 +61,22 @@ class _FakeYouTube {
       case ('POST', '/liveBroadcasts/bind'):
         bound[id!] = r.url.queryParameters['streamId']!;
         return json({'id': id});
+      case ('POST', '/liveBroadcasts/transition'):
+        final to = r.url.queryParameters['broadcastStatus']!;
+        if (refuse.contains(to)) {
+          return http.Response(
+              jsonEncode({
+                'error': {
+                  'code': 403,
+                  'errors': [
+                    {'reason': 'invalidTransition'},
+                  ],
+                },
+              }),
+              403);
+        }
+        lifeCycle[id!] = to;
+        return json(_broadcast(id));
       case ('PUT', '/liveBroadcasts'):
         return json(_broadcast((jsonDecode(r.body) as Map)['id'] as String));
     }
@@ -67,6 +92,7 @@ void main() {
       GoogleYouTubeAccount.signedIn(prefs: prefs, client: MockClient(yt.handle), email: 'coach@example.com');
 
   setUp(() async {
+    GoogleYouTubeAccount.transitionPause = Duration.zero;
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
     yt = _FakeYouTube();
@@ -132,5 +158,41 @@ void main() {
     expect(account().active, isTrue);
     await account().setActive(false);
     expect(account().active, isFalse);
+  });
+
+  test('a live made while the Camera already streams is taken live (auto start would not fire)', () async {
+    yt.receiving = true;
+    final target = await account().save(title: 'Final', description: '', privacy: YouTubePrivacy.public, fresh: true);
+    expect(yt.calls, contains('POST /liveBroadcasts/transition'));
+    expect(yt.lifeCycle['b1'], 'live');
+    expect(target.broadcast.lifeCycle, YouTubeLifeCycle.live);
+  });
+
+  test('without a stream yet the live waits for auto start', () async {
+    await account().save(title: 'Final', description: '', privacy: YouTubePrivacy.public, fresh: true);
+    expect(yt.calls, isNot(contains('POST /liveBroadcasts/transition')));
+    expect(yt.lifeCycle['b1'], 'created');
+  });
+
+  test('an upcoming live stuck with the stream running is started through testing if needed', () async {
+    final a = account();
+    await a.save(title: 'Final', description: '', privacy: YouTubePrivacy.public, fresh: true);
+    yt.receiving = true;
+    yt.refuse.add('live');
+    yt.lifeCycle['b1'] = 'ready';
+    Future<void>.delayed(Duration.zero, () => yt.refuse.clear());
+    final target = await a.ensureLive(defaultTitle: 'Match');
+    expect(yt.calls.where((c) => c == 'POST /liveBroadcasts/transition'), hasLength(3));
+    expect(target.broadcast.lifeCycle, YouTubeLifeCycle.live);
+  });
+
+  test('if YouTube refuses to start it, the live is kept as it was', () async {
+    final a = account();
+    await a.save(title: 'Final', description: '', privacy: YouTubePrivacy.public, fresh: true);
+    yt.receiving = true;
+    yt.refuse.addAll(['live', 'testing']);
+    final target = await a.ensureLive(defaultTitle: 'Match');
+    expect(target.broadcast.id, 'b1');
+    expect(target.broadcast.lifeCycle, YouTubeLifeCycle.ready);
   });
 }

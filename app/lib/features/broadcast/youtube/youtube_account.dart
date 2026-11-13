@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:flutter/foundation.dart' show debugPrint, visibleForTesting;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -141,6 +141,7 @@ class GoogleYouTubeAccount implements YouTubeAccount {
   @override
   Future<void> setActive(bool active) async {
     await _prefs.setBool(_activeKey, active);
+    debugPrint('IR-YT account mode ${active ? 'on' : 'off'}');
     _notify();
   }
 
@@ -152,12 +153,14 @@ class GoogleYouTubeAccount implements YouTubeAccount {
     try {
       await _initialize();
       final account = await GoogleSignIn.instance.attemptLightweightAuthentication();
+      debugPrint('IR-YT restore: ${account == null ? 'no session' : 'signed in'}, account mode $active');
       if (account != null) {
         _account = account;
         _notify();
       }
-    } catch (_) {
+    } catch (e) {
       // Signed out; the user signs in from the dialog.
+      debugPrint('IR-YT restore failed: ${e.runtimeType} $e');
     }
   }
 
@@ -169,6 +172,7 @@ class GoogleYouTubeAccount implements YouTubeAccount {
       final authz = await account.authorizationClient.authorizeScopes(const [youtubeScope]);
       _account = account;
       _accessToken = authz.accessToken;
+      debugPrint('IR-YT signed in');
       _notify();
     } on GoogleSignInException catch (e) {
       throw YouTubeAccountException(
@@ -247,6 +251,7 @@ class GoogleYouTubeAccount implements YouTubeAccount {
           );
           await _api.bind(broadcast.id, stream.id);
         }
+        broadcast = await _startIfReceiving(broadcast, stream);
         await _remember(broadcast);
         await setActive(true);
         return (server: stream.server, key: stream.key, broadcast: broadcast);
@@ -261,8 +266,10 @@ class GoogleYouTubeAccount implements YouTubeAccount {
       return _guard(() async {
         final stream = await _stream();
         if (current.boundStreamId != stream.id) await _api.bind(current.id, stream.id);
+        final live = await _startIfReceiving(current, stream);
+        if (live != current) await _remember(live);
         await setActive(true);
-        return (server: stream.server, key: stream.key, broadcast: current);
+        return (server: stream.server, key: stream.key, broadcast: live);
       });
     }
     return save(
@@ -272,6 +279,31 @@ class GoogleYouTubeAccount implements YouTubeAccount {
       fresh: true,
     );
   }
+
+  /// Auto start only fires when the stream starts after the live was bound. When the Camera was
+  /// already streaming (account chosen while on air), the live stays "upcoming" forever and its
+  /// link says unavailable; take it live here instead. Best effort: on failure it stays as it was.
+  Future<YouTubeBroadcast> _startIfReceiving(YouTubeBroadcast broadcast, YouTubeStream stream) async {
+    if (broadcast.lifeCycle != YouTubeLifeCycle.ready || stream.ingest == YouTubeIngest.none) return broadcast;
+    try {
+      return await _api.transition(broadcast.id, 'live');
+    } on YouTubeApiException catch (e) {
+      debugPrint('IR-YT go live: ${e.reason}, trying through testing');
+    }
+    // Lives made with the monitor stream on must pass through testing first.
+    try {
+      await _api.transition(broadcast.id, 'testing');
+      await Future<void>.delayed(transitionPause);
+      return await _api.transition(broadcast.id, 'live');
+    } on YouTubeApiException catch (e) {
+      debugPrint('IR-YT go live failed: ${e.reason}');
+      return broadcast;
+    }
+  }
+
+  /// Between testing and live; YouTube needs a moment to reach testing.
+  @visibleForTesting
+  static Duration transitionPause = const Duration(seconds: 5);
 
   @override
   Future<YouTubeIngest?> ingest() async {

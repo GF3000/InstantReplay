@@ -249,7 +249,15 @@ void main() {
     expect(find.byKey(const ValueKey('youtube-qr-code')), findsOneWidget);
     expect(find.text('https://youtu.be/abc123'), findsWidgets);
     expect(tester.takeException(), isNull);
-    await tester.tap(find.text('Close'));
+    // On a phone on its side the whole code fits on screen, with the link and Close beside it.
+    final code = tester.getRect(find.byKey(const ValueKey('youtube-qr-code')));
+    final close = tester.getRect(find.byKey(const ValueKey('youtube-qr-close')));
+    expect(code.top, greaterThanOrEqualTo(0));
+    expect(code.bottom, lessThanOrEqualTo(412));
+    expect(code.height, greaterThan(300));
+    expect(close.left, greaterThan(code.right));
+    expect(close.bottom, lessThanOrEqualTo(412));
+    await tester.tap(find.byKey(const ValueKey('youtube-qr-close')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('youtube-qr-code')), findsNothing);
   });

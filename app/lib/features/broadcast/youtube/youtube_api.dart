@@ -178,10 +178,24 @@ class YouTubeApi {
     }, {
       'snippet': {'title': title, 'description': description, 'scheduledStartTime': start.toUtc().toIso8601String()},
       'status': {'privacyStatus': privacy.name, 'selfDeclaredMadeForKids': false},
-      'contentDetails': {'enableAutoStart': true, 'enableAutoStop': true, 'enableDvr': true},
+      'contentDetails': {
+        'enableAutoStart': true,
+        'enableAutoStop': true,
+        'enableDvr': true,
+        // Off so the app can take a ready live straight to live when the stream already runs.
+        'monitorStream': {'enableMonitorStream': false},
+      },
     });
     return YouTubeBroadcast.fromJson(json);
   }
+
+  /// Moves a live to [status] (`testing`, `live` or `complete`), for when auto start can't fire.
+  Future<YouTubeBroadcast> transition(String broadcastId, String status) async => YouTubeBroadcast.fromJson(
+      await _call('POST', '/liveBroadcasts/transition', {
+        'part': 'id,snippet,status,contentDetails',
+        'id': broadcastId,
+        'broadcastStatus': status,
+      }));
 
   Future<void> bind(String broadcastId, String streamId) =>
       _call('POST', '/liveBroadcasts/bind', {'part': 'id,contentDetails', 'id': broadcastId, 'streamId': streamId});
