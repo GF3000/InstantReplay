@@ -598,5 +598,11 @@
   "sbClockPause": "Pausar reloj",
   "camShareLoading": "Preparando el enlace de YouTube…",
   "camShareLoadingSub": "La primera vez tarda unos segundos; luego se abre al momento.",
-  "camShareRetry": "Reintentar"
+  "camShareRetry": "Reintentar",
+  "sbVisibility": "Qué se ve",
+  "sbOnAir": "Marcador en la emisión",
+  "sbOnAirSub": "Apágalo para emitir sin marcador",
+  "sbControls": "Controles del marcador en esta pantalla",
+  "sbControlsSub": "Ocúltalos si otra persona lleva el marcador",
+  "sbChangeColour": "Cambiar color"
 }

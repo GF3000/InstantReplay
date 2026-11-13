@@ -3691,6 +3691,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Try again'**
   String get camShareRetry;
+
+  /// No description provided for @sbVisibility.
+  ///
+  /// In en, this message translates to:
+  /// **'What shows'**
+  String get sbVisibility;
+
+  /// No description provided for @sbOnAir.
+  ///
+  /// In en, this message translates to:
+  /// **'Scoreboard on air'**
+  String get sbOnAir;
+
+  /// No description provided for @sbOnAirSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn it off to stream without a scoreboard'**
+  String get sbOnAirSub;
+
+  /// No description provided for @sbControls.
+  ///
+  /// In en, this message translates to:
+  /// **'Scoreboard controls on this screen'**
+  String get sbControls;
+
+  /// No description provided for @sbControlsSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide them when someone else keeps the score'**
+  String get sbControlsSub;
+
+  /// No description provided for @sbChangeColour.
+  ///
+  /// In en, this message translates to:
+  /// **'Change colour'**
+  String get sbChangeColour;
 }
 
 class _AppLocalizationsDelegate

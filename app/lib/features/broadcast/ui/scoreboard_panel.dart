@@ -3,7 +3,10 @@ import 'dart:async';
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' show ProviderScope;
 import 'package:replay_protocol/replay_protocol.dart';
+
+import '../../../core/panels.dart';
 
 import '../../../core/ui/ir_colors.dart';
 import '../../../core/ui/ir_widgets.dart';
@@ -93,37 +96,73 @@ class ScoreboardPanel extends StatelessWidget {
     required this.enabled,
     required this.onCommand,
     this.compact = false,
+    this.controlsPanel,
   });
 
   final ScoreboardState state;
   final bool enabled;
   final void Function(ScoreboardCommand command) onCommand;
 
+  /// The panel these controls live in on this device; the settings page can then hide them.
+  final Panel? controlsPanel;
+
   /// Short screens (a phone on its side): smaller keys and figures.
   final bool compact;
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(builder: (context, c) {
-        final home = _TeamControl(team: Team.home, state: state, enabled: enabled, onCommand: onCommand, compact: compact);
-        final away = _TeamControl(
-            team: Team.away, state: state, enabled: enabled, onCommand: onCommand, compact: compact, mirrored: true);
-        final centre = _CentreControl(state: state, enabled: enabled, onCommand: onCommand, compact: compact);
-        final gap = compact ? 8.0 : 16.0;
-        if (c.maxWidth >= (compact ? 400 : 620)) {
-          return Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, c) {
+      final home = _TeamControl(
+        team: Team.home,
+        state: state,
+        enabled: enabled,
+        onCommand: onCommand,
+        compact: compact,
+      );
+      final away = _TeamControl(
+        team: Team.away,
+        state: state,
+        enabled: enabled,
+        onCommand: onCommand,
+        compact: compact,
+        mirrored: true,
+      );
+      final centre = _CentreControl(
+        state: state,
+        enabled: enabled,
+        onCommand: onCommand,
+        compact: compact,
+        controlsPanel: controlsPanel,
+      );
+      final gap = compact ? 8.0 : 16.0;
+      if (c.maxWidth >= (compact ? 400 : 620)) {
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
             Expanded(child: home),
             SizedBox(width: gap),
             centre,
             SizedBox(width: gap),
             Expanded(child: away),
-          ]);
-        }
-        return Column(mainAxisSize: MainAxisSize.min, children: [
-          Row(children: [Expanded(child: home), const SizedBox(width: 12), Expanded(child: away)]),
+          ],
+        );
+      }
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Expanded(child: home),
+              const SizedBox(width: 12),
+              Expanded(child: away),
+            ],
+          ),
           const SizedBox(height: 6),
           centre,
-        ]);
-      });
+        ],
+      );
+    },
+  );
 }
 
 class _TeamControl extends StatelessWidget {
@@ -161,7 +200,9 @@ class _TeamControl extends StatelessWidget {
         padding: EdgeInsets.zero,
         semanticLabel: l10n.scoreboardMinus(t.name),
         onPressed: enabled && t.score > 0 ? () => onCommand(ScoreCommand(team: team, delta: -1)) : null,
-        child: Center(child: Text('−1', style: irMono(compact ? 16 : 22, color: c.text))),
+        child: Center(
+          child: Text('−1', style: irMono(compact ? 16 : 22, color: c.text)),
+        ),
       ),
     );
     final plus = SizedBox(
@@ -175,7 +216,9 @@ class _TeamControl extends StatelessWidget {
         led: color,
         semanticLabel: l10n.scoreboardPlus(t.name),
         onPressed: enabled ? () => onCommand(ScoreCommand(team: team, delta: 1)) : null,
-        child: Center(child: Text('+1', style: irMono(compact ? 18 : 24, color: c.text))),
+        child: Center(
+          child: Text('+1', style: irMono(compact ? 18 : 24, color: c.text)),
+        ),
       ),
     );
     final score = Expanded(
@@ -196,86 +239,109 @@ class _TeamControl extends StatelessWidget {
         key: ValueKey('score-${team.name}-name'),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          fontSize: compact ? 13 : 16,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.5,
-          color: c.muted,
-        ),
+        style: TextStyle(fontSize: compact ? 13 : 16, fontWeight: FontWeight.w600, letterSpacing: 0.5, color: c.muted),
       ),
     );
     final gap = SizedBox(width: compact ? 4 : 8);
-    return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Row(
-        mainAxisAlignment: mirrored ? MainAxisAlignment.end : MainAxisAlignment.start,
-        children: mirrored ? [name, const SizedBox(width: 6), bar] : [bar, const SizedBox(width: 6), name],
-      ),
-      SizedBox(height: compact ? 4 : 8),
-      Row(children: mirrored ? [plus, gap, score, gap, minus] : [minus, gap, score, gap, plus]),
-    ]);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          mainAxisAlignment: mirrored ? MainAxisAlignment.end : MainAxisAlignment.start,
+          children: mirrored ? [name, const SizedBox(width: 6), bar] : [bar, const SizedBox(width: 6), name],
+        ),
+        SizedBox(height: compact ? 4 : 8),
+        Row(children: mirrored ? [plus, gap, score, gap, minus] : [minus, gap, score, gap, plus]),
+      ],
+    );
   }
 }
 
 class _CentreControl extends StatelessWidget {
-  const _CentreControl({required this.state, required this.enabled, required this.onCommand, required this.compact});
+  const _CentreControl({
+    required this.state,
+    required this.enabled,
+    required this.onCommand,
+    required this.compact,
+    this.controlsPanel,
+  });
 
   final ScoreboardState state;
   final bool enabled;
   final void Function(ScoreboardCommand) onCommand;
   final bool compact;
+  final Panel? controlsPanel;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final c = context.ir;
     final running = state.clockRunning;
-    final toggle = SizedBox(height: 48, child: IrKey(
-      key: const ValueKey('score-clock-toggle'),
-      minHeight: 48,
-      padding: EdgeInsets.symmetric(horizontal: compact ? 14 : 16),
-      borderColor: running ? c.ok : null,
-      semanticLabel: running ? l10n.scoreboardPauseClock : l10n.scoreboardStartClock,
-      onPressed: enabled ? () => onCommand(running ? const ClockPauseCommand() : const ClockStartCommand()) : null,
-      child: Center(child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(running ? Icons.pause : Icons.play_arrow, size: compact ? 22 : 24, color: running ? c.ok : c.text),
-        if (!compact) ...[
-          const SizedBox(width: 6),
-          Text(
-            running ? l10n.sbClockPause : l10n.sbClockStart,
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: running ? c.ok : c.text),
-          ),
-        ],
-      ])),
-    ));
-    final menu = _ScoreboardMenu(state: state, enabled: enabled, onCommand: onCommand, compact: compact);
-    return Column(mainAxisSize: MainAxisSize.min, children: [
-      // A long press, so a stray tap during the match never opens the editor.
-      InkWell(
-        key: const ValueKey('score-clock'),
-        borderRadius: BorderRadius.circular(4),
-        onTap: enabled ? () => _holdHint(context) : null,
-        onLongPress: enabled ? () => _setClock(context) : null,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          child: ScoreboardClock(
-            state: state,
-            builder: (context, ms) => Text(
-              formatClock(ms),
-              semanticsLabel: l10n.scoreboardSetClock,
-              style: irMono(compact ? 24 : 46, color: running ? c.signal : c.warnText, height: 1.1),
-            ),
+    final toggle = SizedBox(
+      height: 48,
+      child: IrKey(
+        key: const ValueKey('score-clock-toggle'),
+        minHeight: 48,
+        padding: EdgeInsets.symmetric(horizontal: compact ? 14 : 16),
+        borderColor: running ? c.ok : null,
+        semanticLabel: running ? l10n.scoreboardPauseClock : l10n.scoreboardStartClock,
+        onPressed: enabled ? () => onCommand(running ? const ClockPauseCommand() : const ClockStartCommand()) : null,
+        child: Center(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(running ? Icons.pause : Icons.play_arrow, size: compact ? 22 : 24, color: running ? c.ok : c.text),
+              if (!compact) ...[
+                const SizedBox(width: 6),
+                Text(
+                  running ? l10n.sbClockPause : l10n.sbClockStart,
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: running ? c.ok : c.text),
+                ),
+              ],
+            ],
           ),
         ),
       ),
-      SizedBox(height: compact ? 2 : 8),
-      if (compact)
-        Row(mainAxisSize: MainAxisSize.min, children: [toggle, const SizedBox(width: 4), menu])
-      else ...[
-        toggle,
-        const SizedBox(height: 4),
-        menu,
+    );
+    final menu = _ScoreboardMenu(
+      state: state,
+      enabled: enabled,
+      onCommand: onCommand,
+      compact: compact,
+      controlsPanel: controlsPanel,
+    );
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // A long press, so a stray tap during the match never opens the editor.
+        InkWell(
+          key: const ValueKey('score-clock'),
+          borderRadius: BorderRadius.circular(4),
+          onTap: enabled ? () => _holdHint(context) : null,
+          onLongPress: enabled ? () => _setClock(context) : null,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            child: ScoreboardClock(
+              state: state,
+              builder: (context, ms) => Text(
+                formatClock(ms),
+                semanticsLabel: l10n.scoreboardSetClock,
+                style: irMono(compact ? 24 : 46, color: running ? c.signal : c.warnText, height: 1.1),
+              ),
+            ),
+          ),
+        ),
+        SizedBox(height: compact ? 2 : 8),
+        if (compact)
+          Row(mainAxisSize: MainAxisSize.min, children: [toggle, const SizedBox(width: 4), menu])
+        else ...[
+          toggle,
+          const SizedBox(height: 4),
+          menu,
+        ],
       ],
-    ]);
+    );
   }
 
   void _holdHint(BuildContext context) {
@@ -296,12 +362,19 @@ enum _MenuAction { nextPeriod, prevPeriod, visible, reset, settings }
 
 /// The period label plus a menu with the actions used a few times per match.
 class _ScoreboardMenu extends StatelessWidget {
-  const _ScoreboardMenu({required this.state, required this.enabled, required this.onCommand, required this.compact});
+  const _ScoreboardMenu({
+    required this.state,
+    required this.enabled,
+    required this.onCommand,
+    required this.compact,
+    this.controlsPanel,
+  });
 
   final ScoreboardState state;
   final bool enabled;
   final void Function(ScoreboardCommand) onCommand;
   final bool compact;
+  final Panel? controlsPanel;
 
   @override
   Widget build(BuildContext context) {
@@ -355,21 +428,24 @@ class _ScoreboardMenu extends StatelessWidget {
         constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 12),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            if (hasPeriods) ...[
-              Text(
-                label(state.period),
-                key: const ValueKey('score-period'),
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: compact ? 15 : 17, color: c.text),
-              ),
-              const SizedBox(width: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (hasPeriods) ...[
+                Text(
+                  label(state.period),
+                  key: const ValueKey('score-period'),
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: compact ? 15 : 17, color: c.text),
+                ),
+                const SizedBox(width: 6),
+              ],
+              if (!state.visible) ...[
+                Icon(Icons.visibility_off, size: 20, color: c.warnText, semanticLabel: l10n.scoreboardHidden),
+                const SizedBox(width: 6),
+              ],
+              Icon(Icons.more_horiz, color: c.muted),
             ],
-            if (!state.visible) ...[
-              Icon(Icons.visibility_off, size: 20, color: c.warnText, semanticLabel: l10n.scoreboardHidden),
-              const SizedBox(width: 6),
-            ],
-            Icon(Icons.more_horiz, color: c.muted),
-          ]),
+          ),
         ),
       ),
     );
@@ -386,7 +462,18 @@ class _ScoreboardMenu extends StatelessWidget {
       case _MenuAction.reset:
         if (await confirmScoreboardReset(context)) onCommand(const ResetCommand());
       case _MenuAction.settings:
-        final settings = await showScoreboardSettingsDialog(context, state.settings, state: state);
+        final panel = controlsPanel;
+        final panels = panel == null ? null : ProviderScope.containerOf(context, listen: false);
+        final settings = await showScoreboardSettingsDialog(
+          context,
+          state.settings,
+          state: state,
+          onAirChanged: (v) => onCommand(VisibleCommand(visible: v)),
+          controlsShown: panels == null ? null : !panels.read(hiddenPanelsProvider).contains(panel),
+          onControlsChanged: panels == null
+              ? null
+              : (v) => panels.read(hiddenPanelsProvider.notifier).set(panel!, visible: v),
+        );
         if (settings != null) onCommand(SettingsCommand(settings));
     }
   }
@@ -421,8 +508,10 @@ class _ScoreboardMenu extends StatelessWidget {
 
 /// Asks for a clock value with minute and second wheels, like the Android alarm picker; null when
 /// cancelled.
-Future<int?> showClockSetDialog(BuildContext context, int currentMs) =>
-    showDialog<int>(context: context, builder: (_) => _ClockSetDialog(initialMs: currentMs));
+Future<int?> showClockSetDialog(BuildContext context, int currentMs) => showDialog<int>(
+  context: context,
+  builder: (_) => _ClockSetDialog(initialMs: currentMs),
+);
 
 class _ClockSetDialog extends StatefulWidget {
   const _ClockSetDialog({required this.initialMs});
@@ -460,37 +549,43 @@ class _ClockSetDialogState extends State<_ClockSetDialog> {
       title: Text(l10n.scoreboardSetClock),
       content: SizedBox(
         height: _Wheel.itemExtent * 5,
-        child: Stack(alignment: Alignment.center, children: [
-          // The selection band, as in the Android alarm picker.
-          Container(
-            height: _Wheel.itemExtent,
-            decoration: BoxDecoration(
-              color: c.signalSoft,
-              border: Border.all(color: c.signal),
-              borderRadius: BorderRadius.circular(4),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // The selection band, as in the Android alarm picker.
+            Container(
+              height: _Wheel.itemExtent,
+              decoration: BoxDecoration(
+                color: c.signalSoft,
+                border: Border.all(color: c.signal),
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
-          ),
-          Row(mainAxisSize: MainAxisSize.min, children: [
-            _Wheel(
-              key: const ValueKey('score-clock-minutes'),
-              controller: _minutes,
-              count: maxMinutes + 1,
-              looping: false,
-              semanticLabel: l10n.scoreboardMinutes,
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _Wheel(
+                  key: const ValueKey('score-clock-minutes'),
+                  controller: _minutes,
+                  count: maxMinutes + 1,
+                  looping: false,
+                  semanticLabel: l10n.scoreboardMinutes,
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Text(':', style: irMono(_Wheel.fontSize, color: c.signal)),
+                ),
+                _Wheel(
+                  key: const ValueKey('score-clock-seconds'),
+                  controller: _seconds,
+                  count: 60,
+                  looping: true,
+                  semanticLabel: l10n.scoreboardSeconds,
+                ),
+              ],
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Text(':', style: irMono(_Wheel.fontSize, color: c.signal)),
-            ),
-            _Wheel(
-              key: const ValueKey('score-clock-seconds'),
-              controller: _seconds,
-              count: 60,
-              looping: true,
-              semanticLabel: l10n.scoreboardSeconds,
-            ),
-          ]),
-        ]),
+          ],
+        ),
       ),
       actions: [
         TextButton(
@@ -531,15 +626,17 @@ class _Wheel extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = context.ir.text;
     Widget item(int i) => Center(
-          child: Text((i % count).toString().padLeft(2, '0'), style: irMono(fontSize, color: color)),
-        );
+      child: Text((i % count).toString().padLeft(2, '0'), style: irMono(fontSize, color: color)),
+    );
     return Semantics(
       label: semanticLabel,
       child: SizedBox(
         width: 84,
         child: ScrollConfiguration(
           // Flutter web doesn't drag scrollables with a mouse by default.
-          behavior: ScrollConfiguration.of(context).copyWith(dragDevices: {...PointerDeviceKind.values}, scrollbars: false),
+          behavior: ScrollConfiguration.of(
+            context,
+          ).copyWith(dragDevices: {...PointerDeviceKind.values}, scrollbars: false),
           child: ListWheelScrollView.useDelegate(
             controller: controller,
             itemExtent: itemExtent,

@@ -717,7 +717,13 @@ class ViewerScoreboardPanel extends ConsumerWidget {
       color: Theme.of(context).colorScheme.surfaceContainer,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
-        child: ScoreboardPanel(state: scoreboard, enabled: connected, compact: compact, onCommand: remote.command),
+        child: ScoreboardPanel(
+          state: scoreboard,
+          enabled: connected,
+          compact: compact,
+          onCommand: remote.command,
+          controlsPanel: Panel.viewerScoreboard,
+        ),
       ),
     );
   }

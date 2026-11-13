@@ -1245,5 +1245,11 @@
   "sbClockPause": "Pause clock",
   "camShareLoading": "Preparing the YouTube link…",
   "camShareLoadingSub": "It takes a few seconds the first time; then it opens at once.",
-  "camShareRetry": "Try again"
+  "camShareRetry": "Try again",
+  "sbVisibility": "What shows",
+  "sbOnAir": "Scoreboard on air",
+  "sbOnAirSub": "Turn it off to stream without a scoreboard",
+  "sbControls": "Scoreboard controls on this screen",
+  "sbControlsSub": "Hide them when someone else keeps the score",
+  "sbChangeColour": "Change colour"
 }

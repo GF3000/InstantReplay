@@ -8,7 +8,13 @@ import 'package:replay_protocol/replay_protocol.dart';
 void main() {
   final state = ScoreboardState.initial;
 
-  Future<Future<ScoreboardSettings?>> open(WidgetTester tester, Size size, {ScoreboardSettings? current}) async {
+  Future<Future<ScoreboardSettings?>> open(
+    WidgetTester tester,
+    Size size, {
+    ScoreboardSettings? current,
+    ValueChanged<bool>? onAirChanged,
+    ValueChanged<bool>? onControlsChanged,
+  }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -20,7 +26,13 @@ void main() {
       supportedLocales: AppLocalizations.supportedLocales,
       home: Builder(
         builder: (context) => TextButton(
-          onPressed: () => result = showScoreboardSettingsDialog(context, current ?? state.settings, state: state),
+          onPressed: () => result = showScoreboardSettingsDialog(
+            context,
+            current ?? state.settings,
+            state: state,
+            onAirChanged: onAirChanged,
+            onControlsChanged: onControlsChanged,
+          ),
           child: const Text('open'),
         ),
       ),
@@ -34,7 +46,8 @@ void main() {
     testWidgets('fits ${size.width.toInt()}x${size.height.toInt()}', (tester) async {
       await open(tester, size);
       expect(tester.takeException(), isNull);
-      expect(find.byKey(const ValueKey('score-settings-preview')), findsOneWidget);
+      // No big preview any more: the style cards draw the board.
+      expect(find.byKey(const ValueKey('score-settings-preview')), findsNothing);
       await tester.ensureVisible(find.byKey(const ValueKey('score-settings-style-plate')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('score-settings-style-plate')));
@@ -49,16 +62,60 @@ void main() {
     await tester.enterText(find.byKey(const ValueKey('score-settings-home-name')), 'Halcones');
     await tester.pump();
     expect(find.text('8 / 5'), findsOneWidget);
-    // The classic preview shows the name cut to 5 letters.
-    expect(find.descendant(of: find.byKey(const ValueKey('score-settings-preview')), matching: find.text('HALCO')),
+    // The classic card draws the name cut to 5 letters, the plate card in full.
+    expect(find.descendant(of: find.byKey(const ValueKey('score-settings-style-classic')), matching: find.text('HALCO')),
         findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('score-settings-style-plate')));
     await tester.pump();
     expect(find.text('8 / 16'), findsOneWidget);
     expect(find.byKey(const ValueKey('score-settings-classic-cut')), findsNothing);
-    expect(find.descendant(of: find.byKey(const ValueKey('score-settings-preview')), matching: find.text('HALCONES')),
+    expect(find.descendant(of: find.byKey(const ValueKey('score-settings-style-plate')), matching: find.text('HALCONES')),
         findsOneWidget);
+  });
+
+  testWidgets('the on-air and controls switches act at once, and only when offered', (tester) async {
+    final onAir = <bool>[];
+    final controls = <bool>[];
+    await open(tester, const Size(1180, 820), onAirChanged: onAir.add, onControlsChanged: controls.add);
+    await tester.tap(find.byKey(const ValueKey('score-settings-on-air')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('score-settings-controls')));
+    await tester.pump();
+    expect(onAir, [false]);
+    expect(controls, [false]);
+    await tester.tap(find.byKey(const ValueKey('score-settings-on-air')));
+    await tester.pump();
+    expect(onAir, [false, true]);
+  });
+
+  testWidgets('without callbacks there are no switches', (tester) async {
+    await open(tester, const Size(1180, 820));
+    expect(find.byKey(const ValueKey('score-settings-on-air')), findsNothing);
+    expect(find.byKey(const ValueKey('score-settings-controls')), findsNothing);
+  });
+
+  testWidgets('on a small screen the colours fold to the chosen one until tapped', (tester) async {
+    final result = await open(tester, const Size(844, 390));
+    expect(find.byKey(const ValueKey('score-settings-home-color-3')), findsNothing);
+    await tester.ensureVisible(find.byKey(const ValueKey('score-settings-home-color-open')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('score-settings-home-color-open')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const ValueKey('score-settings-home-color-3')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('score-settings-home-color-3')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('score-settings-home-color-3')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('score-settings-save')));
+    await tester.pumpAndSettle();
+    expect((await result)!.homeColor, teamPalette[3]);
+  });
+
+  testWidgets('on a tablet every colour shows', (tester) async {
+    await open(tester, const Size(1180, 820));
+    expect(find.byKey(const ValueKey('score-settings-home-color-3')), findsOneWidget);
+    expect(find.byKey(const ValueKey('score-settings-home-color-open')), findsNothing);
   });
 
   testWidgets('names take up to 16 letters; style and size come back with the rest', (tester) async {

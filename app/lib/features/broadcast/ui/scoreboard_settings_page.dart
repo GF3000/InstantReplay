@@ -8,21 +8,51 @@ import '../../../l10n/app_localizations.dart';
 import '../scoreboard_controller.dart' show periodLabel;
 import 'scoreboard_panel.dart' show onColor, teamPalette;
 
-/// The scoreboard's settings (B2_Marcador): style (Classic bar or Plate) with a live preview,
-/// team names and colours, size on screen, periods, minutes and clock direction. Null when
-/// cancelled. [state] feeds the preview with the current scores and clock.
-Future<ScoreboardSettings?> showScoreboardSettingsDialog(BuildContext context, ScoreboardSettings current,
-        {ScoreboardState? state}) =>
-    Navigator.of(context).push<ScoreboardSettings>(MaterialPageRoute(
-      fullscreenDialog: true,
-      builder: (_) => _ScoreboardSettingsPage(current: current, state: state),
-    ));
+/// The scoreboard's settings (B2_Marcador): whether the board goes on air and whether this screen
+/// shows its controls (both apply at once), style (Classic bar or Plate, each card drawing the
+/// board with the names as typed), team names and colours, size on screen, periods, minutes and
+/// clock direction. Null when cancelled. [state] feeds the cards with the current scores and clock.
+///
+/// [onAirChanged] (with [onAir], the board's current visibility) and [onControlsChanged] (with
+/// [controlsShown]) add their switch only when given.
+Future<ScoreboardSettings?> showScoreboardSettingsDialog(
+  BuildContext context,
+  ScoreboardSettings current, {
+  ScoreboardState? state,
+  bool? onAir,
+  ValueChanged<bool>? onAirChanged,
+  bool? controlsShown,
+  ValueChanged<bool>? onControlsChanged,
+}) => Navigator.of(context).push<ScoreboardSettings>(
+  MaterialPageRoute(
+    fullscreenDialog: true,
+    builder: (_) => _ScoreboardSettingsPage(
+      current: current,
+      state: state,
+      onAir: onAir ?? state?.visible ?? true,
+      onAirChanged: onAirChanged,
+      controlsShown: controlsShown ?? true,
+      onControlsChanged: onControlsChanged,
+    ),
+  ),
+);
 
 class _ScoreboardSettingsPage extends StatefulWidget {
-  const _ScoreboardSettingsPage({required this.current, this.state});
+  const _ScoreboardSettingsPage({
+    required this.current,
+    this.state,
+    required this.onAir,
+    this.onAirChanged,
+    required this.controlsShown,
+    this.onControlsChanged,
+  });
 
   final ScoreboardSettings current;
   final ScoreboardState? state;
+  final bool onAir;
+  final ValueChanged<bool>? onAirChanged;
+  final bool controlsShown;
+  final ValueChanged<bool>? onControlsChanged;
 
   @override
   State<_ScoreboardSettingsPage> createState() => _ScoreboardSettingsPageState();
@@ -37,6 +67,8 @@ class _ScoreboardSettingsPageState extends State<_ScoreboardSettingsPage> {
   late int _periods = widget.current.periods.clamp(1, ScoreboardState.maxPeriods);
   late bool _countDown = widget.current.countDown;
   late ScoreboardStyle _style = widget.current.style;
+  late bool _onAir = widget.onAir;
+  late bool _controls = widget.controlsShown;
   late int _scale = ScoreboardState.scales.contains(widget.current.scale)
       ? widget.current.scale
       : ScoreboardState.defaultScale;
@@ -61,17 +93,19 @@ class _ScoreboardSettingsPageState extends State<_ScoreboardSettingsPage> {
 
   void _save() {
     final minutes = int.tryParse(_minutes.text) ?? widget.current.periodMs ~/ 60000;
-    Navigator.of(context).pop(ScoreboardSettings(
-      homeName: ScoreboardState.normalizeName(_homeName.text, widget.current.homeName),
-      awayName: ScoreboardState.normalizeName(_awayName.text, widget.current.awayName),
-      homeColor: _homeColor,
-      awayColor: _awayColor,
-      periods: _periods,
-      periodMs: minutes.clamp(1, 120) * 60000,
-      countDown: _countDown,
-      scale: _scale,
-      style: _style,
-    ));
+    Navigator.of(context).pop(
+      ScoreboardSettings(
+        homeName: ScoreboardState.normalizeName(_homeName.text, widget.current.homeName),
+        awayName: ScoreboardState.normalizeName(_awayName.text, widget.current.awayName),
+        homeColor: _homeColor,
+        awayColor: _awayColor,
+        periods: _periods,
+        periodMs: minutes.clamp(1, 120) * 60000,
+        countDown: _countDown,
+        scale: _scale,
+        style: _style,
+      ),
+    );
   }
 
   /// What the preview draws: the names as typed, the scores and clock of the match.
@@ -118,103 +152,163 @@ class _ScoreboardSettingsPageState extends State<_ScoreboardSettingsPage> {
       ),
       body: SafeArea(
         top: false,
-        child: LayoutBuilder(builder: (context, box) {
-          final preview = _PreviewBox(data: data, style: _style, scale: _scale);
-          final styleCards = _StyleCards(data: data, style: _style, onChanged: (s) => setState(() => _style = s));
-          final styleBlock = <Widget>[
-            preview,
-            const SizedBox(height: 16),
-            Text(l10n.sbStyle, style: _label(c)),
-            const SizedBox(height: 8),
-            styleCards,
-          ];
-          final fields = _fields(l10n, c);
-          if (box.maxWidth >= 900) {
-            return Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Expanded(
-                flex: 11,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: styleBlock),
-                ),
+        child: LayoutBuilder(
+          builder: (context, box) {
+            final wide = box.maxWidth >= 900;
+            final styleCards = _StyleCards(data: data, style: _style, onChanged: (s) => setState(() => _style = s));
+            // No big preview: each style card already draws the board with the names as typed.
+            final styleBlock = <Widget>[
+              ..._visibility(l10n, c),
+              Text(l10n.sbStyle, style: _label(c)),
+              const SizedBox(height: 8),
+              styleCards,
+            ];
+            final fields = _fields(l10n, c, foldColours: !wide);
+            if (wide) {
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    flex: 11,
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: styleBlock),
+                    ),
+                  ),
+                  VerticalDivider(width: 1, color: c.line),
+                  Expanded(
+                    flex: 8,
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: fields),
+                    ),
+                  ),
+                ],
+              );
+            }
+            if (box.maxWidth > box.maxHeight && box.maxWidth >= 600) {
+              // A phone on its side: visibility and style on the left, the fields beside them.
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: styleBlock),
+                    ),
+                  ),
+                  VerticalDivider(width: 1, color: c.line),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: fields),
+                    ),
+                  ),
+                ],
+              );
+            }
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [...styleBlock, const SizedBox(height: 20), ...fields],
               ),
-              VerticalDivider(width: 1, color: c.line),
-              Expanded(
-                flex: 8,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: fields),
-                ),
-              ),
-            ]);
-          }
-          if (box.maxWidth > box.maxHeight && box.maxWidth >= 600) {
-            // A phone on its side: preview and style on the left, the fields beside them.
-            return Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: styleBlock),
-                ),
-              ),
-              VerticalDivider(width: 1, color: c.line),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: fields),
-                ),
-              ),
-            ]);
-          }
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              ...styleBlock,
-              const SizedBox(height: 20),
-              ...fields,
-            ]),
-          );
-        }),
+            );
+          },
+        ),
       ),
     );
   }
 
   static TextStyle _label(IrColors c) => TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: c.text);
 
-  List<Widget> _fields(AppLocalizations l10n, IrColors c) {
+  /// The two switches that act at once: the board on air, and its controls on this screen.
+  List<Widget> _visibility(AppLocalizations l10n, IrColors c) {
+    final onAirChanged = widget.onAirChanged;
+    final onControlsChanged = widget.onControlsChanged;
+    if (onAirChanged == null && onControlsChanged == null) return const [];
+    return [
+      Text(l10n.sbVisibility, style: _label(c)),
+      const SizedBox(height: 8),
+      IrPanel(
+        padding: EdgeInsets.zero,
+        child: Column(
+          children: [
+            if (onAirChanged != null)
+              _SwitchRow(
+                key: const ValueKey('score-settings-on-air'),
+                title: l10n.sbOnAir,
+                subtitle: l10n.sbOnAirSub,
+                value: _onAir,
+                onChanged: (v) {
+                  setState(() => _onAir = v);
+                  onAirChanged(v);
+                },
+              ),
+            if (onAirChanged != null && onControlsChanged != null) Divider(height: 1, color: c.line),
+            if (onControlsChanged != null)
+              _SwitchRow(
+                key: const ValueKey('score-settings-controls'),
+                title: l10n.sbControls,
+                subtitle: l10n.sbControlsSub,
+                value: _controls,
+                onChanged: (v) {
+                  setState(() => _controls = v);
+                  onControlsChanged(v);
+                },
+              ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 18),
+    ];
+  }
+
+  List<Widget> _fields(AppLocalizations l10n, IrColors c, {required bool foldColours}) {
     final classic = _style == ScoreboardStyle.classic;
     Widget team(String title, TextEditingController name, int color, ValueChanged<int> onColor, String key) {
       final length = name.text.trim().length;
       final cut = classic && length > ScoreboardState.classicNameLength;
-      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text(title, style: _label(c)),
-        const SizedBox(height: 8),
-        Row(children: [
-          Expanded(
-            child: TextField(
-              key: ValueKey('score-settings-$key-name'),
-              controller: name,
-              maxLength: ScoreboardState.maxNameLength,
-              maxLengthEnforcement: MaxLengthEnforcement.enforced,
-              buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
-              textCapitalization: TextCapitalization.characters,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 1, color: c.text),
-              decoration: InputDecoration(labelText: l10n.sbTeamName),
-            ),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(title, style: _label(c)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  key: ValueKey('score-settings-$key-name'),
+                  controller: name,
+                  maxLength: ScoreboardState.maxNameLength,
+                  maxLengthEnforcement: MaxLengthEnforcement.enforced,
+                  buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
+                  textCapitalization: TextCapitalization.characters,
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 1, color: c.text),
+                  decoration: InputDecoration(labelText: l10n.sbTeamName),
+                ),
+              ),
+              SizedBox(
+                width: 64,
+                child: Text(
+                  '$length / ${classic ? ScoreboardState.classicNameLength : ScoreboardState.maxNameLength}',
+                  key: ValueKey('score-settings-$key-count'),
+                  textAlign: TextAlign.end,
+                  style: irMono(13, weight: FontWeight.w500, color: cut ? c.warnText : c.muted),
+                ),
+              ),
+            ],
           ),
-          SizedBox(
-            width: 64,
-            child: Text(
-              '$length / ${classic ? ScoreboardState.classicNameLength : ScoreboardState.maxNameLength}',
-              key: ValueKey('score-settings-$key-count'),
-              textAlign: TextAlign.end,
-              style: irMono(13, weight: FontWeight.w500, color: cut ? c.warnText : c.muted),
-            ),
+          const SizedBox(height: 8),
+          _Palette(
+            selected: color,
+            onSelected: onColor,
+            keyPrefix: 'score-settings-$key-color',
+            label: title,
+            foldable: foldColours,
           ),
-        ]),
-        const SizedBox(height: 8),
-        _Palette(selected: color, onSelected: onColor, keyPrefix: 'score-settings-$key-color', label: title),
-      ]);
+        ],
+      );
     }
 
     return [
@@ -282,65 +376,6 @@ class _ScoreboardSettingsPageState extends State<_ScoreboardSettingsPage> {
   }
 }
 
-/// The 16:9 picture with the board as it will go on air, at the chosen size.
-class _PreviewBox extends StatelessWidget {
-  const _PreviewBox({required this.data, required this.style, required this.scale});
-
-  final ScoreboardPreviewData data;
-  final ScoreboardStyle style;
-  final int scale;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final c = context.ir;
-    return AspectRatio(
-      aspectRatio: 16 / 9,
-      child: LayoutBuilder(builder: (context, box) {
-        // The overlay's bar is 56 px high at 1080p and 100 %.
-        final bar = 56 * scale / 100 * box.maxWidth / 1920 * 1.25;
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: DecoratedBox(
-            key: const ValueKey('score-settings-preview'),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [c.surfaceHigh, c.bg],
-              ),
-            ),
-            child: Stack(children: [
-              Positioned(
-                left: box.maxWidth * 0.03,
-                top: box.maxWidth * 0.02,
-                right: box.maxWidth * 0.03,
-                child: Align(
-                  alignment: Alignment.topLeft,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.topLeft,
-                    child: ScoreboardPreview(data: data, style: style, barHeight: bar),
-                  ),
-                ),
-              ),
-              Positioned(
-                right: 8,
-                bottom: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  color: c.bg.withValues(alpha: 0.75),
-                  child: Text(l10n.sbPreview, style: irMono(11, weight: FontWeight.w600, color: c.muted)),
-                ),
-              ),
-            ]),
-          ),
-        );
-      }),
-    );
-  }
-}
-
 /// Classic and Plate as two choice cards, each with a small drawing of the style.
 class _StyleCards extends StatelessWidget {
   const _StyleCards({required this.data, required this.style, required this.onChanged});
@@ -370,20 +405,34 @@ class _StyleCards extends StatelessWidget {
             onTap: () => onChanged(s),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Expanded(child: Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: c.text))),
-                  if (tag != null) Text(tag, style: irMono(11, weight: FontWeight.w600, color: c.muted)),
-                ]),
-                const SizedBox(height: 10),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: ScoreboardPreview(data: data, style: s, barHeight: 24),
-                ),
-                const SizedBox(height: 10),
-                Text(sub, style: TextStyle(fontSize: 14, color: c.muted)),
-              ]),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: c.text),
+                        ),
+                      ),
+                      if (tag != null)
+                        Text(
+                          tag,
+                          style: irMono(11, weight: FontWeight.w600, color: c.muted),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: ScoreboardPreview(data: data, style: s, barHeight: 24),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(sub, style: TextStyle(fontSize: 14, color: c.muted)),
+                ],
+              ),
             ),
           ),
         ),
@@ -392,18 +441,26 @@ class _StyleCards extends StatelessWidget {
 
     final classic = card(ScoreboardStyle.classic, l10n.sbClassic, l10n.sbClassicSub, tag: l10n.sbDefault);
     final plate = card(ScoreboardStyle.plate, l10n.sbPlate, l10n.sbPlateSub);
-    return LayoutBuilder(builder: (context, box) {
-      if (box.maxWidth < 420) {
-        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [classic, const SizedBox(height: 10), plate]);
-      }
-      return IntrinsicHeight(
-        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Expanded(child: classic),
-          const SizedBox(width: 12),
-          Expanded(child: plate),
-        ]),
-      );
-    });
+    return LayoutBuilder(
+      builder: (context, box) {
+        if (box.maxWidth < 420) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [classic, const SizedBox(height: 10), plate],
+          );
+        }
+        return IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: classic),
+              const SizedBox(width: 12),
+              Expanded(child: plate),
+            ],
+          ),
+        );
+      },
+    );
   }
 }
 
@@ -449,61 +506,74 @@ class ScoreboardPreview extends StatelessWidget {
   static const _grey = Color(0xFF9AA0A8);
 
   @override
-  Widget build(BuildContext context) =>
-      style == ScoreboardStyle.classic ? _classic() : _plate();
+  Widget build(BuildContext context) => style == ScoreboardStyle.classic ? _classic() : _plate();
 
   Widget _classic() {
     final h = barHeight;
     final font = TextStyle(color: Colors.white, fontSize: h * 0.6, fontWeight: FontWeight.w700, height: 1);
     final mono = irMono(h * 0.6, color: Colors.white, height: 1);
     Widget cell(String text, {Color? bg, bool number = false}) => Container(
-          height: h,
-          color: bg,
-          constraints: BoxConstraints(minWidth: number ? h * 0.9 : 0),
-          padding: EdgeInsets.symmetric(horizontal: h * 0.25),
-          alignment: Alignment.center,
-          child: Text(text, style: number ? mono : font),
-        );
+      height: h,
+      color: bg,
+      constraints: BoxConstraints(minWidth: number ? h * 0.9 : 0),
+      padding: EdgeInsets.symmetric(horizontal: h * 0.25),
+      alignment: Alignment.center,
+      child: Text(text, style: number ? mono : font),
+    );
     Widget bar(int color) => Container(width: h * 0.13, height: h, color: Color(color));
     return Container(
       color: _barBg,
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        bar(data.homeColor),
-        cell(ScoreboardState.displayName(data.homeName, ScoreboardStyle.classic)),
-        cell('${data.homeScore}', bg: _cell, number: true),
-        cell('${data.awayScore}', bg: _cell, number: true),
-        cell(ScoreboardState.displayName(data.awayName, ScoreboardStyle.classic)),
-        bar(data.awayColor),
-        cell(data.clock, bg: _dark, number: true),
-        if (data.period.isNotEmpty) cell(data.period, bg: _dark),
-      ]),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          bar(data.homeColor),
+          cell(ScoreboardState.displayName(data.homeName, ScoreboardStyle.classic)),
+          cell('${data.homeScore}', bg: _cell, number: true),
+          cell('${data.awayScore}', bg: _cell, number: true),
+          cell(ScoreboardState.displayName(data.awayName, ScoreboardStyle.classic)),
+          bar(data.awayColor),
+          cell(data.clock, bg: _dark, number: true),
+          if (data.period.isNotEmpty) cell(data.period, bg: _dark),
+        ],
+      ),
     );
   }
 
   Widget _plate() {
     final f = barHeight * 0.5;
     final pad = EdgeInsets.symmetric(horizontal: f * 0.7, vertical: f * 0.35);
-    final name = TextStyle(color: Colors.white, fontSize: f, fontWeight: FontWeight.w600, letterSpacing: f * 0.1, height: 1.1);
+    final name = TextStyle(
+      color: Colors.white,
+      fontSize: f,
+      fontWeight: FontWeight.w600,
+      letterSpacing: f * 0.1,
+      height: 1.1,
+    );
     final number = irMono(f, color: Colors.white, height: 1.1);
     TableRow row(String team, int color, int score, {required bool first}) {
       final border = first ? const Border(bottom: BorderSide(color: _plateLine)) : null;
-      return TableRow(children: [
-        Container(
-          decoration: BoxDecoration(border: border),
-          padding: pad,
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Container(width: f * 0.22, height: f * 1.05, color: Color(color)),
-            SizedBox(width: f * 0.45),
-            Text(ScoreboardState.displayName(team, ScoreboardStyle.plate), style: name),
-          ]),
-        ),
-        Container(
-          decoration: BoxDecoration(color: _plateCell, border: border),
-          padding: pad,
-          alignment: Alignment.centerRight,
-          child: Text('$score', style: number),
-        ),
-      ]);
+      return TableRow(
+        children: [
+          Container(
+            decoration: BoxDecoration(border: border),
+            padding: pad,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(width: f * 0.22, height: f * 1.05, color: Color(color)),
+                SizedBox(width: f * 0.45),
+                Text(ScoreboardState.displayName(team, ScoreboardStyle.plate), style: name),
+              ],
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(color: _plateCell, border: border),
+            padding: pad,
+            alignment: Alignment.centerRight,
+            child: Text('$score', style: number),
+          ),
+        ],
+      );
     }
 
     return Container(
@@ -513,71 +583,180 @@ class ScoreboardPreview extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
       ),
       child: IntrinsicHeight(
-        child: Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Table(
-            defaultColumnWidth: const IntrinsicColumnWidth(),
-            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-            children: [
-              row(data.homeName, data.homeColor, data.homeScore, first: true),
-              row(data.awayName, data.awayColor, data.awayScore, first: false),
-            ],
-          ),
-          Container(
-            decoration: const BoxDecoration(border: Border(left: BorderSide(color: _plateLine))),
-            padding: EdgeInsets.symmetric(horizontal: f * 0.75),
-            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Text(data.clock, style: irMono(f, color: _amber, height: 1.1)),
-              if (data.period.isNotEmpty)
-                Text(data.period, style: TextStyle(color: _grey, fontSize: f * 0.55, fontWeight: FontWeight.w600)),
-            ]),
-          ),
-        ]),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Table(
+              defaultColumnWidth: const IntrinsicColumnWidth(),
+              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+              children: [
+                row(data.homeName, data.homeColor, data.homeScore, first: true),
+                row(data.awayName, data.awayColor, data.awayScore, first: false),
+              ],
+            ),
+            Container(
+              decoration: const BoxDecoration(
+                border: Border(left: BorderSide(color: _plateLine)),
+              ),
+              padding: EdgeInsets.symmetric(horizontal: f * 0.75),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(data.clock, style: irMono(f, color: _amber, height: 1.1)),
+                  if (data.period.isNotEmpty)
+                    Text(
+                      data.period,
+                      style: TextStyle(color: _grey, fontSize: f * 0.55, fontWeight: FontWeight.w600),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-/// Team colour swatches: squares, the chosen one ringed in amber.
-class _Palette extends StatelessWidget {
-  const _Palette({required this.selected, required this.onSelected, required this.keyPrefix, required this.label});
+/// Team colour swatches: squares, the chosen one ringed in amber. [foldable] (small screens): only
+/// the chosen colour shows, with a "change" key; tapping it opens the others, and picking one
+/// folds them again.
+class _Palette extends StatefulWidget {
+  const _Palette({
+    required this.selected,
+    required this.onSelected,
+    required this.keyPrefix,
+    required this.label,
+    this.foldable = false,
+  });
 
   final int selected;
   final ValueChanged<int> onSelected;
   final String keyPrefix;
   final String label;
+  final bool foldable;
+
+  @override
+  State<_Palette> createState() => _PaletteState();
+}
+
+class _PaletteState extends State<_Palette> {
+  bool _open = false;
+
+  Widget _swatch(IrColors c, int color, {required bool selected, required VoidCallback onTap, Key? key}) => InkResponse(
+    key: key,
+    onTap: onTap,
+    radius: 24,
+    child: SizedBox.square(
+      dimension: 48,
+      child: Center(
+        child: Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: Color(color),
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: selected ? c.signal : c.line, width: selected ? 3 : 1),
+          ),
+          child: selected ? Icon(Icons.check, color: onColor(Color(color)), size: 20) : null,
+        ),
+      ),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final c = context.ir;
+    final folded = widget.foldable && !_open;
+    if (folded) {
+      return Semantics(
+        label: l10n.scoreboardTeamColor(widget.label),
+        child: Row(
+          children: [
+            _swatch(c, widget.selected, selected: true, onTap: () => setState(() => _open = true)),
+            const SizedBox(width: 4),
+            TextButton.icon(
+              key: ValueKey('${widget.keyPrefix}-open'),
+              onPressed: () => setState(() => _open = true),
+              icon: const Icon(Icons.palette_outlined, size: 20),
+              label: Text(l10n.sbChangeColour, style: const TextStyle(fontFamily: IrFonts.sans, fontSize: 15)),
+            ),
+          ],
+        ),
+      );
+    }
     return Semantics(
-      label: l10n.scoreboardTeamColor(label),
-      child: Wrap(spacing: 2, runSpacing: 2, children: [
-        for (final (i, color) in teamPalette.indexed)
-          InkResponse(
-            key: ValueKey('$keyPrefix-$i'),
-            onTap: () => onSelected(color),
-            radius: 24,
-            child: SizedBox.square(
-              dimension: 48,
-              child: Center(
-                child: Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: Color(color),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: color == selected ? c.signal : c.line,
-                      width: color == selected ? 3 : 1,
-                    ),
+      label: l10n.scoreboardTeamColor(widget.label),
+      child: Wrap(
+        spacing: 2,
+        runSpacing: 2,
+        children: [
+          for (final (i, color) in teamPalette.indexed)
+            _swatch(
+              c,
+              color,
+              key: ValueKey('${widget.keyPrefix}-$i'),
+              selected: color == widget.selected,
+              onTap: () {
+                widget.onSelected(color);
+                if (widget.foldable) setState(() => _open = false);
+              },
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A title, a line under it and a switch; the whole row toggles.
+class _SwitchRow extends StatelessWidget {
+  const _SwitchRow({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ir;
+    return MergeSemantics(
+      child: InkWell(
+        onTap: () => onChanged(!value),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 64),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: c.text),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(subtitle, style: TextStyle(fontSize: 13, color: c.muted)),
+                    ],
                   ),
-                  child: color == selected ? Icon(Icons.check, color: onColor(Color(color)), size: 20) : null,
                 ),
-              ),
+                Switch(value: value, onChanged: onChanged),
+              ],
             ),
           ),
-      ]),
+        ),
+      ),
     );
   }
 }

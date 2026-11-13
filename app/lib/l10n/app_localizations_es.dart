@@ -2107,4 +2107,22 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get camShareRetry => 'Reintentar';
+
+  @override
+  String get sbVisibility => 'Qué se ve';
+
+  @override
+  String get sbOnAir => 'Marcador en la emisión';
+
+  @override
+  String get sbOnAirSub => 'Apágalo para emitir sin marcador';
+
+  @override
+  String get sbControls => 'Controles del marcador en esta pantalla';
+
+  @override
+  String get sbControlsSub => 'Ocúltalos si otra persona lleva el marcador';
+
+  @override
+  String get sbChangeColour => 'Cambiar color';
 }

@@ -2097,4 +2097,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get camShareRetry => 'Try again';
+
+  @override
+  String get sbVisibility => 'What shows';
+
+  @override
+  String get sbOnAir => 'Scoreboard on air';
+
+  @override
+  String get sbOnAirSub => 'Turn it off to stream without a scoreboard';
+
+  @override
+  String get sbControls => 'Scoreboard controls on this screen';
+
+  @override
+  String get sbControlsSub => 'Hide them when someone else keeps the score';
+
+  @override
+  String get sbChangeColour => 'Change colour';
 }

@@ -8,6 +8,7 @@ import 'package:replay_capture_android/replay_capture_android.dart';
 import 'package:replay_protocol/replay_protocol.dart'
     show
         BroadcastInfo,
+        VisibleCommand,
         BroadcastStreamState,
         RecordingEndReason,
         ReplayInfo,
@@ -16,6 +17,7 @@ import 'package:replay_protocol/replay_protocol.dart'
         formatClock,
         hotThermalStatus;
 
+import '../../core/panels.dart';
 import '../../core/orientation_lock.dart';
 import '../../core/ui/ir_colors.dart';
 import '../../core/ui/ir_widgets.dart';
@@ -66,14 +68,18 @@ class CameraPage extends ConsumerWidget {
       if (notice == null) return;
       final saved = notice.saved;
       final l10n = AppLocalizations.of(context);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(recordingSavedMessage(
-          l10n,
-          parts: saved.parts,
-          durationMs: saved.durationMs,
-          reason: RecordingEndReason.values.byName(saved.reason.name),
-        )),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            recordingSavedMessage(
+              l10n,
+              parts: saved.parts,
+              durationMs: saved.durationMs,
+              reason: RecordingEndReason.values.byName(saved.reason.name),
+            ),
+          ),
+        ),
+      );
     });
     return OrientationLock(child: operating ? const _OperatingView() : const _SetupView());
   }
@@ -94,64 +100,96 @@ class _SetupView extends ConsumerWidget {
     return Scaffold(
       backgroundColor: c.bg,
       body: SafeArea(
-        child: LayoutBuilder(builder: (context, box) {
-          final broadcast = state.broadcast;
-          final panel = broadcast ? _BroadcastPanel(state: state) : _SetupPanel(state: state);
-          // Portrait only before the landscape lock applies; keep it usable anyway.
-          if (box.maxHeight > box.maxWidth) {
-            return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              SizedBox(height: box.maxHeight * (broadcast ? 0.3 : 0.4), child: _Preview(state: state)),
-              if (broadcast)
-                ColoredBox(
-                  color: c.surface,
-                  child: Padding(padding: const EdgeInsets.all(8), child: _CameraScoreboardControls(state: state, compact: true)),
+        child: LayoutBuilder(
+          builder: (context, box) {
+            final broadcast = state.broadcast;
+            final panel = broadcast ? _BroadcastPanel(state: state) : _SetupPanel(state: state);
+            // Portrait only before the landscape lock applies; keep it usable anyway.
+            if (box.maxHeight > box.maxWidth) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(
+                    height: box.maxHeight * (broadcast ? 0.3 : 0.4),
+                    child: _Preview(state: state),
+                  ),
+                  if (broadcast && ref.watch(panelShownProvider(Panel.cameraScoreboard)))
+                    ColoredBox(
+                      color: c.surface,
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: _CameraScoreboardControls(state: state, compact: true),
+                      ),
+                    ),
+                  Expanded(child: panel),
+                ],
+              );
+            }
+            final panelWidth = broadcast
+                ? (box.maxWidth * 0.34).clamp(220.0, 360.0)
+                : (box.maxWidth * 0.45).clamp(300.0, 420.0);
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: broadcast ? _BroadcastStage(state: state) : _Preview(state: state),
                 ),
-              Expanded(child: panel),
-            ]);
-          }
-          final panelWidth = broadcast
-              ? (box.maxWidth * 0.34).clamp(220.0, 360.0)
-              : (box.maxWidth * 0.45).clamp(300.0, 420.0);
-          return Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Expanded(child: broadcast ? _BroadcastStage(state: state) : _Preview(state: state)),
-            VerticalDivider(width: 1, color: c.line),
-            SizedBox(width: panelWidth, child: panel),
-          ]);
-        }),
+                VerticalDivider(width: 1, color: c.line),
+                SizedBox(width: panelWidth, child: panel),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
 }
 
 /// Broadcast mode, left side: what YouTube sees, and the scoreboard strip under it, always there.
-class _BroadcastStage extends StatelessWidget {
+class _BroadcastStage extends ConsumerWidget {
   const _BroadcastStage({required this.state});
 
   final CameraSessionState state;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final c = context.ir;
-    return LayoutBuilder(builder: (context, box) {
-      final compact = box.maxHeight < 600;
-      final stripMin = compact ? 92.0 : 170.0;
-      final previewHeight = (box.maxWidth * 9 / 16).clamp(0.0, (box.maxHeight - stripMin).clamp(80.0, double.infinity));
-      // No caption on the picture: the burned-in scoreboard sits top-left and must stay visible.
-      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        SizedBox(height: previewHeight, child: _Preview(state: state)),
-        Expanded(
-          child: Container(
-            decoration: BoxDecoration(color: c.surface, border: Border(top: BorderSide(color: c.line))),
-            child: Center(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.symmetric(horizontal: compact ? 4 : 20, vertical: compact ? 6 : 12),
-                child: _CameraScoreboardControls(state: state, compact: compact),
+    // Hidden from the scoreboard settings when someone else keeps the score: the picture takes it all.
+    if (!ref.watch(panelShownProvider(Panel.cameraScoreboard))) return _Preview(state: state);
+    return LayoutBuilder(
+      builder: (context, box) {
+        final compact = box.maxHeight < 600;
+        final stripMin = compact ? 92.0 : 170.0;
+        final previewHeight = (box.maxWidth * 9 / 16).clamp(
+          0.0,
+          (box.maxHeight - stripMin).clamp(80.0, double.infinity),
+        );
+        // No caption on the picture: the burned-in scoreboard sits top-left and must stay visible.
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              height: previewHeight,
+              child: _Preview(state: state),
+            ),
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: c.surface,
+                  border: Border(top: BorderSide(color: c.line)),
+                ),
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.symmetric(horizontal: compact ? 4 : 20, vertical: compact ? 6 : 12),
+                    child: _CameraScoreboardControls(state: state, compact: compact),
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
-      ]);
-    });
+          ],
+        );
+      },
+    );
   }
 }
 
@@ -173,72 +211,83 @@ class _Preview extends ConsumerWidget {
       final zoomable = state.maxZoom > 1;
       final silent = state.broadcast && !(ref.watch(broadcastInfoProvider).value?.audio ?? true);
       Widget badge(String text, {Color? bg, Color? fg}) => Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-            decoration: BoxDecoration(color: bg ?? Colors.black.withValues(alpha: 0.72), borderRadius: BorderRadius.circular(2)),
-            child: Text(text, style: irMono(11, weight: FontWeight.w600, color: fg ?? Colors.white)),
-          );
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+        decoration: BoxDecoration(
+          color: bg ?? Colors.black.withValues(alpha: 0.72),
+          borderRadius: BorderRadius.circular(2),
+        ),
+        child: Text(
+          text,
+          style: irMono(11, weight: FontWeight.w600, color: fg ?? Colors.white),
+        ),
+      );
       return ColoredBox(
         color: Colors.black,
-        child: Stack(children: [
-          Positioned.fill(
-            child: ZoomPinch(
-              ratio: state.zoom,
-              max: state.maxZoom,
-              enabled: running && zoomable,
-              onChanged: notifier.setZoom,
-              child: Center(child: AspectRatio(aspectRatio: aspect, child: Texture(textureId: session.textureId))),
-            ),
-          ),
-          if (zoomable)
-            PositionedDirectional(
-              end: 8,
-              bottom: 8,
-              child: ZoomControl(
-                keyPrefix: 'camera-zoom',
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: ZoomPinch(
                 ratio: state.zoom,
                 max: state.maxZoom,
-                enabled: running,
+                enabled: running && zoomable,
                 onChanged: notifier.setZoom,
+                child: Center(
+                  child: AspectRatio(
+                    aspectRatio: aspect,
+                    child: Texture(textureId: session.textureId),
+                  ),
+                ),
               ),
             ),
-          // The full-session recording rides on the preview, so the panel keeps its room.
-          PositionedDirectional(
-            start: 8,
-            top: 8,
-            end: 8,
-            child: Align(
-              alignment: AlignmentDirectional.topEnd,
-              child: _CameraRecording(state: state),
-            ),
-          ),
-          // Bottom-left: the burned-in scoreboard is top-left and the zoom bottom-right.
-          if (silent)
+            if (zoomable)
+              PositionedDirectional(
+                end: 8,
+                bottom: 8,
+                child: ZoomControl(
+                  keyPrefix: 'camera-zoom',
+                  ratio: state.zoom,
+                  max: state.maxZoom,
+                  enabled: running,
+                  onChanged: notifier.setZoom,
+                ),
+              ),
+            // The full-session recording rides on the preview, so the panel keeps its room.
             PositionedDirectional(
               start: 8,
-              bottom: 8,
-              child: badge(l10n.camNoSound, bg: c.live, fg: c.onLive),
+              top: 8,
+              end: 8,
+              child: Align(
+                alignment: AlignmentDirectional.topEnd,
+                child: _CameraRecording(state: state),
+              ),
             ),
-          // The manual way in; the first viewer also starts operating mode by itself (UX §2.2).
-          // In broadcast mode it sits in the panel.
-          if (!state.broadcast)
-            PositionedDirectional(
-              start: 12,
-              bottom: 12,
-              child: _BlackScreenButton(state: state),
-            ),
-        ]),
+            // Bottom-left: the burned-in scoreboard is top-left and the zoom bottom-right.
+            if (silent)
+              PositionedDirectional(
+                start: 8,
+                bottom: 8,
+                child: badge(l10n.camNoSound, bg: c.live, fg: c.onLive),
+              ),
+            // The manual way in; the first viewer also starts operating mode by itself (UX §2.2).
+            // In broadcast mode it sits in the panel.
+            if (!state.broadcast) PositionedDirectional(start: 12, bottom: 12, child: _BlackScreenButton(state: state)),
+          ],
+        ),
       );
     }
 
     Widget message(String text, {bool retry = true}) => _Message(text: text, retry: retry);
     return switch (state.phase) {
       CameraPhase.initializing || CameraPhase.starting || CameraPhase.running => Center(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
             const CircularProgressIndicator(),
             const SizedBox(height: 16),
             Text(l10n.cameraStarting, style: TextStyle(fontSize: 16, color: c.text)),
-          ]),
+          ],
         ),
+      ),
       CameraPhase.permissionDenied => message(l10n.cameraPermissionDenied),
       CameraPhase.noProfiles => message(l10n.cameraNoProfiles, retry: false),
       CameraPhase.startFailed => message(l10n.cameraStartFailed(state.startError ?? '')),
@@ -257,19 +306,33 @@ class _BlackScreenButton extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final c = context.ir;
-    return SizedBox(height: 48, child: IrKey(
-      key: const Key('camera-black-screen'),
-      minHeight: 48,
-      onPressed: state.phase == CameraPhase.running ? () => ref.read(cameraSessionProvider.notifier).startOperating() : null,
-      child: Center(child: Row(mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(Icons.dark_mode, size: 20, color: c.text),
-        const SizedBox(width: 8),
-        Flexible(
-          child: Text(state.broadcast ? l10n.camBlackScreen : l10n.cameraStartOperating,
-              overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: c.text)),
+    return SizedBox(
+      height: 48,
+      child: IrKey(
+        key: const Key('camera-black-screen'),
+        minHeight: 48,
+        onPressed: state.phase == CameraPhase.running
+            ? () => ref.read(cameraSessionProvider.notifier).startOperating()
+            : null,
+        child: Center(
+          child: Row(
+            mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.dark_mode, size: 20, color: c.text),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  state.broadcast ? l10n.camBlackScreen : l10n.cameraStartOperating,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: c.text),
+                ),
+              ),
+            ],
+          ),
         ),
-      ])),
-    ));
+      ),
+    );
   }
 }
 
@@ -285,24 +348,41 @@ class _Message extends ConsumerWidget {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.videocam_off, size: 56, color: c.liveText),
-          const SizedBox(height: 16),
-          Text(text, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: c.text), textAlign: TextAlign.center),
-          if (retry) ...[
-            const SizedBox(height: 24),
-            SizedBox(height: 56, child: IrKey(
-              onPressed: () => ref.read(cameraSessionProvider.notifier).enter(),
-              led: c.signal,
-              child: Center(child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.refresh, color: c.text),
-                const SizedBox(width: 8),
-                Text(AppLocalizations.of(context).cameraRetry,
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: c.text)),
-              ])),
-            )),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.videocam_off, size: 56, color: c.liveText),
+            const SizedBox(height: 16),
+            Text(
+              text,
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: c.text),
+              textAlign: TextAlign.center,
+            ),
+            if (retry) ...[
+              const SizedBox(height: 24),
+              SizedBox(
+                height: 56,
+                child: IrKey(
+                  onPressed: () => ref.read(cameraSessionProvider.notifier).enter(),
+                  led: c.signal,
+                  child: Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.refresh, color: c.text),
+                        const SizedBox(width: 8),
+                        Text(
+                          AppLocalizations.of(context).cameraRetry,
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: c.text),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ],
-        ]),
+        ),
       ),
     );
   }
@@ -323,39 +403,51 @@ class _PanelHeader extends ConsumerWidget {
     final c = context.ir;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Row(children: [
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, height: 1.1, color: c.text)),
-            if (subtitle != null)
-              Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, color: c.muted)),
-          ]),
-        ),
-        ...actions,
-        IconButton(
-          icon: const Icon(Icons.swap_horiz),
-          tooltip: l10n.switchRole,
-          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-          onPressed: () async {
-            // Switching role stops capture, the stream and every viewer's connection.
-            final info = state.broadcast ? ref.read(broadcastControllerProvider).info : null;
-            final onAir = info?.active ?? false;
-            final viewers = ref.read(cameraServerProvider).viewers;
-            if ((onAir || viewers > 0) &&
-                !await confirmSwitchRole(
-                  context,
-                  onAir ? l10n.switchRoleBroadcastBody : l10n.switchRoleViewersBody(viewers),
-                )) {
-              return;
-            }
-            await ref.read(roleProvider.notifier).clear();
-            if (context.mounted) context.go('/');
-          },
-        ),
-      ]),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, height: 1.1, color: c.text),
+                ),
+                if (subtitle != null)
+                  Text(
+                    subtitle!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 14, color: c.muted),
+                  ),
+              ],
+            ),
+          ),
+          ...actions,
+          IconButton(
+            icon: const Icon(Icons.swap_horiz),
+            tooltip: l10n.switchRole,
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            onPressed: () async {
+              // Switching role stops capture, the stream and every viewer's connection.
+              final info = state.broadcast ? ref.read(broadcastControllerProvider).info : null;
+              final onAir = info?.active ?? false;
+              final viewers = ref.read(cameraServerProvider).viewers;
+              if ((onAir || viewers > 0) &&
+                  !await confirmSwitchRole(
+                    context,
+                    onAir ? l10n.switchRoleBroadcastBody : l10n.switchRoleViewersBody(viewers),
+                  )) {
+                return;
+              }
+              await ref.read(roleProvider.notifier).clear();
+              if (context.mounted) context.go('/');
+            },
+          ),
+        ],
+      ),
     );
   }
 }
@@ -461,29 +553,34 @@ class _RecoveredCard extends StatelessWidget {
       key: const Key('camera-recovered'),
       borderColor: c.info,
       padding: const EdgeInsets.fromLTRB(12, 12, 4, 4),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        for (final r in recovered)
-          Row(children: [
-            Icon(Icons.restore, color: c.info),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                l10n.recRecovered(formatRecordingSpan(r.durationMs)),
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: c.text),
-              ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final r in recovered)
+            Row(
+              children: [
+                Icon(Icons.restore, color: c.info),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    l10n.recRecovered(formatRecordingSpan(r.durationMs)),
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: c.text),
+                  ),
+                ),
+              ],
             ),
-          ]),
-        const SizedBox(height: 4),
-        Text(l10n.recRecoveredHint, style: TextStyle(fontSize: 14, color: c.muted)),
-        Align(
-          alignment: AlignmentDirectional.centerEnd,
-          child: TextButton(
-            style: TextButton.styleFrom(minimumSize: const Size(56, 48)),
-            onPressed: onDismiss,
-            child: Text(l10n.cameraDismissErrors),
+          const SizedBox(height: 4),
+          Text(l10n.recRecoveredHint, style: TextStyle(fontSize: 14, color: c.muted)),
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: TextButton(
+              style: TextButton.styleFrom(minimumSize: const Size(56, 48)),
+              onPressed: onDismiss,
+              child: Text(l10n.cameraDismissErrors),
+            ),
           ),
-        ),
-      ]),
+        ],
+      ),
     );
   }
 }
@@ -512,103 +609,123 @@ class _AdvancedState extends ConsumerState<_Advanced> {
 
     return IrPanel(
       padding: EdgeInsets.zero,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        InkWell(
-          key: const Key('camera-advanced'),
-          onTap: () => setState(() => _open = !_open),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 56),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Row(children: [
-                Icon(Icons.tune, color: c.muted),
-                const SizedBox(width: 12),
-                Expanded(child: Text(l10n.cameraAdvanced, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: c.text))),
-                Icon(_open ? Icons.expand_less : Icons.expand_more, color: c.muted),
-              ]),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          InkWell(
+            key: const Key('camera-advanced'),
+            onTap: () => setState(() => _open = !_open),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 56),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Row(
+                  children: [
+                    Icon(Icons.tune, color: c.muted),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        l10n.cameraAdvanced,
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: c.text),
+                      ),
+                    ),
+                    Icon(_open ? Icons.expand_less : Icons.expand_more, color: c.muted),
+                  ],
+                ),
+              ),
             ),
           ),
-        ),
-        if (_open)
-          Container(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-            decoration: BoxDecoration(border: Border(top: BorderSide(color: c.line))),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              // Replays on air exist only in broadcast mode, and so does their reserve.
-              if (state.broadcast) ...[
-                ClipReserveStepper(
-                  keyPrefix: 'camera-clip-reserve',
-                  size: state.clipReserve,
-                  max: CameraSessionNotifier.maxClipReserve,
-                  enabled: true,
-                  onChanged: notifier.setClipReserve,
-                ),
-                const SizedBox(height: 12),
-              ],
-              if (state.profiles.isNotEmpty) ...[
-                InputDecorator(
-                  decoration: InputDecoration(
-                    labelText: l10n.cameraProfile,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      key: const Key('camera-profile'),
-                      value: state.profileId,
-                      isExpanded: true,
-                      itemHeight: 56,
-                      items: [
-                        for (final p in state.profiles) DropdownMenuItem(value: p.id, child: Text(_profileLabel(context, p))),
-                      ],
-                      onChanged: state.phase == CameraPhase.starting ||
-                              state.phase == CameraPhase.initializing ||
-                              _streaming(ref)
-                          ? null
-                          : (id) => id == null ? null : notifier.selectProfile(id),
+          if (_open)
+            Container(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: c.line)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Replays on air exist only in broadcast mode, and so does their reserve.
+                  if (state.broadcast) ...[
+                    ClipReserveStepper(
+                      keyPrefix: 'camera-clip-reserve',
+                      size: state.clipReserve,
+                      max: CameraSessionNotifier.maxClipReserve,
+                      enabled: true,
+                      onChanged: notifier.setClipReserve,
                     ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-              ],
-              if (state.cameraState != null) _StatRow(l10n.cameraStatCamera, state.cameraState!),
-              if (stats == null)
-                Text(l10n.cameraWaitingForStats, style: TextStyle(color: c.muted))
-              else ...[
-                _StatRow(l10n.cameraStatFps, l10n.cameraFpsValue(stats.fps.toStringAsFixed(1))),
-                _StatRow(
-                  l10n.cameraStatGaps,
-                  l10n.cameraGapsValue(stats.gaps, stats.cameraGaps, stats.glGaps),
-                  alert: stats.gaps > 0,
-                ),
-                _StatRow(l10n.cameraStatBuffer, l10n.cameraBufferValue(stats.bufferMs ~/ 1000, _mb(stats.bufferBytes))),
-                _StatRow(l10n.cameraStatOutbox, l10n.cameraOutboxValue(stats.outboxClips, _mb(stats.outboxBytes))),
-                _StatRow(
-                  l10n.cameraStatBattery,
-                  l10n.cameraBatteryValue(
-                    _temperature(stats.batteryTempC),
-                    stats.batteryPercent == null ? '–' : '${stats.batteryPercent} %',
-                    stats.plugged ? l10n.cameraCharging : l10n.cameraNotCharging,
-                  ),
-                ),
-              ],
-              if (state.thermalStatus != null)
-                _StatRow(
-                  l10n.cameraStatThermal,
-                  thermalName(l10n, state.thermalStatus!),
-                  alert: state.thermalStatus! >= _thermalModerate,
-                ),
-              if (kDebugMode) ...[
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(minimumSize: const Size(48, 48)),
-                  icon: const Icon(Icons.save_alt),
-                  label: Text(l10n.cameraSaveTestClip),
-                  onPressed: running ? () => _saveTestClip(context, notifier) : null,
-                ),
-              ],
-            ]),
-          ),
-      ]),
+                    const SizedBox(height: 12),
+                  ],
+                  if (state.profiles.isNotEmpty) ...[
+                    InputDecorator(
+                      decoration: InputDecoration(
+                        labelText: l10n.cameraProfile,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          key: const Key('camera-profile'),
+                          value: state.profileId,
+                          isExpanded: true,
+                          itemHeight: 56,
+                          items: [
+                            for (final p in state.profiles)
+                              DropdownMenuItem(value: p.id, child: Text(_profileLabel(context, p))),
+                          ],
+                          onChanged:
+                              state.phase == CameraPhase.starting ||
+                                  state.phase == CameraPhase.initializing ||
+                                  _streaming(ref)
+                              ? null
+                              : (id) => id == null ? null : notifier.selectProfile(id),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  if (state.cameraState != null) _StatRow(l10n.cameraStatCamera, state.cameraState!),
+                  if (stats == null)
+                    Text(l10n.cameraWaitingForStats, style: TextStyle(color: c.muted))
+                  else ...[
+                    _StatRow(l10n.cameraStatFps, l10n.cameraFpsValue(stats.fps.toStringAsFixed(1))),
+                    _StatRow(
+                      l10n.cameraStatGaps,
+                      l10n.cameraGapsValue(stats.gaps, stats.cameraGaps, stats.glGaps),
+                      alert: stats.gaps > 0,
+                    ),
+                    _StatRow(
+                      l10n.cameraStatBuffer,
+                      l10n.cameraBufferValue(stats.bufferMs ~/ 1000, _mb(stats.bufferBytes)),
+                    ),
+                    _StatRow(l10n.cameraStatOutbox, l10n.cameraOutboxValue(stats.outboxClips, _mb(stats.outboxBytes))),
+                    _StatRow(
+                      l10n.cameraStatBattery,
+                      l10n.cameraBatteryValue(
+                        _temperature(stats.batteryTempC),
+                        stats.batteryPercent == null ? '–' : '${stats.batteryPercent} %',
+                        stats.plugged ? l10n.cameraCharging : l10n.cameraNotCharging,
+                      ),
+                    ),
+                  ],
+                  if (state.thermalStatus != null)
+                    _StatRow(
+                      l10n.cameraStatThermal,
+                      thermalName(l10n, state.thermalStatus!),
+                      alert: state.thermalStatus! >= _thermalModerate,
+                    ),
+                  if (kDebugMode) ...[
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(minimumSize: const Size(48, 48)),
+                      icon: const Icon(Icons.save_alt),
+                      label: Text(l10n.cameraSaveTestClip),
+                      onPressed: running ? () => _saveTestClip(context, notifier) : null,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -627,7 +744,10 @@ class _AdvancedState extends ConsumerState<_Advanced> {
 
   /// "1080p30 · 8 Mbps · 3.6 GB/h": the storage per hour helps to pick a bitrate.
   static String _profileLabel(BuildContext context, CaptureProfile p) {
-    final gbPerHour = NumberFormat('0.0', Localizations.localeOf(context).toString()).format(p.bitrate * 3600 / 8 / 1e9);
+    final gbPerHour = NumberFormat(
+      '0.0',
+      Localizations.localeOf(context).toString(),
+    ).format(p.bitrate * 3600 / 8 / 1e9);
     return '${p.height}p${p.fps} · ${(p.bitrate / 1e6).toStringAsFixed(0)} Mbps · $gbPerHour GB/h';
   }
 }
@@ -646,24 +766,35 @@ class _ErrorCard extends StatelessWidget {
       color: c.liveSoft,
       borderColor: c.live,
       padding: const EdgeInsets.fromLTRB(12, 12, 4, 4),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Icon(Icons.error, color: c.liveText),
-          const SizedBox(width: 8),
-          Text(l10n.cameraErrorsTitle, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: c.liveText)),
-        ]),
-        const SizedBox(height: 8),
-        for (final e in errors)
-          Padding(padding: const EdgeInsets.only(bottom: 4, right: 8), child: Text(e, style: TextStyle(color: c.text))),
-        Align(
-          alignment: AlignmentDirectional.centerEnd,
-          child: TextButton(
-            style: TextButton.styleFrom(foregroundColor: c.liveText, minimumSize: const Size(56, 48)),
-            onPressed: onDismiss,
-            child: Text(l10n.cameraDismissErrors),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.error, color: c.liveText),
+              const SizedBox(width: 8),
+              Text(
+                l10n.cameraErrorsTitle,
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: c.liveText),
+              ),
+            ],
           ),
-        ),
-      ]),
+          const SizedBox(height: 8),
+          for (final e in errors)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4, right: 8),
+              child: Text(e, style: TextStyle(color: c.text)),
+            ),
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: TextButton(
+              style: TextButton.styleFrom(foregroundColor: c.liveText, minimumSize: const Size(56, 48)),
+              onPressed: onDismiss,
+              child: Text(l10n.cameraDismissErrors),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -682,11 +813,16 @@ class _Warning extends StatelessWidget {
     final color = error ? c.liveText : c.warnText;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(icon, color: color, size: 20),
-        const SizedBox(width: 8),
-        Expanded(child: Text(text, style: TextStyle(fontSize: 14, color: color))),
-      ]),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(text, style: TextStyle(fontSize: 14, color: color)),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -703,12 +839,21 @@ class _StatRow extends StatelessWidget {
     final c = context.ir;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        SizedBox(width: 116, child: Text(label, style: TextStyle(color: c.muted))),
-        Expanded(
-          child: Text(value, style: TextStyle(color: alert ? c.liveText : c.text, fontWeight: FontWeight.w600)),
-        ),
-      ]),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 116,
+            child: Text(label, style: TextStyle(color: c.muted)),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(color: alert ? c.liveText : c.text, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -728,10 +873,18 @@ class _Tile extends StatelessWidget {
       color: c.bg,
       borderColor: alert ? c.warn : null,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, color: c.muted)),
-        Text(value, maxLines: 1, style: irMono(20, color: alert ? c.warnText : c.text)),
-      ]),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 13, color: c.muted),
+          ),
+          Text(value, maxLines: 1, style: irMono(20, color: alert ? c.warnText : c.text)),
+        ],
+      ),
     );
   }
 }
@@ -772,24 +925,49 @@ class _BroadcastPanel extends ConsumerWidget {
     final stats = state.stats;
     final gap = SizedBox(height: compact ? 8 : 12);
 
-    Widget bigKey({required Key key, required IconData icon, required Color iconColor, required String title, required String sub, VoidCallback? onTap}) =>
-        SizedBox(height: compact ? 60 : 64, child: IrKey(
-          key: key,
-          minHeight: compact ? 60 : 64,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          onPressed: onTap,
-          child: Center(child: Row(children: [
-            Icon(icon, size: 30, color: iconColor),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: c.text)),
-                Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, color: c.muted)),
-              ]),
-            ),
-          ])),
-        ));
+    Widget bigKey({
+      required Key key,
+      required IconData icon,
+      required Color iconColor,
+      required String title,
+      required String sub,
+      VoidCallback? onTap,
+    }) => SizedBox(
+      height: compact ? 60 : 64,
+      child: IrKey(
+        key: key,
+        minHeight: compact ? 60 : 64,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        onPressed: onTap,
+        child: Center(
+          child: Row(
+            children: [
+              Icon(icon, size: 30, color: iconColor),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: c.text),
+                    ),
+                    Text(
+                      sub,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 13, color: c.muted),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
 
     return ListView(
       padding: EdgeInsets.fromLTRB(12, compact ? 6 : 12, 12, 12),
@@ -808,10 +986,7 @@ class _BroadcastPanel extends ConsumerWidget {
             ),
           ],
         ),
-        if (replay != null) ...[
-          _CameraReplayBar(replay: replay, enabled: running),
-          gap,
-        ],
+        if (replay != null) ...[_CameraReplayBar(replay: replay, enabled: running), gap],
         if (info.active)
           _OnAirCard(info: info, viewers: server.viewers, enabled: running, compact: compact)
         else
@@ -826,46 +1001,56 @@ class _BroadcastPanel extends ConsumerWidget {
           onChanged: (on) async {
             final ok = await controller.setAudio(on);
             if (!ok && context.mounted) {
-              ScaffoldMessenger.of(context)
-                  .showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).broadcastMicNextStream)));
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).broadcastMicNextStream)));
             }
           },
         ),
         if (!info.active) ...[gap, const BroadcastChecklist()],
         gap,
         if (!compact) ...[
-          Row(children: [
-            Expanded(
-              child: _Tile(
-                key: const Key('camera-tile-battery'),
-                label: l10n.cameraStatBattery,
-                value: stats?.batteryPercent == null ? '–' : '${stats!.batteryPercent} %',
-                alert: stats != null && !stats.plugged,
+          Row(
+            children: [
+              Expanded(
+                child: _Tile(
+                  key: const Key('camera-tile-battery'),
+                  label: l10n.cameraStatBattery,
+                  value: stats?.batteryPercent == null ? '–' : '${stats!.batteryPercent} %',
+                  alert: stats != null && !stats.plugged,
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _Tile(
-                key: const Key('camera-tile-temperature'),
-                label: l10n.camTileTemperature,
-                value: _temperature(stats?.batteryTempC, digits: 0),
-                alert: (state.thermalStatus ?? 0) >= _thermalModerate,
+              const SizedBox(width: 8),
+              Expanded(
+                child: _Tile(
+                  key: const Key('camera-tile-temperature'),
+                  label: l10n.camTileTemperature,
+                  value: _temperature(stats?.batteryTempC, digits: 0),
+                  alert: (state.thermalStatus ?? 0) >= _thermalModerate,
+                ),
               ),
-            ),
-          ]),
+            ],
+          ),
           const SizedBox(height: 8),
-          Row(children: [
-            Expanded(
-              child: _Tile(
+          Row(
+            children: [
+              Expanded(
+                child: _Tile(
                   key: const Key('camera-tile-memory'),
                   label: l10n.camTileMemory,
-                  value: '${(stats?.bufferMs ?? 0) ~/ 1000} s'),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _Tile(key: const Key('camera-tile-viewers'), label: l10n.camTileViewers, value: '${server.viewers}'),
-            ),
-          ]),
+                  value: '${(stats?.bufferMs ?? 0) ~/ 1000} s',
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _Tile(
+                  key: const Key('camera-tile-viewers'),
+                  label: l10n.camTileViewers,
+                  value: '${server.viewers}',
+                ),
+              ),
+            ],
+          ),
           gap,
         ],
         bigKey(
@@ -888,10 +1073,7 @@ class _BroadcastPanel extends ConsumerWidget {
           ),
         ],
         const SizedBox(height: 8),
-        if (info.active) ...[
-          _SettingsButton(info: info, enabled: running),
-          const SizedBox(height: 8),
-        ],
+        if (info.active) ...[_SettingsButton(info: info, enabled: running), const SizedBox(height: 8)],
         _BlackScreenButton(state: state, expand: true),
         gap,
         ..._notices(context, ref, state),
@@ -903,7 +1085,14 @@ class _BroadcastPanel extends ConsumerWidget {
   Future<void> _scoreboardSettings(BuildContext context, WidgetRef ref) async {
     final controller = ref.read(scoreboardControllerProvider);
     final ScoreboardState s = ref.read(scoreboardStateProvider).value ?? controller.current;
-    final settings = await showScoreboardSettingsDialog(context, s.settings, state: s);
+    final settings = await showScoreboardSettingsDialog(
+      context,
+      s.settings,
+      state: s,
+      onAirChanged: (v) => controller.apply(VisibleCommand(visible: v)),
+      controlsShown: ref.read(panelShownProvider(Panel.cameraScoreboard)),
+      onControlsChanged: (v) => ref.read(hiddenPanelsProvider.notifier).set(Panel.cameraScoreboard, visible: v),
+    );
     if (settings != null) controller.apply(SettingsCommand(settings));
   }
 }
@@ -922,38 +1111,48 @@ class _GoLive extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final c = context.ir;
     final failed = info.state == BroadcastStreamState.failed;
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      if (failed && info.message != null) ...[
-        _Warning(Icons.error_outline, '${broadcastStateLabel(l10n, info.state)} · ${info.message}', error: true),
-      ],
-      Tooltip(
-        message: broadcastDetail(l10n, info),
-        child: SizedBox(
-          height: compact ? 56 : 64,
-          child: FilledButton(
-            key: const ValueKey('camera-broadcast-start'),
-            style: FilledButton.styleFrom(
-              backgroundColor: c.live,
-              foregroundColor: c.onLive,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-              textStyle: TextStyle(fontFamily: IrFonts.sans, fontSize: compact ? 18 : 20, fontWeight: FontWeight.w700),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (failed && info.message != null) ...[
+          _Warning(Icons.error_outline, '${broadcastStateLabel(l10n, info.state)} · ${info.message}', error: true),
+        ],
+        Tooltip(
+          message: broadcastDetail(l10n, info),
+          child: SizedBox(
+            height: compact ? 56 : 64,
+            child: FilledButton(
+              key: const ValueKey('camera-broadcast-start'),
+              style: FilledButton.styleFrom(
+                backgroundColor: c.live,
+                foregroundColor: c.onLive,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                textStyle: TextStyle(
+                  fontFamily: IrFonts.sans,
+                  fontSize: compact ? 18 : 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              onPressed: !enabled
+                  ? null
+                  : info.configured
+                  ? () => _BroadcastActions.start(context, ref)
+                  : () => _BroadcastActions.configure(context, ref, info),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IrLiveDot(color: c.onLive, size: 12, blink: false),
+                  const SizedBox(width: 10),
+                  Text(l10n.broadcastStart),
+                ],
+              ),
             ),
-            onPressed: !enabled
-                ? null
-                : info.configured
-                    ? () => _BroadcastActions.start(context, ref)
-                    : () => _BroadcastActions.configure(context, ref, info),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              IrLiveDot(color: c.onLive, size: 12, blink: false),
-              const SizedBox(width: 10),
-              Text(l10n.broadcastStart),
-            ]),
           ),
         ),
-      ),
-      const SizedBox(height: 8),
-      _SettingsButton(info: info, enabled: enabled),
-    ]);
+        const SizedBox(height: 8),
+        _SettingsButton(info: info, enabled: enabled),
+      ],
+    );
   }
 }
 
@@ -968,20 +1167,31 @@ class _SettingsButton extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final c = context.ir;
-    return SizedBox(height: 48, child: IrKey(
-      key: const ValueKey('camera-broadcast-settings'),
-      minHeight: 48,
-      semanticLabel: l10n.broadcastSettings,
-      onPressed: enabled ? () => _BroadcastActions.configure(context, ref, info) : null,
-      child: Center(child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.tune, size: 20, color: c.text),
-        const SizedBox(width: 8),
-        Flexible(
-          child: Text(l10n.camPrepareStream,
-              overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: c.text)),
+    return SizedBox(
+      height: 48,
+      child: IrKey(
+        key: const ValueKey('camera-broadcast-settings'),
+        minHeight: 48,
+        semanticLabel: l10n.broadcastSettings,
+        onPressed: enabled ? () => _BroadcastActions.configure(context, ref, info) : null,
+        child: Center(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.tune, size: 20, color: c.text),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  l10n.camPrepareStream,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: c.text),
+                ),
+              ),
+            ],
+          ),
         ),
-      ])),
-    ));
+      ),
+    );
   }
 }
 
@@ -1006,11 +1216,17 @@ class _OnAirCard extends ConsumerWidget {
         ? '–'
         : NumberFormat('0.0', Localizations.localeOf(context).toString()).format(info.bitrateKbps! / 1000);
     final state = Text(
-      live ? (compact ? broadcastStateLabel(l10n, info.state) : l10n.camOnAirYouTube) : broadcastStateLabel(l10n, info.state),
+      live
+          ? (compact ? broadcastStateLabel(l10n, info.state) : l10n.camOnAirYouTube)
+          : broadcastStateLabel(l10n, info.state),
       key: const ValueKey('camera-broadcast-state'),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: TextStyle(fontSize: compact ? 15 : 18, fontWeight: FontWeight.w700, color: live ? (compact ? c.text : c.onLive) : c.warnText),
+      style: TextStyle(
+        fontSize: compact ? 15 : 18,
+        fontWeight: FontWeight.w700,
+        color: live ? (compact ? c.text : c.onLive) : c.warnText,
+      ),
     );
     Future<void> stop() async {
       if (await confirmStopBroadcast(context) && context.mounted) {
@@ -1027,8 +1243,10 @@ class _OnAirCard extends ConsumerWidget {
           height: compact ? 48 : 52,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           alignment: Alignment.center,
-          child: Text(compact ? l10n.camStopShort : l10n.camStopStream,
-              style: TextStyle(fontSize: compact ? 14 : 16, fontWeight: FontWeight.w700, color: c.liveText)),
+          child: Text(
+            compact ? l10n.camStopShort : l10n.camStopStream,
+            style: TextStyle(fontSize: compact ? 14 : 16, fontWeight: FontWeight.w700, color: c.liveText),
+          ),
         ),
       ),
     );
@@ -1036,59 +1254,82 @@ class _OnAirCard extends ConsumerWidget {
     if (compact) {
       return Container(
         key: const Key('camera-on-air'),
-        decoration: BoxDecoration(border: Border.all(color: color), borderRadius: BorderRadius.circular(4)),
+        decoration: BoxDecoration(
+          border: Border.all(color: color),
+          borderRadius: BorderRadius.circular(4),
+        ),
         clipBehavior: Clip.antiAlias,
-        child: Row(children: [
-          const SizedBox(width: 10),
-          IrLiveDot(color: color, size: 9),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Row(children: [
-              Flexible(child: state),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text('$uptime · $mbps',
-                    maxLines: 1, overflow: TextOverflow.ellipsis, style: irMono(13, weight: FontWeight.w500, color: c.muted)),
+        child: Row(
+          children: [
+            const SizedBox(width: 10),
+            IrLiveDot(color: color, size: 9),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Row(
+                children: [
+                  Flexible(child: state),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      '$uptime · $mbps',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: irMono(13, weight: FontWeight.w500, color: c.muted),
+                    ),
+                  ),
+                ],
               ),
-            ]),
-          ),
-          Container(width: 1, height: 48, color: c.live.withValues(alpha: 0.3)),
-          stopButton,
-        ]),
+            ),
+            Container(width: 1, height: 48, color: c.live.withValues(alpha: 0.3)),
+            stopButton,
+          ],
+        ),
       );
     }
 
     Widget number(String value, String label) => Expanded(
-          child: Column(children: [
-            Text(value, style: irMono(22, color: c.text)),
-            Text(label, style: TextStyle(fontSize: 12, color: c.muted)),
-          ]),
-        );
+      child: Column(
+        children: [
+          Text(value, style: irMono(22, color: c.text)),
+          Text(label, style: TextStyle(fontSize: 12, color: c.muted)),
+        ],
+      ),
+    );
     return Container(
       key: const Key('camera-on-air'),
-      decoration: BoxDecoration(border: Border.all(color: color), borderRadius: BorderRadius.circular(6)),
+      decoration: BoxDecoration(
+        border: Border.all(color: color),
+        borderRadius: BorderRadius.circular(6),
+      ),
       clipBehavior: Clip.antiAlias,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Container(
-          color: live ? c.live : c.surface,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          child: Row(children: [
-            IrLiveDot(color: live ? c.onLive : c.warn, size: 10),
-            const SizedBox(width: 10),
-            Expanded(child: state),
-          ]),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Row(children: [
-            number(uptime, l10n.camOnAirFor),
-            number(mbps, l10n.camMbps),
-            number('$viewers', l10n.camViewersLabel),
-          ]),
-        ),
-        Container(height: 1, color: c.live.withValues(alpha: 0.3)),
-        stopButton,
-      ]),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            color: live ? c.live : c.surface,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Row(
+              children: [
+                IrLiveDot(color: live ? c.onLive : c.warn, size: 10),
+                const SizedBox(width: 10),
+                Expanded(child: state),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Row(
+              children: [
+                number(uptime, l10n.camOnAirFor),
+                number(mbps, l10n.camMbps),
+                number('$viewers', l10n.camViewersLabel),
+              ],
+            ),
+          ),
+          Container(height: 1, color: c.live.withValues(alpha: 0.3)),
+          stopButton,
+        ],
+      ),
     );
   }
 }
@@ -1132,6 +1373,7 @@ class _CameraScoreboardControls extends ConsumerWidget {
       enabled: state.phase == CameraPhase.running,
       compact: compact,
       onCommand: controller.apply,
+      controlsPanel: Panel.cameraScoreboard,
     );
   }
 }
@@ -1240,12 +1482,17 @@ class _CameraScoreLine extends ConsumerWidget {
     final dim = _OperatingViewState.dim;
     const size = 40.0;
     final style = irMono(size, color: dim);
-    Widget name(String text, int color) => Row(mainAxisSize: MainAxisSize.min, children: [
-          Container(width: 5, height: size * 0.6, color: Color(color).withValues(alpha: 0.4)),
-          const SizedBox(width: 6),
-          Text(ScoreboardState.displayName(text, s.style),
-              style: TextStyle(fontSize: size * 0.6, fontWeight: FontWeight.w700, color: dim)),
-        ]);
+    Widget name(String text, int color) => Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(width: 5, height: size * 0.6, color: Color(color).withValues(alpha: 0.4)),
+        const SizedBox(width: 6),
+        Text(
+          ScoreboardState.displayName(text, s.style),
+          style: TextStyle(fontSize: size * 0.6, fontWeight: FontWeight.w700, color: dim),
+        ),
+      ],
+    );
     final label = periodLabel(l10n, period: s.period, periods: s.periods);
     return Wrap(
       key: const Key('camera-score'),
@@ -1256,8 +1503,15 @@ class _CameraScoreLine extends ConsumerWidget {
         name(s.home.name, s.home.color),
         Text('${s.home.score} – ${s.away.score}', style: style),
         name(s.away.name, s.away.color),
-        ScoreboardClock(state: s, builder: (_, ms) => Text(formatClock(ms), style: style)),
-        if (label.isNotEmpty) Text(label, style: TextStyle(fontSize: size * 0.6, fontWeight: FontWeight.w700, color: dim)),
+        ScoreboardClock(
+          state: s,
+          builder: (_, ms) => Text(formatClock(ms), style: style),
+        ),
+        if (label.isNotEmpty)
+          Text(
+            label,
+            style: TextStyle(fontSize: size * 0.6, fontWeight: FontWeight.w700, color: dim),
+          ),
         if (!s.visible) Icon(Icons.visibility_off, size: size * 0.7, color: dim),
       ],
     );
@@ -1315,63 +1569,72 @@ class _OperatingViewState extends ConsumerState<_OperatingView> {
             alignment: Alignment.bottomLeft,
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
-              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                if (state.broadcast) ...[
-                  const _CameraScoreLine(),
-                  const SizedBox(height: 8),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 420),
-                    child: _OperatingBroadcastBar(enabled: running),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (state.broadcast) ...[
+                    const _CameraScoreLine(),
+                    const SizedBox(height: 8),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 420),
+                      child: _OperatingBroadcastBar(enabled: running),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  // The recording stays at hand without waking the screen; the buttons take their
+                  // own taps, everything around them wakes to setup.
+                  _CameraRecording(state: state, dim: true),
+                  const SizedBox(height: 12),
+                  for (final r in state.recovered)
+                    Text(l10n.recRecovered(formatRecordingSpan(r.durationMs)), style: style),
+                  for (final e in state.errors.take(2)) Text(e, style: style.copyWith(color: dimRed)),
+                  // A Wrap, not a Row: the tiles never overflow on a small landscape phone.
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _DimTile(
+                        key: const Key('camera-op-capture'),
+                        icon: Icons.fiber_manual_record,
+                        iconColor: running ? dimRed : dim,
+                        value: '${(stats?.bufferMs ?? 0) ~/ 1000} s',
+                        label: l10n.camTileMemory,
+                      ),
+                      _DimTile(
+                        key: const Key('camera-op-outbox'),
+                        icon: Icons.outbox,
+                        value: '${stats?.outboxClips ?? 0}',
+                        label: l10n.camTileOutbox,
+                      ),
+                      _DimTile(
+                        key: const Key('camera-op-temperature'),
+                        icon: Icons.thermostat,
+                        iconColor: hot ? dimRed : null,
+                        value: _temperature(stats?.batteryTempC),
+                        label: hot ? thermalName(l10n, state.thermalStatus!) : l10n.camTileTemperature,
+                        alert: hot,
+                      ),
+                      _DimTile(
+                        key: const Key('camera-op-battery'),
+                        icon: stats != null && !stats.plugged ? Icons.power_off : Icons.battery_charging_full,
+                        iconColor: stats != null && !stats.plugged ? dimRed : null,
+                        value: stats?.batteryPercent == null ? '–' : '${stats!.batteryPercent} %',
+                        label: stats != null && !stats.plugged ? l10n.cameraNotCharging : l10n.camTileCharging,
+                        alert: stats != null && !stats.plugged,
+                      ),
+                      _DimTile(
+                        key: const Key('camera-op-viewers'),
+                        icon: Icons.people,
+                        value: '$viewers',
+                        label: l10n.cameraOperatingViewers(viewers),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 8),
+                  Text(l10n.cameraOperatingHint, style: TextStyle(color: dim.withValues(alpha: 0.35), fontSize: 12)),
                 ],
-                // The recording stays at hand without waking the screen; the buttons take their
-                // own taps, everything around them wakes to setup.
-                _CameraRecording(state: state, dim: true),
-                const SizedBox(height: 12),
-                for (final r in state.recovered) Text(l10n.recRecovered(formatRecordingSpan(r.durationMs)), style: style),
-                for (final e in state.errors.take(2)) Text(e, style: style.copyWith(color: dimRed)),
-                // A Wrap, not a Row: the tiles never overflow on a small landscape phone.
-                Wrap(spacing: 8, runSpacing: 8, children: [
-                  _DimTile(
-                    key: const Key('camera-op-capture'),
-                    icon: Icons.fiber_manual_record,
-                    iconColor: running ? dimRed : dim,
-                    value: '${(stats?.bufferMs ?? 0) ~/ 1000} s',
-                    label: l10n.camTileMemory,
-                  ),
-                  _DimTile(
-                    key: const Key('camera-op-outbox'),
-                    icon: Icons.outbox,
-                    value: '${stats?.outboxClips ?? 0}',
-                    label: l10n.camTileOutbox,
-                  ),
-                  _DimTile(
-                    key: const Key('camera-op-temperature'),
-                    icon: Icons.thermostat,
-                    iconColor: hot ? dimRed : null,
-                    value: _temperature(stats?.batteryTempC),
-                    label: hot ? thermalName(l10n, state.thermalStatus!) : l10n.camTileTemperature,
-                    alert: hot,
-                  ),
-                  _DimTile(
-                    key: const Key('camera-op-battery'),
-                    icon: stats != null && !stats.plugged ? Icons.power_off : Icons.battery_charging_full,
-                    iconColor: stats != null && !stats.plugged ? dimRed : null,
-                    value: stats?.batteryPercent == null ? '–' : '${stats!.batteryPercent} %',
-                    label: stats != null && !stats.plugged ? l10n.cameraNotCharging : l10n.camTileCharging,
-                    alert: stats != null && !stats.plugged,
-                  ),
-                  _DimTile(
-                    key: const Key('camera-op-viewers'),
-                    icon: Icons.people,
-                    value: '$viewers',
-                    label: l10n.cameraOperatingViewers(viewers),
-                  ),
-                ]),
-                const SizedBox(height: 8),
-                Text(l10n.cameraOperatingHint, style: TextStyle(color: dim.withValues(alpha: 0.35), fontSize: 12)),
-              ]),
+              ),
             ),
           ),
         ),
@@ -1382,7 +1645,14 @@ class _OperatingViewState extends ConsumerState<_OperatingView> {
 
 /// A status tile on the black screen: a glyph, a figure and a word, all dim.
 class _DimTile extends StatelessWidget {
-  const _DimTile({super.key, required this.icon, required this.value, required this.label, this.iconColor, this.alert = false});
+  const _DimTile({
+    super.key,
+    required this.icon,
+    required this.value,
+    required this.label,
+    this.iconColor,
+    this.alert = false,
+  });
 
   final IconData icon;
   final String value;
@@ -1401,14 +1671,21 @@ class _DimTile extends StatelessWidget {
         border: Border.all(color: alert ? _OperatingViewState.dimRed : dim.withValues(alpha: 0.25)),
         borderRadius: BorderRadius.circular(4),
       ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 22, color: iconColor ?? dim),
-        const SizedBox(width: 8),
-        Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(value, style: irMono(20, color: color, height: 1.1)),
-          Text(label, style: TextStyle(fontSize: 12, color: color)),
-        ]),
-      ]),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 22, color: iconColor ?? dim),
+          const SizedBox(width: 8),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(value, style: irMono(20, color: color, height: 1.1)),
+              Text(label, style: TextStyle(fontSize: 12, color: color)),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1422,15 +1699,16 @@ const autoOperatingQuietPeriod = Duration(minutes: 2);
 const _thermalModerate = hotThermalStatus;
 
 String thermalName(AppLocalizations l10n, int status) => switch (status) {
-      <= 0 => l10n.thermalNone,
-      1 => l10n.thermalLight,
-      2 => l10n.thermalModerate,
-      3 => l10n.thermalSevere,
-      4 => l10n.thermalCritical,
-      5 => l10n.thermalEmergency,
-      _ => l10n.thermalShutdown,
-    };
+  <= 0 => l10n.thermalNone,
+  1 => l10n.thermalLight,
+  2 => l10n.thermalModerate,
+  3 => l10n.thermalSevere,
+  4 => l10n.thermalCritical,
+  5 => l10n.thermalEmergency,
+  _ => l10n.thermalShutdown,
+};
 
 String _mb(int bytes) => (bytes / 1e6).toStringAsFixed(0);
 
-String _temperature(double? celsius, {int digits = 1}) => celsius == null ? '–' : '${celsius.toStringAsFixed(digits)} °C';
+String _temperature(double? celsius, {int digits = 1}) =>
+    celsius == null ? '–' : '${celsius.toStringAsFixed(digits)} °C';
