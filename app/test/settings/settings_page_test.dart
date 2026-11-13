@@ -39,6 +39,8 @@ void main() {
     expect(prefs.getInt(SavePresetsNotifier.defaultKey), 30);
 
     await tester.scrollUntilVisible(find.byKey(const ValueKey('settings-theme')), 200);
+    await tester.ensureVisible(find.text('Light'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Light'));
     await tester.pumpAndSettle();
     expect(Theme.of(tester.element(find.text('Settings'))).brightness, Brightness.light);

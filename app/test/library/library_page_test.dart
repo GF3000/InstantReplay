@@ -63,13 +63,23 @@ void main() {
     }
 
     Iterable<String> shown() => [
-          for (final w in tester.widgetList<ListTile>(find.byType(ListTile)))
-            if (w.key case ValueKey<String>(:final value) when value.startsWith('library-clip-')) value.substring(13),
+          for (final w in tester.widgetList(find.byWidgetPredicate(
+            (w) => w.key is ValueKey<String> && (w.key! as ValueKey<String>).value.startsWith('library-clip-'),
+          )))
+            (w.key! as ValueKey<String>).value.substring(13),
         ];
 
     await settle();
     expect(find.text('League 7'), findsOneWidget);
     expect(find.textContaining('3 clips'), findsOneWidget);
+    // Kind filter: a match is not a training.
+    await tester.tap(find.byKey(const ValueKey('library-kind-training')));
+    await tester.pump();
+    expect(find.text('League 7'), findsNothing);
+    expect(find.text('Nothing with this filter.'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('library-kind-match')));
+    await tester.pump();
+    expect(find.text('League 7'), findsOneWidget);
     await tester.tap(find.text('League 7'));
     await settle();
     expect(shown(), ['c2', 'c1', 'c0']);
@@ -102,12 +112,31 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('library-clip-c0')));
     await tester.pump();
     expect(find.text('2 selected'), findsOneWidget);
+    expect(find.text('Export 2'), findsOneWidget);
+    expect(find.byKey(const ValueKey('library-share-selected')), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('library-delete-selected')));
     await settle();
     await tester.tap(find.byKey(const ValueKey('confirm-delete')));
     await settle();
     expect(deleted, unorderedEquals(['/f/c0.mp4', '/f/c2.mp4']));
     expect(shown(), ['c1']);
+    expect(
+      find.descendant(of: find.byKey(const ValueKey('library-filter-all')), matching: find.text('1')),
+      findsOneWidget,
+      reason: 'the count per tag follows',
+    );
+
+    // "Select" starts selecting with nothing picked; a tap picks, the close button ends it.
+    await tester.tap(find.byKey(const ValueKey('library-select')));
+    await tester.pump();
+    expect(find.text('0 selected'), findsOneWidget);
+    expect(find.byKey(const ValueKey('library-delete-selected')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('library-clip-c1')));
+    await tester.pump();
+    expect(find.text('1 selected'), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.close));
+    await tester.pump();
+    expect(find.text('League 7'), findsOneWidget);
 
     // Drift closes its query streams on a timer: let it run before the test ends.
     await tester.pumpWidget(const SizedBox());

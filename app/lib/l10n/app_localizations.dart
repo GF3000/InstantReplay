@@ -2719,6 +2719,168 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Share'**
   String get youtubeShare;
+
+  /// No description provided for @connectStepCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera'**
+  String get connectStepCamera;
+
+  /// No description provided for @connectStepCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Code'**
+  String get connectStepCode;
+
+  /// No description provided for @connectStepSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Session'**
+  String get connectStepSession;
+
+  /// No description provided for @connectScanSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'It\'s on the camera\'s screen'**
+  String get connectScanSubtitle;
+
+  /// No description provided for @connectManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Type the address by hand'**
+  String get connectManual;
+
+  /// No description provided for @connectCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The 6 big digits under the camera\'s QR'**
+  String get connectCodeHint;
+
+  /// No description provided for @connectOtherCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose another camera'**
+  String get connectOtherCamera;
+
+  /// No description provided for @connectPickerConnectedTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected to {name}'**
+  String connectPickerConnectedTo(String name);
+
+  /// No description provided for @connectPickerQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'What are you recording?'**
+  String get connectPickerQuestion;
+
+  /// No description provided for @connectPickerContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue this session'**
+  String get connectPickerContinue;
+
+  /// No description provided for @connectPickerNewMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'New match'**
+  String get connectPickerNewMatch;
+
+  /// No description provided for @connectPickerNewTraining.
+  ///
+  /// In en, this message translates to:
+  /// **'New training'**
+  String get connectPickerNewTraining;
+
+  /// No description provided for @connectPickerNewOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other session'**
+  String get connectPickerNewOther;
+
+  /// No description provided for @connectPickerNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Empty: type and date'**
+  String get connectPickerNameHint;
+
+  /// No description provided for @libFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get libFilterAll;
+
+  /// No description provided for @libFilterMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'Matches'**
+  String get libFilterMatches;
+
+  /// No description provided for @libFilterTrainings.
+  ///
+  /// In en, this message translates to:
+  /// **'Training'**
+  String get libFilterTrainings;
+
+  /// No description provided for @libSelect.
+  ///
+  /// In en, this message translates to:
+  /// **'Select'**
+  String get libSelect;
+
+  /// No description provided for @libSelectCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get libSelectCancel;
+
+  /// No description provided for @libExportCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Export {count}'**
+  String libExportCount(int count);
+
+  /// No description provided for @libShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get libShare;
+
+  /// No description provided for @libEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Clips you save live appear here.'**
+  String get libEmptyHint;
+
+  /// No description provided for @libFilterEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing with this filter.'**
+  String get libFilterEmpty;
+
+  /// No description provided for @libError.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open the library'**
+  String get libError;
+
+  /// No description provided for @libRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get libRetry;
+
+  /// No description provided for @libTemplatesBuiltIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Built-in'**
+  String get libTemplatesBuiltIn;
+
+  /// No description provided for @libTemplatesImported.
+  ///
+  /// In en, this message translates to:
+  /// **'Imported'**
+  String get libTemplatesImported;
 }
 
 class _AppLocalizationsDelegate

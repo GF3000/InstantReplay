@@ -1580,4 +1580,89 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get youtubeShare => 'Share';
+
+  @override
+  String get connectStepCamera => 'Camera';
+
+  @override
+  String get connectStepCode => 'Code';
+
+  @override
+  String get connectStepSession => 'Session';
+
+  @override
+  String get connectScanSubtitle => 'It\'s on the camera\'s screen';
+
+  @override
+  String get connectManual => 'Type the address by hand';
+
+  @override
+  String get connectCodeHint => 'The 6 big digits under the camera\'s QR';
+
+  @override
+  String get connectOtherCamera => 'Choose another camera';
+
+  @override
+  String connectPickerConnectedTo(String name) {
+    return 'Connected to $name';
+  }
+
+  @override
+  String get connectPickerQuestion => 'What are you recording?';
+
+  @override
+  String get connectPickerContinue => 'Continue this session';
+
+  @override
+  String get connectPickerNewMatch => 'New match';
+
+  @override
+  String get connectPickerNewTraining => 'New training';
+
+  @override
+  String get connectPickerNewOther => 'Other session';
+
+  @override
+  String get connectPickerNameHint => 'Empty: type and date';
+
+  @override
+  String get libFilterAll => 'All';
+
+  @override
+  String get libFilterMatches => 'Matches';
+
+  @override
+  String get libFilterTrainings => 'Training';
+
+  @override
+  String get libSelect => 'Select';
+
+  @override
+  String get libSelectCancel => 'Cancel';
+
+  @override
+  String libExportCount(int count) {
+    return 'Export $count';
+  }
+
+  @override
+  String get libShare => 'Share';
+
+  @override
+  String get libEmptyHint => 'Clips you save live appear here.';
+
+  @override
+  String get libFilterEmpty => 'Nothing with this filter.';
+
+  @override
+  String get libError => 'Couldn\'t open the library';
+
+  @override
+  String get libRetry => 'Retry';
+
+  @override
+  String get libTemplatesBuiltIn => 'Built-in';
+
+  @override
+  String get libTemplatesImported => 'Imported';
 }
