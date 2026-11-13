@@ -44,6 +44,9 @@ class _FakeAccount implements YouTubeAccount {
   Future<YouTubeIngest?> ingest() async => YouTubeIngest.none;
 
   @override
+  void dispose() {}
+
+  @override
   bool active = false;
 
   @override
