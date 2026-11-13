@@ -10,6 +10,7 @@ import '../broadcast/broadcast_widgets.dart';
 import '../broadcast/preflight.dart';
 import 'camera_session.dart';
 import 'capture_layer.dart';
+import '../broadcast/youtube/youtube_providers.dart';
 
 /// What to check before going live (SPEC §12.7): stream key, 1080p, Internet, charging and the
 /// microphone, each with the fix at hand. Shown while something is missing and the stream is
@@ -78,7 +79,7 @@ class _BroadcastChecklistState extends ConsumerState<BroadcastChecklist> {
         label: info.configured ? l10n.checkKeyOk : l10n.checkKeyMissing,
         action: info.configured ? null : l10n.checkKeyAction,
         onAction: () async {
-          final result = await showBroadcastConfigDialog(context, info);
+          final result = await showBroadcastConfigDialog(context, info, youtube: ref.read(youtubeAccountProvider));
           if (result == null) return;
           await controller.configure(
             server: result.server,

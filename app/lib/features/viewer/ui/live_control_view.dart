@@ -12,6 +12,7 @@ import '../tags/tags.dart';
 import '../viewer_providers.dart';
 import 'clip_list.dart';
 import 'replay_air.dart';
+import '../../broadcast/youtube/youtube_providers.dart';
 
 /// Main Viewer screen, "balanced" layout (UX §3.2): a large live view and a large Save button.
 ///
@@ -348,7 +349,7 @@ class ViewerBroadcastBar extends ConsumerWidget {
         onStart: remote.start,
         onStop: remote.stop,
         onConfigure: () async {
-          final result = await showBroadcastConfigDialog(context, info);
+          final result = await showBroadcastConfigDialog(context, info, youtube: ref.read(youtubeAccountProvider));
           if (result == null) return;
           remote.configure(
             server: result.server,

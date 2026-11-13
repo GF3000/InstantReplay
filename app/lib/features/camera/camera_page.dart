@@ -27,6 +27,8 @@ import 'broadcast_checklist.dart';
 import 'clip_reserve_widgets.dart';
 import 'pairing_card.dart';
 import 'zoom_widgets.dart';
+import '../broadcast/youtube/youtube_account.dart';
+import '../broadcast/youtube/youtube_providers.dart';
 
 /// Camera role (SPEC §3.5, D17; UX §2): a setup screen to frame the shot and pair a viewer, and a
 /// black operating mode that starts by itself when the first viewer connects.
@@ -750,7 +752,7 @@ class _CameraBroadcastBar extends ConsumerWidget {
         keyPrefix: 'camera-broadcast',
         onStart: () => _start(context, controller),
         onStop: () => _run(context, controller.stop),
-        onConfigure: () => _configure(context, controller, info),
+        onConfigure: () => _configure(context, controller, info, ref.read(youtubeAccountProvider)),
       );
     }
     return BroadcastBar(
@@ -762,7 +764,7 @@ class _CameraBroadcastBar extends ConsumerWidget {
       dim: dim,
       onStart: () => _start(context, controller),
       onStop: () => _run(context, controller.stop),
-      onConfigure: () => _configure(context, controller, info),
+      onConfigure: () => _configure(context, controller, info, ref.read(youtubeAccountProvider)),
     );
   }
 
@@ -772,8 +774,9 @@ class _CameraBroadcastBar extends ConsumerWidget {
         }
       });
 
-  static Future<void> _configure(BuildContext context, BroadcastController controller, BroadcastInfo info) async {
-    final result = await showBroadcastConfigDialog(context, info);
+  static Future<void> _configure(
+      BuildContext context, BroadcastController controller, BroadcastInfo info, YouTubeAccount? youtube) async {
+    final result = await showBroadcastConfigDialog(context, info, youtube: youtube);
     if (result == null) return;
     await controller.configure(
       server: result.server,

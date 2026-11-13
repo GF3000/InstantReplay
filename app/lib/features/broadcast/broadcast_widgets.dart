@@ -8,6 +8,8 @@ import 'package:replay_protocol/replay_protocol.dart';
 import '../../l10n/app_localizations.dart';
 import '../recording/recording_widgets.dart' show formatRecordingClock;
 import 'scoreboard_controller.dart' show periodLabel;
+import 'youtube/youtube_account.dart';
+import 'youtube/youtube_api.dart';
 
 // Broadcast mode (SPEC §12) as both roles show it: the Camera for its own stream controls, every
 // Viewer for the scoreboard and the stream from the status the Camera pushes.
@@ -271,13 +273,21 @@ typedef BroadcastConfigResult = ({String server, String? key, int targetKbps, bo
 
 /// Server, stream key (hidden, paste-friendly), bitrate and microphone. The stored key never
 /// comes back to the screen: an empty field keeps it.
-Future<BroadcastConfigResult?> showBroadcastConfigDialog(BuildContext context, BroadcastInfo info) =>
-    showDialog<BroadcastConfigResult>(context: context, builder: (_) => _BroadcastConfigDialog(info: info));
+///
+/// With a [youtube] account available (the Android app) it also offers the account mode: the
+/// live is created on the channel and its server and key come back as if typed.
+Future<BroadcastConfigResult?> showBroadcastConfigDialog(BuildContext context, BroadcastInfo info,
+        {YouTubeAccount? youtube}) =>
+    showDialog<BroadcastConfigResult>(
+        context: context, builder: (_) => _BroadcastConfigDialog(info: info, youtube: youtube));
+
+enum _StreamMode { key, account }
 
 class _BroadcastConfigDialog extends StatefulWidget {
-  const _BroadcastConfigDialog({required this.info});
+  const _BroadcastConfigDialog({required this.info, this.youtube});
 
   final BroadcastInfo info;
+  final YouTubeAccount? youtube;
 
   @override
   State<_BroadcastConfigDialog> createState() => _BroadcastConfigDialogState();
@@ -291,10 +301,38 @@ class _BroadcastConfigDialogState extends State<_BroadcastConfigDialog> {
   late bool _replayScoreboard = widget.info.replayScoreboard;
   bool _showKey = false;
 
+  // Account mode.
+  late _StreamMode _mode =
+      widget.youtube?.email != null && widget.youtube?.current != null ? _StreamMode.account : _StreamMode.key;
+  late final _title = TextEditingController(text: widget.youtube?.current?.title);
+  late final _description = TextEditingController(text: widget.youtube?.current?.description);
+  late YouTubePrivacy _privacy = widget.youtube?.current?.privacy ?? YouTubePrivacy.unlisted;
+  YouTubeBroadcast? _live;
+  YouTubeIngest? _ingest;
+  bool _fresh = false;
+  bool _busy = false;
+  String? _error;
+  StreamSubscription<void>? _youtubeSub;
+
+  @override
+  void initState() {
+    super.initState();
+    final youtube = widget.youtube;
+    if (youtube != null) {
+      _youtubeSub = youtube.changes.listen((_) {
+        if (mounted) setState(() {});
+      });
+      if (youtube.email != null) unawaited(_refreshLive());
+    }
+  }
+
   @override
   void dispose() {
+    unawaited(_youtubeSub?.cancel());
     _server.dispose();
     _key.dispose();
+    _title.dispose();
+    _description.dispose();
     super.dispose();
   }
 
@@ -304,46 +342,116 @@ class _BroadcastConfigDialogState extends State<_BroadcastConfigDialog> {
     if (text != null && text.isNotEmpty && mounted) setState(() => _key.text = text);
   }
 
+  Future<void> _youtubeAction(Future<void> Function(YouTubeAccount) action) async {
+    final youtube = widget.youtube!;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await action(youtube);
+    } on YouTubeAccountException catch (e) {
+      if (mounted && e.code != 'canceled') {
+        setState(() => _error = youtubeErrorMessage(AppLocalizations.of(context), e));
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() =>
+            _error = youtubeErrorMessage(AppLocalizations.of(context), YouTubeAccountException('api', '$e')));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _signIn() => _youtubeAction((y) async {
+        await y.signIn();
+        await _refreshLive();
+      });
+
+  Future<void> _refreshLive() async {
+    final youtube = widget.youtube!;
+    YouTubeBroadcast? live;
+    try {
+      live = await youtube.refresh();
+    } catch (_) {
+      live = youtube.current;
+    }
+    final ingest = await youtube.ingest();
+    if (!mounted) return;
+    setState(() {
+      _live = live;
+      _ingest = ingest;
+      if (live != null && live.lifeCycle.usable) {
+        _title.text = live.title;
+        _description.text = live.description;
+        _privacy = live.privacy;
+      }
+    });
+  }
+
+  BroadcastConfigResult _result({required String server, String? key}) => (
+        server: server,
+        key: key,
+        targetKbps: _kbps,
+        audio: _audio,
+        replayScoreboard: _replayScoreboard,
+      );
+
+  void _save() {
+    if (_mode == _StreamMode.key) {
+      final key = _key.text.trim();
+      Navigator.of(context).pop(_result(
+        server: _server.text.trim().isEmpty ? BroadcastInfo.defaultServer : _server.text.trim(),
+        key: key.isEmpty ? null : key,
+      ));
+      return;
+    }
+    final l10n = AppLocalizations.of(context);
+    final title = _title.text.trim().isEmpty ? youtubeDefaultTitle(l10n, DateTime.now()) : _title.text.trim();
+    unawaited(_youtubeAction((y) async {
+      final target = await y.save(
+        title: title,
+        description: _description.text.trim(),
+        privacy: _privacy,
+        fresh: _fresh || !(_live?.lifeCycle.usable ?? false),
+      );
+      if (mounted) Navigator.of(context).pop(_result(server: target.server, key: target.key));
+    }));
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final hint = widget.info.keyHint;
+    final youtube = widget.youtube;
+    final signedIn = youtube?.email != null;
     return AlertDialog(
       title: Text(l10n.broadcastSettings),
       scrollable: true,
       content: SizedBox(
         width: 460,
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          TextField(
-            key: const ValueKey('broadcast-key'),
-            controller: _key,
-            obscureText: !_showKey,
-            autocorrect: false,
-            enableSuggestions: false,
-            decoration: InputDecoration(
-              labelText: l10n.broadcastKey,
-              hintText: hint == null ? null : '•••• $hint',
-              helperText: hint == null ? l10n.broadcastKeyHelp : l10n.broadcastKeyKeep(hint),
-              helperMaxLines: 2,
-              border: const OutlineInputBorder(),
-              suffixIcon: Row(mainAxisSize: MainAxisSize.min, children: [
-                IconButton(tooltip: l10n.broadcastPaste, icon: const Icon(Icons.content_paste), onPressed: _paste),
-                IconButton(
-                  tooltip: _showKey ? l10n.broadcastKeyHide : l10n.broadcastKeyShow,
-                  icon: Icon(_showKey ? Icons.visibility_off : Icons.visibility),
-                  onPressed: () => setState(() => _showKey = !_showKey),
+          if (youtube != null) ...[
+            SegmentedButton<_StreamMode>(
+              key: const ValueKey('broadcast-mode'),
+              segments: [
+                ButtonSegment(
+                  value: _StreamMode.key,
+                  icon: const Icon(Icons.key),
+                  label: Text(l10n.broadcastModeKey, key: const ValueKey('broadcast-mode-key')),
                 ),
-              ]),
+                ButtonSegment(
+                  value: _StreamMode.account,
+                  icon: const Icon(Icons.account_circle),
+                  label: Text(l10n.broadcastModeAccount, key: const ValueKey('broadcast-mode-account')),
+                ),
+              ],
+              selected: {_mode},
+              onSelectionChanged: _busy ? null : (s) => setState(() => _mode = s.single),
             ),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            key: const ValueKey('broadcast-server'),
-            controller: _server,
-            autocorrect: false,
-            keyboardType: TextInputType.url,
-            decoration: InputDecoration(labelText: l10n.broadcastServer, border: const OutlineInputBorder()),
-          ),
+            const SizedBox(height: 16),
+          ],
+          if (_mode == _StreamMode.key) ..._keyFields(l10n) else ..._accountFields(l10n, youtube!, signedIn),
           const SizedBox(height: 16),
           Text(l10n.broadcastBitrateLabel(_kbps)),
           Slider(
@@ -381,22 +489,243 @@ class _BroadcastConfigDialogState extends State<_BroadcastConfigDialog> {
         FilledButton(
           key: const ValueKey('broadcast-config-save'),
           style: FilledButton.styleFrom(minimumSize: const Size(64, 48)),
-          onPressed: () {
-            final key = _key.text.trim();
-            Navigator.of(context).pop((
-              server: _server.text.trim().isEmpty ? BroadcastInfo.defaultServer : _server.text.trim(),
-              key: key.isEmpty ? null : key,
-              targetKbps: _kbps,
-              audio: _audio,
-              replayScoreboard: _replayScoreboard,
-            ));
-          },
+          onPressed: _busy || (_mode == _StreamMode.account && !signedIn) ? null : _save,
           child: Text(l10n.broadcastSave),
         ),
       ],
     );
   }
+
+  List<Widget> _keyFields(AppLocalizations l10n) {
+    final hint = widget.info.keyHint;
+    return [
+      TextField(
+        key: const ValueKey('broadcast-key'),
+        controller: _key,
+        obscureText: !_showKey,
+        autocorrect: false,
+        enableSuggestions: false,
+        decoration: InputDecoration(
+          labelText: l10n.broadcastKey,
+          hintText: hint == null ? null : '•••• $hint',
+          helperText: hint == null ? l10n.broadcastKeyHelp : l10n.broadcastKeyKeep(hint),
+          helperMaxLines: 2,
+          border: const OutlineInputBorder(),
+          suffixIcon: Row(mainAxisSize: MainAxisSize.min, children: [
+            IconButton(tooltip: l10n.broadcastPaste, icon: const Icon(Icons.content_paste), onPressed: _paste),
+            IconButton(
+              tooltip: _showKey ? l10n.broadcastKeyHide : l10n.broadcastKeyShow,
+              icon: Icon(_showKey ? Icons.visibility_off : Icons.visibility),
+              onPressed: () => setState(() => _showKey = !_showKey),
+            ),
+          ]),
+        ),
+      ),
+      const SizedBox(height: 16),
+      TextField(
+        key: const ValueKey('broadcast-server'),
+        controller: _server,
+        autocorrect: false,
+        keyboardType: TextInputType.url,
+        decoration: InputDecoration(labelText: l10n.broadcastServer, border: const OutlineInputBorder()),
+      ),
+    ];
+  }
+
+  List<Widget> _accountFields(AppLocalizations l10n, YouTubeAccount youtube, bool signedIn) {
+    final theme = Theme.of(context);
+    final error = _error;
+    final errorText = error == null
+        ? null
+        : Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(error, key: const ValueKey('youtube-error'), style: TextStyle(color: theme.colorScheme.error)),
+          );
+    if (!signedIn) {
+      return [
+        Text(l10n.youtubeAccountHelp, style: theme.textTheme.bodySmall),
+        const SizedBox(height: 12),
+        FilledButton.tonalIcon(
+          key: const ValueKey('youtube-sign-in'),
+          style: FilledButton.styleFrom(minimumSize: const Size(64, 48)),
+          onPressed: _busy ? null : _signIn,
+          icon: _busy
+              ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Icon(Icons.login),
+          label: Text(l10n.youtubeSignIn),
+        ),
+        ?errorText,
+      ];
+    }
+    final live = _live;
+    final usable = live != null && live.lifeCycle.usable && !_fresh;
+    return [
+      Row(children: [
+        const Icon(Icons.account_circle, size: 20),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(youtube.email!, key: const ValueKey('youtube-email'), overflow: TextOverflow.ellipsis),
+        ),
+        TextButton(
+          key: const ValueKey('youtube-sign-out'),
+          onPressed: _busy
+              ? null
+              : () => _youtubeAction((y) async {
+                    await y.signOut();
+                    if (mounted) setState(() => _live = null);
+                  }),
+          child: Text(l10n.youtubeSignOut),
+        ),
+      ]),
+      const SizedBox(height: 8),
+      if (usable)
+        _YouTubeLiveStatus(
+          live: live,
+          ingest: _ingest,
+          busy: _busy,
+          onRefresh: () => _youtubeAction((_) => _refreshLive()),
+          onNew: () => setState(() {
+            _fresh = true;
+            _title.clear();
+            _description.clear();
+          }),
+        )
+      else
+        Text(l10n.youtubeWillCreate, key: const ValueKey('youtube-will-create'), style: theme.textTheme.bodySmall),
+      const SizedBox(height: 12),
+      TextField(
+        key: const ValueKey('youtube-title'),
+        controller: _title,
+        maxLength: 100,
+        decoration: InputDecoration(
+          labelText: l10n.youtubeTitle,
+          hintText: youtubeDefaultTitle(l10n, DateTime.now()),
+          border: const OutlineInputBorder(),
+        ),
+      ),
+      const SizedBox(height: 8),
+      TextField(
+        key: const ValueKey('youtube-description'),
+        controller: _description,
+        minLines: 1,
+        maxLines: 3,
+        decoration: InputDecoration(labelText: l10n.youtubeDescription, border: const OutlineInputBorder()),
+      ),
+      const SizedBox(height: 16),
+      DropdownButtonFormField<YouTubePrivacy>(
+        key: const ValueKey('youtube-privacy'),
+        initialValue: _privacy,
+        decoration: InputDecoration(labelText: l10n.youtubePrivacy, border: const OutlineInputBorder()),
+        items: [
+          for (final p in YouTubePrivacy.values)
+            DropdownMenuItem(value: p, child: Text(youtubePrivacyLabel(l10n, p))),
+        ],
+        onChanged: _busy ? null : (p) => setState(() => _privacy = p ?? _privacy),
+      ),
+      if (_busy) ...[
+        const SizedBox(height: 12),
+        const LinearProgressIndicator(),
+      ],
+      ?errorText,
+    ];
+  }
 }
+
+/// The live this device created: its state on YouTube, whether YouTube receives the stream, the
+/// link, and a way to start a new one instead.
+class _YouTubeLiveStatus extends StatelessWidget {
+  const _YouTubeLiveStatus({
+    required this.live,
+    required this.ingest,
+    required this.busy,
+    required this.onRefresh,
+    required this.onNew,
+  });
+
+  final YouTubeBroadcast live;
+  final YouTubeIngest? ingest;
+  final bool busy;
+  final VoidCallback onRefresh;
+  final VoidCallback onNew;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final (ingestText, ingestColor) = switch (ingest) {
+      YouTubeIngest.good => (l10n.youtubeIngestGood, const Color(0xFF43A047)),
+      YouTubeIngest.bad => (l10n.youtubeIngestBad, const Color(0xFFFFB300)),
+      YouTubeIngest.none => (l10n.youtubeIngestNone, theme.colorScheme.onSurfaceVariant),
+      null => (null, null),
+    };
+    return DecoratedBox(
+      key: const ValueKey('youtube-live'),
+      decoration: BoxDecoration(
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(youtubeLifeCycleLabel(l10n, live.lifeCycle),
+              key: const ValueKey('youtube-life'), style: const TextStyle(fontWeight: FontWeight.bold)),
+          if (ingestText != null)
+            Text(ingestText, key: const ValueKey('youtube-ingest'), style: TextStyle(color: ingestColor)),
+          SelectableText(live.url, style: theme.textTheme.bodySmall),
+          Wrap(children: [
+            TextButton.icon(
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: live.url));
+                if (context.mounted) {
+                  ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(l10n.youtubeLinkCopied)));
+                }
+              },
+              icon: const Icon(Icons.link),
+              label: Text(l10n.youtubeCopyLink),
+            ),
+            TextButton.icon(
+              key: const ValueKey('youtube-refresh'),
+              onPressed: busy ? null : onRefresh,
+              icon: const Icon(Icons.refresh),
+              label: Text(l10n.youtubeRefresh),
+            ),
+            TextButton.icon(
+              key: const ValueKey('youtube-new'),
+              onPressed: busy ? null : onNew,
+              icon: const Icon(Icons.add),
+              label: Text(l10n.youtubeNewLive),
+            ),
+          ]),
+        ]),
+      ),
+    );
+  }
+}
+
+String youtubeDefaultTitle(AppLocalizations l10n, DateTime now) => l10n.youtubeDefaultTitle(
+    '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}');
+
+String youtubePrivacyLabel(AppLocalizations l10n, YouTubePrivacy p) => switch (p) {
+      YouTubePrivacy.public => l10n.youtubePrivacyPublic,
+      YouTubePrivacy.unlisted => l10n.youtubePrivacyUnlisted,
+      YouTubePrivacy.private => l10n.youtubePrivacyPrivate,
+    };
+
+String youtubeLifeCycleLabel(AppLocalizations l10n, YouTubeLifeCycle c) => switch (c) {
+      YouTubeLifeCycle.ready => l10n.youtubeLifeReady,
+      YouTubeLifeCycle.starting => l10n.youtubeLifeStarting,
+      YouTubeLifeCycle.live => l10n.youtubeLifeLive,
+      YouTubeLifeCycle.complete || YouTubeLifeCycle.other => l10n.youtubeLifeComplete,
+    };
+
+String youtubeErrorMessage(AppLocalizations l10n, YouTubeAccountException e) => switch (e.code) {
+      'live_not_enabled' => l10n.youtubeErrorLiveNotEnabled,
+      'quota' => l10n.youtubeErrorQuota,
+      'forbidden' || 'not_signed_in' => l10n.youtubeErrorForbidden,
+      'network' => l10n.youtubeErrorNetwork,
+      'sign_in_failed' => l10n.youtubeErrorSignIn(e.message ?? e.code),
+      _ => l10n.youtubeErrorApi(e.message ?? e.code),
+    };
 
 // endregion
 

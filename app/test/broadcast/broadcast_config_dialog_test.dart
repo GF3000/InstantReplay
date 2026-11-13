@@ -1,0 +1,187 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:instant_replay/features/broadcast/broadcast_widgets.dart';
+import 'package:instant_replay/features/broadcast/youtube/youtube_account.dart';
+import 'package:instant_replay/features/broadcast/youtube/youtube_api.dart';
+import 'package:instant_replay/l10n/app_localizations.dart';
+import 'package:replay_protocol/replay_protocol.dart';
+
+class _FakeAccount implements YouTubeAccount {
+  _FakeAccount({this.email, this.current});
+
+  @override
+  String? email;
+
+  @override
+  YouTubeBroadcast? current;
+
+  final saves = <({String title, YouTubePrivacy privacy, bool fresh})>[];
+  YouTubeAccountException? failSave;
+  final _changes = StreamController<void>.broadcast();
+
+  @override
+  Stream<void> get changes => _changes.stream;
+
+  @override
+  Future<void> restore() async {}
+
+  @override
+  Future<void> signIn() async {
+    email = 'coach@example.com';
+    _changes.add(null);
+  }
+
+  @override
+  Future<void> signOut() async => email = null;
+
+  @override
+  Future<YouTubeBroadcast?> refresh() async => current;
+
+  @override
+  Future<YouTubeIngest?> ingest() async => YouTubeIngest.none;
+
+  @override
+  Future<YouTubeTarget> save({
+    required String title,
+    required String description,
+    required YouTubePrivacy privacy,
+    bool fresh = false,
+  }) async {
+    if (failSave case final e?) throw e;
+    saves.add((title: title, privacy: privacy, fresh: fresh));
+    final b = YouTubeBroadcast(
+      id: 'b1',
+      title: title,
+      description: description,
+      privacy: privacy,
+      lifeCycle: YouTubeLifeCycle.ready,
+      scheduledStartTime: null,
+    );
+    current = b;
+    return (server: 'rtmp://a.rtmp.youtube.com/live2', key: 'yt-key-1', broadcast: b);
+  }
+}
+
+const _info = BroadcastInfo(
+  state: BroadcastStreamState.idle,
+  configured: false,
+  server: BroadcastInfo.defaultServer,
+  targetKbps: 4500,
+  audio: true,
+);
+
+void main() {
+  Future<Future<BroadcastConfigResult?>> open(WidgetTester tester, {YouTubeAccount? youtube}) async {
+    tester.view.physicalSize = const Size(1000, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    late Future<BroadcastConfigResult?> result;
+    await tester.pumpWidget(MaterialApp(
+      locale: const Locale('en'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => result = showBroadcastConfigDialog(context, _info, youtube: youtube),
+            child: const Text('open'),
+          ),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    return Future.value(result);
+  }
+
+  testWidgets('without an account only the stream key shows, as before', (tester) async {
+    final result = await open(tester);
+    expect(find.byKey(const ValueKey('broadcast-mode')), findsNothing);
+    await tester.enterText(find.byKey(const ValueKey('broadcast-key')), ' my-key ');
+    await tester.tap(find.byKey(const ValueKey('broadcast-config-save')));
+    await tester.pumpAndSettle();
+    final r = (await result)!;
+    expect(r.key, 'my-key');
+    expect(r.server, BroadcastInfo.defaultServer);
+  });
+
+  testWidgets('with an account, key mode is still the default and works', (tester) async {
+    final result = await open(tester, youtube: _FakeAccount());
+    expect(find.byKey(const ValueKey('broadcast-mode')), findsOneWidget);
+    await tester.enterText(find.byKey(const ValueKey('broadcast-key')), 'manual');
+    await tester.tap(find.byKey(const ValueKey('broadcast-config-save')));
+    await tester.pumpAndSettle();
+    expect((await result)!.key, 'manual');
+  });
+
+  testWidgets('account mode: sign in, set title and visibility, save gets the key from YouTube', (tester) async {
+    final account = _FakeAccount();
+    final result = await open(tester, youtube: account);
+    await tester.tap(find.byKey(const ValueKey('broadcast-mode-account')));
+    await tester.pumpAndSettle();
+
+    // Save waits for the sign-in.
+    final save = find.byKey(const ValueKey('broadcast-config-save'));
+    expect(tester.widget<FilledButton>(save).onPressed, isNull);
+    await tester.tap(find.byKey(const ValueKey('youtube-sign-in')));
+    await tester.pumpAndSettle();
+    expect(find.text('coach@example.com'), findsOneWidget);
+    expect(find.byKey(const ValueKey('youtube-will-create')), findsOneWidget);
+
+    await tester.enterText(find.byKey(const ValueKey('youtube-title')), 'Coras vs Alcobendas');
+    await tester.tap(find.byKey(const ValueKey('youtube-privacy')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Public').last);
+    await tester.pumpAndSettle();
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+
+    expect(account.saves.single.title, 'Coras vs Alcobendas');
+    expect(account.saves.single.privacy, YouTubePrivacy.public);
+    expect(account.saves.single.fresh, isTrue);
+    final r = (await result)!;
+    expect(r.server, 'rtmp://a.rtmp.youtube.com/live2');
+    expect(r.key, 'yt-key-1');
+  });
+
+  testWidgets('account mode opens on an existing live and updates it', (tester) async {
+    final account = _FakeAccount(
+      email: 'coach@example.com',
+      current: const YouTubeBroadcast(
+        id: 'b0',
+        title: 'Semifinal',
+        description: '',
+        privacy: YouTubePrivacy.unlisted,
+        lifeCycle: YouTubeLifeCycle.live,
+        scheduledStartTime: null,
+      ),
+    );
+    final result = await open(tester, youtube: account);
+    expect(find.byKey(const ValueKey('youtube-life')), findsOneWidget);
+    expect(find.text('Live on YouTube'), findsOneWidget);
+    expect(find.text('YouTube is not receiving anything'), findsOneWidget);
+    await tester.enterText(find.byKey(const ValueKey('youtube-title')), 'Semifinal (2nd half)');
+    await tester.tap(find.byKey(const ValueKey('broadcast-config-save')));
+    await tester.pumpAndSettle();
+    expect(account.saves.single.fresh, isFalse);
+    expect(account.saves.single.title, 'Semifinal (2nd half)');
+    expect((await result)!.key, 'yt-key-1');
+  });
+
+  testWidgets('a YouTube error stays in the dialog', (tester) async {
+    final account = _FakeAccount(email: 'coach@example.com')
+      ..failSave = const YouTubeAccountException('live_not_enabled');
+    final result = await open(tester, youtube: account);
+    await tester.tap(find.byKey(const ValueKey('broadcast-mode-account')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('broadcast-config-save')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('youtube-error')), findsOneWidget);
+    expect(find.textContaining("can't go live yet"), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(await result, isNull);
+  });
+}

@@ -1462,4 +1462,106 @@ class AppLocalizationsEn extends AppLocalizations {
   String replayFailed(String message) {
     return 'Could not put the replay on air: $message';
   }
+
+  @override
+  String get broadcastModeKey => 'Stream key';
+
+  @override
+  String get broadcastModeAccount => 'YouTube account';
+
+  @override
+  String get youtubeAccountHelp =>
+      'Sign in with the channel\'s Google account: the app creates the live (title and visibility), sends the key to the Camera, and the live starts and ends by itself with the stream.';
+
+  @override
+  String get youtubeSignIn => 'Sign in with Google';
+
+  @override
+  String get youtubeSignOut => 'Sign out';
+
+  @override
+  String get youtubeWillCreate => 'Saving creates a new live on the channel.';
+
+  @override
+  String get youtubeTitle => 'Title';
+
+  @override
+  String get youtubeDescription => 'Description';
+
+  @override
+  String get youtubePrivacy => 'Visibility';
+
+  @override
+  String get youtubePrivacyPublic => 'Public';
+
+  @override
+  String get youtubePrivacyUnlisted => 'Unlisted';
+
+  @override
+  String get youtubePrivacyPrivate => 'Private';
+
+  @override
+  String youtubeDefaultTitle(String date) {
+    return 'Match $date';
+  }
+
+  @override
+  String get youtubeLifeReady =>
+      'Ready: goes live as soon as the stream arrives';
+
+  @override
+  String get youtubeLifeStarting => 'YouTube is starting the live';
+
+  @override
+  String get youtubeLifeLive => 'Live on YouTube';
+
+  @override
+  String get youtubeLifeComplete => 'Finished: saving creates a new live';
+
+  @override
+  String get youtubeIngestGood => 'YouTube is receiving the stream';
+
+  @override
+  String get youtubeIngestBad =>
+      'YouTube is receiving the stream with problems';
+
+  @override
+  String get youtubeIngestNone => 'YouTube is not receiving anything';
+
+  @override
+  String get youtubeCopyLink => 'Copy link';
+
+  @override
+  String get youtubeLinkCopied => 'Link copied';
+
+  @override
+  String get youtubeRefresh => 'Refresh';
+
+  @override
+  String get youtubeNewLive => 'New live';
+
+  @override
+  String get youtubeErrorLiveNotEnabled =>
+      'This channel can\'t go live yet. Enable it in YouTube Studio > Go live (it can take 24 h).';
+
+  @override
+  String get youtubeErrorQuota =>
+      'The YouTube API daily quota is used up. Use a stream key for now.';
+
+  @override
+  String get youtubeErrorForbidden => 'YouTube refused access. Sign in again.';
+
+  @override
+  String get youtubeErrorNetwork =>
+      'Can\'t reach YouTube. Check the internet connection.';
+
+  @override
+  String youtubeErrorSignIn(String message) {
+    return 'Couldn\'t sign in: $message';
+  }
+
+  @override
+  String youtubeErrorApi(String message) {
+    return 'YouTube error: $message';
+  }
 }
