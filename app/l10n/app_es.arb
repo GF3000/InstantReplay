@@ -431,5 +431,8 @@
   "youtubeErrorForbidden": "YouTube ha denegado el acceso. Vuelve a iniciar sesión.",
   "youtubeErrorNetwork": "No se puede conectar con YouTube. Revisa la conexión a internet.",
   "youtubeErrorSignIn": "No se pudo iniciar sesión: {message}",
-  "youtubeErrorApi": "Error de YouTube: {message}"
+  "youtubeErrorApi": "Error de YouTube: {message}",
+  "youtubeQr": "QR",
+  "youtubeQrTitle": "Ver el directo",
+  "youtubeQrClose": "Cerrar"
 }

@@ -2689,6 +2689,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'YouTube error: {message}'**
   String youtubeErrorApi(String message);
+
+  /// No description provided for @youtubeQr.
+  ///
+  /// In en, this message translates to:
+  /// **'QR'**
+  String get youtubeQr;
+
+  /// No description provided for @youtubeQrTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch the live'**
+  String get youtubeQrTitle;
+
+  /// No description provided for @youtubeQrClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get youtubeQrClose;
 }
 
 class _AppLocalizationsDelegate

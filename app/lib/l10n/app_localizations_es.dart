@@ -1570,4 +1570,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String youtubeErrorApi(String message) {
     return 'Error de YouTube: $message';
   }
+
+  @override
+  String get youtubeQr => 'QR';
+
+  @override
+  String get youtubeQrTitle => 'Ver el directo';
+
+  @override
+  String get youtubeQrClose => 'Cerrar';
 }

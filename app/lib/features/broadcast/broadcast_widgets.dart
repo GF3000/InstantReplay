@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:replay_protocol/replay_protocol.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -420,64 +421,114 @@ class _BroadcastConfigDialogState extends State<_BroadcastConfigDialog> {
     }));
   }
 
+  /// A phone on its side: too short for a dialog, so the settings take the whole screen.
+  static bool fullScreen(Size size) => size.width > size.height && size.height < 500;
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final youtube = widget.youtube;
     final signedIn = youtube?.email != null;
+    final canSave = !_busy && !(_mode == _StreamMode.account && !signedIn);
+    final destination = <Widget>[
+      if (youtube != null) ...[
+        SegmentedButton<_StreamMode>(
+          key: const ValueKey('broadcast-mode'),
+          segments: [
+            ButtonSegment(
+              value: _StreamMode.key,
+              icon: const Icon(Icons.key),
+              label: Text(l10n.broadcastModeKey, key: const ValueKey('broadcast-mode-key')),
+            ),
+            ButtonSegment(
+              value: _StreamMode.account,
+              icon: const Icon(Icons.account_circle),
+              label: Text(l10n.broadcastModeAccount, key: const ValueKey('broadcast-mode-account')),
+            ),
+          ],
+          selected: {_mode},
+          onSelectionChanged: _busy ? null : (s) => setState(() => _mode = s.single),
+        ),
+        const SizedBox(height: 16),
+      ],
+      if (_mode == _StreamMode.key) ..._keyFields(l10n) else ..._accountFields(l10n, youtube!, signedIn),
+    ];
+    final quality = <Widget>[
+      Text(l10n.broadcastBitrateLabel(_kbps)),
+      Slider(
+        key: const ValueKey('broadcast-kbps'),
+        value: _kbps.toDouble(),
+        min: BroadcastInfo.minKbps.toDouble(),
+        max: BroadcastInfo.maxKbps.toDouble(),
+        divisions: (BroadcastInfo.maxKbps - BroadcastInfo.minKbps) ~/ 250,
+        label: '$_kbps',
+        onChanged: (v) => setState(() => _kbps = v.round()),
+      ),
+      SwitchListTile(
+        key: const ValueKey('broadcast-audio'),
+        contentPadding: EdgeInsets.zero,
+        title: Text(l10n.broadcastAudio),
+        value: _audio,
+        onChanged: (v) => setState(() => _audio = v),
+      ),
+      SwitchListTile(
+        key: const ValueKey('broadcast-replay-scoreboard'),
+        contentPadding: EdgeInsets.zero,
+        title: Text(l10n.broadcastReplayScoreboard),
+        subtitle: Text(l10n.broadcastReplayScoreboardHint),
+        value: _replayScoreboard,
+        onChanged: (v) => setState(() => _replayScoreboard = v),
+      ),
+    ];
+    final save = FilledButton(
+      key: const ValueKey('broadcast-config-save'),
+      style: FilledButton.styleFrom(minimumSize: const Size(64, 48)),
+      onPressed: canSave ? _save : null,
+      child: Text(l10n.broadcastSave),
+    );
+
+    if (fullScreen(MediaQuery.sizeOf(context))) {
+      // Bar with close and Save on top, destination | quality side by side below.
+      Widget column(List<Widget> children) => SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+          );
+      return Dialog.fullscreen(
+        key: const ValueKey('broadcast-config-fullscreen'),
+        child: ScaffoldMessenger(
+          child: Scaffold(
+            appBar: AppBar(
+              toolbarHeight: 52,
+              leading: IconButton(
+                tooltip: l10n.broadcastCancel,
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              title: Text(l10n.broadcastSettings),
+              actions: [save, const SizedBox(width: 12)],
+            ),
+            body: SafeArea(
+              top: false,
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(flex: 3, child: column(destination)),
+                const VerticalDivider(width: 1),
+                Expanded(flex: 2, child: column(quality)),
+              ]),
+            ),
+          ),
+        ),
+      );
+    }
+
     return AlertDialog(
       title: Text(l10n.broadcastSettings),
       scrollable: true,
       content: SizedBox(
         width: 460,
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          if (youtube != null) ...[
-            SegmentedButton<_StreamMode>(
-              key: const ValueKey('broadcast-mode'),
-              segments: [
-                ButtonSegment(
-                  value: _StreamMode.key,
-                  icon: const Icon(Icons.key),
-                  label: Text(l10n.broadcastModeKey, key: const ValueKey('broadcast-mode-key')),
-                ),
-                ButtonSegment(
-                  value: _StreamMode.account,
-                  icon: const Icon(Icons.account_circle),
-                  label: Text(l10n.broadcastModeAccount, key: const ValueKey('broadcast-mode-account')),
-                ),
-              ],
-              selected: {_mode},
-              onSelectionChanged: _busy ? null : (s) => setState(() => _mode = s.single),
-            ),
-            const SizedBox(height: 16),
-          ],
-          if (_mode == _StreamMode.key) ..._keyFields(l10n) else ..._accountFields(l10n, youtube!, signedIn),
+          ...destination,
           const SizedBox(height: 16),
-          Text(l10n.broadcastBitrateLabel(_kbps)),
-          Slider(
-            key: const ValueKey('broadcast-kbps'),
-            value: _kbps.toDouble(),
-            min: BroadcastInfo.minKbps.toDouble(),
-            max: BroadcastInfo.maxKbps.toDouble(),
-            divisions: (BroadcastInfo.maxKbps - BroadcastInfo.minKbps) ~/ 250,
-            label: '$_kbps',
-            onChanged: (v) => setState(() => _kbps = v.round()),
-          ),
-          SwitchListTile(
-            key: const ValueKey('broadcast-audio'),
-            contentPadding: EdgeInsets.zero,
-            title: Text(l10n.broadcastAudio),
-            value: _audio,
-            onChanged: (v) => setState(() => _audio = v),
-          ),
-          SwitchListTile(
-            key: const ValueKey('broadcast-replay-scoreboard'),
-            contentPadding: EdgeInsets.zero,
-            title: Text(l10n.broadcastReplayScoreboard),
-            subtitle: Text(l10n.broadcastReplayScoreboardHint),
-            value: _replayScoreboard,
-            onChanged: (v) => setState(() => _replayScoreboard = v),
-          ),
+          ...quality,
         ]),
       ),
       actions: [
@@ -486,12 +537,7 @@ class _BroadcastConfigDialogState extends State<_BroadcastConfigDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: Text(l10n.broadcastCancel),
         ),
-        FilledButton(
-          key: const ValueKey('broadcast-config-save'),
-          style: FilledButton.styleFrom(minimumSize: const Size(64, 48)),
-          onPressed: _busy || (_mode == _StreamMode.account && !signedIn) ? null : _save,
-          child: Text(l10n.broadcastSave),
-        ),
+        save,
       ],
     );
   }
@@ -684,6 +730,12 @@ class _YouTubeLiveStatus extends StatelessWidget {
               label: Text(l10n.youtubeCopyLink),
             ),
             TextButton.icon(
+              key: const ValueKey('youtube-qr'),
+              onPressed: () => showYouTubeLinkQr(context, live),
+              icon: const Icon(Icons.qr_code_2),
+              label: Text(l10n.youtubeQr),
+            ),
+            TextButton.icon(
               key: const ValueKey('youtube-refresh'),
               onPressed: busy ? null : onRefresh,
               icon: const Icon(Icons.refresh),
@@ -701,6 +753,46 @@ class _YouTubeLiveStatus extends StatelessWidget {
     );
   }
 }
+
+/// The live's link as a big QR code, for people to open it on their phones.
+Future<void> showYouTubeLinkQr(BuildContext context, YouTubeBroadcast live) => showDialog<void>(
+      context: context,
+      builder: (context) {
+        final l10n = AppLocalizations.of(context);
+        final size = MediaQuery.sizeOf(context);
+        // As big as fits, leaving room for the title, the link and the button.
+        final qrSize = (size.shortestSide - 200).clamp(160.0, 420.0);
+        return AlertDialog(
+          key: const ValueKey('youtube-qr-dialog'),
+          scrollable: true,
+          title: Text(live.title.isEmpty ? l10n.youtubeQrTitle : live.title, textAlign: TextAlign.center),
+          content: Column(mainAxisSize: MainAxisSize.min, children: [
+            // Fixed size: the dialog measures its content, which QrImageView can't answer.
+            SizedBox.square(
+              dimension: qrSize,
+              child: QrImageView(
+                key: const ValueKey('youtube-qr-code'),
+                data: live.url,
+                size: qrSize,
+                padding: const EdgeInsets.all(12),
+                backgroundColor: Colors.white,
+                semanticsLabel: live.url,
+              ),
+            ),
+            const SizedBox(height: 8),
+            SelectableText(live.url, textAlign: TextAlign.center),
+          ]),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            FilledButton(
+              style: FilledButton.styleFrom(minimumSize: const Size(64, 48)),
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(l10n.youtubeQrClose),
+            ),
+          ],
+        );
+      },
+    );
 
 String youtubeDefaultTitle(AppLocalizations l10n, DateTime now) => l10n.youtubeDefaultTitle(
     '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}');

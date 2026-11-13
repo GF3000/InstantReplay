@@ -963,5 +963,8 @@
   "youtubeErrorSignIn": "Couldn't sign in: {message}",
   "@youtubeErrorSignIn": {"placeholders": {"message": {"type": "String"}}},
   "youtubeErrorApi": "YouTube error: {message}",
-  "@youtubeErrorApi": {"placeholders": {"message": {"type": "String"}}}
+  "@youtubeErrorApi": {"placeholders": {"message": {"type": "String"}}},
+  "youtubeQr": "QR",
+  "youtubeQrTitle": "Watch the live",
+  "youtubeQrClose": "Close"
 }

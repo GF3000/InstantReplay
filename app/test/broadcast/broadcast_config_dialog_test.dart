@@ -73,8 +73,9 @@ const _info = BroadcastInfo(
 );
 
 void main() {
-  Future<Future<BroadcastConfigResult?>> open(WidgetTester tester, {YouTubeAccount? youtube}) async {
-    tester.view.physicalSize = const Size(1000, 1400);
+  Future<Future<BroadcastConfigResult?>> open(WidgetTester tester,
+      {YouTubeAccount? youtube, Size size = const Size(1000, 1400)}) async {
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     late Future<BroadcastConfigResult?> result;
@@ -183,5 +184,60 @@ void main() {
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect(await result, isNull);
+  });
+
+  testWidgets('a phone on its side gets full screen: Save on top, two columns', (tester) async {
+    final result = await open(tester, youtube: _FakeAccount(), size: const Size(915, 412));
+    expect(find.byKey(const ValueKey('broadcast-config-fullscreen')), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
+    // Everything shows at once: destination on the left, quality on the right.
+    final save = tester.getRect(find.byKey(const ValueKey('broadcast-config-save')));
+    final key = tester.getRect(find.byKey(const ValueKey('broadcast-key')));
+    final audio = tester.getRect(find.byKey(const ValueKey('broadcast-audio')));
+    expect(save.top, lessThan(60));
+    expect(key.right, lessThanOrEqualTo(audio.left));
+    expect(audio.bottom, lessThan(412));
+    expect(tester.takeException(), isNull);
+
+    await tester.enterText(find.byKey(const ValueKey('broadcast-key')), 'landscape-key');
+    await tester.tap(find.byKey(const ValueKey('broadcast-config-save')));
+    await tester.pumpAndSettle();
+    expect((await result)!.key, 'landscape-key');
+  });
+
+  testWidgets('full screen closes with the X, saving nothing', (tester) async {
+    final result = await open(tester, size: const Size(915, 412));
+    await tester.tap(find.byIcon(Icons.close));
+    await tester.pumpAndSettle();
+    expect(await result, isNull);
+  });
+
+  testWidgets('tablets and portrait keep the dialog', (tester) async {
+    await open(tester, size: const Size(1280, 800));
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.byKey(const ValueKey('broadcast-config-fullscreen')), findsNothing);
+  });
+
+  testWidgets('the live link opens as a QR code', (tester) async {
+    final account = _FakeAccount(
+      email: 'coach@example.com',
+      current: const YouTubeBroadcast(
+        id: 'abc123',
+        title: 'Final',
+        description: '',
+        privacy: YouTubePrivacy.public,
+        lifeCycle: YouTubeLifeCycle.ready,
+        scheduledStartTime: null,
+      ),
+    );
+    await open(tester, youtube: account, size: const Size(915, 412));
+    await tester.tap(find.byKey(const ValueKey('youtube-qr')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('youtube-qr-code')), findsOneWidget);
+    expect(find.text('https://youtu.be/abc123'), findsWidgets);
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('youtube-qr-code')), findsNothing);
   });
 }
