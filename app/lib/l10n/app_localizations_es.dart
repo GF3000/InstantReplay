@@ -1583,4 +1583,7 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get youtubeNeedSignIn =>
       'La emisión va a tu cuenta de YouTube: vuelve a iniciar sesión en los ajustes de emisión o cambia a Clave.';
+
+  @override
+  String get youtubeShare => 'Compartir';
 }

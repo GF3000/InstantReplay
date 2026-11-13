@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:replay_protocol/replay_protocol.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -805,6 +806,17 @@ Future<void> showYouTubeLinkQr(BuildContext context, YouTubeBroadcast live) => s
           onPressed: () => Navigator.of(context).pop(),
           child: Text(l10n.youtubeQrClose),
         );
+        // Copy and share the link: for the team chat, without scanning anything.
+        final linkActions = Wrap(spacing: 8, runSpacing: 4, children: [
+          _CopyLinkButton(url: live.url),
+          OutlinedButton.icon(
+            key: const ValueKey('youtube-qr-share'),
+            style: OutlinedButton.styleFrom(minimumSize: const Size(64, 48)),
+            onPressed: () => SharePlus.instance.share(ShareParams(text: '$title\n${live.url}', subject: title)),
+            icon: const Icon(Icons.share),
+            label: Text(l10n.youtubeShare),
+          ),
+        ]);
 
         if (size.width > size.height) {
           // On its side: the code as tall as the screen allows, the words beside it.
@@ -823,7 +835,9 @@ Future<void> showYouTubeLinkQr(BuildContext context, YouTubeBroadcast live) => s
                     Text(title, style: theme.textTheme.headlineSmall, maxLines: 3, overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 12),
                     SelectableText(live.url, style: theme.textTheme.titleMedium),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
+                    linkActions,
+                    const SizedBox(height: 16),
                     close,
                   ]),
                 ),
@@ -841,12 +855,56 @@ Future<void> showYouTubeLinkQr(BuildContext context, YouTubeBroadcast live) => s
             code(side),
             const SizedBox(height: 8),
             SelectableText(live.url, textAlign: TextAlign.center),
+            const SizedBox(height: 12),
+            linkActions,
           ]),
           actionsAlignment: MainAxisAlignment.center,
           actions: [close],
         );
       },
     );
+
+/// Copies the link and says so on the button for a moment (a snack bar would hide behind the
+/// dialog).
+class _CopyLinkButton extends StatefulWidget {
+  const _CopyLinkButton({required this.url});
+
+  final String url;
+
+  @override
+  State<_CopyLinkButton> createState() => _CopyLinkButtonState();
+}
+
+class _CopyLinkButtonState extends State<_CopyLinkButton> {
+  bool _copied = false;
+  Timer? _reset;
+
+  @override
+  void dispose() {
+    _reset?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return FilledButton.tonalIcon(
+      key: const ValueKey('youtube-qr-copy'),
+      style: FilledButton.styleFrom(minimumSize: const Size(64, 48)),
+      onPressed: () async {
+        await Clipboard.setData(ClipboardData(text: widget.url));
+        if (!mounted) return;
+        setState(() => _copied = true);
+        _reset?.cancel();
+        _reset = Timer(const Duration(seconds: 2), () {
+          if (mounted) setState(() => _copied = false);
+        });
+      },
+      icon: Icon(_copied ? Icons.check : Icons.content_copy),
+      label: Text(_copied ? l10n.youtubeLinkCopied : l10n.youtubeCopyLink),
+    );
+  }
+}
 
 /// Before going live with a YouTube account: a live must be there to receive the stream (the
 /// last one ended with its stream). Returns the target, or null after telling the user why not.

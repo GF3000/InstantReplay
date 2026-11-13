@@ -435,5 +435,6 @@
   "youtubeQr": "QR",
   "youtubeQrTitle": "Ver el directo",
   "youtubeQrClose": "Cerrar",
-  "youtubeNeedSignIn": "La emisión va a tu cuenta de YouTube: vuelve a iniciar sesión en los ajustes de emisión o cambia a Clave."
+  "youtubeNeedSignIn": "La emisión va a tu cuenta de YouTube: vuelve a iniciar sesión en los ajustes de emisión o cambia a Clave.",
+  "youtubeShare": "Compartir"
 }

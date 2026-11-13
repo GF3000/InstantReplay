@@ -1577,4 +1577,7 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get youtubeNeedSignIn =>
       'The stream goes to your YouTube account: sign in again in the stream settings, or switch to Stream key.';
+
+  @override
+  String get youtubeShare => 'Share';
 }

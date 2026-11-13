@@ -967,5 +967,6 @@
   "youtubeQr": "QR",
   "youtubeQrTitle": "Watch the live",
   "youtubeQrClose": "Close",
-  "youtubeNeedSignIn": "The stream goes to your YouTube account: sign in again in the stream settings, or switch to Stream key."
+  "youtubeNeedSignIn": "The stream goes to your YouTube account: sign in again in the stream settings, or switch to Stream key.",
+  "youtubeShare": "Share"
 }

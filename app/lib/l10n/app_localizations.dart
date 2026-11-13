@@ -2713,6 +2713,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The stream goes to your YouTube account: sign in again in the stream settings, or switch to Stream key.'**
   String get youtubeNeedSignIn;
+
+  /// No description provided for @youtubeShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get youtubeShare;
 }
 
 class _AppLocalizationsDelegate

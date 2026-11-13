@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:instant_replay/features/broadcast/broadcast_widgets.dart';
 import 'package:instant_replay/features/broadcast/youtube/youtube_account.dart';
@@ -257,6 +258,21 @@ void main() {
     expect(code.height, greaterThan(300));
     expect(close.left, greaterThan(code.right));
     expect(close.bottom, lessThanOrEqualTo(412));
+    // Copy and share sit beside the code too.
+    expect(find.byKey(const ValueKey('youtube-qr-share')), findsOneWidget);
+    expect(tester.getRect(find.byKey(const ValueKey('youtube-qr-share'))).bottom, lessThanOrEqualTo(412));
+    String? copied;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') copied = (call.arguments as Map)['text'] as String;
+      return null;
+    });
+    await tester.tap(find.byKey(const ValueKey('youtube-qr-copy')));
+    await tester.pump();
+    expect(copied, 'https://youtu.be/abc123');
+    final copy = find.byKey(const ValueKey('youtube-qr-copy'));
+    expect(find.descendant(of: copy, matching: find.text('Link copied')), findsOneWidget);
+    await tester.pump(const Duration(seconds: 3));
+    expect(find.descendant(of: copy, matching: find.text('Copy link')), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('youtube-qr-close')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('youtube-qr-code')), findsNothing);
