@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:replay_protocol/replay_protocol.dart' show BroadcastStreamState;
+import 'package:replay_protocol/replay_protocol.dart' show BroadcastInfo, BroadcastStreamState;
 
 import '../../../core/panels.dart';
 import '../../../core/ui/ir_colors.dart';
@@ -742,26 +742,16 @@ class ViewerBroadcastBar extends ConsumerWidget {
         info: info,
         enabled: connected,
         keyPrefix: 'viewer-broadcast',
-        onStart: () async {
-          // Account mode: a live must be there to receive the stream, and the Camera must use its key.
-          final account = ref.read(youtubeAccountProvider);
-          if (account != null && account.active) {
-            if (account.email == null) {
-              ScaffoldMessenger.maybeOf(
-                context,
-              )?.showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).youtubeNeedSignIn)));
-              return;
-            }
-            final target = await prepareYouTubeLive(context, account);
-            if (target == null) return;
-            remote.configure(server: target.server, key: target.key, targetKbps: info.targetKbps, audio: info.audio);
-          }
-          remote.start();
-        },
+        onStart: () => _goLive(context, ref, info),
         onShare: youtube == null ? null : () => shareYouTubeLive(context, youtube),
         onStop: remote.stop,
         onConfigure: () async {
-          final result = await showBroadcastConfigDialog(context, info, youtube: ref.read(youtubeAccountProvider));
+          final result = await showBroadcastConfigDialog(
+            context,
+            info,
+            youtube: ref.read(youtubeAccountProvider),
+            canGoLive: !info.active,
+          );
           if (result == null) return;
           remote.configure(
             server: result.server,
@@ -770,9 +760,29 @@ class ViewerBroadcastBar extends ConsumerWidget {
             audio: result.audio,
             replayScoreboard: result.replayScoreboard,
           );
+          if (result.goLive && context.mounted) await _goLive(context, ref, ref.read(viewerBroadcastProvider) ?? info);
         },
       ),
     );
+  }
+
+  /// Go live from the bar or from the stream setup page.
+  static Future<void> _goLive(BuildContext context, WidgetRef ref, BroadcastInfo info) async {
+    final remote = ref.read(viewerBroadcastNoticeProvider.notifier);
+    // Account mode: a live must be there to receive the stream, and the Camera must use its key.
+    final account = ref.read(youtubeAccountProvider);
+    if (account != null && account.active) {
+      if (account.email == null) {
+        ScaffoldMessenger.maybeOf(
+          context,
+        )?.showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).youtubeNeedSignIn)));
+        return;
+      }
+      final target = await prepareYouTubeLive(context, account);
+      if (target == null) return;
+      remote.configure(server: target.server, key: target.key, targetKbps: info.targetKbps, audio: info.audio);
+    }
+    remote.start();
   }
 }
 
