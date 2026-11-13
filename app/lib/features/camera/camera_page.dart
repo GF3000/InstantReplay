@@ -132,27 +132,13 @@ class _BroadcastStage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.ir;
-    final l10n = AppLocalizations.of(context);
     return LayoutBuilder(builder: (context, box) {
       final compact = box.maxHeight < 600;
-      final header = compact ? 0.0 : 44.0;
       final stripMin = compact ? 92.0 : 170.0;
-      final previewHeight = (box.maxWidth * 9 / 16).clamp(0.0, (box.maxHeight - header - stripMin).clamp(80.0, double.infinity));
-      final profile = state.profile;
+      final previewHeight = (box.maxWidth * 9 / 16).clamp(0.0, (box.maxHeight - stripMin).clamp(80.0, double.infinity));
+      // No caption on the picture: the burned-in scoreboard sits top-left and must stay visible.
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        if (!compact)
-          Container(
-            height: header,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: BoxDecoration(border: Border(bottom: BorderSide(color: c.line))),
-            child: Row(children: [
-              Text(l10n.camWhatYouTubeSees, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: c.text)),
-              const Spacer(),
-              if (profile != null)
-                Text('${profile.height}p · ${profile.fps} fps', style: irMono(13, weight: FontWeight.w500, color: c.muted)),
-            ]),
-          ),
-        SizedBox(height: previewHeight, child: _Preview(state: state, youTubeLabel: compact)),
+        SizedBox(height: previewHeight, child: _Preview(state: state)),
         Expanded(
           child: Container(
             decoration: BoxDecoration(color: c.surface, border: Border(top: BorderSide(color: c.line))),
@@ -170,12 +156,9 @@ class _BroadcastStage extends StatelessWidget {
 }
 
 class _Preview extends ConsumerWidget {
-  const _Preview({required this.state, this.youTubeLabel = false});
+  const _Preview({required this.state});
 
   final CameraSessionState state;
-
-  /// Broadcast mode on a phone: "WHAT YOUTUBE SEES" on the picture itself.
-  final bool youTubeLabel;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -228,17 +211,12 @@ class _Preview extends ConsumerWidget {
               child: _CameraRecording(state: state),
             ),
           ),
-          if (youTubeLabel || silent)
+          // Bottom-left: the burned-in scoreboard is top-left and the zoom bottom-right.
+          if (silent)
             PositionedDirectional(
               start: 8,
-              top: 8,
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                if (youTubeLabel) badge(l10n.camWhatYouTubeSees.toUpperCase()),
-                if (silent) ...[
-                  const SizedBox(height: 4),
-                  badge(l10n.camNoSound, bg: c.live, fg: c.onLive),
-                ],
-              ]),
+              bottom: 8,
+              child: badge(l10n.camNoSound, bg: c.live, fg: c.onLive),
             ),
           // The manual way in; the first viewer also starts operating mode by itself (UX §2.2).
           // In broadcast mode it sits in the panel.
