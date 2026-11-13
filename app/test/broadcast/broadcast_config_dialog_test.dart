@@ -43,6 +43,16 @@ class _FakeAccount implements YouTubeAccount {
   Future<YouTubeIngest?> ingest() async => YouTubeIngest.none;
 
   @override
+  bool active = false;
+
+  @override
+  Future<void> setActive(bool value) async => active = value;
+
+  @override
+  Future<YouTubeTarget> ensureLive({required String defaultTitle}) =>
+      save(title: defaultTitle, description: '', privacy: YouTubePrivacy.unlisted, fresh: true);
+
+  @override
   Future<YouTubeTarget> save({
     required String title,
     required String description,
@@ -109,12 +119,15 @@ void main() {
   });
 
   testWidgets('with an account, key mode is still the default and works', (tester) async {
-    final result = await open(tester, youtube: _FakeAccount());
+    final account = _FakeAccount()..active = true;
+    final result = await open(tester, youtube: account);
     expect(find.byKey(const ValueKey('broadcast-mode')), findsOneWidget);
     await tester.enterText(find.byKey(const ValueKey('broadcast-key')), 'manual');
     await tester.tap(find.byKey(const ValueKey('broadcast-config-save')));
     await tester.pumpAndSettle();
     expect((await result)!.key, 'manual');
+    // A manual key: Go live no longer prepares a YouTube live.
+    expect(account.active, isFalse);
   });
 
   testWidgets('account mode: sign in, set title and visibility, save gets the key from YouTube', (tester) async {
@@ -239,5 +252,30 @@ void main() {
     await tester.tap(find.text('Close'));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('youtube-qr-code')), findsNothing);
+  });
+
+  testWidgets('the bar shows a QR button only with an account live', (tester) async {
+    var shared = 0;
+    Future<void> bar({VoidCallback? onShare}) => tester.pumpWidget(MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: BroadcastBar(
+              info: _info,
+              enabled: true,
+              keyPrefix: 'b',
+              onStart: () {},
+              onStop: () {},
+              onConfigure: () {},
+              onShare: onShare,
+            ),
+          ),
+        ));
+    await bar();
+    expect(find.byKey(const ValueKey('b-qr')), findsNothing);
+    await bar(onShare: () => shared++);
+    await tester.tap(find.byKey(const ValueKey('b-qr')));
+    expect(shared, 1);
   });
 }

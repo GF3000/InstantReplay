@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -25,8 +26,15 @@ abstract interface class YouTubeAccount {
   /// The live this device created last, as last read (may be finished).
   YouTubeBroadcast? get current;
 
-  /// Fires when [email] or [current] change.
+  /// Fires when [email], [current] or [active] change.
   Stream<void> get changes;
+
+  /// The stream goes to a live of this account (the last save was in account mode), so going on
+  /// air must first make sure a live is there to receive it.
+  bool get active;
+
+  /// Set from the stream settings: false after saving a manual key.
+  Future<void> setActive(bool active);
 
   /// Restores a previous sign-in without asking. Never throws.
   Future<void> restore();
@@ -51,6 +59,11 @@ abstract interface class YouTubeAccount {
 
   /// Whether YouTube is receiving the Camera's stream right now; null when unknown.
   Future<YouTubeIngest?> ingest();
+
+  /// A live ready for the stream: [current] when it can still be used, else a new one (titled
+  /// [defaultTitle], with the last visibility). A live ends with its stream, so without this the
+  /// next Go live would stream to a key with no live behind it, which YouTube silently drops.
+  Future<YouTubeTarget> ensureLive({required String defaultTitle});
 }
 
 /// A failed account action, with a code the UI turns into a message: `canceled`,
@@ -69,6 +82,18 @@ class YouTubeAccountException implements Exception {
 class GoogleYouTubeAccount implements YouTubeAccount {
   GoogleYouTubeAccount({required this._prefs, http.Client? client}) : _client = client ?? http.Client() {
     _api = YouTubeApi(client: _client, token: _token);
+    _load();
+  }
+
+  /// Signed in as [email] with a fixed token, without Google Sign-In.
+  @visibleForTesting
+  GoogleYouTubeAccount.signedIn({required this._prefs, required this._client, required String email})
+      : _testEmail = email {
+    _api = YouTubeApi(client: _client, token: ({bool refresh = false}) async => 'test-token');
+    _load();
+  }
+
+  void _load() {
     final id = _prefs.getString(_broadcastKey);
     final title = _prefs.getString(_titleKey);
     if (id != null) {
@@ -87,6 +112,7 @@ class GoogleYouTubeAccount implements YouTubeAccount {
   static const _titleKey = 'youtube.title';
   static const _descriptionKey = 'youtube.description';
   static const _privacyKey = 'youtube.privacy';
+  static const _activeKey = 'youtube.active';
   static String _streamKey(String email) => 'youtube.stream.$email';
 
   final SharedPreferences _prefs;
@@ -96,17 +122,27 @@ class GoogleYouTubeAccount implements YouTubeAccount {
 
   static Future<void>? _init;
   GoogleSignInAccount? _account;
+  String? _testEmail;
   String? _accessToken;
   YouTubeBroadcast? _current;
 
   @override
-  String? get email => _account?.email;
+  String? get email => _account?.email ?? _testEmail;
 
   @override
   YouTubeBroadcast? get current => _current;
 
   @override
   Stream<void> get changes => _changes.stream;
+
+  @override
+  bool get active => _prefs.getBool(_activeKey) ?? false;
+
+  @override
+  Future<void> setActive(bool active) async {
+    await _prefs.setBool(_activeKey, active);
+    _notify();
+  }
 
   static Future<void> _initialize() =>
       _init ??= GoogleSignIn.instance.initialize(serverClientId: googleServerClientId);
@@ -145,6 +181,7 @@ class GoogleYouTubeAccount implements YouTubeAccount {
   @override
   Future<void> signOut() async {
     _account = null;
+    _testEmail = null;
     _accessToken = null;
     _notify();
     try {
@@ -211,8 +248,30 @@ class GoogleYouTubeAccount implements YouTubeAccount {
           await _api.bind(broadcast.id, stream.id);
         }
         await _remember(broadcast);
+        await _prefs.setBool(_activeKey, true);
         return (server: stream.server, key: stream.key, broadcast: broadcast);
       });
+
+  @override
+  Future<YouTubeTarget> ensureLive({required String defaultTitle}) async {
+    final last = _current;
+    final current = last == null ? null : await refresh();
+    if (current != null && current.lifeCycle.usable) {
+      // Still usable: only make sure it is bound to the stream (a read, plus a bind if needed).
+      return _guard(() async {
+        final stream = await _stream();
+        if (current.boundStreamId != stream.id) await _api.bind(current.id, stream.id);
+        await _prefs.setBool(_activeKey, true);
+        return (server: stream.server, key: stream.key, broadcast: current);
+      });
+    }
+    return save(
+      title: defaultTitle,
+      description: '',
+      privacy: current?.privacy ?? last?.privacy ?? YouTubePrivacy.unlisted,
+      fresh: true,
+    );
+  }
 
   @override
   Future<YouTubeIngest?> ingest() async {

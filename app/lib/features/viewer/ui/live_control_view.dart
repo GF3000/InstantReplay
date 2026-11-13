@@ -339,6 +339,7 @@ class ViewerBroadcastBar extends ConsumerWidget {
     if (info == null) return const SizedBox.shrink();
     final connected = ref.watch(linkStateProvider.select((s) => s?.phase == LinkPhase.connected));
     final remote = ref.read(viewerBroadcastNoticeProvider.notifier);
+    final youtube = ref.watch(youtubeActiveAccountProvider).value;
     return Padding(
       key: const ValueKey('viewer-broadcast'),
       padding: const EdgeInsets.fromLTRB(12, 6, 8, 0),
@@ -346,7 +347,22 @@ class ViewerBroadcastBar extends ConsumerWidget {
         info: info,
         enabled: connected,
         keyPrefix: 'viewer-broadcast',
-        onStart: remote.start,
+        onStart: () async {
+          // Account mode: a live must be there to receive the stream, and the Camera must use its key.
+          final account = ref.read(youtubeAccountProvider);
+          if (account != null && account.active) {
+            if (account.email == null) {
+              ScaffoldMessenger.maybeOf(context)
+                  ?.showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).youtubeNeedSignIn)));
+              return;
+            }
+            final target = await prepareYouTubeLive(context, account);
+            if (target == null) return;
+            remote.configure(server: target.server, key: target.key, targetKbps: info.targetKbps, audio: info.audio);
+          }
+          remote.start();
+        },
+        onShare: youtube == null ? null : () => shareYouTubeLive(context, youtube),
         onStop: remote.stop,
         onConfigure: () async {
           final result = await showBroadcastConfigDialog(context, info, youtube: ref.read(youtubeAccountProvider));

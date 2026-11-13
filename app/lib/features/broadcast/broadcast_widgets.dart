@@ -68,6 +68,7 @@ class BroadcastBar extends StatelessWidget {
     required this.onStart,
     required this.onStop,
     required this.onConfigure,
+    this.onShare,
     this.keyPrefix = 'broadcast',
     this.buttonSize = 48,
     this.dim = false,
@@ -80,6 +81,9 @@ class BroadcastBar extends StatelessWidget {
   final VoidCallback onStart;
   final VoidCallback onStop;
   final VoidCallback onConfigure;
+
+  /// Shows the live's link as a QR code; null without a YouTube account live.
+  final VoidCallback? onShare;
 
   /// Prefix of the buttons' keys, e.g. `viewer-broadcast` → `viewer-broadcast-start`.
   final String keyPrefix;
@@ -123,6 +127,14 @@ class BroadcastBar extends StatelessWidget {
             ),
         ]),
       ),
+      if (!dim && onShare != null)
+        IconButton(
+          key: ValueKey('$keyPrefix-qr'),
+          tooltip: l10n.youtubeQrTitle,
+          constraints: BoxConstraints.tightFor(width: size, height: size),
+          onPressed: onShare,
+          icon: const Icon(Icons.qr_code_2),
+        ),
       if (!dim)
         IconButton(
           key: ValueKey('$keyPrefix-settings'),
@@ -171,6 +183,7 @@ class BroadcastHeaderControls extends StatelessWidget {
     required this.onStart,
     required this.onStop,
     required this.onConfigure,
+    this.onShare,
     this.keyPrefix = 'broadcast',
   });
 
@@ -179,6 +192,9 @@ class BroadcastHeaderControls extends StatelessWidget {
   final VoidCallback onStart;
   final VoidCallback onStop;
   final VoidCallback onConfigure;
+
+  /// Shows the live's link as a QR code; null without a YouTube account live.
+  final VoidCallback? onShare;
   final String keyPrefix;
 
   @override
@@ -226,6 +242,14 @@ class BroadcastHeaderControls extends StatelessWidget {
       );
     }
     return Row(mainAxisSize: MainAxisSize.min, children: [
+      if (onShare != null)
+        IconButton(
+          key: ValueKey('$keyPrefix-qr'),
+          tooltip: l10n.youtubeQrTitle,
+          constraints: const BoxConstraints.tightFor(width: 48, height: 48),
+          onPressed: onShare,
+          icon: const Icon(Icons.qr_code_2),
+        ),
       IconButton(
         key: ValueKey('$keyPrefix-settings'),
         tooltip: l10n.broadcastSettings,
@@ -402,6 +426,7 @@ class _BroadcastConfigDialogState extends State<_BroadcastConfigDialog> {
   void _save() {
     if (_mode == _StreamMode.key) {
       final key = _key.text.trim();
+      if (widget.youtube case final y?) unawaited(y.setActive(false));
       Navigator.of(context).pop(_result(
         server: _server.text.trim().isEmpty ? BroadcastInfo.defaultServer : _server.text.trim(),
         key: key.isEmpty ? null : key,
@@ -793,6 +818,29 @@ Future<void> showYouTubeLinkQr(BuildContext context, YouTubeBroadcast live) => s
         );
       },
     );
+
+/// Before going live with a YouTube account: a live must be there to receive the stream (the
+/// last one ended with its stream). Returns the target, or null after telling the user why not.
+Future<YouTubeTarget?> prepareYouTubeLive(BuildContext context, YouTubeAccount youtube) async {
+  final l10n = AppLocalizations.of(context);
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  try {
+    return await youtube.ensureLive(defaultTitle: youtubeDefaultTitle(l10n, DateTime.now()));
+  } on YouTubeAccountException catch (e) {
+    messenger?.showSnackBar(SnackBar(content: Text(youtubeErrorMessage(l10n, e))));
+  } catch (e) {
+    messenger?.showSnackBar(
+        SnackBar(content: Text(youtubeErrorMessage(l10n, YouTubeAccountException('api', '$e')))));
+  }
+  return null;
+}
+
+/// The QR button: prepares the live if needed (so its link exists before going on air), then
+/// shows its link as a QR code.
+Future<void> shareYouTubeLive(BuildContext context, YouTubeAccount youtube) async {
+  final target = await prepareYouTubeLive(context, youtube);
+  if (target != null && context.mounted) await showYouTubeLinkQr(context, target.broadcast);
+}
 
 String youtubeDefaultTitle(AppLocalizations l10n, DateTime now) => l10n.youtubeDefaultTitle(
     '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}');

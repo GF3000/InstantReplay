@@ -2707,6 +2707,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Close'**
   String get youtubeQrClose;
+
+  /// No description provided for @youtubeNeedSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'The stream goes to your YouTube account: sign in again in the stream settings, or switch to Stream key.'**
+  String get youtubeNeedSignIn;
 }
 
 class _AppLocalizationsDelegate

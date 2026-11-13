@@ -15,3 +15,16 @@ final youtubeAccountProvider = Provider<YouTubeAccount?>((ref) {
   ref.onDispose(account.dispose);
   return account;
 });
+
+/// The account when the stream goes to one of its lives (account mode, signed in); else null.
+/// Rebuilds on sign-in, sign-out and mode changes.
+final youtubeActiveAccountProvider = StreamProvider<YouTubeAccount?>((ref) async* {
+  final account = ref.watch(youtubeAccountProvider);
+  if (account == null) {
+    yield null;
+    return;
+  }
+  YouTubeAccount? pick() => account.active && account.email != null ? account : null;
+  yield pick();
+  yield* account.changes.map((_) => pick());
+});
