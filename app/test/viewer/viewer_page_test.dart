@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:instant_replay/core/capabilities.dart';
 import 'package:instant_replay/core/preferences.dart';
 import 'package:instant_replay/features/viewer/clips/clip_transfers.dart';
 import 'package:instant_replay/features/viewer/data/session_link.dart';
@@ -16,10 +17,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 class _ConnectedLink extends LinkStateNotifier {
   @override
   LinkState? build() => const LinkState(
-        phase: LinkPhase.connected,
-        camera: CameraInfo(protocolVersion: 1, cameraId: 'c', name: 'Pitch'),
-        status: CameraStatus(recording: true, fps: 30, bufferMs: 60000, outboxClips: 0, thermalStatus: 0),
-      );
+    phase: LinkPhase.connected,
+    camera: CameraInfo(protocolVersion: 1, cameraId: 'c', name: 'Pitch'),
+    status: CameraStatus(recording: true, fps: 30, bufferMs: 60000, outboxClips: 0, thermalStatus: 0),
+  );
 }
 
 /// A Camera with full-session recording in [rec].
@@ -31,17 +32,17 @@ class _RecLink extends LinkStateNotifier {
 
   @override
   LinkState? build() => LinkState(
-        phase: phase,
-        camera: const CameraInfo(protocolVersion: 1, cameraId: 'c', name: 'Pitch'),
-        status: CameraStatus(
-          recording: true,
-          fps: 30,
-          bufferMs: 60000,
-          outboxClips: 0,
-          thermalStatus: 0,
-          sessionRecording: rec,
-        ),
-      );
+    phase: phase,
+    camera: const CameraInfo(protocolVersion: 1, cameraId: 'c', name: 'Pitch'),
+    status: CameraStatus(
+      recording: true,
+      fps: 30,
+      bufferMs: 60000,
+      outboxClips: 0,
+      thermalStatus: 0,
+      sessionRecording: rec,
+    ),
+  );
 }
 
 SessionRecording _rec(
@@ -50,15 +51,14 @@ SessionRecording _rec(
   int parts = 1,
   bool lowSpace = false,
   int? remainingMs = 4 * 3600000,
-}) =>
-    SessionRecording(
-      state: state,
-      elapsedMs: elapsedMs,
-      parts: parts,
-      freeBytes: 20000000000,
-      lowSpace: lowSpace,
-      remainingMs: remainingMs,
-    );
+}) => SessionRecording(
+  state: state,
+  elapsedMs: elapsedMs,
+  parts: parts,
+  freeBytes: 20000000000,
+  lowSpace: lowSpace,
+  remainingMs: remainingMs,
+);
 
 /// Records what the controls ask the Camera for; [push] plays the Camera's answers.
 class _FakeRecording extends ViewerRecordingNotifier {
@@ -123,7 +123,10 @@ class _DeletableClips extends ViewerClipsNotifier {
   bool delete(String requestId) {
     calls.add('delete:$requestId');
     hidden.add(requestId);
-    state = [for (final c in all) if (!hidden.contains(c.requestId)) c];
+    state = [
+      for (final c in all)
+        if (!hidden.contains(c.requestId)) c,
+    ];
     return true;
   }
 
@@ -131,7 +134,10 @@ class _DeletableClips extends ViewerClipsNotifier {
   void undoDelete(String requestId) {
     calls.add('undo:$requestId');
     hidden.remove(requestId);
-    state = [for (final c in all) if (!hidden.contains(c.requestId)) c];
+    state = [
+      for (final c in all)
+        if (!hidden.contains(c.requestId)) c,
+    ];
   }
 
   @override
@@ -149,14 +155,14 @@ Future<SharedPreferences> _prefs() async {
 }
 
 Widget _app(Widget child, List<dynamic> overrides) => ProviderScope(
-      overrides: overrides.cast(),
-      child: MaterialApp(
-        locale: const Locale('en'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(body: child),
-      ),
-    );
+  overrides: overrides.cast(),
+  child: MaterialApp(
+    locale: const Locale('en'),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: Scaffold(body: child),
+  ),
+);
 
 /// Lets AnimatedSwitcher start and finish its 300 ms fade.
 Future<void> _settle(WidgetTester tester) async {
@@ -165,13 +171,17 @@ Future<void> _settle(WidgetTester tester) async {
 }
 
 void main() {
+  _viewerPageTests();
+
   testWidgets('big button saves the default preset; chips save their own duration', (tester) async {
     final saved = <int?>[];
-    await tester.pumpWidget(_app(const SaveControls(), [
-      sharedPreferencesProvider.overrideWithValue(await _prefs()),
-      linkStateProvider.overrideWith(_ConnectedLink.new),
-      viewerClipsProvider.overrideWith(() => _RecordingClips(saved)),
-    ]));
+    await tester.pumpWidget(
+      _app(const SaveControls(), [
+        sharedPreferencesProvider.overrideWithValue(await _prefs()),
+        linkStateProvider.overrideWith(_ConnectedLink.new),
+        viewerClipsProvider.overrideWith(() => _RecordingClips(saved)),
+      ]),
+    );
     expect(find.text('Save play'), findsOneWidget);
     expect(find.text('the last 20 s and 2 s more'), findsOneWidget);
     expect(find.text('10 s'), findsOneWidget);
@@ -204,15 +214,22 @@ void main() {
     addTearDown(tester.view.reset);
     final saved = <int?>[];
     late WidgetRef ref;
-    await tester.pumpWidget(_app(Consumer(builder: (context, r, _) {
-      ref = r;
-      return const LiveControlView();
-    }), [
-      sharedPreferencesProvider.overrideWithValue(await _prefs()),
-      linkStateProvider.overrideWith(_ConnectedLink.new),
-      liveViewProvider.overrideWith(_PlayingLive.new),
-      viewerClipsProvider.overrideWith(() => _RecordingClips(saved)),
-    ]));
+    await tester.pumpWidget(
+      _app(
+        Consumer(
+          builder: (context, r, _) {
+            ref = r;
+            return const LiveControlView();
+          },
+        ),
+        [
+          sharedPreferencesProvider.overrideWithValue(await _prefs()),
+          linkStateProvider.overrideWith(_ConnectedLink.new),
+          liveViewProvider.overrideWith(_PlayingLive.new),
+          viewerClipsProvider.overrideWith(() => _RecordingClips(saved)),
+        ],
+      ),
+    );
     final bar = find.byKey(const ValueKey('viewer-tag-bar'));
     expect(bar, findsNothing);
 
@@ -273,13 +290,32 @@ void main() {
       ];
       // Leave room for the 48 px app bar of the paired Viewer. The recording row in its widest
       // state: paused (Resume, ▾, Finish), a second part and the low-space warning.
-      await tester.pumpWidget(_app(const Column(children: [SizedBox(height: 48), Expanded(child: LiveControlView())]), [
-        sharedPreferencesProvider.overrideWithValue(await _prefs()),
-        linkStateProvider.overrideWith(() => _RecLink(_rec(SessionRecordingState.paused,
-            elapsedMs: 5025000, parts: 2, lowSpace: true, remainingMs: 8 * 60000))),
-        liveViewProvider.overrideWith(_PlayingLive.new),
-        viewerClipsProvider.overrideWith(() => _RecordingClips([], clips)),
-      ]));
+      await tester.pumpWidget(
+        _app(
+          const Column(
+            children: [
+              SizedBox(height: 48),
+              Expanded(child: LiveControlView()),
+            ],
+          ),
+          [
+            sharedPreferencesProvider.overrideWithValue(await _prefs()),
+            linkStateProvider.overrideWith(
+              () => _RecLink(
+                _rec(
+                  SessionRecordingState.paused,
+                  elapsedMs: 5025000,
+                  parts: 2,
+                  lowSpace: true,
+                  remainingMs: 8 * 60000,
+                ),
+              ),
+            ),
+            liveViewProvider.overrideWith(_PlayingLive.new),
+            viewerClipsProvider.overrideWith(() => _RecordingClips([], clips)),
+          ],
+        ),
+      );
       await tester.tap(find.byKey(const ValueKey('viewer-save')));
       await _settle(tester);
       expect(tester.takeException(), isNull);
@@ -296,8 +332,14 @@ void main() {
       // The full-session recording moved to the app bar (ViewerRecordingButton).
       expect(_vrec('button'), findsNothing);
       // Quick-save labels stay on one line, however narrow the panel.
-      for (final chip in find.byWidgetPredicate((w) => w.key is ValueKey<String> &&
-          RegExp(r'^viewer-save-\d+$').hasMatch((w.key! as ValueKey<String>).value)).evaluate()) {
+      for (final chip
+          in find
+              .byWidgetPredicate(
+                (w) =>
+                    w.key is ValueKey<String> &&
+                    RegExp(r'^viewer-save-\d+$').hasMatch((w.key! as ValueKey<String>).value),
+              )
+              .evaluate()) {
         final label = find.descendant(of: find.byWidget(chip.widget), matching: find.byType(Text));
         expect(tester.getSize(label).height, lessThan(26), reason: 'one line');
       }
@@ -319,12 +361,22 @@ void main() {
           phase: SessionClipPhase.ready,
         ),
     ];
-    await tester.pumpWidget(_app(const Column(children: [SizedBox(height: 48), Expanded(child: LiveControlView())]), [
-      sharedPreferencesProvider.overrideWithValue(await _prefs()),
-      linkStateProvider.overrideWith(_ConnectedLink.new),
-      liveViewProvider.overrideWith(_PlayingLive.new),
-      viewerClipsProvider.overrideWith(() => _RecordingClips([], clips)),
-    ]));
+    await tester.pumpWidget(
+      _app(
+        const Column(
+          children: [
+            SizedBox(height: 48),
+            Expanded(child: LiveControlView()),
+          ],
+        ),
+        [
+          sharedPreferencesProvider.overrideWithValue(await _prefs()),
+          linkStateProvider.overrideWith(_ConnectedLink.new),
+          liveViewProvider.overrideWith(_PlayingLive.new),
+          viewerClipsProvider.overrideWith(() => _RecordingClips([], clips)),
+        ],
+      ),
+    );
     final ref = ProviderScope.containerOf(tester.element(find.byType(LiveControlView)));
     ref.read(clipTagsProvider.notifier)
       ..set('r0', TagsNotifier.good)
@@ -348,16 +400,23 @@ void main() {
     Future<_FakeRecording> pump(WidgetTester tester, LinkStateNotifier Function() link) async {
       final remote = _FakeRecording([]);
       // The app bar's button over the live view, which shows the recording's notices.
-      await tester.pumpWidget(_app(const Column(children: [
-        Row(children: [Spacer(), ViewerRecordingButton()]),
-        Expanded(child: LiveControlView()),
-      ]), [
-        sharedPreferencesProvider.overrideWithValue(await _prefs()),
-        linkStateProvider.overrideWith(link),
-        liveViewProvider.overrideWith(_PlayingLive.new),
-        viewerClipsProvider.overrideWith(() => _RecordingClips([])),
-        viewerRecordingProvider.overrideWith(() => remote),
-      ]));
+      await tester.pumpWidget(
+        _app(
+          const Column(
+            children: [
+              Row(children: [Spacer(), ViewerRecordingButton()]),
+              Expanded(child: LiveControlView()),
+            ],
+          ),
+          [
+            sharedPreferencesProvider.overrideWithValue(await _prefs()),
+            linkStateProvider.overrideWith(link),
+            liveViewProvider.overrideWith(_PlayingLive.new),
+            viewerClipsProvider.overrideWith(() => _RecordingClips([])),
+            viewerRecordingProvider.overrideWith(() => remote),
+          ],
+        ),
+      );
       // Not pumpAndSettle: a reconnecting link keeps a spinner going.
       await tester.pump();
       return remote;
@@ -374,8 +433,7 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets('idle: an icon; its dialog shows the space and records from now or with the last 30 s',
-        (tester) async {
+    testWidgets('idle: an icon; its dialog shows the space and records from now or with the last 30 s', (tester) async {
       final remote = await pump(tester, () => _RecLink(_rec(SessionRecordingState.idle, parts: 0)));
       expect(find.byTooltip('Full recording'), findsOneWidget);
       expect(remote.sent, isEmpty, reason: 'the button alone never records');
@@ -396,8 +454,10 @@ void main() {
     });
 
     testWidgets('recording: elapsed time and part; Pause; Finish only after confirming', (tester) async {
-      final remote =
-          await pump(tester, () => _RecLink(_rec(SessionRecordingState.recording, elapsedMs: 3723000, parts: 2)));
+      final remote = await pump(
+        tester,
+        () => _RecLink(_rec(SessionRecordingState.recording, elapsedMs: 3723000, parts: 2)),
+      );
       // The button shows the time; the dialog the part too.
       expect(find.text('1:02:03'), findsOneWidget);
       await openDialog(tester);
@@ -441,9 +501,9 @@ void main() {
 
     testWidgets('warns on low space', (tester) async {
       await pump(
-          tester,
-          () => _RecLink(
-              _rec(SessionRecordingState.recording, elapsedMs: 60000, lowSpace: true, remainingMs: 9 * 60000)));
+        tester,
+        () => _RecLink(_rec(SessionRecordingState.recording, elapsedMs: 60000, lowSpace: true, remainingMs: 9 * 60000)),
+      );
       await openDialog(tester);
       expect(find.text('Low space: 9 min left'), findsOneWidget);
       expect(find.byIcon(Icons.warning_rounded), findsOneWidget);
@@ -451,7 +511,9 @@ void main() {
 
     testWidgets('disabled while reconnecting', (tester) async {
       final remote = await pump(
-          tester, () => _RecLink(_rec(SessionRecordingState.recording), phase: LinkPhase.reconnecting));
+        tester,
+        () => _RecLink(_rec(SessionRecordingState.recording), phase: LinkPhase.reconnecting),
+      );
       // The button is disabled: no dialog, nothing sent.
       await tester.tap(_vrec('button'), warnIfMissed: false);
       await tester.pump();
@@ -468,13 +530,19 @@ void main() {
       }
 
       final remote = await pump(tester, () => _RecLink(_rec(SessionRecordingState.recording)));
-      remote.push(const RecordingEnded(RecordingFinished(
-          name: 'a.mp4', parts: 1, durationMs: 47 * 60000, reason: RecordingEndReason.user)));
+      remote.push(
+        const RecordingEnded(
+          RecordingFinished(name: 'a.mp4', parts: 1, durationMs: 47 * 60000, reason: RecordingEndReason.user),
+        ),
+      );
       await tester.pump();
       expect(find.text("Recording saved to the camera's gallery (47 min)"), findsOneWidget);
 
-      remote.push(const RecordingEnded(RecordingFinished(
-          name: 'a.mp4', parts: 2, durationMs: 2 * 3600000, reason: RecordingEndReason.lowSpace)));
+      remote.push(
+        const RecordingEnded(
+          RecordingFinished(name: 'a.mp4', parts: 2, durationMs: 2 * 3600000, reason: RecordingEndReason.lowSpace),
+        ),
+      );
       await nextSnackBar();
       expect(find.text('The camera ran out of space: the recording stopped and was saved (2 h)'), findsOneWidget);
 
@@ -486,11 +554,13 @@ void main() {
 
   testWidgets('save is disabled while not connected', (tester) async {
     final saved = <int?>[];
-    await tester.pumpWidget(_app(const SaveControls(), [
-      sharedPreferencesProvider.overrideWithValue(await _prefs()),
-      linkStateProvider.overrideWith(() => _NullLink()),
-      viewerClipsProvider.overrideWith(() => _RecordingClips(saved)),
-    ]));
+    await tester.pumpWidget(
+      _app(const SaveControls(), [
+        sharedPreferencesProvider.overrideWithValue(await _prefs()),
+        linkStateProvider.overrideWith(() => _NullLink()),
+        viewerClipsProvider.overrideWith(() => _RecordingClips(saved)),
+      ]),
+    );
     await tester.tap(find.byKey(const ValueKey('viewer-save')));
     expect(saved, isEmpty);
   });
@@ -498,10 +568,12 @@ void main() {
   testWidgets('Android without a camera asks for the address, then the code', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
-    await tester.pumpWidget(_app(const ViewerPage(), [
-      sharedPreferencesProvider.overrideWithValue(prefs),
-      pageUriProvider.overrideWithValue(null),
-    ]));
+    await tester.pumpWidget(
+      _app(const ViewerPage(), [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        pageUriProvider.overrideWithValue(null),
+      ]),
+    );
     expect(find.text('Connect to the camera'), findsOneWidget);
     await tester.enterText(find.byType(TextField), '192.168.1.20');
     await tester.tap(find.text('Continue'));
@@ -512,14 +584,31 @@ void main() {
 
   testWidgets('swipe deletes a finished clip with Undo; clips in progress cannot be swiped', (tester) async {
     final clips = _DeletableClips([
-      SessionClip(requestId: 'busy', seconds: 20, requestedAt: DateTime(2026, 10, 30, 12, 2), phase: SessionClipPhase.downloading),
-      SessionClip(requestId: 'b', seconds: 20, requestedAt: DateTime(2026, 10, 30, 12, 1), phase: SessionClipPhase.ready),
-      SessionClip(requestId: 'a', seconds: 20, requestedAt: DateTime(2026, 10, 30, 12, 0), phase: SessionClipPhase.failed),
+      SessionClip(
+        requestId: 'busy',
+        seconds: 20,
+        requestedAt: DateTime(2026, 10, 30, 12, 2),
+        phase: SessionClipPhase.downloading,
+      ),
+      SessionClip(
+        requestId: 'b',
+        seconds: 20,
+        requestedAt: DateTime(2026, 10, 30, 12, 1),
+        phase: SessionClipPhase.ready,
+      ),
+      SessionClip(
+        requestId: 'a',
+        seconds: 20,
+        requestedAt: DateTime(2026, 10, 30, 12, 0),
+        phase: SessionClipPhase.failed,
+      ),
     ]);
-    await tester.pumpWidget(_app(const ClipList(), [
-      sharedPreferencesProvider.overrideWithValue(await _prefs()),
-      viewerClipsProvider.overrideWith(() => clips),
-    ]));
+    await tester.pumpWidget(
+      _app(const ClipList(), [
+        sharedPreferencesProvider.overrideWithValue(await _prefs()),
+        viewerClipsProvider.overrideWith(() => clips),
+      ]),
+    );
 
     // The downloading clip's spinner never settles, so the test steps through the swipe animations.
     Future<void> step() async {
@@ -555,4 +644,232 @@ void main() {
 class _NullLink extends LinkStateNotifier {
   @override
   LinkState? build() => null;
+}
+
+class _Paired extends ViewerSetupNotifier {
+  @override
+  ViewerSetup build() => ViewerSetup(base: Uri.parse('http://cam:8080'), token: 't');
+}
+
+/// A Camera in broadcast mode, streaming with the mic closed, and recording the full session.
+class _StreamingLink extends LinkStateNotifier {
+  @override
+  LinkState? build() => const LinkState(
+    phase: LinkPhase.connected,
+    camera: CameraInfo(protocolVersion: 1, cameraId: 'c', name: 'Pitch with a rather long name'),
+    status: CameraStatus(
+      recording: true,
+      fps: 30,
+      bufferMs: 60000,
+      outboxClips: 0,
+      thermalStatus: 0,
+      scoreboard: ScoreboardState(
+        home: TeamState(name: 'LIONS', score: 2, color: 0xFF1E88E5),
+        away: TeamState(name: 'HAWKS', score: 1, color: 0xFFFAFAFA),
+        period: 1,
+        clockMs: 0,
+      ),
+      broadcast: BroadcastInfo(
+        state: BroadcastStreamState.live,
+        configured: true,
+        server: BroadcastInfo.defaultServer,
+        targetKbps: 4500,
+        audio: false,
+      ),
+      sessionRecording: SessionRecording(
+        state: SessionRecordingState.recording,
+        elapsedMs: 3723000,
+        parts: 1,
+        freeBytes: 1,
+        lowSpace: false,
+      ),
+    ),
+  );
+}
+
+class _MicRemote extends ViewerBroadcastNotifier {
+  final audio = <bool>[];
+
+  @override
+  BroadcastNotice? build() => null;
+
+  @override
+  bool configure({
+    required String server,
+    String? key,
+    required int targetKbps,
+    required bool audio,
+    bool? replayScoreboard,
+  }) {
+    this.audio.add(audio);
+    return true;
+  }
+}
+
+void _viewerPageTests() {
+  Future<_MicRemote> pumpPage(WidgetTester tester, Size size, LinkStateNotifier Function() link) async {
+    tester.view.physicalSize = size;
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final remote = _MicRemote();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(await _prefs()),
+          capabilitiesProvider.overrideWithValue(Capabilities.web),
+          viewerSetupProvider.overrideWith(_Paired.new),
+          linkStateProvider.overrideWith(link),
+          liveViewProvider.overrideWith(_PlayingLive.new),
+          viewerClipsProvider.overrideWith(() => _RecordingClips([])),
+          viewerBroadcastNoticeProvider.overrideWith(() => remote),
+        ],
+        child: MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const ViewerPage(),
+        ),
+      ),
+    );
+    await tester.pump();
+    return remote;
+  }
+
+  testWidgets('top bar fits 360 dp: name, teams, status pill with the recording clock, mic and menu', (tester) async {
+    final remote = await pumpPage(tester, const Size(360, 640), _StreamingLink.new);
+    expect(tester.takeException(), isNull);
+    expect(find.text('LIONS vs HAWKS'), findsOneWidget);
+    expect(find.text('REC'), findsOneWidget);
+    expect(find.text('1:02:03'), findsOneWidget);
+    for (final k in ['viewer-status', 'viewer-broadcast-mic', 'viewer-menu']) {
+      final r = tester.getRect(find.byKey(ValueKey(k)));
+      expect(r.right, lessThanOrEqualTo(360), reason: k);
+      expect(r.height, greaterThanOrEqualTo(44), reason: k);
+    }
+    // Mic closed while streaming: the live view says YouTube hears nothing; one tap opens it.
+    expect(find.byKey(const ValueKey('viewer-no-sound-badge')), findsOneWidget);
+    expect(find.text('STREAM WITHOUT SOUND'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('viewer-broadcast-mic')));
+    expect(remote.audio, [true]);
+  });
+
+  testWidgets('no mic and no sound badge outside broadcast mode', (tester) async {
+    await pumpPage(tester, const Size(360, 640), _ConnectedLink.new);
+    expect(find.byKey(const ValueKey('viewer-broadcast-mic')), findsNothing);
+    expect(find.byKey(const ValueKey('viewer-no-sound-badge')), findsNothing);
+    expect(find.text('LIVE'), findsOneWidget);
+  });
+
+  testWidgets('the menu sheet holds every action; panel switches act in place', (tester) async {
+    await pumpPage(tester, const Size(360, 640), _StreamingLink.new);
+    await tester.tap(find.byKey(const ValueKey('viewer-menu')));
+    await tester.pumpAndSettle();
+    for (final text in [
+      'Edit tags',
+      'Full recording',
+      'PANELS',
+      'Live view',
+      'Scoreboard',
+      'Replays',
+      'Settings',
+      'Switch role',
+    ]) {
+      expect(find.text(text), findsWidgets, reason: text);
+    }
+    expect(find.text('Change camera'), findsOneWidget);
+    expect(find.byType(LivePanel), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('viewer-panel-viewerLive')));
+    await tester.pumpAndSettle();
+    expect(find.text('Settings'), findsOneWidget, reason: 'the sheet stays open');
+    expect(find.byType(LivePanel), findsNothing);
+
+    // An action closes the sheet and runs: the full recording's dialog.
+    await tester.tap(find.byKey(const ValueKey('viewer-menu-recording')));
+    await tester.pumpAndSettle();
+    expect(_vrec('dialog'), findsOneWidget);
+  });
+
+  testWidgets('tablet: the match at a glance shows a mark per clip, coloured by tag', (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final clips = [
+      for (var i = 0; i < 4; i++)
+        SessionClip(
+          requestId: 'r$i',
+          seconds: 20,
+          requestedAt: DateTime(2026, 10, 29, 12, i * 5),
+          phase: SessionClipPhase.ready,
+        ),
+    ];
+    await tester.pumpWidget(
+      _app(
+        const Column(
+          children: [
+            SizedBox(height: 56),
+            Expanded(child: LiveControlView()),
+          ],
+        ),
+        [
+          sharedPreferencesProvider.overrideWithValue(await _prefs()),
+          linkStateProvider.overrideWith(_ConnectedLink.new),
+          liveViewProvider.overrideWith(_PlayingLive.new),
+          viewerClipsProvider.overrideWith(() => _RecordingClips([], clips)),
+        ],
+      ),
+    );
+    final ref = ProviderScope.containerOf(tester.element(find.byType(LiveControlView)));
+    ref.read(clipTagsProvider.notifier).set('r2', TagsNotifier.good);
+    await tester.pump();
+    expect(find.byType(MatchGlance), findsOneWidget);
+    expect(find.text('Match at a glance'), findsOneWidget);
+    // Oldest on the left.
+    final x = [for (var i = 0; i < 4; i++) tester.getCenter(find.byKey(ValueKey('glance-r$i'))).dx];
+    expect(x, orderedEquals([...x]..sort()));
+    final mark = tester.widget<Container>(
+      find.descendant(of: find.byKey(const ValueKey('glance-r2')), matching: find.byType(Container)),
+    );
+    expect((mark.decoration! as BoxDecoration).color, TagsNotifier.defaults.first.colour);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('empty cue list: one line and a hint', (tester) async {
+    await tester.pumpWidget(
+      _app(const ClipList(), [
+        sharedPreferencesProvider.overrideWithValue(await _prefs()),
+        viewerClipsProvider.overrideWith(() => _RecordingClips([])),
+      ]),
+    );
+    expect(find.text('Saved clips appear here.'), findsOneWidget);
+    expect(find.text('Tap Save play right after a good moment.'), findsOneWidget);
+  });
+
+  testWidgets('a clip row shows the tag as title, time and state in mono, and a visible tag button', (tester) async {
+    final clips = [
+      SessionClip(
+        requestId: 'a',
+        seconds: 20,
+        requestedAt: DateTime(2026, 10, 29, 18, 40),
+        phase: SessionClipPhase.ready,
+      ),
+    ];
+    await tester.pumpWidget(
+      _app(const ClipList(), [
+        sharedPreferencesProvider.overrideWithValue(await _prefs()),
+        viewerClipsProvider.overrideWith(() => _RecordingClips([], clips)),
+      ]),
+    );
+    final ref = ProviderScope.containerOf(tester.element(find.byType(ClipList)));
+    expect(find.text('No tag'), findsOneWidget);
+    ref.read(clipTagsProvider.notifier).set('a', TagsNotifier.good);
+    await tester.pump();
+    expect(find.descendant(of: find.byKey(const ValueKey('clip-row-a')), matching: find.text('Good')), findsOneWidget);
+    expect(find.text('18:40 · Ready'), findsOneWidget);
+    expect(find.text('20 s'), findsOneWidget);
+    // The filter chips count the clips.
+    expect(find.descendant(of: find.byKey(const ValueKey('filter-all')), matching: find.text('1')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('clip-tag-a')));
+    await tester.pumpAndSettle();
+    expect(find.text('Tag'), findsOneWidget, reason: 'the tag sheet opens');
+  });
 }

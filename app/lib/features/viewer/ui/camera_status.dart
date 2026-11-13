@@ -39,11 +39,11 @@ class CameraHealth {
 }
 
 String _problemText(AppLocalizations l10n, CameraProblem p, CameraStatus? s) => switch (p) {
-      CameraProblem.disconnected => l10n.viewerProblemDisconnected,
-      CameraProblem.notRecording => l10n.viewerStatusIdle,
-      CameraProblem.hot => l10n.viewerProblemHot,
-      CameraProblem.batteryLow => l10n.viewerProblemBatteryLow(s?.batteryPercent ?? 0),
-    };
+  CameraProblem.disconnected => l10n.viewerProblemDisconnected,
+  CameraProblem.notRecording => l10n.viewerStatusIdle,
+  CameraProblem.hot => l10n.viewerProblemHot,
+  CameraProblem.batteryLow => l10n.viewerProblemBatteryLow(s?.batteryPercent ?? 0),
+};
 
 /// The compact camera-status pill of the top bar: a green dot and `REC` (plus the full
 /// recording's clock while it runs), or a red warning when something needs action. Tap for the
@@ -65,8 +65,8 @@ class CameraStatusIndicator extends ConsumerWidget {
     final (dotColor, text) = health.connecting
         ? (c.muted, l10n.viewerLinkConnecting)
         : health.ok
-            ? (c.ok, l10n.viewerStatusRec)
-            : (c.live, _problemText(l10n, health.problems.first, link?.status));
+        ? (c.ok, l10n.viewerStatusRec)
+        : (c.live, _problemText(l10n, health.problems.first, link?.status));
     final more = health.problems.length > 1 ? ' +${health.problems.length - 1}' : '';
     final fg = problem ? c.liveText : c.text;
     return Tooltip(
@@ -100,7 +100,9 @@ class CameraStatusIndicator extends ConsumerWidget {
                         decoration: BoxDecoration(
                           color: dotColor,
                           shape: BoxShape.circle,
-                          boxShadow: health.ok ? [BoxShadow(color: dotColor.withValues(alpha: 0.7), blurRadius: 8)] : null,
+                          boxShadow: health.ok
+                              ? [BoxShadow(color: dotColor.withValues(alpha: 0.7), blurRadius: 8)]
+                              : null,
                         ),
                       ),
                     const SizedBox(width: 8),
@@ -116,7 +118,11 @@ class CameraStatusIndicator extends ConsumerWidget {
                     ),
                     if (clock != null) ...[
                       const SizedBox(width: 6),
-                      Text(clock, key: const ValueKey('viewer-status-clock'), style: irMono(13, weight: FontWeight.w600, color: fg)),
+                      Text(
+                        clock,
+                        key: const ValueKey('viewer-status-clock'),
+                        style: irMono(13, weight: FontWeight.w600, color: fg),
+                      ),
                     ],
                   ],
                 ),
@@ -130,12 +136,12 @@ class CameraStatusIndicator extends ConsumerWidget {
 }
 
 Future<void> showCameraStatusSheet(BuildContext context) => showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      constraints: BoxConstraints(maxWidth: 560, maxHeight: MediaQuery.sizeOf(context).height * 0.9),
-      builder: (_) => const CameraStatusDetails(),
-    );
+  context: context,
+  showDragHandle: true,
+  isScrollControlled: true,
+  constraints: BoxConstraints(maxWidth: 560, maxHeight: MediaQuery.sizeOf(context).height * 0.9),
+  builder: (_) => const CameraStatusDetails(),
+);
 
 /// The camera's gauges: battery, temperature, replay buffer, frame rate and pending clips as
 /// tiles with a mono value and a thin bar, plus any problem in full and the full recording.
@@ -159,8 +165,8 @@ class CameraStatusDetails extends ConsumerWidget {
             icon: s.plugged == true
                 ? Icons.battery_charging_full
                 : batteryLow
-                    ? Icons.battery_alert
-                    : Icons.battery_std,
+                ? Icons.battery_alert
+                : Icons.battery_std,
             label: l10n.viewerStatusBatteryLabel,
             value: l10n.viewerStatusBatteryPercent(p),
             detail: switch (s.plugged) {
@@ -204,11 +210,7 @@ class CameraStatusDetails extends ConsumerWidget {
           color: s.recording ? c.ok : c.live,
           alert: !s.recording,
         ),
-        _Gauge(
-          icon: Icons.outbox,
-          label: l10n.viewerStatusPendingLabel,
-          value: '${s.outboxClips}',
-        ),
+        _Gauge(icon: Icons.outbox, label: l10n.viewerStatusPendingLabel, value: '${s.outboxClips}'),
       ],
     ];
     return SafeArea(
@@ -224,11 +226,13 @@ class CameraStatusDetails extends ConsumerWidget {
             if (health.connecting)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: Row(children: [
-                  Icon(Icons.sync, color: c.muted),
-                  const SizedBox(width: 12),
-                  Text(l10n.viewerLinkConnecting, style: const TextStyle(fontSize: 16)),
-                ]),
+                child: Row(
+                  children: [
+                    Icon(Icons.sync, color: c.muted),
+                    const SizedBox(width: 12),
+                    Text(l10n.viewerLinkConnecting, style: const TextStyle(fontSize: 16)),
+                  ],
+                ),
               ),
             for (final p in health.problems)
               Container(
@@ -239,25 +243,31 @@ class CameraStatusDetails extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(4),
                   border: Border.all(color: c.live),
                 ),
-                child: Row(children: [
-                  Icon(Icons.warning_rounded, color: c.live),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      _problemText(l10n, p, s),
-                      style: TextStyle(color: c.liveText, fontWeight: FontWeight.bold, fontSize: 16),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning_rounded, color: c.live),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _problemText(l10n, p, s),
+                        style: TextStyle(color: c.liveText, fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
                     ),
-                  ),
-                ]),
+                  ],
+                ),
               ),
             if (gauges.isNotEmpty)
-              LayoutBuilder(builder: (context, box) {
-                final columns = box.maxWidth >= 480 ? 3 : 2;
-                final width = (box.maxWidth - 8 * (columns - 1)) / columns;
-                return Wrap(spacing: 8, runSpacing: 8, children: [
-                  for (final g in gauges) SizedBox(width: width, child: g),
-                ]);
-              }),
+              LayoutBuilder(
+                builder: (context, box) {
+                  final columns = box.maxWidth >= 480 ? 3 : 2;
+                  final width = (box.maxWidth - 8 * (columns - 1)) / columns;
+                  return Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [for (final g in gauges) SizedBox(width: width, child: g)],
+                  );
+                },
+              ),
             // Longer than the other values: a full-width tile.
             if (s?.sessionRecording case final r?) ...[
               const SizedBox(height: 8),
@@ -268,27 +278,41 @@ class CameraStatusDetails extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(4),
                   border: Border.all(color: r.lowSpace ? c.live : c.line),
                 ),
-                child: Row(children: [
-                  Icon(Icons.videocam, color: r.lowSpace ? c.live : c.muted),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(l10n.recTitle, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: c.muted)),
-                      Text(
-                        [
-                          switch (r.state) {
-                            SessionRecordingState.idle => l10n.recIdle,
-                            SessionRecordingState.recording => formatRecordingClock(r.elapsedMs),
-                            SessionRecordingState.paused => l10n.recPaused(formatRecordingClock(r.elapsedMs)),
-                          },
-                          if (r.remainingMs case final left?)
-                            r.lowSpace ? l10n.recLowSpace(formatRecordingSpan(left)) : l10n.recRemaining(formatRecordingSpan(left)),
-                        ].join(' · '),
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: r.lowSpace ? c.liveText : c.text),
+                child: Row(
+                  children: [
+                    Icon(Icons.videocam, color: r.lowSpace ? c.live : c.muted),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            l10n.recTitle,
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: c.muted),
+                          ),
+                          Text(
+                            [
+                              switch (r.state) {
+                                SessionRecordingState.idle => l10n.recIdle,
+                                SessionRecordingState.recording => formatRecordingClock(r.elapsedMs),
+                                SessionRecordingState.paused => l10n.recPaused(formatRecordingClock(r.elapsedMs)),
+                              },
+                              if (r.remainingMs case final left?)
+                                r.lowSpace
+                                    ? l10n.recLowSpace(formatRecordingSpan(left))
+                                    : l10n.recRemaining(formatRecordingSpan(left)),
+                            ].join(' · '),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: r.lowSpace ? c.liveText : c.text,
+                            ),
+                          ),
+                        ],
                       ),
-                    ]),
-                  ),
-                ]),
+                    ),
+                  ],
+                ),
               ),
             ],
           ],
@@ -298,14 +322,14 @@ class CameraStatusDetails extends ConsumerWidget {
   }
 
   static String _thermalName(AppLocalizations l10n, int status) => switch (status) {
-        <= 0 => l10n.thermalNone,
-        1 => l10n.thermalLight,
-        2 => l10n.thermalModerate,
-        3 => l10n.thermalSevere,
-        4 => l10n.thermalCritical,
-        5 => l10n.thermalEmergency,
-        _ => l10n.thermalShutdown,
-      };
+    <= 0 => l10n.thermalNone,
+    1 => l10n.thermalLight,
+    2 => l10n.thermalModerate,
+    3 => l10n.thermalSevere,
+    4 => l10n.thermalCritical,
+    5 => l10n.thermalEmergency,
+    _ => l10n.thermalShutdown,
+  };
 }
 
 /// One gauge tile: label, a big mono value, an optional detail and a thin level bar.
@@ -340,44 +364,59 @@ class _Gauge extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
         border: Border.all(color: alert ? c.live : c.line),
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Icon(icon, size: 16, color: alert ? c.live : c.muted),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              label,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: alert ? c.live : c.muted),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: c.muted),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(value, maxLines: 1, style: irMono(22, color: alert ? c.liveText : c.text)),
+          ),
+          if (detail != null)
+            Text(
+              detail!,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: c.muted),
+              style: TextStyle(fontSize: 13, color: c.muted),
             ),
-          ),
-        ]),
-        const SizedBox(height: 4),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: AlignmentDirectional.centerStart,
-          child: Text(value, maxLines: 1, style: irMono(22, color: alert ? c.liveText : c.text)),
-        ),
-        if (detail != null)
-          Text(detail!, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, color: c.muted)),
-        const SizedBox(height: 6),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(2),
-          child: SizedBox(
-            height: 4,
-            child: Stack(fit: StackFit.expand, children: [
-              ColoredBox(color: c.line),
-              if (level != null)
-                FractionallySizedBox(
-                  alignment: AlignmentDirectional.centerStart,
-                  widthFactor: level!.clamp(0, 1).toDouble(),
-                  child: ColoredBox(color: color ?? c.signal),
+          const SizedBox(height: 6),
+          if (level case final level?)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(2),
+              child: SizedBox(
+                height: 4,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ColoredBox(color: c.line),
+                    FractionallySizedBox(
+                      alignment: AlignmentDirectional.centerStart,
+                      widthFactor: level.clamp(0, 1).toDouble(),
+                      child: ColoredBox(color: color ?? c.signal),
+                    ),
+                  ],
                 ),
-            ]),
-          ),
-        ),
-      ]),
+              ),
+            )
+          else
+            const SizedBox(height: 4),
+        ],
+      ),
     );
   }
 }

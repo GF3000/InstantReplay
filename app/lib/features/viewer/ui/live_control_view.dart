@@ -9,6 +9,8 @@ import '../../../l10n/app_localizations.dart';
 import '../../broadcast/broadcast_widgets.dart';
 import '../../camera/zoom_widgets.dart';
 import '../../recording/recording_widgets.dart';
+import '../../library/library_providers.dart' show liveClipsProvider;
+import '../clips/clip_transfers.dart';
 import '../data/session_link.dart';
 import '../tags/tag_widgets.dart';
 import '../tags/tags.dart';
@@ -36,11 +38,11 @@ class LiveControlView extends ConsumerWidget {
       final l10n = AppLocalizations.of(context);
       final text = switch (notice) {
         RecordingEnded(:final finished) => recordingSavedMessage(
-            l10n,
-            parts: finished.parts,
-            durationMs: finished.durationMs,
-            reason: finished.reason,
-          ),
+          l10n,
+          parts: finished.parts,
+          durationMs: finished.durationMs,
+          reason: finished.reason,
+        ),
         RecordingRefused(:final code, :final message) => recordingErrorMessage(l10n, code, message),
         null => null,
       };
@@ -68,69 +70,216 @@ class LiveControlView extends ConsumerWidget {
   /// While a clip is on air ([onAir]) the replay bar takes room: on a short portrait screen the
   /// live view (which shows the replay then) gives it up.
   Widget _layout({required bool live, required bool scoreboard, required bool replays, required bool onAir}) =>
-      LayoutBuilder(builder: (context, c) {
-        final ir = context.ir;
-        // The full-session recording is in the menu (and its clock in the status pill).
-        const bars = [ViewerBroadcastBar()];
-        // A clip on air (SPEC §12.6): on top of the right panel, or above the scoreboard.
-        const replayBar = ViewerReplayBar();
-        Widget save({required bool compact, bool tight = false}) => SaveControls(compact: compact, tight: tight);
-        const clips = Expanded(child: ClipList());
-        if (!live && !scoreboard && !replays) {
-          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            replayBar,
-            ...bars,
-            const Expanded(child: _NothingShown()),
-          ]);
-        }
-        final wide = c.maxWidth > c.maxHeight && c.maxWidth >= 560;
-        if (wide) {
-          final left = live || scoreboard;
-          // Without the live view the scoreboard gets the room: full size, centred.
-          final leftColumn = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            if (!replays) ...[replayBar, ...bars],
-            if (live) const Expanded(child: _LiveWithTagPanel(dropDown: false)),
-            if (scoreboard && live) ViewerScoreboardPanel(compact: c.maxHeight < 700),
-            if (scoreboard && !live) const Expanded(child: Center(child: ViewerScoreboardPanel())),
-          ]);
-          final rightColumn = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            replayBar,
-            ...bars,
-            save(compact: scoreboard || c.maxHeight < 480, tight: c.maxHeight < 400),
-            const Divider(height: 1),
-            const SizedBox(height: 4),
-            clips,
-          ]);
-          if (!left) return rightColumn;
-          if (!replays) return leftColumn;
-          final panel = c.maxWidth >= 1000 ? 400.0 : (c.maxWidth * 0.42).clamp(260.0, 360.0);
-          return Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Expanded(child: leftColumn),
-            DecoratedBox(
-              decoration: BoxDecoration(border: BorderDirectional(start: BorderSide(color: ir.line))),
-              child: SizedBox(width: panel, child: rightColumn),
+      LayoutBuilder(
+        builder: (context, c) {
+          final ir = context.ir;
+          // The full-session recording is in the menu (and its clock in the status pill).
+          const bars = [ViewerBroadcastBar()];
+          // A clip on air (SPEC §12.6): on top of the right panel, or above the scoreboard.
+          const replayBar = ViewerReplayBar();
+          Widget save({required bool compact, bool tight = false}) => SaveControls(compact: compact, tight: tight);
+          const clips = Expanded(child: ClipList());
+          if (!live && !scoreboard && !replays) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                replayBar,
+                ...bars,
+                const Expanded(child: _NothingShown()),
+              ],
+            );
+          }
+          final wide = c.maxWidth > c.maxHeight && c.maxWidth >= 560;
+          if (wide) {
+            final left = live || scoreboard;
+            // Without the live view the scoreboard gets the room: full size, centred.
+            final leftColumn = Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (!replays) ...[replayBar, ...bars],
+                if (live) const Expanded(child: _LiveWithTagPanel(dropDown: false)),
+                // Tablet without the scoreboard: the session's clips on a time axis.
+                if (live && replays && !scoreboard && c.maxHeight >= 600) ...[
+                  const Divider(height: 1),
+                  const MatchGlance(),
+                ],
+                if (scoreboard && live) ViewerScoreboardPanel(compact: c.maxHeight < 700),
+                if (scoreboard && !live) const Expanded(child: Center(child: ViewerScoreboardPanel())),
+              ],
+            );
+            final rightColumn = Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                replayBar,
+                ...bars,
+                save(compact: scoreboard || c.maxHeight < 480, tight: c.maxHeight < 400),
+                const Divider(height: 1),
+                const SizedBox(height: 4),
+                clips,
+              ],
+            );
+            if (!left) return rightColumn;
+            if (!replays) return leftColumn;
+            final panel = c.maxWidth >= 1000 ? 400.0 : (c.maxWidth * 0.42).clamp(260.0, 360.0);
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: leftColumn),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    border: BorderDirectional(start: BorderSide(color: ir.line)),
+                  ),
+                  child: SizedBox(width: panel, child: rightColumn),
+                ),
+              ],
+            );
+          }
+          final liveShare = scoreboard ? 0.3 : (replays ? 0.42 : 0.6);
+          const minLive = 120.0;
+          final liveMax = onAir && c.maxHeight < 760 ? minLive : c.maxHeight * liveShare;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (live)
+                SizedBox(
+                  height: (c.maxWidth * 9 / 16).clamp(minLive, liveMax < minLive ? minLive : liveMax),
+                  child: const _LiveWithTagPanel(dropDown: true),
+                ),
+              replayBar,
+              if (scoreboard) ViewerScoreboardPanel(compact: replays && c.maxHeight < 900),
+              ...bars,
+              if (replays) ...[
+                save(compact: scoreboard || c.maxHeight < 760, tight: scoreboard && c.maxHeight < 760),
+                clips,
+              ] else
+                const Spacer(),
+            ],
+          );
+        },
+      );
+}
+
+/// "Match at a glance" (tablet, under the live view): every clip of the session as a mark in its
+/// tag's colour on a time axis, oldest on the left. Tap a mark to review that clip.
+class MatchGlance extends ConsumerWidget {
+  const MatchGlance({super.key});
+
+  /// Tap area of a mark (the mark itself is 14 × 30).
+  static const _markWidth = 32.0;
+  static const _markHeight = 42.0;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final c = context.ir;
+    final clips = ref.watch(liveClipsProvider);
+    final clipTags = ref.watch(clipTagsProvider);
+    final tags = ref.watch(tagsProvider);
+    final inUse = tagsInUse(clips, clipTags, tags);
+    final times = [for (final x in clips) x.requestedAt.millisecondsSinceEpoch];
+    final first = times.isEmpty ? 0 : times.reduce((a, b) => a < b ? a : b);
+    final last = times.isEmpty ? 0 : times.reduce((a, b) => a > b ? a : b);
+    // At least ten minutes wide, so a few early clips do not spread over the whole axis.
+    final span = (last - first).clamp(10 * 60000, 1 << 50);
+    // Oldest first, so the newest marks are drawn on top.
+    final ordered = [...clips]..sort((a, b) => a.requestedAt.compareTo(b.requestedAt));
+    return Padding(
+      key: const ValueKey('viewer-glance'),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(l10n.liveGlanceTitle, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          Container(
+            height: 92,
+            decoration: BoxDecoration(
+              color: c.bg,
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: c.line),
             ),
-          ]);
-        }
-        final liveShare = scoreboard ? 0.3 : (replays ? 0.42 : 0.6);
-        const minLive = 120.0;
-        final liveMax = onAir && c.maxHeight < 760 ? minLive : c.maxHeight * liveShare;
-        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          if (live)
-            SizedBox(
-              height: (c.maxWidth * 9 / 16).clamp(minLive, liveMax < minLive ? minLive : liveMax),
-              child: const _LiveWithTagPanel(dropDown: true),
+            child: LayoutBuilder(
+              builder: (context, box) {
+                final usable = box.maxWidth - 2 * _markWidth;
+                return Stack(
+                  clipBehavior: Clip.hardEdge,
+                  children: [
+                    Positioned(left: 0, right: 0, top: 45, height: 1, child: ColoredBox(color: c.line)),
+                    for (final (i, clip) in ordered.indexed)
+                      Positioned(
+                        left: _markWidth / 2 + usable * (clip.requestedAt.millisecondsSinceEpoch - first) / span,
+                        top: i.isEven ? 3 : 47,
+                        width: _markWidth,
+                        height: _markHeight,
+                        child: _GlanceMark(clip: clip),
+                      ),
+                  ],
+                );
+              },
             ),
-          replayBar,
-          if (scoreboard) ViewerScoreboardPanel(compact: replays && c.maxHeight < 900),
-          ...bars,
-          if (replays) ...[
-            save(compact: scoreboard || c.maxHeight < 760, tight: scoreboard && c.maxHeight < 760),
-            clips,
-          ] else
-            const Spacer(),
-        ]);
-      });
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: Wrap(
+                  spacing: 14,
+                  runSpacing: 4,
+                  children: [
+                    for (final t in inUse)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(width: 8, height: 8, color: t.colour),
+                          const SizedBox(width: 6),
+                          Text(t.label(l10n), style: TextStyle(fontSize: 13, color: c.muted)),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+              Text(l10n.liveGlanceHint, style: TextStyle(fontSize: 13, color: c.muted)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GlanceMark extends ConsumerWidget {
+  const _GlanceMark({required this.clip});
+
+  final SessionClip clip;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final c = context.ir;
+    final tag = ref.watch(clipTagProvider(clip.requestId));
+    final colour = tag?.colour ?? c.muted;
+    return Semantics(
+      button: true,
+      label: clipName(l10n, tag, clip.requestedAt),
+      child: GestureDetector(
+        key: ValueKey('glance-${clip.requestId}'),
+        behavior: HitTestBehavior.opaque,
+        onTap: clipOpener(context, ref, clip),
+        child: Center(
+          child: Container(
+            width: 14,
+            height: 30,
+            decoration: BoxDecoration(
+              color: colour,
+              borderRadius: BorderRadius.circular(2),
+              boxShadow: [BoxShadow(color: colour.withValues(alpha: 0.6), blurRadius: 8)],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Every panel hidden: say how to bring them back.
@@ -139,15 +288,15 @@ class _NothingShown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(
-            AppLocalizations.of(context).panelsNothingShown,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-        ),
-      );
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Text(
+        AppLocalizations.of(context).panelsNothingShown,
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+    ),
+  );
 }
 
 /// The stream's microphone in the top bar (SPEC §12.7): one tap, red while closed. Nothing
@@ -197,16 +346,20 @@ class ViewerPanelToggles extends ConsumerWidget {
       if (broadcast) (Panel.viewerScoreboard, Icons.scoreboard_outlined, l10n.panelScoreboard),
       (Panel.viewerReplays, Icons.replay, l10n.panelReplays),
     ];
-    return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      for (final (panel, icon, label) in panels)
-        SwitchListTile(
-          key: ValueKey('viewer-panel-${panel.name}'),
-          secondary: Icon(icon),
-          title: Text(label, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
-          value: !hidden.contains(panel),
-          onChanged: (_) => ref.read(hiddenPanelsProvider.notifier).toggle(panel),
-        ),
-    ]);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final (panel, icon, label) in panels)
+          SwitchListTile(
+            key: ValueKey('viewer-panel-${panel.name}'),
+            secondary: Icon(icon),
+            title: Text(label, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+            value: !hidden.contains(panel),
+            onChanged: (_) => ref.read(hiddenPanelsProvider.notifier).toggle(panel),
+          ),
+      ],
+    );
   }
 }
 
@@ -220,26 +373,29 @@ class _LiveWithTagPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
-        builder: (context, c) => Stack(fit: StackFit.expand, children: [
-          const LivePanel(),
-          if (dropDown)
-            const PositionedDirectional(
-              start: 8,
-              end: 8,
-              top: 8,
-              bottom: 8,
-              child: Align(alignment: Alignment.topCenter, child: PostSaveTagPanel(dropDown: true)),
-            )
-          else
-            PositionedDirectional(
-              start: 12,
-              top: 12,
-              bottom: 12,
-              width: (c.maxWidth - 24).clamp(0.0, 440.0),
-              child: const Align(alignment: AlignmentDirectional.bottomStart, child: PostSaveTagPanel()),
-            ),
-        ]),
-      );
+    builder: (context, c) => Stack(
+      fit: StackFit.expand,
+      children: [
+        const LivePanel(),
+        if (dropDown)
+          const PositionedDirectional(
+            start: 8,
+            end: 8,
+            top: 8,
+            bottom: 8,
+            child: Align(alignment: Alignment.topCenter, child: PostSaveTagPanel(dropDown: true)),
+          )
+        else
+          PositionedDirectional(
+            start: 12,
+            top: 12,
+            bottom: 12,
+            width: (c.maxWidth - 24).clamp(0.0, 440.0),
+            child: const Align(alignment: AlignmentDirectional.bottomStart, child: PostSaveTagPanel()),
+          ),
+      ],
+    ),
+  );
 }
 
 class LivePanel extends ConsumerWidget {
@@ -266,70 +422,80 @@ class LivePanel extends ConsumerWidget {
     final muted = stream != null && stream.active && !stream.audio;
     return ColoredBox(
       color: Colors.black,
-      child: Stack(fit: StackFit.expand, children: [
-        if (live.peer case final peer?)
-          zoom == null
-              ? peer.buildView()
-              : ZoomPinch(
-                  ratio: zoom.ratio,
-                  max: zoom.max,
-                  enabled: connected,
-                  onChanged: remote.zoom,
-                  child: peer.buildView(),
-                ),
-        if (overlay == null && connected)
-          PositionedDirectional(
-            start: 8,
-            top: 8,
-            child: _Badge(
-              key: const ValueKey('viewer-live-badge'),
-              text: l10n.liveOnAirBadge,
-              // Red only when YouTube sees it.
-              background: streaming ? ir.live : Colors.black.withValues(alpha: 0.72),
-              foreground: streaming ? ir.onLive : Colors.white,
-              dot: streaming ? null : ir.ok,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (live.peer case final peer?)
+            zoom == null
+                ? peer.buildView()
+                : ZoomPinch(
+                    ratio: zoom.ratio,
+                    max: zoom.max,
+                    enabled: connected,
+                    onChanged: remote.zoom,
+                    child: peer.buildView(),
+                  ),
+          if (overlay == null && connected)
+            PositionedDirectional(
+              start: 8,
+              top: 8,
+              child: _Badge(
+                key: const ValueKey('viewer-live-badge'),
+                text: l10n.liveOnAirBadge,
+                // Red only when YouTube sees it.
+                background: streaming ? ir.live : Colors.black.withValues(alpha: 0.72),
+                foreground: streaming ? ir.onLive : Colors.white,
+                dot: streaming ? null : ir.ok,
+              ),
             ),
-          ),
-        if (muted)
-          PositionedDirectional(
-            end: 8,
-            top: 8,
-            child: _Badge(
-              key: const ValueKey('viewer-no-sound-badge'),
-              text: l10n.liveNoSoundBadge,
-              background: ir.live,
-              foreground: ir.onLive,
-              icon: Icons.mic_off,
+          if (muted)
+            PositionedDirectional(
+              end: 8,
+              top: 8,
+              child: _Badge(
+                key: const ValueKey('viewer-no-sound-badge'),
+                text: l10n.liveNoSoundBadge,
+                background: ir.live,
+                foreground: ir.onLive,
+                icon: Icons.mic_off,
+              ),
             ),
-          ),
-        if (overlay != null) Center(child: _Connecting(text: overlay)),
-        if (zoom != null && connected)
-          Positioned(
-            left: 4,
-            bottom: 4,
-            child: ZoomControl(
-              keyPrefix: 'viewer-zoom',
-              ratio: zoom.ratio,
-              max: zoom.max,
-              enabled: connected,
-              onChanged: remote.zoom,
+          if (overlay != null) Center(child: _Connecting(text: overlay)),
+          if (zoom != null && connected)
+            Positioned(
+              left: 4,
+              bottom: 4,
+              child: ZoomControl(
+                keyPrefix: 'viewer-zoom',
+                ratio: zoom.ratio,
+                max: zoom.max,
+                enabled: connected,
+                onChanged: remote.zoom,
+              ),
             ),
-          ),
-        if (link == LinkPhase.connected && live.phase != LivePhase.negotiating)
-          PositionedDirectional(
-            end: 6,
-            bottom: 6,
-            child: _RestartButton(onPressed: () => ref.read(liveViewProvider.notifier).restart()),
-          ),
-        const _SaveFlash(),
-      ]),
+          if (link == LinkPhase.connected && live.phase != LivePhase.negotiating)
+            PositionedDirectional(
+              end: 6,
+              bottom: 6,
+              child: _RestartButton(onPressed: () => ref.read(liveViewProvider.notifier).restart()),
+            ),
+          const _SaveFlash(),
+        ],
+      ),
     );
   }
 }
 
 /// A small mono badge over the video ("LIVE", "STREAM WITHOUT SOUND").
 class _Badge extends StatelessWidget {
-  const _Badge({super.key, required this.text, required this.background, required this.foreground, this.dot, this.icon});
+  const _Badge({
+    super.key,
+    required this.text,
+    required this.background,
+    required this.foreground,
+    this.dot,
+    this.icon,
+  });
 
   final String text;
   final Color background;
@@ -339,20 +505,27 @@ class _Badge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-        decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(2)),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          if (dot != null) ...[
-            Container(width: 7, height: 7, decoration: BoxDecoration(color: dot, shape: BoxShape.circle)),
-            const SizedBox(width: 5),
-          ],
-          if (icon != null) ...[
-            Icon(icon, size: 13, color: foreground),
-            const SizedBox(width: 4),
-          ],
-          Text(text, style: irMono(11, weight: FontWeight.w600, color: foreground)),
-        ]),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+    decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(2)),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (dot != null) ...[
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 5),
+        ],
+        if (icon != null) ...[Icon(icon, size: 13, color: foreground), const SizedBox(width: 4)],
+        Text(
+          text,
+          style: irMono(11, weight: FontWeight.w600, color: foreground),
+        ),
+      ],
+    ),
+  );
 }
 
 /// Connecting / reconnecting / starting: a panel with a small spinner and the state, not a bare
@@ -375,18 +548,21 @@ class _Connecting extends StatelessWidget {
           borderRadius: BorderRadius.circular(4),
           border: Border.all(color: c.lineStrong),
         ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2.5, color: c.signal)),
-          const SizedBox(width: 12),
-          Flexible(
-            child: Text(
-              text,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: c.text),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2.5, color: c.signal)),
+            const SizedBox(width: 12),
+            Flexible(
+              child: Text(
+                text,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: c.text),
+              ),
             ),
-          ),
-        ]),
+          ],
+        ),
       ),
     );
   }
@@ -417,11 +593,17 @@ class _RestartButton extends StatelessWidget {
             constraints: const BoxConstraints(minHeight: 44, minWidth: 48),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.refresh, size: 18, color: Colors.white),
-                const SizedBox(width: 6),
-                Text(l10n.liveRestart, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
-              ]),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.refresh, size: 18, color: Colors.white),
+                  const SizedBox(width: 6),
+                  Text(
+                    l10n.liveRestart,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -463,14 +645,14 @@ class _SaveFlashState extends ConsumerState<_SaveFlash> with SingleTickerProvide
     final recent = ref.watch(recentSaveProvider.select((r) => r != null));
     final amber = context.ir.signal;
     Widget border(double opacity) => IgnorePointer(
-          child: Opacity(
-            opacity: opacity,
-            child: DecoratedBox(
-              key: const ValueKey('viewer-save-flash'),
-              decoration: BoxDecoration(border: Border.all(color: amber, width: 5)),
-            ),
-          ),
-        );
+      child: Opacity(
+        opacity: opacity,
+        child: DecoratedBox(
+          key: const ValueKey('viewer-save-flash'),
+          decoration: BoxDecoration(border: Border.all(color: amber, width: 5)),
+        ),
+      ),
+    );
     if (!motion) return recent ? border(0.8) : const SizedBox.shrink();
     return AnimatedBuilder(
       animation: _c,
@@ -565,8 +747,9 @@ class ViewerBroadcastBar extends ConsumerWidget {
           final account = ref.read(youtubeAccountProvider);
           if (account != null && account.active) {
             if (account.email == null) {
-              ScaffoldMessenger.maybeOf(context)
-                  ?.showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).youtubeNeedSignIn)));
+              ScaffoldMessenger.maybeOf(
+                context,
+              )?.showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).youtubeNeedSignIn)));
               return;
             }
             final target = await prepareYouTubeLive(context, account);
@@ -638,75 +821,93 @@ class SaveControls extends ConsumerWidget {
       child: SizedBox(
         width: double.infinity,
         height: keyHeight - 8,
-        child: Row(children: [
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: AlignmentDirectional.centerStart,
-                  child: Text(
-                    l10n.liveSaveTitle,
-                    maxLines: 1,
-                    style: TextStyle(fontSize: titleSize, height: 1, fontWeight: FontWeight.w700, color: c.text),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Text(
+                      l10n.liveSaveTitle,
+                      maxLines: 1,
+                      style: TextStyle(fontSize: titleSize, height: 1, fontWeight: FontWeight.w700, color: c.text),
+                    ),
                   ),
-                ),
-                if (!tight) ...[
-                  const SizedBox(height: 5),
-                  Text(
-                    l10n.liveSaveSubtitle(seconds, presets.postSeconds),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: c.muted),
+                  if (!tight) ...[
+                    const SizedBox(height: 5),
+                    Text(
+                      l10n.liveSaveSubtitle(seconds, presets.postSeconds),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: c.muted),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(text: '$seconds'),
+                  TextSpan(
+                    text: 's',
+                    style: TextStyle(fontSize: numberSize / 2),
                   ),
                 ],
-              ],
+              ),
+              style: irMono(numberSize, color: c.signal, height: 1),
             ),
-          ),
-          const SizedBox(width: 8),
-          Text.rich(
-            TextSpan(children: [
-              TextSpan(text: '$seconds'),
-              TextSpan(text: 's', style: TextStyle(fontSize: numberSize / 2)),
-            ]),
-            style: irMono(numberSize, color: c.signal, height: 1),
-          ),
-        ]),
+          ],
+        ),
       ),
     );
 
-    final choices = Row(children: [
-      for (final (i, s) in presets.quickSeconds.indexed)
-        Expanded(
-          child: Padding(
-            padding: EdgeInsetsDirectional.only(start: i == 0 ? 0 : 8),
-            child: _QuickChoice(
-              key: ValueKey('viewer-save-$s'),
-              label: l10n.viewerSaveQuick(s),
-              height: tight ? 48 : 50,
-              selected: recent != null && recent.seconds == s,
-              onTap: enabled ? () => save(s) : null,
+    final choices = Row(
+      children: [
+        for (final (i, s) in presets.quickSeconds.indexed)
+          Expanded(
+            child: Padding(
+              padding: EdgeInsetsDirectional.only(start: i == 0 ? 0 : 8),
+              child: _QuickChoice(
+                key: ValueKey('viewer-save-$s'),
+                label: l10n.viewerSaveQuick(s),
+                height: tight ? 48 : 50,
+                selected: recent != null && recent.seconds == s,
+                onTap: enabled ? () => save(s) : null,
+              ),
             ),
           ),
-        ),
-    ]);
+      ],
+    );
 
     return Padding(
       padding: EdgeInsets.fromLTRB(12, tight ? 8 : 12, 12, tight ? 4 : 8),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        saveKey,
-        SizedBox(height: tight ? 6 : 10),
-        choices,
-      ]),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          saveKey,
+          SizedBox(height: tight ? 6 : 10),
+          choices,
+        ],
+      ),
     );
   }
 }
 
 /// A quick save choice: a bordered mono button, amber while it is the save just made.
 class _QuickChoice extends StatelessWidget {
-  const _QuickChoice({super.key, required this.label, required this.height, required this.selected, required this.onTap});
+  const _QuickChoice({
+    super.key,
+    required this.label,
+    required this.height,
+    required this.selected,
+    required this.onTap,
+  });
 
   final String label;
   final double height;
@@ -740,7 +941,12 @@ class _QuickChoice extends StatelessWidget {
                   fit: BoxFit.scaleDown,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 6),
-                    child: Text(label, maxLines: 1, softWrap: false, style: irMono(18, weight: FontWeight.w600, color: fg, height: 1.2)),
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      softWrap: false,
+                      style: irMono(18, weight: FontWeight.w600, color: fg, height: 1.2),
+                    ),
                   ),
                 ),
               ),

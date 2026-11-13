@@ -38,18 +38,21 @@ class TagButton extends StatelessWidget {
             constraints: BoxConstraints(minHeight: large ? 56 : 48, minWidth: large ? 112 : 72),
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: large ? 18 : 14),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                _ColourBar(colour: tag.colour, width: 6, height: large ? 24 : 20),
-                const SizedBox(width: 10),
-                Flexible(
-                  child: Text(
-                    tag.label(AppLocalizations.of(context)),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: large ? 18 : 16, color: c.text),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _ColourBar(colour: tag.colour, width: 6, height: large ? 24 : 20),
+                  const SizedBox(width: 10),
+                  Flexible(
+                    child: Text(
+                      tag.label(AppLocalizations.of(context)),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: large ? 18 : 16, color: c.text),
+                    ),
                   ),
-                ),
-              ]),
+                ],
+              ),
             ),
           ),
         ),
@@ -68,14 +71,14 @@ class _ColourBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: width,
-        height: height,
-        decoration: BoxDecoration(
-          color: colour,
-          borderRadius: BorderRadius.circular(1),
-          boxShadow: [BoxShadow(color: colour.withValues(alpha: 0.7), blurRadius: 8)],
-        ),
-      );
+    width: width,
+    height: height,
+    decoration: BoxDecoration(
+      color: colour,
+      borderRadius: BorderRadius.circular(1),
+      boxShadow: [BoxShadow(color: colour.withValues(alpha: 0.7), blurRadius: 8)],
+    ),
+  );
 }
 
 /// Sheet to choose the tag of clip [requestId] (or none). [choices] replaces the active session's
@@ -115,7 +118,10 @@ Future<void> showClipTagPicker(BuildContext context, String requestId, {ClipLabe
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
                           minimumSize: const Size(72, 48),
-                          side: BorderSide(color: current == null ? c.signal : c.lineStrong, width: current == null ? 2 : 1),
+                          side: BorderSide(
+                            color: current == null ? c.signal : c.lineStrong,
+                            width: current == null ? 2 : 1,
+                          ),
                           backgroundColor: current == null ? c.signalSoft : null,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                         ),
@@ -170,8 +176,10 @@ class PostSaveTagPanel extends ConsumerWidget {
         return FadeTransition(
           opacity: curved,
           child: SlideTransition(
-            position: Tween(begin: dropDown ? const Offset(0, -0.08) : const Offset(-0.06, 0), end: Offset.zero)
-                .animate(curved),
+            position: Tween(
+              begin: dropDown ? const Offset(0, -0.08) : const Offset(-0.06, 0),
+              end: Offset.zero,
+            ).animate(curved),
             child: child,
           ),
         );
@@ -197,10 +205,13 @@ class _Panel extends ConsumerWidget {
     final bar = ref.read(postSaveTagBarProvider.notifier);
     return Material(
       key: const ValueKey('viewer-tag-panel'),
-      color: c.surface.withValues(alpha: 0.97),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6), side: BorderSide(color: c.lineStrong)),
+      color: c.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(6),
+        side: BorderSide(color: c.lineStrong),
+      ),
       clipBehavior: Clip.antiAlias,
-      elevation: 12,
+      elevation: 4,
       shadowColor: Colors.black,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -212,49 +223,56 @@ class _Panel extends ConsumerWidget {
             duration: PostSaveTagBarNotifier.visibleFor,
             builder: (_, v, _) => Align(
               alignment: AlignmentDirectional.centerStart,
-              child: FractionallySizedBox(widthFactor: v, child: Container(height: 3, color: c.signal)),
+              child: FractionallySizedBox(
+                widthFactor: v,
+                child: Container(height: 3, color: c.signal),
+              ),
             ),
           ),
           Padding(
             padding: const EdgeInsetsDirectional.fromSTEB(12, 4, 4, 0),
-            child: Row(children: [
-              Expanded(
-                child: Text(
-                  l10n.liveTagPanelTitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    l10n.liveTagPanelTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
                 ),
-              ),
-              TextButton(
-                key: const ValueKey('viewer-tag-panel-close'),
-                style: TextButton.styleFrom(foregroundColor: c.muted),
-                onPressed: bar.dismiss,
-                child: Text(l10n.viewerClipNoTag, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-              ),
-            ]),
+                TextButton(
+                  key: const ValueKey('viewer-tag-panel-close'),
+                  style: TextButton.styleFrom(foregroundColor: c.muted),
+                  onPressed: bar.dismiss,
+                  child: Text(l10n.viewerClipNoTag, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                ),
+              ],
+            ),
           ),
           Flexible(
             child: SingleChildScrollView(
               key: const ValueKey('viewer-tag-bar'),
               padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-              child: LayoutBuilder(builder: (context, box) {
-                // Two keys a row on a phone, four on a wider panel.
-                final columns = box.maxWidth >= 400 ? 4 : 2;
-                const gap = 6.0;
-                final width = ((box.maxWidth - gap * (columns - 1)) / columns).floorToDouble();
-                return Wrap(
-                  spacing: gap,
-                  runSpacing: gap,
-                  children: [
-                    for (final t in tags)
-                      SizedBox(
-                        width: width,
-                        child: _TagKey(tag: t, stacked: columns > 2, onPressed: () => bar.pick(t.id)),
-                      ),
-                  ],
-                );
-              }),
+              child: LayoutBuilder(
+                builder: (context, box) {
+                  // Two keys a row on a phone, four on a wider panel.
+                  final columns = box.maxWidth >= 400 ? 4 : 2;
+                  const gap = 6.0;
+                  final width = ((box.maxWidth - gap * (columns - 1)) / columns).floorToDouble();
+                  return Wrap(
+                    spacing: gap,
+                    runSpacing: gap,
+                    children: [
+                      for (final t in tags)
+                        SizedBox(
+                          width: width,
+                          child: _TagKey(tag: t, stacked: columns > 2, onPressed: () => bar.pick(t.id)),
+                        ),
+                    ],
+                  );
+                },
+              ),
             ),
           ),
         ],
@@ -290,16 +308,21 @@ class _TagKey extends StatelessWidget {
         width: double.infinity,
         height: 56,
         child: stacked
-            ? Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                _ColourBar(colour: tag.colour, width: 26, height: 5),
-                const SizedBox(height: 6),
-                label,
-              ])
-            : Row(children: [
-                _ColourBar(colour: tag.colour, width: 6, height: 26),
-                const SizedBox(width: 10),
-                Expanded(child: label),
-              ]),
+            ? Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _ColourBar(colour: tag.colour, width: 26, height: 5),
+                  const SizedBox(height: 6),
+                  label,
+                ],
+              )
+            : Row(
+                children: [
+                  _ColourBar(colour: tag.colour, width: 6, height: 26),
+                  const SizedBox(width: 10),
+                  Expanded(child: label),
+                ],
+              ),
       ),
     );
   }

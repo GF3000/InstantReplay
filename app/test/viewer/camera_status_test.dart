@@ -11,15 +11,15 @@ import 'package:replay_protocol/replay_protocol.dart';
 LinkState _link(LinkPhase phase, [CameraStatus? status]) => LinkState(phase: phase, status: status);
 
 CameraStatus _status({bool recording = true, int thermal = 0, int? battery, bool? plugged}) => CameraStatus(
-      recording: recording,
-      fps: 30,
-      bufferMs: 60000,
-      outboxClips: 2,
-      thermalStatus: thermal,
-      batteryTempC: 31,
-      batteryPercent: battery,
-      plugged: plugged,
-    );
+  recording: recording,
+  fps: 30,
+  bufferMs: 60000,
+  outboxClips: 2,
+  thermalStatus: thermal,
+  batteryTempC: 31,
+  batteryPercent: battery,
+  plugged: plugged,
+);
 
 class _Link extends LinkStateNotifier {
   _Link(this.value);
@@ -31,15 +31,15 @@ class _Link extends LinkStateNotifier {
 }
 
 Widget _app(LinkState? link) => ProviderScope(
-      key: UniqueKey(),
-      overrides: [linkStateProvider.overrideWith(() => _Link(link))],
-      child: MaterialApp(
-        locale: const Locale('en'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(appBar: AppBar(actions: const [CameraStatusIndicator()])),
-      ),
-    );
+  key: UniqueKey(),
+  overrides: [linkStateProvider.overrideWith(() => _Link(link))],
+  child: MaterialApp(
+    locale: const Locale('en'),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: Scaffold(appBar: AppBar(actions: const [CameraStatusIndicator()])),
+  ),
+);
 
 void main() {
   test('health: connecting, ok, and each problem', () {

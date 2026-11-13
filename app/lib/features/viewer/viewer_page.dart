@@ -54,22 +54,26 @@ class ViewerPage extends ConsumerWidget {
         titleSpacing: 16,
         title: camera == null
             ? Text(l10n.roleViewer, overflow: TextOverflow.ellipsis)
-            : Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                Text(
-                  camera.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 19, height: 1.1, fontWeight: FontWeight.w700),
-                ),
-                if (subtitle.isNotEmpty)
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
                   Text(
-                    subtitle,
-                    key: const ValueKey('viewer-subtitle'),
+                    camera.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: c.muted),
+                    style: const TextStyle(fontSize: 19, height: 1.1, fontWeight: FontWeight.w700),
                   ),
-              ]),
+                  if (subtitle.isNotEmpty)
+                    Text(
+                      subtitle,
+                      key: const ValueKey('viewer-subtitle'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: c.muted),
+                    ),
+                ],
+              ),
         actions: [
           if (setup.paired) ...[
             const CameraStatusIndicator(),
@@ -80,7 +84,10 @@ class ViewerPage extends ConsumerWidget {
                 padding: const EdgeInsetsDirectional.only(start: 6),
                 child: OutlinedButton(
                   key: const ValueKey('viewer-library'),
-                  style: OutlinedButton.styleFrom(minimumSize: const Size(48, 44), side: BorderSide(color: c.line)),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(48, 44),
+                    side: BorderSide(color: c.line),
+                  ),
                   onPressed: () => Navigator.of(context).push(LibraryPage.route()),
                   child: Text(l10n.libraryTitle),
                 ),
@@ -162,48 +169,71 @@ class _MenuSheet extends ConsumerWidget {
     final library = ref.watch(libraryEnabledProvider);
     final session = ref.watch(activeSessionProvider);
     final recording = setup.paired ? ref.watch(sessionRecordingProvider) : null;
-    final recordingEnabled = ref.watch(linkStateProvider.select(
-      (s) => s?.phase == LinkPhase.connected && (s?.status?.recording ?? false),
-    ));
+    final recordingEnabled = ref.watch(
+      linkStateProvider.select((s) => s?.phase == LinkPhase.connected && (s?.status?.recording ?? false)),
+    );
     final reserve = setup.paired ? ref.watch(viewerClipReserveProvider) : null;
     Widget entry(_MenuItem item, IconData icon, String label, {String? key, bool enabled = true}) => ListTile(
-          key: key == null ? null : ValueKey(key),
-          minTileHeight: 56,
-          enabled: enabled,
-          leading: Icon(icon),
-          title: Text(label, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
-          onTap: () => Navigator.of(context).pop(item),
-        );
+      key: key == null ? null : ValueKey(key),
+      minTileHeight: 56,
+      enabled: enabled,
+      leading: Icon(icon),
+      title: Text(label, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+      onTap: () => Navigator.of(context).pop(item),
+    );
     Widget section(String label) => Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 16, 4),
-          child: Text(label.toUpperCase(), style: irMono(12, weight: FontWeight.w600, color: c.muted)),
-        );
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 16, 4),
+      child: Text(
+        label.toUpperCase(),
+        style: irMono(12, weight: FontWeight.w600, color: c.muted),
+      ),
+    );
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.only(bottom: 12),
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          // Android edits the tags of the session's template, so it needs a session first.
-          if (!library || session != null)
-            entry(_MenuItem.tags, Icons.sell_outlined, l10n.viewerTagsEdit, key: 'viewer-menu-tags'),
-          if (library) entry(_MenuItem.library, Icons.video_library_outlined, l10n.libraryTitle, key: 'viewer-menu-library'),
-          if (library && session != null)
-            entry(_MenuItem.changeSession, Icons.event_note, l10n.libraryChangeSession, key: 'viewer-menu-change-session'),
-          if (recording != null)
-            entry(_MenuItem.recording, Icons.videocam_outlined, l10n.recTitle,
-                key: 'viewer-menu-recording', enabled: recordingEnabled),
-          if (reserve != null)
-            entry(_MenuItem.clipReserve, Icons.inventory_2_outlined, l10n.clipReserveTitle, key: 'viewer-menu-clip-reserve'),
-          if (setup.paired) ...[
-            const Divider(height: 1),
-            section(l10n.panelsTitle),
-            const ViewerPanelToggles(),
-            const Divider(height: 1),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Android edits the tags of the session's template, so it needs a session first.
+            if (!library || session != null)
+              entry(_MenuItem.tags, Icons.sell_outlined, l10n.viewerTagsEdit, key: 'viewer-menu-tags'),
+            if (library)
+              entry(_MenuItem.library, Icons.video_library_outlined, l10n.libraryTitle, key: 'viewer-menu-library'),
+            if (library && session != null)
+              entry(
+                _MenuItem.changeSession,
+                Icons.event_note,
+                l10n.libraryChangeSession,
+                key: 'viewer-menu-change-session',
+              ),
+            if (recording != null)
+              entry(
+                _MenuItem.recording,
+                Icons.videocam_outlined,
+                l10n.recTitle,
+                key: 'viewer-menu-recording',
+                enabled: recordingEnabled,
+              ),
+            if (reserve != null)
+              entry(
+                _MenuItem.clipReserve,
+                Icons.inventory_2_outlined,
+                l10n.clipReserveTitle,
+                key: 'viewer-menu-clip-reserve',
+              ),
+            if (setup.paired) ...[
+              const Divider(height: 1),
+              section(l10n.panelsTitle),
+              const ViewerPanelToggles(),
+              const Divider(height: 1),
+            ],
+            if (setup.paired && !setup.addressFixed)
+              entry(_MenuItem.changeCamera, Icons.link_off, l10n.viewerChangeCamera, key: 'viewer-menu-change-camera'),
+            entry(_MenuItem.settings, Icons.settings_outlined, l10n.settingsTitle, key: 'viewer-menu-settings'),
+            entry(_MenuItem.switchRole, Icons.swap_horiz, l10n.switchRole, key: 'viewer-menu-switch-role'),
           ],
-          if (setup.paired && !setup.addressFixed)
-            entry(_MenuItem.changeCamera, Icons.link_off, l10n.viewerChangeCamera, key: 'viewer-menu-change-camera'),
-          entry(_MenuItem.settings, Icons.settings_outlined, l10n.settingsTitle, key: 'viewer-menu-settings'),
-          entry(_MenuItem.switchRole, Icons.swap_horiz, l10n.switchRole, key: 'viewer-menu-switch-role'),
-        ]),
+        ),
       ),
     );
   }
