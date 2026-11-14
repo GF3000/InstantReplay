@@ -682,6 +682,28 @@ void main() {
       await v.close();
     });
 
+    test('while the stream runs with a microphone, viewers get its level; null once it stops', () async {
+      final v = await greeted('viewer-a');
+      capture.statsController.add(stats());
+      await v.next<StatusUpdate>();
+      expect(capture.micLevelPolls, 0, reason: 'nothing polls before a stream');
+
+      capture.micLevelDb = -23.44;
+      v.send(const BroadcastConfigure(key: 'abcd-efgh-1234'));
+      await v.next<StatusUpdate>();
+      v.send(const BroadcastStart());
+      expect((await v.next<MicLevel>()).db, -23.4);
+      capture.micLevelDb = -12;
+      expect((await v.next<MicLevel>()).db, -12);
+
+      v.send(const BroadcastStop());
+      expect((await v.next<MicLevel>()).db, isNull);
+      final polls = capture.micLevelPolls;
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      expect(capture.micLevelPolls, polls, reason: 'polling stops with the stream');
+      await v.close();
+    });
+
     test('the stream key never goes back to viewers', () async {
       final raw = <String>[];
       final ws = await WebSocket.connect('ws://127.0.0.1:$port${Api.ws}?${Api.tokenParam}=$_token');

@@ -152,6 +152,8 @@ void main() {
       const ReplayAir(clipId: 'c1', speed: 0.5),
       const ReplaySpeed(speed: 0.25),
       const ReplayStop(),
+      const MicLevel(db: -18.5),
+      const MicLevel(db: null),
       const ClipChanged(
         clip: ClipDto(id: 'c', requestId: 'r', state: ClipState.acked, createdAtMs: 1, reserved: true),
       ),
@@ -181,6 +183,15 @@ void main() {
 
     test('unknown types decode to null', () {
       expect(WsMessage.decode('{"type":"future_thing","x":1}'), isNull);
+    });
+
+    test('MicLevel: dBFS with one decimal; no db means no microphone', () {
+      expect(const MicLevel(db: -23.46).toJson(), {'type': 'mic_level', 'db': -23.5});
+      expect(const MicLevel(db: null).toJson(), {'type': 'mic_level'});
+      expect((WsMessage.decode('{"type":"mic_level","db":-6}')! as MicLevel).db, -6.0);
+      expect((WsMessage.decode('{"type":"mic_level","db":-41.25}')! as MicLevel).db, -41.25);
+      expect((WsMessage.decode('{"type":"mic_level"}')! as MicLevel).db, isNull);
+      expect((WsMessage.decode(const MicLevel(db: -90).encode())! as MicLevel).db, -90.0);
     });
 
     test('RecStart: includeSeconds is omitted at 0 and defaults to 0', () {

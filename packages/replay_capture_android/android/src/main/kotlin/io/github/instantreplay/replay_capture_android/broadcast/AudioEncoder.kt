@@ -35,6 +35,14 @@ internal class AudioEncoder(
     /** Muted from the stream's controls: the mic keeps running (and the clock), silence goes out. */
     @Volatile var muted = false
 
+    private val meter = MicLevelMeter()
+
+    /**
+     * What the microphone hears now in dBFS (peak, VU-like release), measured before muting so a
+     * muted mic still shows that people are talking; null without a microphone. Any thread.
+     */
+    val levelDbfs: Double? get() = if (record == null) null else meter.read(System.nanoTime())
+
     private val codec: MediaCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC).apply {
         val format = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, SAMPLE_RATE, 1).apply {
             setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC)
@@ -101,7 +109,10 @@ internal class AudioEncoder(
                     CHUNK_BYTES
                 }
                 if (bytes == 0) continue
-                if (record != null && muted) pcm.fill(0, 0, bytes)
+                if (record != null) {
+                    meter.update(pcm, bytes, System.nanoTime())
+                    if (muted) pcm.fill(0, 0, bytes)
+                }
                 val ptsUs = clock.next(nowNs(), bytes / 2)
                 val input = codec.dequeueInputBuffer(INPUT_TIMEOUT_US)
                 if (input >= 0) {

@@ -1926,6 +1926,29 @@ class CaptureHostApi {
     return pigeonVar_replyValue! as bool;
   }
 
+  /// What the stream's microphone hears now, in dBFS (−90…0; peak with a VU-like ~300 ms
+  /// release), measured before muting so a muted mic still shows people talking. Null when no
+  /// microphone is open (no stream, audio off at start, or no permission). Cheap: poll it ~10 Hz
+  /// while a meter is on screen.
+  Future<double?> broadcastMicLevel() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.replay_capture_android.CaptureHostApi.broadcastMicLevel$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+    return pigeonVar_replyValue as double?;
+  }
+
   /// Puts clip [clipId] (ready or in the reserve) on air at [speed], replacing any running
   /// replay; [label] is drawn over it (e.g. `REPETICIÓN`); the scoreboard too only when
   /// [scoreboard]. Completes once the first frame is

@@ -7,11 +7,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../camera/capture_layer.dart';
 import 'broadcast_host.dart';
+import 'mic_level.dart';
 
 /// The YouTube stream on the Camera (SPEC §12.1): where to send it (kept in preferences, the key
 /// never leaves this phone) and the latest state from the plugin.
 class BroadcastController {
-  BroadcastController({required this._prefs, required this.capture}) {
+  BroadcastController({required this._prefs, required this.capture})
+      : micLevel = MicLevelPoller(read: capture.broadcastMicLevel) {
     _subs
       ..add(capture.broadcast.listen((s) => _onNative(s, significant: true)))
       ..add(capture.stats.listen((s) {
@@ -31,6 +33,10 @@ class BroadcastController {
   final _changes = StreamController<BroadcastInfo>.broadcast();
   final _stateChanges = StreamController<void>.broadcast();
   BroadcastStatus? _native;
+
+  /// The stream microphone's level in dBFS (muted or not), polled only while a stream runs and
+  /// something listens; null without an open microphone.
+  final MicLevelPoller micLevel;
 
   String get server => _prefs.getString(serverKey) ?? BroadcastInfo.defaultServer;
 
@@ -160,6 +166,7 @@ class BroadcastController {
 
   void _onNative(BroadcastStatus status, {required bool significant}) {
     _native = status;
+    micLevel.active = _live(status);
     _emit(significant: significant);
   }
 
@@ -170,6 +177,7 @@ class BroadcastController {
   }
 
   void dispose() {
+    micLevel.dispose();
     for (final s in _subs) {
       unawaited(s.cancel());
     }

@@ -309,6 +309,16 @@ class FakeCaptureLayer implements CaptureLayer {
     return ok;
   }
 
+  /// What [broadcastMicLevel] returns (dBFS); null = no open microphone.
+  double? micLevelDb;
+  int micLevelPolls = 0;
+
+  @override
+  Future<double?> broadcastMicLevel() async {
+    micLevelPolls++;
+    return micLevelDb;
+  }
+
   @override
   Future<void> setOverlay(OverlayState overlay) async => overlays.add(overlay);
 

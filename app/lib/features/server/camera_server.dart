@@ -33,6 +33,7 @@ class CameraServer implements ApiServer {
     this.controls,
     this.saveTimeout = const Duration(seconds: 5),
     this.silenceTimeout = const Duration(seconds: 15),
+    this.micLevelEvery = const Duration(milliseconds: 200),
     AttemptLimiter? pairLimiter,
   }) : _pairLimiter = pairLimiter ?? AttemptLimiter();
 
@@ -57,6 +58,9 @@ class CameraServer implements ApiServer {
   /// Viewers silent for this long are dropped (they ping every 5 s).
   final Duration silenceTimeout;
 
+  /// How often viewers get the microphone level while the stream has one (5 Hz).
+  final Duration micLevelEvery;
+
   final AttemptLimiter _pairLimiter;
   final _sockets = <_ViewerSocket>{};
 
@@ -75,6 +79,11 @@ class CameraServer implements ApiServer {
   cap.RecordingStatus? _lastRecording;
   Timer? _sweep;
   HttpServer? _server;
+
+  /// Listening to the stream microphone's level (only while viewers are connected).
+  bool _micListening = false;
+  Timer? _micTimer;
+  bool _micSentLevel = false;
 
   /// Viewers that completed the WebSocket handshake.
   int get viewerCount => _sockets.where((s) => s.greeted).length;
@@ -109,6 +118,7 @@ class CameraServer implements ApiServer {
   @override
   Future<void> close() async {
     _sweep?.cancel();
+    _listenMic(false);
     for (final s in _subs) {
       await s.cancel();
     }
@@ -441,7 +451,14 @@ compilación que incluya el visor web.</p>
           await _broadcastHost().replaySpeed(speed);
         case ReplayStop():
           await _broadcastHost().replayStop();
-        case Welcome() || RtcOffer() || ClipChanged() || StatusUpdate() || RecordingFinished() || ErrorMessage() || Pong():
+        case Welcome() ||
+              RtcOffer() ||
+              ClipChanged() ||
+              StatusUpdate() ||
+              RecordingFinished() ||
+              MicLevel() ||
+              ErrorMessage() ||
+              Pong():
           break; // Camera → Viewer messages; nothing to do.
       }
     } catch (e) {
@@ -615,7 +632,39 @@ compilación que incluya el visor web.</p>
   }
 
   void _emitViewerCount() {
+    _listenMic(viewerCount > 0);
     if (!_viewerCount.isClosed) _viewerCount.add(viewerCount);
+  }
+
+  /// The mic meter (SPEC §12.7): the Camera polls the level only while someone listens, so the
+  /// server listens only while viewers are connected.
+  void _listenMic(bool on) {
+    final level = broadcast?.micLevel;
+    if (level == null || on == _micListening) return;
+    _micListening = on;
+    if (on) {
+      level.addListener(_onMicLevel);
+      _micTimer = Timer.periodic(micLevelEvery, (_) => _sendMicLevel());
+    } else {
+      level.removeListener(_onMicLevel);
+      _micTimer?.cancel();
+      _micTimer = null;
+      _micSentLevel = false;
+    }
+  }
+
+  /// A closed microphone is said at once; levels go out on the [micLevelEvery] tick.
+  void _onMicLevel() {
+    if (broadcast?.micLevel.value == null) _sendMicLevel();
+  }
+
+  /// The level every [micLevelEvery] while there is one (steady, so viewers can tell a silent
+  /// mic from a gone one), and one null when the microphone closes.
+  void _sendMicLevel() {
+    final db = broadcast?.micLevel.value;
+    if (db == null && !_micSentLevel) return;
+    _micSentLevel = db != null;
+    _broadcast(MicLevel(db: db));
   }
 
   // endregion

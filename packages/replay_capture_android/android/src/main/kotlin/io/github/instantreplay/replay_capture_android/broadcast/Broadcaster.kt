@@ -86,6 +86,9 @@ internal class Broadcaster(
         return true
     }
 
+    /** The open microphone's level in dBFS, muted or not; null without one. Any thread. */
+    fun micLevelDbfs(): Double? = if (micOpen) current?.audio?.levelDbfs else null
+
     private val programFrameRate = minOf(config.fps, 30)
 
     /**

@@ -726,6 +726,31 @@ void main() {
       expect(find.byTooltip('Mute the microphone on air'), findsOneWidget);
     });
 
+    testWidgets('the mic row shows the real level while streaming, dimmed bars while muted', (tester) async {
+      final fake = FakeCaptureLayer();
+      await _pumpCamera(tester, fake, height: 2400, saved: {'role': 'broadcast', 'broadcast.key': 'abcd'});
+      final meter = find.descendant(
+        of: find.byKey(const ValueKey('camera-broadcast-mic')),
+        matching: find.byKey(const ValueKey('ir-mic-level')),
+      );
+      expect(meter, findsNothing, reason: 'off air: no meter');
+      expect(fake.micLevelPolls, 0);
+
+      fake.micLevelDb = -20;
+      await _tapNow(tester, find.byKey(const ValueKey('camera-broadcast-start')));
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(meter, findsOneWidget);
+      expect(find.byKey(const ValueKey('ir-mic-bar-2-on')), findsOneWidget);
+
+      await _tapNow(tester, find.byKey(const ValueKey('camera-broadcast-mic')));
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(meter, findsOneWidget, reason: 'muted: the bars still show people talking');
+
+      fake.micLevelDb = null; // No microphone (e.g. no permission).
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(meter, findsNothing);
+    });
+
     testWidgets('the operating screen shows the score and the stream', (tester) async {
       final fake = FakeCaptureLayer();
       await _pumpCamera(tester, fake, saved: {'role': 'broadcast'});
