@@ -2149,4 +2149,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get liveMicClosedBadge => 'MIC CLOSED';
+
+  @override
+  String ytAccountCheckChannel(String channel) {
+    return 'Streams to the YouTube channel $channel';
+  }
+
+  @override
+  String get ytAccountKeyLocked =>
+      'You\'re using your YouTube account. Sign out to stream with a key.';
+
+  @override
+  String get ytAccountOrUseKey => 'Or sign out and stream with a stream key.';
+
+  @override
+  String get ytAccountErrorQuota => 'The YouTube API daily quota is used up.';
 }

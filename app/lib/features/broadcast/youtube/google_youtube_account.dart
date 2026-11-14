@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart' show debugPrint, visibleForTesting;
 import 'package:google_sign_in/google_sign_in.dart';
@@ -18,6 +19,7 @@ const youtubeScope = 'https://www.googleapis.com/auth/youtube';
 class GoogleYouTubeAccount implements YouTubeAccount {
   GoogleYouTubeAccount({required this._prefs, http.Client? client}) : _client = client ?? http.Client() {
     _api = YouTubeApi(client: _client, token: _token);
+    _quietApi = YouTubeApi(client: _client, token: ({bool refresh = false}) => _token(refresh: refresh, quiet: true));
     _load();
   }
 
@@ -25,8 +27,9 @@ class GoogleYouTubeAccount implements YouTubeAccount {
   @visibleForTesting
   GoogleYouTubeAccount.signedIn({required this._prefs, required this._client, required String email})
       : _testEmail = email {
-    _api = YouTubeApi(client: _client, token: ({bool refresh = false}) async => 'test-token');
+    _api = _quietApi = YouTubeApi(client: _client, token: ({bool refresh = false}) async => 'test-token');
     _load();
+    _channel = _cachedChannel(email);
   }
 
   void _load() {
@@ -50,10 +53,14 @@ class GoogleYouTubeAccount implements YouTubeAccount {
   static const _privacyKey = 'youtube.privacy';
   static const _activeKey = 'youtube.active';
   static String _streamKey(String email) => 'youtube.stream.$email';
+  static String _channelKey(String email) => 'youtube.channel.$email';
 
   final SharedPreferences _prefs;
   final http.Client _client;
   late final YouTubeApi _api;
+
+  /// For reads that must never show Google's consent screen (the channel on restore).
+  late final YouTubeApi _quietApi;
   final _changes = StreamController<void>.broadcast();
 
   static Future<void>? _init;
@@ -61,9 +68,13 @@ class GoogleYouTubeAccount implements YouTubeAccount {
   String? _testEmail;
   String? _accessToken;
   YouTubeBroadcast? _current;
+  YouTubeChannel? _channel;
 
   @override
   String? get email => _account?.email ?? _testEmail;
+
+  @override
+  YouTubeChannel? get channel => _channel;
 
   @override
   YouTubeBroadcast? get current => _current;
@@ -71,14 +82,55 @@ class GoogleYouTubeAccount implements YouTubeAccount {
   @override
   Stream<void> get changes => _changes.stream;
 
+  // Signed in wins: older versions stored `false` here after saving a key while signed in.
   @override
-  bool get active => _prefs.getBool(_activeKey) ?? false;
+  bool get active => email != null || (_prefs.getBool(_activeKey) ?? false);
 
   @override
   Future<void> setActive(bool active) async {
+    if (!active && email != null) return;
+    await _storeActive(active);
+  }
+
+  Future<void> _storeActive(bool active) async {
+    if (_prefs.getBool(_activeKey) == active) return;
     await _prefs.setBool(_activeKey, active);
     debugPrint('IR-YT account mode ${active ? 'on' : 'off'}');
     _notify();
+  }
+
+  YouTubeChannel? _cachedChannel(String email) {
+    final json = _prefs.getString(_channelKey(email));
+    if (json == null) return null;
+    try {
+      return YouTubeChannel.fromJson((jsonDecode(json) as Map).cast());
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Reads the channel the sign-in acts for: once per sign-in or restore (one unit of quota).
+  /// Quiet on failure: the last known channel of this email stays, or the email shows alone.
+  @visibleForTesting
+  Future<void> loadChannel() async {
+    final email = this.email;
+    if (email == null) return;
+    _channel ??= _cachedChannel(email);
+    _notify();
+    try {
+      final channel = await _quietApi.myChannel();
+      if (this.email != email) return; // Signed out or switched meanwhile.
+      _channel = channel;
+      if (channel == null) {
+        await _prefs.remove(_channelKey(email));
+      } else {
+        await _prefs.setString(_channelKey(email), jsonEncode(channel.toJson()));
+      }
+      debugPrint('IR-YT channel ${channel == null ? 'none' : 'read'}');
+      _notify();
+    } catch (e) {
+      debugPrint('IR-YT channel read failed: ${e.runtimeType}');
+    }
   }
 
   static Future<void> _initialize() =>
@@ -92,7 +144,10 @@ class GoogleYouTubeAccount implements YouTubeAccount {
       debugPrint('IR-YT restore: ${account == null ? 'no session' : 'signed in'}, account mode $active');
       if (account != null) {
         _account = account;
+        _channel = _cachedChannel(account.email);
+        await _storeActive(true);
         _notify();
+        await loadChannel();
       }
     } catch (e) {
       // Signed out; the user signs in from the dialog.
@@ -108,14 +163,18 @@ class GoogleYouTubeAccount implements YouTubeAccount {
       final authz = await account.authorizationClient.authorizeScopes(const [youtubeScope]);
       _account = account;
       _accessToken = authz.accessToken;
+      _channel = null;
       debugPrint('IR-YT signed in');
-      _notify();
     } on GoogleSignInException catch (e) {
       throw YouTubeAccountException(
         e.code == GoogleSignInExceptionCode.canceled ? 'canceled' : 'sign_in_failed',
         e.description,
       );
     }
+    // The account wins over a stored key from now on.
+    await _storeActive(true);
+    _notify();
+    await loadChannel();
   }
 
   @override
@@ -123,6 +182,9 @@ class GoogleYouTubeAccount implements YouTubeAccount {
     _account = null;
     _testEmail = null;
     _accessToken = null;
+    _channel = null;
+    // Back to the stream key (the stored one, if any, is used again).
+    await _storeActive(false);
     _notify();
     try {
       await GoogleSignIn.instance.signOut();
@@ -131,7 +193,9 @@ class GoogleYouTubeAccount implements YouTubeAccount {
     }
   }
 
-  Future<String> _token({bool refresh = false}) async {
+  /// An access token for the `youtube` scope. [quiet]: never shows Google's consent screen
+  /// (throws `not_signed_in` when it would be needed).
+  Future<String> _token({bool refresh = false, bool quiet = false}) async {
     final account = _account;
     if (account == null) throw const YouTubeAccountException('not_signed_in');
     final client = account.authorizationClient;
@@ -141,8 +205,9 @@ class GoogleYouTubeAccount implements YouTubeAccount {
     }
     if (_accessToken case final t?) return t;
     try {
-      final authz =
-          await client.authorizationForScopes(const [youtubeScope]) ?? await client.authorizeScopes(const [youtubeScope]);
+      final authz = await client.authorizationForScopes(const [youtubeScope]) ??
+          (quiet ? null : await client.authorizeScopes(const [youtubeScope]));
+      if (authz == null) throw const YouTubeAccountException('not_signed_in');
       return _accessToken = authz.accessToken;
     } on GoogleSignInException catch (e) {
       throw YouTubeAccountException(

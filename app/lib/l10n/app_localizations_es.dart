@@ -2160,4 +2160,21 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get liveMicClosedBadge => 'MICRO CERRADO';
+
+  @override
+  String ytAccountCheckChannel(String channel) {
+    return 'Emite en el canal de YouTube $channel';
+  }
+
+  @override
+  String get ytAccountKeyLocked =>
+      'Estás usando tu cuenta de YouTube. Cierra sesión para emitir con una clave.';
+
+  @override
+  String get ytAccountOrUseKey =>
+      'O cierra sesión y emite con una clave de emisión.';
+
+  @override
+  String get ytAccountErrorQuota =>
+      'Se ha agotado la cuota diaria de la API de YouTube.';
 }
