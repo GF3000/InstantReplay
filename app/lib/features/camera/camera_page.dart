@@ -818,6 +818,7 @@ class _BroadcastPanel extends ConsumerWidget {
           enabled: true,
           large: true,
           height: compact ? 52 : 64,
+          levelDb: controller.micLevel,
           onChanged: (on) async {
             final ok = await controller.setAudio(on);
             if (!ok && context.mounted) {

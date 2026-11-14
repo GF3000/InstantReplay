@@ -332,6 +332,8 @@ class ReplayCaptureAndroidPlugin :
 
     override fun broadcastSetAudio(audio: Boolean): Boolean = broadcaster?.setMuted(!audio) ?: false
 
+    override fun broadcastMicLevel(): Double? = broadcaster?.micLevelDbfs()
+
     // Replays on air (SPEC §12.6).
 
     override fun replayStart(

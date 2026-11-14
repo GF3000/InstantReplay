@@ -89,6 +89,10 @@ abstract interface class CaptureLayer {
   /// Microphone on air on/off, live; false when it cannot be turned on.
   Future<bool> broadcastSetAudio(bool audio);
 
+  /// The stream's microphone level in dBFS (−90…0), measured before muting; null without an
+  /// open microphone. Cheap; poll ~10 Hz only while a meter needs it.
+  Future<double?> broadcastMicLevel();
+
   /// What the scoreboard overlay shows. Cheap; call on every change.
   Future<void> setOverlay(OverlayState overlay);
 
@@ -230,6 +234,9 @@ class PluginCaptureLayer implements CaptureLayer {
 
   @override
   Future<bool> broadcastSetAudio(bool audio) => _capture.broadcastSetAudio(audio);
+
+  @override
+  Future<double?> broadcastMicLevel() => _capture.broadcastMicLevel();
 
   @override
   Future<void> setOverlay(OverlayState overlay) => _capture.setOverlay(overlay);

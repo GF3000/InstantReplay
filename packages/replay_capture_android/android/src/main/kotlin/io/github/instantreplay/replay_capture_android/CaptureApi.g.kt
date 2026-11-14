@@ -1451,6 +1451,13 @@ interface CaptureHostApi {
    */
   fun broadcastSetAudio(audio: Boolean): Boolean
   /**
+   * What the stream's microphone hears now, in dBFS (−90…0; peak with a VU-like ~300 ms
+   * release), measured before muting so a muted mic still shows people talking. Null when no
+   * microphone is open (no stream, audio off at start, or no permission). Cheap: poll it ~10 Hz
+   * while a meter is on screen.
+   */
+  fun broadcastMicLevel(): Double?
+  /**
    * Puts clip [clipId] (ready or in the reserve) on air at [speed], replacing any running
    * replay; [label] is drawn over it (e.g. `REPETICIÓN`); the scoreboard too only when
    * [scoreboard]. Completes once the first frame is
@@ -1960,6 +1967,21 @@ interface CaptureHostApi {
             val audioArg = args[0] as Boolean
             val wrapped: List<Any?> = try {
               listOf(api.broadcastSetAudio(audioArg))
+            } catch (exception: Throwable) {
+              CaptureApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.replay_capture_android.CaptureHostApi.broadcastMicLevel$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            val wrapped: List<Any?> = try {
+              listOf(api.broadcastMicLevel())
             } catch (exception: Throwable) {
               CaptureApiPigeonUtils.wrapError(exception)
             }

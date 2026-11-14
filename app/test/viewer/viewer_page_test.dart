@@ -687,6 +687,15 @@ class _StreamingLink extends LinkStateNotifier {
   );
 }
 
+class _FixedMicLevel extends ViewerMicLevelNotifier {
+  _FixedMicLevel(this.db);
+
+  final double db;
+
+  @override
+  double? build() => db;
+}
+
 class _MicRemote extends ViewerBroadcastNotifier {
   final audio = <bool>[];
 
@@ -707,7 +716,8 @@ class _MicRemote extends ViewerBroadcastNotifier {
 }
 
 void _viewerPageTests() {
-  Future<_MicRemote> pumpPage(WidgetTester tester, Size size, LinkStateNotifier Function() link) async {
+  Future<_MicRemote> pumpPage(WidgetTester tester, Size size, LinkStateNotifier Function() link,
+      {double? micDb}) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -722,6 +732,7 @@ void _viewerPageTests() {
           liveViewProvider.overrideWith(_PlayingLive.new),
           viewerClipsProvider.overrideWith(() => _RecordingClips([])),
           viewerBroadcastNoticeProvider.overrideWith(() => remote),
+          if (micDb != null) viewerMicLevelProvider.overrideWith(() => _FixedMicLevel(micDb)),
         ],
         child: MaterialApp(
           locale: const Locale('en'),
@@ -751,6 +762,23 @@ void _viewerPageTests() {
     expect(find.text('STREAM WITHOUT SOUND'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('viewer-broadcast-mic')));
     expect(remote.audio, [true]);
+  });
+
+  testWidgets("the mic shows the Camera's real level, and no bars without one", (tester) async {
+    await pumpPage(tester, const Size(360, 640), _StreamingLink.new);
+    expect(find.byKey(const ValueKey('ir-mic-level')), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+    await pumpPage(tester, const Size(360, 640), _StreamingLink.new, micDb: -20);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('viewer-broadcast-mic')),
+        matching: find.byKey(const ValueKey('ir-mic-level')),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('ir-mic-bar-2-on')), findsOneWidget);
+    expect(find.byKey(const ValueKey('ir-mic-bar-3-off')), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('no mic and no sound badge outside broadcast mode', (tester) async {

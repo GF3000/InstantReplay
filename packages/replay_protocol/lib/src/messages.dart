@@ -65,6 +65,7 @@ sealed class WsMessage {
       ReplayAir.typeName => ReplayAir(clipId: j['clipId']! as String, speed: (j['speed'] as num? ?? 1).toDouble()),
       ReplaySpeed.typeName => ReplaySpeed(speed: (j['speed']! as num).toDouble()),
       ReplayStop.typeName => const ReplayStop(),
+      MicLevel.typeName => MicLevel(db: (j['db'] as num?)?.toDouble()),
       Ping.typeName => const Ping(),
       Pong.typeName => const Pong(),
       _ => null,
@@ -427,6 +428,22 @@ final class ReplayStop extends WsMessage {
 
   @override
   Json fields() => const {};
+}
+
+/// Camera → all viewers, about 5 times a second while the stream's microphone is open (muted or
+/// not): what it hears, for the mic button's meter (SPEC §12.7). [db] is dBFS (−90…0, one
+/// decimal); null once when the microphone closes. Older viewers ignore it (unknown type).
+final class MicLevel extends WsMessage {
+  const MicLevel({required this.db});
+
+  static const typeName = 'mic_level';
+  final double? db;
+
+  @override
+  String get type => typeName;
+
+  @override
+  Json fields() => {if (db case final d?) 'db': (d * 10).roundToDouble() / 10};
 }
 
 /// Keep-alive: the Viewer pings every 5 s; the Camera drops a viewer silent for 15 s.

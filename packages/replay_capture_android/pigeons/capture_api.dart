@@ -461,6 +461,12 @@ abstract class CaptureHostApi {
   /// it cannot be turned on (no permission, or no stream).
   bool broadcastSetAudio(bool audio);
 
+  /// What the stream's microphone hears now, in dBFS (−90…0; peak with a VU-like ~300 ms
+  /// release), measured before muting so a muted mic still shows people talking. Null when no
+  /// microphone is open (no stream, audio off at start, or no permission). Cheap: poll it ~10 Hz
+  /// while a meter is on screen.
+  double? broadcastMicLevel();
+
   // Replays on air (SPEC §12.6). Only while a broadcast is active.
 
   /// Puts clip [clipId] (ready or in the reserve) on air at [speed], replacing any running

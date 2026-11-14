@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui' show Locale, PlatformDispatcher;
 
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:replay_protocol/replay_protocol.dart';
 
@@ -148,6 +149,9 @@ class CameraBroadcast implements BroadcastHost {
 
   @override
   void scoreboardCommand(ScoreboardCommand command) => _scoreboard.apply(command);
+
+  @override
+  ValueListenable<double?> get micLevel => _stream.micLevel;
 
   @override
   Future<void> configure({

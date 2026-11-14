@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'ir_colors.dart';
 
-/// Looping decorative animations (blinking dots, mic level). Tests turn them off in
+/// Looping decorative animations (blinking dots). Tests turn them off in
 /// test/flutter_test_config.dart so `pumpAndSettle` can settle. Any new looping animation must
 /// check [loops] (and `MediaQuery.disableAnimations`).
 abstract final class IrMotion {
@@ -297,11 +297,16 @@ class _IrLiveDotState extends State<IrLiveDot> with SingleTickerProviderStateMix
 
 /// The one-tap microphone toggle used in every live screen (viewer and camera). Visual only:
 /// the caller owns the state. Red means "YouTube hears nothing".
+///
+/// [level] (0…1, see [IrMicToggle.levelFromDbfs]) is what the microphone really hears; it draws
+/// a small meter next to the icon, dimmed while muted so the user sees they are talking into a
+/// closed mic. Null (no stream, no permission, a Camera that does not send it) draws no meter.
 class IrMicToggle extends StatelessWidget {
   const IrMicToggle({
     super.key,
     required this.open,
     required this.onTap,
+    this.level,
     this.openLabel,
     this.closedLabel,
     this.subtitle,
@@ -311,17 +316,44 @@ class IrMicToggle extends StatelessWidget {
   final bool open;
   final VoidCallback? onTap;
 
+  /// Microphone level 0…1; null shows no meter.
+  final double? level;
+
   /// Labels shown next to the icon; null makes it icon-only (compact top bars).
   final String? openLabel;
   final String? closedLabel;
   final String? subtitle;
   final double height;
 
+  /// Bars of the meter.
+  static const bars = 4;
+
+  /// dBFS → meter level: −60 dB (or quieter) → 0, −6 dB (or louder) → 1, linear in dB. Null stays
+  /// null (no microphone).
+  static double? levelFromDbfs(double? db) {
+    if (db == null || db.isNaN) return null;
+    return ((db - _floorDb) / (_topDb - _floorDb)).clamp(0.0, 1.0);
+  }
+
+  static const _floorDb = -60.0;
+  static const _topDb = -6.0;
+
+  /// How many of [count] bars a [level] lights: bar i (from 0) once the level passes i/count,
+  /// so any sound above the floor lights the first one and only near clipping the last.
+  static int litBars(double level, [int count = bars]) {
+    var lit = 0;
+    for (var i = 0; i < count; i++) {
+      if (level > i / count) lit = i + 1;
+    }
+    return lit;
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.ir;
     final fg = open ? c.text : c.onLive;
     final label = open ? openLabel : closedLabel;
+    final l = level;
     return Semantics(
       toggled: open,
       button: true,
@@ -338,7 +370,7 @@ class IrMicToggle extends StatelessWidget {
               padding: EdgeInsets.symmetric(horizontal: label == null ? 8 : 12),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 Icon(open ? Icons.mic : Icons.mic_off, size: 20, color: fg),
-                if (open) ...[const SizedBox(width: 4), _Level(color: c.ok)],
+                if (l != null) ...[const SizedBox(width: 4), _LevelMeter(level: l, open: open)],
                 if (label != null) ...[
                   const SizedBox(width: 8),
                   Flexible(
@@ -357,53 +389,41 @@ class IrMicToggle extends StatelessWidget {
   }
 }
 
-/// Decorative "level meter" bars. They suggest the mic is live; they do not measure audio.
-class _Level extends StatefulWidget {
-  const _Level({required this.color});
+/// The mic meter: [IrMicToggle.bars] rising bars, lit from the left with the real level (green,
+/// the last one amber near clipping). Muted: drawn in the toggle's text colour, dimmed. No
+/// animation; the bars just follow the values as they arrive.
+class _LevelMeter extends StatelessWidget {
+  const _LevelMeter({required this.level, required this.open});
 
-  final Color color;
-
-  @override
-  State<_Level> createState() => _LevelState();
-}
-
-class _LevelState extends State<_Level> with SingleTickerProviderStateMixin {
-  late final _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final run = IrMotion.of(context);
-    if (run && !_c.isAnimating) _c.repeat(reverse: true);
-    if (!run && _c.isAnimating) _c.stop();
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
+  final double level;
+  final bool open;
 
   @override
   Widget build(BuildContext context) {
-    final still = !IrMotion.of(context);
+    final c = context.ir;
+    final lit = IrMicToggle.litBars(level);
+    const n = IrMicToggle.bars;
     return SizedBox(
+      key: const ValueKey('ir-mic-level'),
       height: 16,
-      child: AnimatedBuilder(
-        animation: _c,
-        builder: (_, _) => Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            for (final phase in const [0.0, 0.4, 0.75])
-              Container(
-                margin: const EdgeInsets.only(left: 2),
-                width: 3,
-                height: still ? 10 : 4 + 12 * ((_c.value + phase) % 1.0),
-                color: widget.color,
-              ),
-          ],
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          for (var i = 0; i < n; i++)
+            Container(
+              key: ValueKey('ir-mic-bar-$i-${i < lit ? 'on' : 'off'}'),
+              margin: const EdgeInsets.only(left: 2),
+              width: 3,
+              height: 4.0 + 12 * (i + 1) / n,
+              color: switch ((open, i < lit)) {
+                (true, true) => i == n - 1 ? c.warn : c.ok,
+                (true, false) => c.line,
+                (false, true) => c.onLive.withValues(alpha: 0.6),
+                (false, false) => c.onLive.withValues(alpha: 0.2),
+              },
+            ),
+        ],
       ),
     );
   }

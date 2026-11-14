@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:replay_protocol/replay_protocol.dart';
 
 /// What the Camera's API server needs from broadcast mode (SPEC §12): the scoreboard and the
@@ -18,6 +19,10 @@ abstract interface class BroadcastHost {
   Stream<void> get changes;
 
   void scoreboardCommand(ScoreboardCommand command);
+
+  /// The stream microphone's level in dBFS (muted or not); null without an open microphone.
+  /// Polled only while something listens, so listen only while viewers need it.
+  ValueListenable<double?> get micLevel;
 
   /// [key] null (or empty) keeps the stored key.
   /// [replayScoreboard] null keeps the stored choice.

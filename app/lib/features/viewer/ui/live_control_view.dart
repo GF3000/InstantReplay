@@ -320,6 +320,7 @@ class ViewerMicButton extends ConsumerWidget {
         child: IrMicToggle(
           key: const ValueKey('viewer-broadcast-mic'),
           open: info.audio,
+          level: IrMicToggle.levelFromDbfs(ref.watch(viewerMicLevelProvider)),
           openLabel: labelled ? l10n.liveMicOpen : null,
           closedLabel: labelled ? l10n.liveMicClosed : null,
           // The stored key stays (key: null); the Camera applies it on air at once.

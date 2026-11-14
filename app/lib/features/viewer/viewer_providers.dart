@@ -388,6 +388,40 @@ class ViewerBroadcastNotifier extends Notifier<BroadcastNotice?> {
 final viewerBroadcastNoticeProvider =
     NotifierProvider.autoDispose<ViewerBroadcastNotifier, BroadcastNotice?>(ViewerBroadcastNotifier.new);
 
+/// What the stream's microphone hears on the Camera, in dBFS (SPEC §12.7), from [MicLevel]
+/// messages (~5 Hz while the mic is open, muted or not). Null without a microphone, from a Camera
+/// that does not send it, or when none arrived for [stale].
+class ViewerMicLevelNotifier extends Notifier<double?> {
+  static const stale = Duration(seconds: 1);
+
+  @override
+  double? build() {
+    StreamSubscription<WsMessage>? sub;
+    Timer? expiry;
+    var built = false;
+    ref.listen(sessionLinkProvider, (_, link) {
+      unawaited(sub?.cancel());
+      expiry?.cancel();
+      if (built) state = null;
+      sub = link?.messages.listen((m) {
+        if (m case MicLevel(:final db)) {
+          expiry?.cancel();
+          state = db;
+          if (db != null) expiry = Timer(stale, () => state = null);
+        }
+      });
+    }, fireImmediately: true);
+    ref.onDispose(() {
+      expiry?.cancel();
+      unawaited(sub?.cancel());
+    });
+    built = true;
+    return null;
+  }
+}
+
+final viewerMicLevelProvider = NotifierProvider.autoDispose<ViewerMicLevelNotifier, double?>(ViewerMicLevelNotifier.new);
+
 // endregion
 
 // region Live view

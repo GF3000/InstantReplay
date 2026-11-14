@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:replay_protocol/replay_protocol.dart';
 
@@ -311,6 +312,7 @@ class BroadcastMicButton extends StatelessWidget {
     this.keyPrefix = 'broadcast',
     this.large = false,
     this.height,
+    this.levelDb,
   });
 
   final bool on;
@@ -322,20 +324,29 @@ class BroadcastMicButton extends StatelessWidget {
   /// Height of the large row; 64 by default.
   final double? height;
 
+  /// What the microphone hears, in dBFS (null: no open mic, no meter). Listening to it is what
+  /// makes the Camera poll the level, so it only runs while this button is on screen.
+  final ValueListenable<double?>? levelDb;
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    Widget toggle(double? db) => IrMicToggle(
+          key: ValueKey('$keyPrefix-mic'),
+          open: on,
+          level: IrMicToggle.levelFromDbfs(db),
+          onTap: enabled ? () => onChanged(!on) : null,
+          openLabel: large ? l10n.camMicOpen : null,
+          closedLabel: large ? l10n.camMicClosed : null,
+          subtitle: large ? (on ? l10n.camMicOpenHint : l10n.camMicClosedHint) : null,
+          height: large ? (height ?? 64) : 48,
+        );
+    final level = levelDb;
     return Tooltip(
       message: on ? l10n.broadcastMicMute : l10n.broadcastMicUnmute,
-      child: IrMicToggle(
-        key: ValueKey('$keyPrefix-mic'),
-        open: on,
-        onTap: enabled ? () => onChanged(!on) : null,
-        openLabel: large ? l10n.camMicOpen : null,
-        closedLabel: large ? l10n.camMicClosed : null,
-        subtitle: large ? (on ? l10n.camMicOpenHint : l10n.camMicClosedHint) : null,
-        height: large ? (height ?? 64) : 48,
-      ),
+      child: level == null
+          ? toggle(null)
+          : ValueListenableBuilder<double?>(valueListenable: level, builder: (_, db, _) => toggle(db)),
     );
   }
 }
