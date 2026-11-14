@@ -2146,4 +2146,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get checkAccountSignIn => 'Sign in to the YouTube account to stream';
+
+  @override
+  String get liveMicClosedBadge => 'MIC CLOSED';
 }

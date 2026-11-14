@@ -420,7 +420,9 @@ class LivePanel extends ConsumerWidget {
     final remote = ref.read(viewerBroadcastNoticeProvider.notifier);
     final stream = ref.watch(viewerBroadcastProvider);
     final streaming = stream != null && stream.state == BroadcastStreamState.live;
-    final muted = stream != null && stream.active && !stream.audio;
+    // The mic closed in broadcast mode: shown before going live too, so nobody starts silent by
+    // mistake. The Camera itself shows no badge (its operator is not the one watching).
+    final muted = stream != null && !stream.audio;
     return ColoredBox(
       color: Colors.black,
       child: Stack(
@@ -455,7 +457,7 @@ class LivePanel extends ConsumerWidget {
               top: 8,
               child: _Badge(
                 key: const ValueKey('viewer-no-sound-badge'),
-                text: l10n.liveNoSoundBadge,
+                text: stream.active ? l10n.liveNoSoundBadge : l10n.liveMicClosedBadge,
                 background: ir.live,
                 foreground: ir.onLive,
                 icon: Icons.mic_off,

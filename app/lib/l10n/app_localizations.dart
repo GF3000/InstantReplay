@@ -3781,6 +3781,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sign in to the YouTube account to stream'**
   String get checkAccountSignIn;
+
+  /// No description provided for @liveMicClosedBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'MIC CLOSED'**
+  String get liveMicClosedBadge;
 }
 
 class _AppLocalizationsDelegate

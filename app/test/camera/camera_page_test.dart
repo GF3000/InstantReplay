@@ -801,7 +801,7 @@ void main() {
         for (final k in ['camera-broadcast-stop', 'camera-broadcast-mic', 'score-home-plus', 'score-clock-toggle']) {
           onScreen(k);
         }
-        expect(find.text('NO SOUND'), findsOneWidget, reason: 'the preview says YouTube hears nothing');
+        expect(find.text('NO SOUND'), findsNothing, reason: 'the no-sound badge is on the viewers, not on the Camera');
       });
     }
 

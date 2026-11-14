@@ -2157,4 +2157,7 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get checkAccountSignIn =>
       'Inicia sesión en la cuenta de YouTube para emitir';
+
+  @override
+  String get liveMicClosedBadge => 'MICRO CERRADO';
 }

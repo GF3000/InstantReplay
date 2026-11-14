@@ -209,18 +209,6 @@ class _Preview extends ConsumerWidget {
       final notifier = ref.read(cameraSessionProvider.notifier);
       final running = state.phase == CameraPhase.running;
       final zoomable = state.maxZoom > 1;
-      final silent = state.broadcast && !(ref.watch(broadcastInfoProvider).value?.audio ?? true);
-      Widget badge(String text, {Color? bg, Color? fg}) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-        decoration: BoxDecoration(
-          color: bg ?? Colors.black.withValues(alpha: 0.72),
-          borderRadius: BorderRadius.circular(2),
-        ),
-        child: Text(
-          text,
-          style: irMono(11, weight: FontWeight.w600, color: fg ?? Colors.white),
-        ),
-      );
       return ColoredBox(
         color: Colors.black,
         child: Stack(
@@ -261,13 +249,6 @@ class _Preview extends ConsumerWidget {
                 child: _CameraRecording(state: state),
               ),
             ),
-            // Bottom-left: the burned-in scoreboard is top-left and the zoom bottom-right.
-            if (silent)
-              PositionedDirectional(
-                start: 8,
-                bottom: 8,
-                child: badge(l10n.camNoSound, bg: c.live, fg: c.onLive),
-              ),
             // The manual way in; the first viewer also starts operating mode by itself (UX §2.2).
             // In broadcast mode it sits in the panel.
             if (!state.broadcast) PositionedDirectional(start: 12, bottom: 12, child: _BlackScreenButton(state: state)),

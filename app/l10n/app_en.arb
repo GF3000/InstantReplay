@@ -1267,5 +1267,6 @@
       }
     }
   },
-  "checkAccountSignIn": "Sign in to the YouTube account to stream"
+  "checkAccountSignIn": "Sign in to the YouTube account to stream",
+  "liveMicClosedBadge": "MIC CLOSED"
 }

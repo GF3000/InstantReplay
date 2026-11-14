@@ -613,5 +613,6 @@
   "viewerThisScreen": "Esta pantalla",
   "viewerSaveButtons": "Botones de Guardar",
   "checkAccountOk": "Emite en la cuenta de YouTube {email}",
-  "checkAccountSignIn": "Inicia sesión en la cuenta de YouTube para emitir"
+  "checkAccountSignIn": "Inicia sesión en la cuenta de YouTube para emitir",
+  "liveMicClosedBadge": "MICRO CERRADO"
 }
