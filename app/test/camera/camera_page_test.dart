@@ -1,9 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:instant_replay/app/app.dart';
 import 'package:instant_replay/features/broadcast/preflight.dart';
+import 'package:instant_replay/features/broadcast/youtube/youtube_account.dart';
+import 'package:instant_replay/features/broadcast/youtube/youtube_api.dart';
+import 'package:instant_replay/features/broadcast/youtube/youtube_providers.dart';
 import 'package:instant_replay/core/capabilities.dart';
 import 'package:instant_replay/core/preferences.dart';
 import 'package:instant_replay/features/camera/camera_page.dart';
@@ -24,6 +29,7 @@ Future<SharedPreferences> _pumpCamera(
   double width = 2400,
   FakeServerPlatform? server,
   Map<String, Object> saved = const {},
+  YouTubeAccount? youtube,
 }) async {
   // A landscape phone; tests that read the whole status panel use a taller view.
   tester.view.physicalSize = Size(width, height);
@@ -38,11 +44,56 @@ Future<SharedPreferences> _pumpCamera(
       captureLayerProvider.overrideWithValue(fake),
       serverPlatformProvider.overrideWithValue((server ?? FakeServerPlatform()).platform),
       streamServerReachableProvider.overrideWithValue((_) async => true),
+      if (youtube != null) youtubeAccountProvider.overrideWithValue(youtube),
     ],
     child: const InstantReplayApp(),
   ));
   await tester.pumpAndSettle();
   return prefs;
+}
+
+/// A YouTube account for the checklist: only who it is and whether it is the destination.
+class _FakeYouTubeAccount implements YouTubeAccount {
+  _FakeYouTubeAccount({this.email, this.channel, this.wasActive = false});
+
+  @override
+  String? email;
+
+  @override
+  YouTubeChannel? channel;
+
+  /// Account mode from the last session, without a session now.
+  bool wasActive;
+
+  @override
+  bool get active => email != null || wasActive;
+
+  @override
+  Stream<void> get changes => const Stream.empty();
+
+  @override
+  YouTubeBroadcast? get current => null;
+
+  @override
+  Future<YouTubeBroadcast?> refresh() async => null;
+
+  @override
+  Future<YouTubeIngest?> ingest() async => null;
+
+  /// The share link's prefetch: YouTube never answers here.
+  @override
+  Future<YouTubeTarget> ensureLive({required String defaultTitle}) => Completer<YouTubeTarget>().future;
+
+  @override
+  Object? noSuchMethod(Invocation invocation) => throw UnimplementedError('${invocation.memberName}');
+}
+
+/// Opens "Prepare the stream" on a landscape phone and steps to its checklist.
+Future<void> _openChecklistStep(WidgetTester tester) async {
+  await _tapVisible(tester, find.byKey(const ValueKey('camera-broadcast-settings')));
+  for (var i = 0; i < 3; i++) {
+    await _tapNow(tester, find.byKey(const ValueKey('broadcast-config-next')));
+  }
 }
 
 /// Opens the collapsed "Advanced" section (profile, statistics, diagnostics).
@@ -804,6 +855,50 @@ void main() {
         expect(find.text('NO SOUND'), findsOneWidget, reason: 'the preview says YouTube hears nothing');
       });
     }
+
+    testWidgets("the checklist names the account's channel, with the email under it", (tester) async {
+      final account = _FakeYouTubeAccount(
+        email: 'coach@example.com',
+        channel: const YouTubeChannel(id: 'UC1', title: 'Coras TV'),
+      );
+      // A stored key too: the signed-in account still wins.
+      await _pumpCamera(tester, FakeCaptureLayer(),
+          width: 844 * 2.5, height: 390 * 2.5, saved: {'role': 'broadcast', 'broadcast.key': 'abcd'}, youtube: account);
+      await _openChecklistStep(tester);
+      expect(find.text('Streams to the YouTube channel Coras TV'), findsOneWidget);
+      expect(tester.widget<Text>(find.byKey(const ValueKey('check-key-sub'))).data, 'coach@example.com');
+      expect(find.text('Streams with the saved stream key'), findsNothing);
+    });
+
+    testWidgets('the checklist names the email when the channel is unknown',
+        (tester) async {
+      final account = _FakeYouTubeAccount(email: 'coach@example.com');
+      await _pumpCamera(tester, FakeCaptureLayer(),
+          width: 844 * 2.5, height: 390 * 2.5, saved: {'role': 'broadcast'}, youtube: account);
+      await _openChecklistStep(tester);
+      expect(find.text('Streams to the YouTube account coach@example.com'), findsOneWidget);
+      expect(find.byKey(const ValueKey('check-key-sub')), findsNothing);
+    });
+
+    testWidgets('the checklist asks to sign in when account mode has no session', (tester) async {
+      await _pumpCamera(tester, FakeCaptureLayer(),
+          width: 844 * 2.5,
+          height: 390 * 2.5,
+          saved: {'role': 'broadcast', 'broadcast.key': 'abcd'},
+          youtube: _FakeYouTubeAccount(wasActive: true));
+      await _openChecklistStep(tester);
+      expect(find.text('Sign in to the YouTube account to stream'), findsOneWidget);
+    });
+
+    testWidgets('the checklist names the key when signed out', (tester) async {
+      await _pumpCamera(tester, FakeCaptureLayer(),
+          width: 844 * 2.5,
+          height: 390 * 2.5,
+          saved: {'role': 'broadcast', 'broadcast.key': 'abcd'},
+          youtube: _FakeYouTubeAccount());
+      await _openChecklistStep(tester);
+      expect(find.text('Streams with the saved stream key'), findsOneWidget);
+    });
 
     testWidgets('Prepare the stream: its red button saves and goes live', (tester) async {
       final fake = FakeCaptureLayer();

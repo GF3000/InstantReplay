@@ -613,5 +613,9 @@
   "viewerThisScreen": "Esta pantalla",
   "viewerSaveButtons": "Botones de Guardar",
   "checkAccountOk": "Emite en la cuenta de YouTube {email}",
-  "checkAccountSignIn": "Inicia sesión en la cuenta de YouTube para emitir"
+  "checkAccountSignIn": "Inicia sesión en la cuenta de YouTube para emitir",
+  "ytAccountCheckChannel": "Emite en el canal de YouTube {channel}",
+  "ytAccountKeyLocked": "Estás usando tu cuenta de YouTube. Cierra sesión para emitir con una clave.",
+  "ytAccountOrUseKey": "O cierra sesión y emite con una clave de emisión.",
+  "ytAccountErrorQuota": "Se ha agotado la cuota diaria de la API de YouTube."
 }

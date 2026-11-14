@@ -470,11 +470,17 @@ String youtubeLifeCycleLabel(AppLocalizations l10n, YouTubeLifeCycle c) => switc
   YouTubeLifeCycle.complete || YouTubeLifeCycle.other => l10n.youtubeLifeComplete,
 };
 
-String youtubeErrorMessage(AppLocalizations l10n, YouTubeAccountException e) => switch (e.code) {
-  'live_not_enabled' => l10n.youtubeErrorLiveNotEnabled,
-  'quota' => l10n.youtubeErrorQuota,
-  'forbidden' || 'not_signed_in' => l10n.youtubeErrorForbidden,
-  'network' => l10n.youtubeErrorNetwork,
-  'sign_in_failed' => l10n.youtubeErrorSignIn(e.message ?? e.code),
-  _ => l10n.youtubeErrorApi(e.message ?? e.code),
-};
+/// The message for a failed account action. When signed in, it ends with the way out (sign out
+/// and stream with a key), so the account never leaves the user unable to stream.
+String youtubeErrorMessage(AppLocalizations l10n, YouTubeAccountException e) {
+  String orKey(String message) => '$message ${l10n.ytAccountOrUseKey}';
+  return switch (e.code) {
+    'live_not_enabled' => orKey(l10n.youtubeErrorLiveNotEnabled),
+    'quota' => orKey(l10n.ytAccountErrorQuota),
+    'forbidden' => orKey(l10n.youtubeErrorForbidden),
+    'not_signed_in' => l10n.youtubeErrorForbidden,
+    'network' => orKey(l10n.youtubeErrorNetwork),
+    'sign_in_failed' => l10n.youtubeErrorSignIn(e.message ?? e.code),
+    _ => orKey(l10n.youtubeErrorApi(e.message ?? e.code)),
+  };
+}

@@ -3781,6 +3781,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sign in to the YouTube account to stream'**
   String get checkAccountSignIn;
+
+  /// No description provided for @ytAccountCheckChannel.
+  ///
+  /// In en, this message translates to:
+  /// **'Streams to the YouTube channel {channel}'**
+  String ytAccountCheckChannel(String channel);
+
+  /// No description provided for @ytAccountKeyLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re using your YouTube account. Sign out to stream with a key.'**
+  String get ytAccountKeyLocked;
+
+  /// No description provided for @ytAccountOrUseKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Or sign out and stream with a stream key.'**
+  String get ytAccountOrUseKey;
+
+  /// No description provided for @ytAccountErrorQuota.
+  ///
+  /// In en, this message translates to:
+  /// **'The YouTube API daily quota is used up.'**
+  String get ytAccountErrorQuota;
 }
 
 class _AppLocalizationsDelegate

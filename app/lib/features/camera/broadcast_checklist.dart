@@ -80,22 +80,28 @@ class _BroadcastChecklistState extends ConsumerState<BroadcastChecklist> {
     final profile = session.profile;
     final hd = _hd(session.profiles);
     final plugged = session.stats?.plugged;
-    // Where the stream goes is what was last saved in "Destination": the YouTube account (its own
-    // key, set when going live) or the pasted stream key. The line says which one will be used.
-    ref.watch(youtubeActiveAccountProvider); // rebuilds on sign-in / mode changes
-    final account = ref.watch(youtubeAccountProvider);
-    final accountMode = account != null && account.active;
-    final email = accountMode ? account.email : null;
+    // Where the stream goes: the YouTube account while signed in (it wins over a stored key; its
+    // own key is set when going live), else the pasted stream key. The line says which one. The
+    // account without a session (not restored yet) asks to sign in.
+    final view = ref.watch(youtubeAccountViewProvider).value;
+    final accountMode = view != null && view.active;
+    final email = accountMode ? view.email : null;
+    final channel = email == null ? null : view?.channel;
     final destinationOk = accountMode ? email != null : info.configured;
     final items = <_Item>[
       _Item(
         key: 'key',
         ok: destinationOk,
         label: accountMode
-            ? (email != null ? l10n.checkAccountOk(email) : l10n.checkAccountSignIn)
+            ? (channel != null
+                ? l10n.ytAccountCheckChannel(channel.title)
+                : email != null
+                    ? l10n.checkAccountOk(email)
+                    : l10n.checkAccountSignIn)
             : info.configured
                 ? l10n.checkKeyOk
                 : l10n.checkKeyMissing,
+        sub: channel == null ? null : email,
         action: destinationOk || widget.inPage ? null : l10n.checkKeyAction,
         onAction: () async {
           final result = await showBroadcastConfigDialog(context, info, youtube: ref.read(youtubeAccountProvider));
@@ -165,13 +171,27 @@ class _BroadcastChecklistState extends ConsumerState<BroadcastChecklist> {
             _Mark(ok: item.ok, pending: item.pending),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(
-                item.label,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: item.ok || item.pending ? c.text : c.warnText,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    item.label,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: item.ok || item.pending ? c.text : c.warnText,
+                    ),
+                  ),
+                  if (item.sub case final sub?)
+                    Text(
+                      sub,
+                      key: ValueKey('check-${item.key}-sub'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 13, color: c.muted),
+                    ),
+                ],
               ),
             ),
             if (item.action != null) ...[
@@ -251,6 +271,7 @@ class _Item {
     required this.key,
     required this.ok,
     required this.label,
+    this.sub,
     this.pending = false,
     this.action,
     this.onAction,
@@ -260,6 +281,9 @@ class _Item {
   final bool ok;
   final bool pending;
   final String label;
+
+  /// A small muted line under [label] (the account's email under its channel).
+  final String? sub;
   final String? action;
   final VoidCallback? onAction;
 }

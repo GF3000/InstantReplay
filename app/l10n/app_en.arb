@@ -1267,5 +1267,16 @@
       }
     }
   },
-  "checkAccountSignIn": "Sign in to the YouTube account to stream"
+  "checkAccountSignIn": "Sign in to the YouTube account to stream",
+  "ytAccountCheckChannel": "Streams to the YouTube channel {channel}",
+  "@ytAccountCheckChannel": {
+    "placeholders": {
+      "channel": {
+        "type": "String"
+      }
+    }
+  },
+  "ytAccountKeyLocked": "You're using your YouTube account. Sign out to stream with a key.",
+  "ytAccountOrUseKey": "Or sign out and stream with a stream key.",
+  "ytAccountErrorQuota": "The YouTube API daily quota is used up."
 }

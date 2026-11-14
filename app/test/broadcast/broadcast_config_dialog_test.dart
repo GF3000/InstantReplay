@@ -10,10 +10,16 @@ import 'package:instant_replay/l10n/app_localizations.dart';
 import 'package:replay_protocol/replay_protocol.dart';
 
 class _FakeAccount implements YouTubeAccount {
-  _FakeAccount({this.email, this.current});
+  _FakeAccount({this.email, this.current, this.channel, this.signInChannel});
 
   @override
   String? email;
+
+  @override
+  YouTubeChannel? channel;
+
+  /// The channel the next sign-in acts for.
+  YouTubeChannel? signInChannel;
 
   @override
   YouTubeBroadcast? current;
@@ -31,11 +37,18 @@ class _FakeAccount implements YouTubeAccount {
   @override
   Future<void> signIn() async {
     email = 'coach@example.com';
+    channel = signInChannel;
+    _active = true;
     _changes.add(null);
   }
 
   @override
-  Future<void> signOut() async => email = null;
+  Future<void> signOut() async {
+    email = null;
+    channel = null;
+    _active = false;
+    _changes.add(null);
+  }
 
   @override
   Future<YouTubeBroadcast?> refresh() async => current;
@@ -46,11 +59,17 @@ class _FakeAccount implements YouTubeAccount {
   @override
   void dispose() {}
 
-  @override
-  bool active = false;
+  /// Account mode remembered from the last session (signed in always wins).
+  bool _active = false;
 
   @override
-  Future<void> setActive(bool value) async => active = value;
+  bool get active => email != null || _active;
+
+  @override
+  Future<void> setActive(bool value) async {
+    if (!value && email != null) return;
+    _active = value;
+  }
 
   @override
   Future<YouTubeTarget> ensureLive({required String defaultTitle}) =>
@@ -123,10 +142,25 @@ void main() {
     expect(r.server, BroadcastInfo.defaultServer);
   });
 
-  testWidgets('with an account, key mode is still the default and works', (tester) async {
-    final account = _FakeAccount()..active = true;
+  testWidgets('with an account signed out, the key is the default and works', (tester) async {
+    final account = _FakeAccount();
     final result = await open(tester, youtube: account);
     expect(find.byKey(const ValueKey('broadcast-mode')), findsOneWidget);
+    await tester.enterText(find.byKey(const ValueKey('broadcast-key')), 'manual');
+    await tester.tap(find.byKey(const ValueKey('broadcast-config-save')));
+    await tester.pumpAndSettle();
+    expect((await result)!.key, 'manual');
+    expect(account.active, isFalse);
+  });
+
+  testWidgets('account mode left without a session asks to sign in; a key still works', (tester) async {
+    final account = _FakeAccount();
+    await account.setActive(true);
+    final result = await open(tester, youtube: account);
+    expect(find.byKey(const ValueKey('youtube-sign-in')), findsOneWidget);
+    // Signed out the key choice is free.
+    await tester.tap(find.byKey(const ValueKey('broadcast-mode-key')));
+    await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const ValueKey('broadcast-key')), 'manual');
     await tester.tap(find.byKey(const ValueKey('broadcast-config-save')));
     await tester.pumpAndSettle();
@@ -135,8 +169,43 @@ void main() {
     expect(account.active, isFalse);
   });
 
+  testWidgets('signed in, the account wins: the key choice is locked and says how to leave', (tester) async {
+    final account = _FakeAccount(
+      email: 'coach@example.com',
+      channel: const YouTubeChannel(id: 'UC1', title: 'Coras TV'),
+    );
+    await open(tester, youtube: account);
+    expect(find.byKey(const ValueKey('youtube-sign-out')), findsOneWidget);
+    expect(find.byKey(const ValueKey('broadcast-key')), findsNothing);
+    // The channel is the main line, the email under it.
+    expect(find.text('Coras TV'), findsOneWidget);
+    expect(find.text('coach@example.com'), findsOneWidget);
+    expect(find.byKey(const ValueKey('broadcast-key-locked')), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('broadcast-mode-key')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('broadcast-key')), findsNothing, reason: 'still the account');
+    expect(find.byKey(const ValueKey('broadcast-key-locked')), findsOneWidget);
+    expect(find.text("You're using your YouTube account. Sign out to stream with a key."), findsOneWidget);
+
+    // Sign out from the notice: back to the key, its fields usable.
+    await tester.tap(find.byKey(const ValueKey('broadcast-key-locked-sign-out')));
+    await tester.pumpAndSettle();
+    expect(account.email, isNull);
+    expect(account.active, isFalse);
+    expect(find.byKey(const ValueKey('broadcast-key-locked')), findsNothing);
+    expect(find.byKey(const ValueKey('broadcast-key')), findsOneWidget);
+    expect(tester.widget<TextField>(find.byKey(const ValueKey('broadcast-key'))).enabled, isNot(false));
+  });
+
+  testWidgets('without a channel the email is the account name', (tester) async {
+    await open(tester, youtube: _FakeAccount(email: 'coach@example.com'));
+    expect(tester.widget<Text>(find.byKey(const ValueKey('youtube-account-name'))).data, 'coach@example.com');
+    expect(find.byKey(const ValueKey('youtube-email')), findsNothing);
+  });
+
   testWidgets('account mode: sign in, set title and visibility, save gets the key from YouTube', (tester) async {
-    final account = _FakeAccount();
+    final account = _FakeAccount(signInChannel: const YouTubeChannel(id: 'UC1', title: 'Coras TV'));
     final result = await open(tester, youtube: account);
     await tester.tap(find.byKey(const ValueKey('broadcast-mode-account')));
     await tester.pumpAndSettle();
@@ -146,8 +215,14 @@ void main() {
     expect(tester.widget<FilledButton>(save).onPressed, isNull);
     await tester.tap(find.byKey(const ValueKey('youtube-sign-in')));
     await tester.pumpAndSettle();
+    expect(find.text('Coras TV'), findsOneWidget);
     expect(find.text('coach@example.com'), findsOneWidget);
     expect(find.byKey(const ValueKey('youtube-will-create')), findsOneWidget);
+    // Signing in switched to the account: the key is locked now.
+    expect(account.active, isTrue);
+    await tester.tap(find.byKey(const ValueKey('broadcast-mode-key')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('broadcast-key-locked')), findsOneWidget);
 
     await tester.enterText(find.byKey(const ValueKey('youtube-title')), 'Coras vs Alcobendas');
     // Visibility: three choice tiles.
@@ -198,9 +273,26 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('youtube-error')), findsOneWidget);
     expect(find.textContaining("can't go live yet"), findsOneWidget);
+    // The way out: the account never leaves the user unable to stream.
+    expect(find.textContaining('Or sign out and stream with a stream key.'), findsOneWidget);
     await tester.tap(find.byTooltip('Cancel'));
     await tester.pumpAndSettle();
     expect(await result, isNull);
+  });
+
+  test('account errors add the way out to a stream key, in both languages', () {
+    final en = lookupAppLocalizations(const Locale('en'));
+    final es = lookupAppLocalizations(const Locale('es'));
+    for (final code in ['live_not_enabled', 'quota', 'forbidden', 'network', 'api']) {
+      final e = YouTubeAccountException(code, 'x');
+      expect(youtubeErrorMessage(en, e), endsWith('Or sign out and stream with a stream key.'), reason: code);
+      expect(youtubeErrorMessage(es, e), endsWith('O cierra sesión y emite con una clave de emisión.'), reason: code);
+    }
+    // The quota message no longer says the same twice.
+    expect(youtubeErrorMessage(es, const YouTubeAccountException('quota')).split('clave').length, 2);
+    // Not signed in, or the sign-in itself failed: there is no session to leave.
+    expect(youtubeErrorMessage(en, const YouTubeAccountException('sign_in_failed', 'x')), isNot(contains('sign out')));
+    expect(youtubeErrorMessage(en, const YouTubeAccountException('not_signed_in')), isNot(contains('sign out')));
   });
 
   testWidgets('a phone on its side gets a stepper: Save on top, a summary beside', (tester) async {

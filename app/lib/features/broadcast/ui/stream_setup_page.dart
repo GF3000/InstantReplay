@@ -95,10 +95,13 @@ class _StreamSetupPageState extends State<_StreamSetupPage> {
   bool _showKey = false;
   var _section = _Section.destination;
 
-  // Account mode.
-  late _StreamMode _mode = widget.youtube?.email != null && widget.youtube?.current != null
-      ? _StreamMode.account
-      : _StreamMode.key;
+  // Account mode. The account wins over a key: signed in, it is the destination and the key
+  // choice is locked; signing in switches to it, signing out goes back to the key.
+  late _StreamMode _mode = widget.youtube?.active ?? false ? _StreamMode.account : _StreamMode.key;
+  late bool _signedIn = widget.youtube?.email != null;
+
+  /// The locked key choice was tapped: say why, with the way out.
+  bool _keyLockedHint = false;
   late final _title = TextEditingController(text: widget.youtube?.current?.title);
   late final _description = TextEditingController(text: widget.youtube?.current?.description);
   late YouTubePrivacy _privacy = widget.youtube?.current?.privacy ?? YouTubePrivacy.unlisted;
@@ -115,7 +118,16 @@ class _StreamSetupPageState extends State<_StreamSetupPage> {
     final youtube = widget.youtube;
     if (youtube != null) {
       _youtubeSub = youtube.changes.listen((_) {
-        if (mounted) setState(() {});
+        if (!mounted) return;
+        setState(() {
+          final signedIn = youtube.email != null;
+          if (signedIn != _signedIn) {
+            _signedIn = signedIn;
+            _mode = signedIn ? _StreamMode.account : _StreamMode.key;
+            _keyLockedHint = false;
+            if (!signedIn) _live = null;
+          }
+        });
       });
       if (youtube.email != null) unawaited(_refreshLive());
     }
@@ -197,6 +209,18 @@ class _StreamSetupPageState extends State<_StreamSetupPage> {
       (server: server, key: key, targetKbps: _kbps, audio: _audio, replayScoreboard: _replayScoreboard, goLive: goLive);
 
   bool get _canSave => !_busy && !(_mode == _StreamMode.account && widget.youtube?.email == null);
+
+  Future<void> _signOut() => _youtubeAction((y) async {
+    await y.signOut();
+    if (mounted) {
+      setState(() {
+        _signedIn = false;
+        _mode = _StreamMode.key;
+        _keyLockedHint = false;
+        _live = null;
+      });
+    }
+  });
 
   void _save({bool goLive = false}) {
     if (_mode == _StreamMode.key) {
@@ -578,7 +602,14 @@ class _StreamSetupPageState extends State<_StreamSetupPage> {
         return [
           if (headings) heading(l10n.camWhereStream),
           if (youtube != null) ...[
-            _ModeChoice(mode: _mode, enabled: !_busy, onChanged: (m) => setState(() => _mode = m)),
+            _ModeChoice(
+              mode: _mode,
+              enabled: !_busy,
+              keyLocked: _signedIn,
+              onChanged: (m) => setState(() => _mode = m),
+              onKeyLocked: () => setState(() => _keyLockedHint = true),
+            ),
+            if (_signedIn && _keyLockedHint) ...[const SizedBox(height: 10), _keyLockedNotice(l10n)],
             const SizedBox(height: 16),
           ],
           if (_mode == _StreamMode.key) ..._keyFields(l10n) else ..._accountFields(l10n, youtube!),
@@ -727,6 +758,34 @@ class _StreamSetupPageState extends State<_StreamSetupPage> {
     ];
   }
 
+  /// Why the key choice is off while signed in, with the way out.
+  Widget _keyLockedNotice(AppLocalizations l10n) {
+    final c = context.ir;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 520),
+      child: IrPanel(
+        key: const ValueKey('broadcast-key-locked'),
+        padding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
+        child: Row(
+          children: [
+            Icon(Icons.lock_outline, size: 20, color: c.muted),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(l10n.ytAccountKeyLocked, style: TextStyle(fontSize: 14, color: c.text)),
+            ),
+            const SizedBox(width: 8),
+            TextButton(
+              key: const ValueKey('broadcast-key-locked-sign-out'),
+              style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+              onPressed: _busy ? null : _signOut,
+              child: Text(l10n.youtubeSignOut),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   List<Widget> _accountFields(AppLocalizations l10n, YouTubeAccount youtube) {
     final c = context.ir;
     final signedIn = youtube.email != null;
@@ -772,37 +831,50 @@ class _StreamSetupPageState extends State<_StreamSetupPage> {
     }
     final live = _live;
     final usable = live != null && live.lifeCycle.usable && !_fresh;
+    final name = youtube.displayName!;
+    final sub = youtube.displaySub;
     return [
       IrPanel(
         padding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
         child: Row(
           children: [
+            // A letter avatar: the channel picture would load from Google's servers.
             CircleAvatar(
               radius: 18,
               backgroundColor: c.live,
               child: Text(
-                youtube.email!.substring(0, 1).toUpperCase(),
+                name.characters.first.toUpperCase(),
                 style: TextStyle(color: c.onLive, fontWeight: FontWeight.w700),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                youtube.email!,
-                key: const ValueKey('youtube-email'),
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: c.text),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    name,
+                    key: const ValueKey('youtube-account-name'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: c.text),
+                  ),
+                  if (sub != null)
+                    Text(
+                      sub,
+                      key: const ValueKey('youtube-email'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 13, color: c.muted),
+                    ),
+                ],
               ),
             ),
             OutlinedButton(
               key: const ValueKey('youtube-sign-out'),
               style: OutlinedButton.styleFrom(minimumSize: const Size(48, 44)),
-              onPressed: _busy
-                  ? null
-                  : () => _youtubeAction((y) async {
-                      await y.signOut();
-                      if (mounted) setState(() => _live = null);
-                    }),
+              onPressed: _busy ? null : _signOut,
               child: Text(l10n.youtubeSignOut),
             ),
           ],
@@ -975,13 +1047,22 @@ class _StepChip extends StatelessWidget {
   }
 }
 
-/// YouTube account or stream key, as one segmented strip.
+/// YouTube account or stream key, as one segmented strip. [keyLocked] (signed in: the account
+/// wins) shows the key choice off, with a lock; tapping it calls [onKeyLocked] to say why.
 class _ModeChoice extends StatelessWidget {
-  const _ModeChoice({required this.mode, required this.enabled, required this.onChanged});
+  const _ModeChoice({
+    required this.mode,
+    required this.enabled,
+    required this.onChanged,
+    this.keyLocked = false,
+    this.onKeyLocked,
+  });
 
   final _StreamMode mode;
   final bool enabled;
   final ValueChanged<_StreamMode> onChanged;
+  final bool keyLocked;
+  final VoidCallback? onKeyLocked;
 
   @override
   Widget build(BuildContext context) {
@@ -989,16 +1070,22 @@ class _ModeChoice extends StatelessWidget {
     final c = context.ir;
     Widget segment(_StreamMode m, String label, IconData icon) {
       final selected = m == mode;
-      final fg = selected ? c.onSignal : c.text;
+      final locked = keyLocked && m == _StreamMode.key;
+      final fg = selected ? c.onSignal : (locked ? c.muted : c.text);
       return Expanded(
         child: Semantics(
           selected: selected,
           button: true,
+          enabled: !locked,
           child: Material(
-            color: selected ? c.signal : c.surface,
+            color: selected ? c.signal : (locked ? c.bg : c.surface),
             child: InkWell(
               key: ValueKey('broadcast-mode-${m.name}'),
-              onTap: enabled ? () => onChanged(m) : null,
+              onTap: !enabled
+                  ? null
+                  : locked
+                      ? onKeyLocked
+                      : () => onChanged(m),
               child: Center(
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -1036,7 +1123,7 @@ class _ModeChoice extends StatelessWidget {
           children: [
             segment(_StreamMode.account, l10n.broadcastModeAccount, Icons.account_circle),
             VerticalDivider(width: 1, thickness: 1, color: c.line),
-            segment(_StreamMode.key, l10n.broadcastModeKey, Icons.key),
+            segment(_StreamMode.key, l10n.broadcastModeKey, keyLocked ? Icons.lock_outline : Icons.key),
           ],
         ),
       ),
