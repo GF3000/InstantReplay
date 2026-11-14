@@ -7,6 +7,7 @@ export 'src/api.dart';
 export 'src/broadcast.dart';
 export 'src/messages.dart';
 export 'src/models.dart';
+export 'src/youtube.dart';
 
 /// Bumped on any breaking change to the REST API or WebSocket messages (SPEC §4).
 const int protocolVersion = 1;

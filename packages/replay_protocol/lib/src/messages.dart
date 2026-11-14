@@ -8,6 +8,7 @@ import 'dart:convert';
 
 import 'broadcast.dart';
 import 'models.dart';
+import 'youtube.dart';
 
 sealed class WsMessage {
   const WsMessage();
@@ -65,6 +66,27 @@ sealed class WsMessage {
       ReplayAir.typeName => ReplayAir(clipId: j['clipId']! as String, speed: (j['speed'] as num? ?? 1).toDouble()),
       ReplaySpeed.typeName => ReplaySpeed(speed: (j['speed']! as num).toDouble()),
       ReplayStop.typeName => const ReplayStop(),
+      MicLevel.typeName => MicLevel(db: (j['db'] as num?)?.toDouble()),
+      YouTubeCmd.typeName => switch (YouTubeAction.parse(j['action'])) {
+          final a? => YouTubeCmd(
+              requestId: j['requestId'] as String? ?? '',
+              action: a,
+              title: j['title'] as String?,
+              description: j['description'] as String?,
+              privacy: j['privacy'] as String?,
+            ),
+          null => null, // A newer viewer's action.
+        },
+      YouTubeResult.typeName => YouTubeResult(
+          requestId: j['requestId'] as String? ?? '',
+          status: switch (j['status']) {
+            final Json y => YouTubeStatus.fromJson(y),
+            _ => null,
+          },
+          server: j['server'] as String?,
+          errorCode: j['errorCode'] as String?,
+          errorMessage: j['errorMessage'] as String?,
+        ),
       Ping.typeName => const Ping(),
       Pong.typeName => const Pong(),
       _ => null,
@@ -427,6 +449,81 @@ final class ReplayStop extends WsMessage {
 
   @override
   Json fields() => const {};
+}
+
+/// Camera → all viewers, about 5 times a second while the stream's microphone is open (muted or
+/// not): what it hears, for the mic button's meter (SPEC §12.7). [db] is dBFS (−90…0, one
+/// decimal); null once when the microphone closes. Older viewers ignore it (unknown type).
+final class MicLevel extends WsMessage {
+  const MicLevel({required this.db});
+
+  static const typeName = 'mic_level';
+  final double? db;
+
+  @override
+  String get type => typeName;
+
+  @override
+  Json fields() => {if (db case final d?) 'db': (d * 10).roundToDouble() / 10};
+}
+
+/// Viewer → Camera: run [action] with the Camera's YouTube account (SPEC §12.1). Viewers never
+/// call YouTube: the Camera does, and answers the sender with [YouTubeResult] carrying the same
+/// [requestId]; every viewer sees the new state in `status.youtube`. [title], [description] and
+/// [privacy] (`public`, `unlisted`, `private`) are for [YouTubeAction.save] and
+/// [YouTubeAction.create]. Older Cameras ignore it (unknown type).
+final class YouTubeCmd extends WsMessage {
+  const YouTubeCmd({required this.requestId, required this.action, this.title, this.description, this.privacy});
+
+  static const typeName = 'youtube_cmd';
+  final String requestId;
+  final YouTubeAction action;
+  final String? title;
+  final String? description;
+  final String? privacy;
+
+  @override
+  String get type => typeName;
+
+  @override
+  Json fields() => {
+        'requestId': requestId,
+        'action': action.name,
+        if (title != null) 'title': title,
+        if (description != null) 'description': description,
+        if (privacy != null) 'privacy': privacy,
+      };
+}
+
+/// Camera → the viewer that sent a [YouTubeCmd]: done ([errorCode] null) or failed. [status] is
+/// the YouTube state after the command (the same as the next `status.youtube`), and [server]
+/// the ingest address the Camera now streams to after `save`, `create` or `prepare` (never the
+/// key). Error codes: those of the account (`not_signed_in`, `live_not_enabled`, `quota`,
+/// `forbidden`, `network`, `api`), `unavailable` (no account on this Camera) and
+/// `not_broadcast_mode`.
+final class YouTubeResult extends WsMessage {
+  const YouTubeResult({required this.requestId, this.status, this.server, this.errorCode, this.errorMessage});
+
+  static const typeName = 'youtube_result';
+  final String requestId;
+  final YouTubeStatus? status;
+  final String? server;
+  final String? errorCode;
+  final String? errorMessage;
+
+  bool get ok => errorCode == null;
+
+  @override
+  String get type => typeName;
+
+  @override
+  Json fields() => {
+        'requestId': requestId,
+        if (status != null) 'status': status!.toJson(),
+        if (server != null) 'server': server,
+        if (errorCode != null) 'errorCode': errorCode,
+        if (errorMessage != null) 'errorMessage': errorMessage,
+      };
 }
 
 /// Keep-alive: the Viewer pings every 5 s; the Camera drops a viewer silent for 15 s.

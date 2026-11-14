@@ -94,6 +94,9 @@ void main() {
     expect(find.byType(SessionPickerView), findsOneWidget);
     expect(find.byType(LiveControlView), findsNothing);
     expect(find.byKey(const ValueKey('session-continue')), findsNothing);
+    expect(find.text('Connected to Pitch'), findsOneWidget);
+    expect(find.text('3 · Session'), findsOneWidget);
+    expect(find.byKey(const ValueKey('session-start-training')), findsOneWidget);
 
     await tester.enterText(find.byKey(const ValueKey('session-name')), 'Cup final');
     await tester.tap(find.byKey(const ValueKey('session-template-${BuiltInTemplates.generic}')));
@@ -138,6 +141,7 @@ void main() {
     await settle(tester);
     expect(find.byType(SessionPickerView), findsOneWidget);
     expect(find.text('Cup final'), findsOneWidget);
+    expect(find.textContaining('Match · '), findsOneWidget, reason: 'the latest session panel');
     await tester.tap(find.byKey(const ValueKey('session-continue')));
     await settle(tester);
     expect(find.byType(LiveControlView), findsOneWidget);

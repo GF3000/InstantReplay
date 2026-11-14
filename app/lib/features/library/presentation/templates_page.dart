@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/ui/ir_colors.dart';
 import '../../../l10n/app_localizations.dart';
 import '../data/library_database.dart';
 import '../data/templates.dart';
@@ -45,6 +46,38 @@ class TemplatesPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final templates = ref.watch(libraryTemplatesProvider).value ?? const <TemplateRow>[];
+    final builtIn = [for (final t in templates) if (t.builtIn) t];
+    final imported = [for (final t in templates) if (!t.builtIn) t];
+    Widget section(String title, List<TemplateRow> rows) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(2, 18, 2, 8),
+              child: Text(
+                title.toUpperCase(),
+                style: irMono(12, weight: FontWeight.w600, color: context.ir.muted),
+              ),
+            ),
+            Container(
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                border: Border.all(color: context.ir.line),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                for (final (i, t) in rows.indexed) ...[
+                  if (i > 0) const Divider(height: 1),
+                  _TemplateRow(
+                    key: ValueKey('template-${t.id}'),
+                    template: t,
+                    onExport: () => _export(context, ref, t),
+                    onDelete: t.builtIn ? null : () => ref.read(libraryDatabaseProvider).deleteTemplate(t.id),
+                  ),
+                ],
+              ]),
+            ),
+          ],
+        );
     return Scaffold(
       appBar: AppBar(title: Text(l10n.libraryTemplatesTitle)),
       floatingActionButton: FloatingActionButton.extended(
@@ -54,38 +87,67 @@ class TemplatesPage extends ConsumerWidget {
         label: Text(l10n.libraryTemplateImport),
       ),
       body: SafeArea(
-        child: ListView.builder(
-          padding: const EdgeInsets.only(bottom: 96),
-          itemCount: templates.length,
-          itemBuilder: (context, i) {
-            final t = templates[i];
-            return ListTile(
-              key: ValueKey('template-${t.id}'),
-              minTileHeight: 64,
-              title: Text(templateLabel(l10n, t)),
-              subtitle: t.builtIn ? Text(l10n.libraryTemplateBuiltIn) : null,
-              trailing: PopupMenuButton<bool>(
-                onSelected: (delete) async {
-                  if (!delete) return _export(context, ref, t);
-                  await ref.read(libraryDatabaseProvider).deleteTemplate(t.id);
-                },
-                itemBuilder: (_) => [
-                  PopupMenuItem(
-                    value: false,
-                    child: ListTile(leading: const Icon(Icons.copy), title: Text(l10n.libraryTemplateExport)),
-                  ),
-                  if (!t.builtIn)
-                    PopupMenuItem(
-                      value: true,
-                      child: ListTile(
-                        leading: const Icon(Icons.delete_outline),
-                        title: Text(l10n.libraryTemplateDelete),
-                      ),
-                    ),
-                ],
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 640),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 96),
+              children: [
+                if (builtIn.isNotEmpty) section(l10n.libTemplatesBuiltIn, builtIn),
+                if (imported.isNotEmpty) section(l10n.libTemplatesImported, imported),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A template: its name, then copy as JSON and (imported ones) delete.
+class _TemplateRow extends StatelessWidget {
+  const _TemplateRow({super.key, required this.template, required this.onExport, required this.onDelete});
+
+  final TemplateRow template;
+  final VoidCallback onExport;
+  final VoidCallback? onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final c = context.ir;
+    return ColoredBox(
+      color: c.surface,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 64),
+        child: Padding(
+          padding: const EdgeInsets.only(left: 16, right: 4),
+          child: Row(children: [
+            Icon(template.builtIn ? Icons.sell_outlined : Icons.sell, color: c.muted),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                templateLabel(l10n, template),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: c.text),
               ),
-            );
-          },
+            ),
+            IconButton(
+              key: ValueKey('template-export-${template.id}'),
+              tooltip: l10n.libraryTemplateExport,
+              icon: const Icon(Icons.copy),
+              onPressed: onExport,
+            ),
+            if (onDelete != null)
+              IconButton(
+                key: ValueKey('template-delete-${template.id}'),
+                tooltip: l10n.libraryTemplateDelete,
+                color: c.liveText,
+                icon: const Icon(Icons.delete_outline),
+                onPressed: onDelete,
+              ),
+          ]),
         ),
       ),
     );
@@ -131,7 +193,7 @@ class _ImportDialogState extends State<_ImportDialog> {
           controller: _text,
           maxLines: 10,
           minLines: 5,
-          style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
+          style: irMono(13, weight: FontWeight.w500),
           decoration: InputDecoration(
             hintText: l10n.libraryTemplateImportHint,
             errorText: _error,

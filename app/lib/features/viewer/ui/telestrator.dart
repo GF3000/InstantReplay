@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../core/ui/ir_colors.dart';
 import '../../../l10n/app_localizations.dart';
 
 /// What a drag does: draws a freehand line, or a straight line, arrow or ellipse from where the
@@ -554,105 +555,361 @@ class _StrokePainter extends CustomPainter {
   bool shouldRepaint(_StrokePainter old) => true;
 }
 
-/// Tools, thickness, colour swatches, Delete (with a mark selected), Undo, Clear and Done for draw
-/// mode.
+/// The draw-mode palette, in three blocks: the tools; the colours and the thickness; Undo, Clear
+/// (Delete while a mark is selected) and Done.
+///
+/// [Axis.vertical] (landscape, tablet): floating panels for the video's left edge, [columns] cells
+/// wide; the blocks flow into another column when the height runs out. [Axis.horizontal] (a phone
+/// held upright): one full-width panel of three rows.
 class TelestratorToolbar extends StatelessWidget {
-  const TelestratorToolbar({super.key, required this.controller, required this.onDone});
+  const TelestratorToolbar({
+    super.key,
+    required this.controller,
+    required this.onDone,
+    this.axis = Axis.vertical,
+    this.columns = 2,
+  });
 
   final TelestratorController controller;
   final VoidCallback onDone;
+  final Axis axis;
+
+  /// Cells per row of each block in the vertical palette.
+  final int columns;
+
+  static const _cell = 52.0;
+  static const _gap = 4.0;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    // Compact buttons: two rows at most on a phone held upright, one on a tablet.
-    return IconButtonTheme(
-      data: const IconButtonThemeData(style: ButtonStyle(visualDensity: VisualDensity.compact)),
-      child: ListenableBuilder(
-        listenable: controller,
-        builder: (context, _) => Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          child: Wrap(
-            alignment: WrapAlignment.center,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 2,
-            children: [
-              for (final (tool, icon, tooltip) in [
-                (TelestratorTool.select, Icons.pan_tool_alt, l10n.viewerDrawSelect),
-                (TelestratorTool.arrow, Icons.north_east, l10n.viewerDrawArrow),
-                (TelestratorTool.circle, Icons.circle_outlined, l10n.viewerDrawCircle),
-                (TelestratorTool.line, Icons.horizontal_rule, l10n.viewerDrawLine),
-                (TelestratorTool.pen, Icons.gesture, l10n.viewerDrawPen),
-                (TelestratorTool.eraser, Icons.auto_fix_normal, l10n.viewerDrawEraser),
-              ])
-                IconButton(
-                  key: ValueKey('draw-tool-${tool.name}'),
-                  tooltip: tooltip,
-                  isSelected: controller.tool == tool,
-                  style: IconButton.styleFrom(
-                    backgroundColor: controller.tool == tool ? Theme.of(context).colorScheme.secondaryContainer : null,
-                  ),
-                  onPressed: () => controller.tool = tool,
-                  icon: Icon(icon),
-                ),
-              IconButton(
-                key: const ValueKey('draw-thick'),
-                tooltip: l10n.viewerDrawThick,
-                isSelected: controller.thick,
-                style: IconButton.styleFrom(
-                  backgroundColor: controller.thick ? Theme.of(context).colorScheme.secondaryContainer : null,
-                ),
-                onPressed: () => controller.thick = !controller.thick,
-                icon: const Icon(Icons.line_weight),
-              ),
-              for (final (i, c) in TelestratorController.colors.indexed)
-                IconButton(
-                  key: ValueKey('draw-color-$i'),
-                  tooltip: l10n.viewerDrawColor,
-                  isSelected: controller.color == c,
-                  onPressed: () => controller.color = c,
-                  icon: Container(
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      color: c,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: controller.color == c ? Theme.of(context).colorScheme.primary : Colors.grey,
-                        width: controller.color == c ? 3 : 1,
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) {
+        final c = controller;
+        final tools = [
+          for (final (tool, icon, label, tooltip) in [
+            (TelestratorTool.arrow, const Icon(Icons.north_east), l10n.reviewToolArrow, l10n.viewerDrawArrow),
+            (TelestratorTool.circle, const Icon(Icons.circle_outlined), l10n.reviewToolCircle, l10n.viewerDrawCircle),
+            (
+              TelestratorTool.line,
+              Transform.rotate(angle: -math.pi / 4, child: const Icon(Icons.horizontal_rule)),
+              l10n.reviewToolLine,
+              l10n.viewerDrawLine,
+            ),
+            (TelestratorTool.pen, const Icon(Icons.gesture), l10n.reviewToolPen, l10n.viewerDrawPen),
+            (TelestratorTool.eraser, const EraserIcon(), l10n.reviewToolEraser, l10n.viewerDrawEraser),
+            (TelestratorTool.select, const Icon(Icons.pan_tool_alt), l10n.reviewToolSelect, l10n.viewerDrawSelect),
+          ])
+            _Cell(
+              key: ValueKey('draw-tool-${tool.name}'),
+              tooltip: tooltip,
+              label: label,
+              icon: icon,
+              selected: c.tool == tool,
+              onTap: () => c.tool = tool,
+            ),
+        ];
+        final inks = [
+          for (final (i, colour) in TelestratorController.colors.indexed)
+            _Swatch(
+              key: ValueKey('draw-color-$i'),
+              tooltip: '${l10n.viewerDrawColor}: ${[
+                l10n.reviewColourRed,
+                l10n.reviewColourYellow,
+                l10n.reviewColourWhite,
+                l10n.reviewColourBlue,
+                l10n.reviewColourBlack,
+              ][i]}',
+              color: colour,
+              selected: c.color == colour,
+              onTap: () => c.color = colour,
+            ),
+          _Cell(
+            key: const ValueKey('draw-thick'),
+            tooltip: l10n.viewerDrawThick,
+            label: l10n.reviewThick,
+            icon: const Icon(Icons.line_weight),
+            selected: c.thick,
+            onTap: () => c.thick = !c.thick,
+          ),
+        ];
+        final actions = [
+          _Cell(
+            tooltip: l10n.viewerDrawUndo,
+            label: l10n.reviewUndo,
+            icon: const Icon(Icons.undo),
+            outlined: true,
+            onTap: c.canUndo ? c.undo : null,
+          ),
+          // With a mark selected, Delete takes Clear's place.
+          if (c.selected != null)
+            _Cell(
+              key: const ValueKey('draw-delete'),
+              tooltip: l10n.viewerDrawDelete,
+              label: l10n.reviewDeleteMark,
+              icon: const Icon(Icons.delete_outline),
+              outlined: true,
+              onTap: c.deleteSelected,
+            )
+          else
+            _Cell(
+              tooltip: l10n.viewerDrawClear,
+              label: l10n.reviewClearAll,
+              icon: const Icon(Icons.layers_clear),
+              outlined: true,
+              onTap: c.isEmpty ? null : c.clear,
+            ),
+          _Cell(
+            key: const ValueKey('draw-done'),
+            tooltip: l10n.viewerDrawDone,
+            label: l10n.reviewDone,
+            icon: const Icon(Icons.check),
+            accent: true,
+            onTap: onDone,
+          ),
+        ];
+        if (axis == Axis.horizontal) {
+          Widget row(List<Widget> cells) => Row(children: [
+                for (final (i, cell) in cells.indexed) ...[
+                  if (i > 0) const SizedBox(width: _gap),
+                  Expanded(child: cell),
+                ],
+              ]);
+          return _Block(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              row(tools),
+              const SizedBox(height: _gap),
+              row(inks),
+              const SizedBox(height: _gap),
+              row(actions),
+            ]),
+          );
+        }
+        return Wrap(
+          direction: Axis.vertical,
+          alignment: WrapAlignment.center,
+          spacing: 6,
+          runSpacing: 8,
+          children: [
+            _Block(child: _grid(tools)),
+            _Block(child: _grid(inks)),
+            _Block(child: _grid(actions)),
+          ],
+        );
+      },
+    );
+  }
+
+  /// [cells] in rows of [columns]; a short last row stretches to the full width.
+  Widget _grid(List<Widget> cells) {
+    final width = columns * _cell + (columns - 1) * _gap;
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      for (var start = 0; start < cells.length; start += columns) ...[
+        if (start > 0) const SizedBox(height: _gap),
+        SizedBox(
+          width: width,
+          child: Row(children: [
+            for (final (i, cell) in cells.skip(start).take(columns).indexed) ...[
+              if (i > 0) const SizedBox(width: _gap),
+              Expanded(child: cell),
+            ],
+          ]),
+        ),
+      ],
+    ]);
+  }
+}
+
+/// One floating block of the palette.
+class _Block extends StatelessWidget {
+  const _Block({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ir;
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: c.surface.withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: c.lineStrong),
+      ),
+      child: child,
+    );
+  }
+}
+
+/// A tool or action of the palette: an icon over a small label, 48 dp tall. Selected: amber border
+/// on the soft amber fill.
+class _Cell extends StatelessWidget {
+  const _Cell({
+    super.key,
+    required this.tooltip,
+    required this.label,
+    required this.icon,
+    required this.onTap,
+    this.selected = false,
+    this.outlined = false,
+    this.accent = false,
+  });
+
+  final String tooltip;
+  final String label;
+  final Widget icon;
+  final VoidCallback? onTap;
+  final bool selected;
+
+  /// A hairline border when not selected (actions).
+  final bool outlined;
+
+  /// Amber text and border (Done).
+  final bool accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ir;
+    final enabled = onTap != null;
+    final fg = selected || accent ? c.signal : c.text;
+    final border = selected || accent ? c.signal : (outlined ? c.line : Colors.transparent);
+    return Tooltip(
+      message: tooltip,
+      child: Semantics(
+        selected: selected,
+        button: true,
+        child: Opacity(
+          opacity: enabled ? 1 : 0.4,
+          child: Material(
+            color: selected ? c.signalSoft : Colors.transparent,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4), side: BorderSide(color: border)),
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(4),
+              child: SizedBox(
+                height: 48,
+                child: IconTheme.merge(
+                  data: IconThemeData(color: fg, size: 20),
+                  child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    SizedBox(width: 20, height: 20, child: Center(child: icon)),
+                    const SizedBox(height: 2),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          style: TextStyle(fontSize: 11, height: 1.1, fontWeight: FontWeight.w600, color: fg),
+                        ),
                       ),
                     ),
-                  ),
+                  ]),
                 ),
-              IconButton(
-                tooltip: l10n.viewerDrawUndo,
-                onPressed: controller.canUndo ? controller.undo : null,
-                icon: const Icon(Icons.undo),
               ),
-              // With a mark selected, Delete takes Clear's place: the toolbar keeps its rows.
-              if (controller.selected != null)
-                IconButton(
-                  key: const ValueKey('draw-delete'),
-                  tooltip: l10n.viewerDrawDelete,
-                  onPressed: controller.deleteSelected,
-                  icon: const Icon(Icons.delete_outline),
-                )
-              else
-                IconButton(
-                  tooltip: l10n.viewerDrawClear,
-                  onPressed: controller.isEmpty ? null : controller.clear,
-                  icon: const Icon(Icons.layers_clear),
-                ),
-              IconButton.filledTonal(
-                key: const ValueKey('draw-done'),
-                tooltip: l10n.viewerDrawDone,
-                onPressed: onDone,
-                icon: const Icon(Icons.check),
-              ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 }
+
+/// A colour of the ink: a square swatch, ringed in amber when chosen.
+class _Swatch extends StatelessWidget {
+  const _Swatch({super.key, required this.tooltip, required this.color, required this.selected, required this.onTap});
+
+  final String tooltip;
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ir;
+    return Tooltip(
+      message: tooltip,
+      child: Semantics(
+        selected: selected,
+        button: true,
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(4),
+            child: SizedBox(
+              height: 48,
+              child: Center(
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(5),
+                    border: Border.all(color: selected ? c.signal : Colors.transparent, width: 2),
+                  ),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(2),
+                      border: Border.all(color: c.lineStrong),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A block eraser seen at an angle, in the colour of the surrounding [IconTheme] (Material has no
+/// eraser icon).
+class EraserIcon extends StatelessWidget {
+  const EraserIcon({super.key, this.size});
+
+  final double? size;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = IconTheme.of(context);
+    final side = size ?? theme.size ?? 24;
+    return CustomPaint(size: Size.square(side), painter: _EraserPainter(theme.color ?? Colors.white));
+  }
+}
+
+class _EraserPainter extends CustomPainter {
+  _EraserPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = size.width / 24;
+    final stroke = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2 * s
+      ..strokeCap = StrokeCap.square;
+    canvas
+      ..save()
+      ..translate(size.width / 2, size.height / 2 - s)
+      ..rotate(-math.pi / 4)
+      // The body, with its rubber end filled.
+      ..drawRRect(
+        RRect.fromRectAndRadius(Rect.fromCenter(center: Offset.zero, width: 18 * s, height: 9 * s), Radius.circular(1.5 * s)),
+        stroke,
+      )
+      ..drawRect(Rect.fromLTRB(-9 * s, -4.5 * s, -2 * s, 4.5 * s), Paint()..color = color)
+      ..restore()
+      // The floor it rubs on.
+      ..drawLine(Offset(8 * s, 21 * s), Offset(21 * s, 21 * s), stroke);
+  }
+
+  @override
+  bool shouldRepaint(_EraserPainter old) => old.color != color;
+}
+

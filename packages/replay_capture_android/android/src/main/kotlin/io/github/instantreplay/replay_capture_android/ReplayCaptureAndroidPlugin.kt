@@ -182,6 +182,7 @@ class ReplayCaptureAndroidPlugin :
                 attachProgram = capture::setProgramSurface,
                 deviceStats = { lastEngineStats },
                 onStatus = { status -> mainHandler.post { onBroadcastStatus(status) } },
+                micGranted = ::hasMicPermission,
             )
         }
         outbox.attach(ring)
@@ -301,6 +302,7 @@ class ReplayCaptureAndroidPlugin :
                 clockRunning = overlay.clockRunning,
                 countDown = overlay.countDown,
                 scalePercent = overlay.scalePercent.toInt(),
+                plate = overlay.style == OverlayStyle.PLATE,
             ),
         )
     }
@@ -330,6 +332,12 @@ class ReplayCaptureAndroidPlugin :
     override fun broadcastStatus(): BroadcastStatus = broadcaster?.status() ?: IDLE_BROADCAST
 
     override fun broadcastSetAudio(audio: Boolean): Boolean = broadcaster?.setMuted(!audio) ?: false
+
+    override fun broadcastMicLevel(): Double? = broadcaster?.micLevelDbfs()
+
+    override fun broadcastMicPreview(on: Boolean) {
+        broadcaster?.setMicPreview(on)
+    }
 
     // Replays on air (SPEC §12.6).
 

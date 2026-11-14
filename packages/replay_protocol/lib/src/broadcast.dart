@@ -35,6 +35,15 @@ class TeamState {
   int get hashCode => Object.hash(name, score, color);
 }
 
+/// How the overlay draws the board. [classic] is the thin bar with names cut to
+/// [ScoreboardState.classicNameLength] letters; [plate] is a two-row plate with full names.
+enum ScoreboardStyle {
+  classic,
+  plate;
+
+  static ScoreboardStyle parse(Object? v) => ScoreboardStyle.values.firstWhere((s) => s.name == v, orElse: () => classic);
+}
+
 /// What a viewer can configure; scores, period and clock are changed by commands.
 class ScoreboardSettings {
   const ScoreboardSettings({
@@ -46,6 +55,7 @@ class ScoreboardSettings {
     required this.periodMs,
     required this.countDown,
     this.scale = ScoreboardState.defaultScale,
+    this.style,
   });
 
   factory ScoreboardSettings.fromJson(Json j) => ScoreboardSettings(
@@ -57,6 +67,8 @@ class ScoreboardSettings {
         periodMs: j['periodMs']! as int,
         countDown: j['countDown']! as bool,
         scale: j['scale'] as int? ?? ScoreboardState.defaultScale,
+        // Absent (a viewer older than the style): keep the board's current style.
+        style: j['style'] == null ? null : ScoreboardStyle.parse(j['style']),
       );
 
   final String homeName;
@@ -72,6 +84,9 @@ class ScoreboardSettings {
   /// Overlay size in percent of the base bar (SPEC §12.5).
   final int scale;
 
+  /// Null keeps the board's current style.
+  final ScoreboardStyle? style;
+
   Json toJson() => {
         'homeName': homeName,
         'awayName': awayName,
@@ -81,6 +96,7 @@ class ScoreboardSettings {
         'periodMs': periodMs,
         'countDown': countDown,
         'scale': scale,
+        if (style != null) 'style': style!.name,
       };
 }
 
@@ -98,6 +114,7 @@ class ScoreboardState {
     this.clockRunning = false,
     this.visible = true,
     this.scale = defaultScale,
+    this.style = ScoreboardStyle.classic,
   });
 
   factory ScoreboardState.fromJson(Json j) {
@@ -113,6 +130,7 @@ class ScoreboardState {
       clockRunning: clock['running'] as bool? ?? false,
       visible: j['visible'] as bool? ?? true,
       scale: j['scale'] as int? ?? defaultScale,
+      style: ScoreboardStyle.parse(j['style']),
     );
   }
 
@@ -122,7 +140,10 @@ class ScoreboardState {
     away: TeamState(name: 'VIS', color: 0xFFE53935),
   );
 
-  static const maxNameLength = 5;
+  /// Names are stored up to [maxNameLength]; the classic bar shows the first
+  /// [classicNameLength] letters (see [displayName]).
+  static const maxNameLength = 16;
+  static const classicNameLength = 5;
   static const maxPeriods = 4;
 
   /// Overlay sizes offered to viewers, in percent of the base bar (56 px high at 1080p).
@@ -143,6 +164,11 @@ class ScoreboardState {
 
   /// Overlay size in percent of the base bar.
   final int scale;
+  final ScoreboardStyle style;
+
+  /// [name] as the overlay draws it in [style].
+  static String displayName(String name, ScoreboardStyle style) =>
+      style == ScoreboardStyle.classic && name.length > classicNameLength ? name.substring(0, classicNameLength) : name;
 
   TeamState team(Team t) => t == Team.home ? home : away;
 
@@ -198,6 +224,7 @@ class ScoreboardState {
       periodMs: periodMs,
       countDown: s.countDown,
       scale: s.scale.clamp(50, 250),
+      style: s.style ?? base.style,
     );
     // A new clock mode or length restarts the period clock, paused.
     return clockChanged ? next._copy(clockMs: next.periodStartMs, clockRunning: false) : next;
@@ -219,6 +246,7 @@ class ScoreboardState {
         periodMs: periodMs,
         countDown: countDown,
         scale: scale,
+        style: style,
       );
 
   ScoreboardState _copy({
@@ -232,6 +260,7 @@ class ScoreboardState {
     bool? clockRunning,
     bool? visible,
     int? scale,
+    ScoreboardStyle? style,
   }) =>
       ScoreboardState(
         home: home ?? this.home,
@@ -244,6 +273,7 @@ class ScoreboardState {
         clockRunning: clockRunning ?? this.clockRunning,
         visible: visible ?? this.visible,
         scale: scale ?? this.scale,
+        style: style ?? this.style,
       );
 
   Json toJson() => {
@@ -256,6 +286,7 @@ class ScoreboardState {
         'clock': {'ms': clockMs, 'running': clockRunning},
         'visible': visible,
         'scale': scale,
+        'style': style.name,
       };
 
   @override
@@ -270,11 +301,12 @@ class ScoreboardState {
       other.clockMs == clockMs &&
       other.clockRunning == clockRunning &&
       other.visible == visible &&
-      other.scale == scale;
+      other.scale == scale &&
+      other.style == style;
 
   @override
   int get hashCode =>
-      Object.hash(home, away, period, periods, periodMs, countDown, clockMs, clockRunning, visible, scale);
+      Object.hash(home, away, period, periods, periodMs, countDown, clockMs, clockRunning, visible, scale, style);
 }
 
 /// `mm:ss`, minutes not capped (e.g. `93:12` in added time).

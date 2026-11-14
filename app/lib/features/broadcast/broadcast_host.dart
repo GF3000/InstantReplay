@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:replay_protocol/replay_protocol.dart';
 
 /// What the Camera's API server needs from broadcast mode (SPEC §12): the scoreboard and the
@@ -19,6 +20,10 @@ abstract interface class BroadcastHost {
 
   void scoreboardCommand(ScoreboardCommand command);
 
+  /// The stream microphone's level in dBFS (muted or not); null without an open microphone.
+  /// Polled only while something listens, so listen only while viewers need it.
+  ValueListenable<double?> get micLevel;
+
   /// [key] null (or empty) keeps the stored key.
   /// [replayScoreboard] null keeps the stored choice.
   Future<void> configure({
@@ -29,9 +34,22 @@ abstract interface class BroadcastHost {
     bool? replayScoreboard,
   });
 
-  /// Throws [BroadcastException] (`not_configured`, `broadcast_failed`). Returns false when the
-  /// stream started without the microphone because its permission was denied.
+  /// Throws [BroadcastException] (`not_configured`, `broadcast_failed`, and `youtube_<code>` when
+  /// the YouTube account could not prepare its live). Returns false when the stream started
+  /// without the microphone because its permission was denied. In YouTube account mode it first
+  /// makes sure a live is there and streams to the account's key, as the Camera's own Go live.
   Future<bool> start();
+
+  // YouTube through the Camera (SPEC §12.1). [changes] fires when [youtube] changes.
+
+  /// The Camera's YouTube state for `status.youtube`; null when this Camera has no account
+  /// support.
+  YouTubeStatus? get youtube;
+
+  /// Runs a viewer's YouTube command with the Camera's account. Returns the ingest server the
+  /// stream now goes to (`save`, `create`, `prepare`). Throws [BroadcastException]
+  /// `youtube_<code>` (see [YouTubeResult.errorCode]).
+  Future<String?> youtubeCommand(YouTubeCmd command);
 
   Future<void> stop();
 
@@ -56,7 +74,8 @@ abstract interface class BroadcastHost {
 }
 
 /// A broadcast command refused with an API error code (`not_configured`, `broadcast_failed`,
-/// `mic_permission`, `not_broadcast_mode`, `not_live`, `replay_unavailable`, `replay_failed`).
+/// `mic_permission`, `not_broadcast_mode`, `not_live`, `replay_unavailable`, `replay_failed`,
+/// and `youtube_<code>` for the Camera's YouTube account, e.g. `youtube_quota`).
 class BroadcastException implements Exception {
   const BroadcastException(this.code, [this.message]);
 

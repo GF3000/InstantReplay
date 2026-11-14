@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:instant_replay/features/broadcast/youtube/google_youtube_account.dart';
+import 'package:instant_replay/features/broadcast/youtube/youtube_account.dart';
 import 'package:instant_replay/features/broadcast/youtube/youtube_api.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -19,6 +20,10 @@ class _FakeYouTube {
 
   /// Transitions YouTube refuses (lives made with the monitor stream on can't skip testing).
   final refuse = <String>{};
+
+  /// What `channels.list?mine=true` returns: the channel, or nothing; [channelStatus] fails it.
+  Map<String, Object?>? channel;
+  var channelStatus = 200;
 
   Map<String, Object?> get _stream => {
         'id': 's1',
@@ -79,6 +84,12 @@ class _FakeYouTube {
         return json(_broadcast(id));
       case ('PUT', '/liveBroadcasts'):
         return json(_broadcast((jsonDecode(r.body) as Map)['id'] as String));
+      case ('GET', '/channels'):
+        if (channelStatus != 200) return http.Response('', channelStatus);
+        expect(r.url.queryParameters['mine'], 'true');
+        return json({
+          'items': [?channel],
+        });
     }
     return http.Response('', 404);
   }
@@ -98,9 +109,9 @@ void main() {
     yt = _FakeYouTube();
   });
 
-  test('save creates and binds a live, and turns account mode on', () async {
+  test('save creates and binds a live, and keeps account mode on', () async {
     final a = account();
-    expect(a.active, isFalse);
+    expect(a.active, isTrue, reason: 'signed in: the account wins over a key');
     final target = await a.save(title: 'Final', description: '', privacy: YouTubePrivacy.public, fresh: true);
     expect(target.key, 'key-s1');
     expect(target.server, 'rtmp://yt/live2');
@@ -153,11 +164,81 @@ void main() {
     expect(seen.last, isTrue);
   });
 
-  test('account mode is remembered across restarts', () async {
-    await account().setActive(true);
-    expect(account().active, isTrue);
-    await account().setActive(false);
-    expect(account().active, isFalse);
+  test('signed in, the account wins over a key, also with old prefs that said key', () async {
+    // Older versions stored false after saving a key while signed in.
+    await prefs.setBool('youtube.active', false);
+    final a = account();
+    expect(a.active, isTrue);
+    await a.setActive(false);
+    expect(a.active, isTrue, reason: 'only signing out goes back to the key');
+  });
+
+  test('signing out goes back to the key and forgets the channel', () async {
+    yt.channel = {
+      'id': 'UC1',
+      'snippet': {'title': 'Coras TV'},
+    };
+    final a = account();
+    await a.loadChannel();
+    expect(a.channel, isNotNull);
+    await a.signOut();
+    expect(a.email, isNull);
+    expect(a.channel, isNull);
+    expect(a.active, isFalse);
+    expect(prefs.getBool('youtube.active'), isFalse);
+  });
+
+  test('reads the channel the sign-in acts for, once, and remembers it for the next start', () async {
+    yt.channel = {
+      'id': 'UCbrand',
+      'snippet': {
+        'title': ' Coras TV ',
+        'thumbnails': {
+          'default': {'url': 'https://example.com/t.jpg'},
+        },
+      },
+    };
+    final a = account();
+    final changes = <void>[];
+    final sub = a.changes.listen(changes.add);
+    await a.loadChannel();
+    await Future<void>.delayed(Duration.zero);
+    await sub.cancel();
+    expect(a.channel!.id, 'UCbrand');
+    expect(a.channel!.title, 'Coras TV');
+    expect(a.channel!.thumbnailUrl, 'https://example.com/t.jpg');
+    expect((a.displayName, a.displaySub), ('Coras TV', 'coach@example.com'));
+    expect(yt.calls.where((c) => c == 'GET /channels'), hasLength(1));
+    expect(changes, isNotEmpty);
+    // The next start shows it at once, before asking YouTube again.
+    expect(account().channel!.title, 'Coras TV');
+  });
+
+  test('a channel that cannot be read falls back to the email, quietly', () async {
+    yt.channelStatus = 500;
+    final a = account();
+    await a.loadChannel();
+    expect(a.channel, isNull);
+    expect((a.displayName, a.displaySub), ('coach@example.com', null));
+  });
+
+  test('an account without a channel shows its email', () async {
+    final a = account();
+    await a.loadChannel();
+    expect(a.channel, isNull);
+    expect(a.displayName, 'coach@example.com');
+  });
+
+  test('a failed read keeps the channel known from the last start', () async {
+    yt.channel = {
+      'id': 'UC1',
+      'snippet': {'title': 'Coras TV'},
+    };
+    await account().loadChannel();
+    yt.channelStatus = 500;
+    final a = account();
+    await a.loadChannel();
+    expect(a.channel!.title, 'Coras TV');
   });
 
   test('a live made while the Camera already streams is taken live (auto start would not fire)', () async {

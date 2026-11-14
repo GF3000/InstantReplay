@@ -39,6 +39,8 @@ internal class Broadcaster(
     /** Latest engine stats (thermal, battery, camera fps) for the field log. */
     private val deviceStats: () -> Map<String, Any?>,
     private val onStatus: (BroadcastStatus) -> Unit,
+    /** RECORD_AUDIO granted now; the [setMicPreview] monitor never asks for it. */
+    private val micGranted: () -> Boolean = { false },
 ) {
     private val thread = HandlerThread("ir-broadcast").apply { start() }
     private val handler = Handler(thread.looper)
@@ -86,6 +88,39 @@ internal class Broadcaster(
         return true
     }
 
+    /**
+     * The open microphone's level in dBFS, muted or not: the stream's, or before going live the
+     * [setMicPreview] monitor's; null without one. Any thread.
+     */
+    fun micLevelDbfs(): Double? = if (micOpen) current?.audio?.levelDbfs else monitor?.levelDbfs
+
+    // Broadcast-thread state (monitor also read by micLevelDbfs).
+    private var monitorWanted = false
+    @Volatile private var monitor: MicMonitor? = null
+
+    /**
+     * Measures the microphone while no stream runs, so the mic button shows a level before going
+     * live (only while RECORD_AUDIO is granted). A stream takes the microphone over, and the
+     * monitor comes back after it while still wanted.
+     */
+    fun setMicPreview(on: Boolean) {
+        handler.post {
+            monitorWanted = on
+            syncMonitor()
+        }
+    }
+
+    // Broadcast thread.
+    private fun syncMonitor() {
+        val want = monitorWanted && session == null && micGranted()
+        if (want && monitor == null) {
+            monitor = MicMonitor.open()
+        } else if (!want) {
+            monitor?.release()
+            monitor = null
+        }
+    }
+
     private val programFrameRate = minOf(config.fps, 30)
 
     /**
@@ -110,12 +145,18 @@ internal class Broadcaster(
 
     /** Stops any broadcast (blocking until released) and the thread. */
     fun release() {
-        onThread(::stopNow)
+        onThread {
+            monitorWanted = false
+            stopNow()
+        }
         thread.quitSafely()
     }
 
     private fun startNow(url: String, targetKbps: Int, useMic: Boolean, muted: Boolean): BroadcastStatus {
         session?.let(::teardown)
+        // The stream opens the microphone itself.
+        monitor?.release()
+        monitor = null
         state = BroadcastState.IDLE
         val id = ++sessionIds
         this.targetKbps = targetKbps
@@ -180,6 +221,7 @@ internal class Broadcaster(
 
     private fun stopNow() {
         session?.let(::teardown)
+        syncMonitor()
         if (state != BroadcastState.IDLE) {
             state = BroadcastState.IDLE
             message = null

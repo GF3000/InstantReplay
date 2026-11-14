@@ -113,6 +113,42 @@ class YouTubeStream {
   final YouTubeIngest ingest;
 }
 
+/// The YouTube channel an access token acts for (`channels.list?mine=true`): a Google account can
+/// own several (brand accounts), and the one picked at sign-in is where the lives go.
+class YouTubeChannel {
+  const YouTubeChannel({required this.id, required this.title, this.thumbnailUrl});
+
+  factory YouTubeChannel.fromJson(Map<String, Object?> json) {
+    final snippet = (json['snippet'] as Map?)?.cast<String, Object?>() ?? const {};
+    final thumbnails = (snippet['thumbnails'] as Map?)?.cast<String, Object?>() ?? const {};
+    final thumb = (thumbnails['default'] as Map?)?.cast<String, Object?>() ?? const {};
+    return YouTubeChannel(
+      id: json['id']! as String,
+      title: (snippet['title'] as String? ?? '').trim(),
+      thumbnailUrl: thumb['url'] as String?,
+    );
+  }
+
+  final String id;
+  final String title;
+
+  /// The channel's small picture. Not shown (a letter avatar is used everywhere): it would load
+  /// from Google's servers.
+  final String? thumbnailUrl;
+
+  /// The same shape [YouTubeChannel.fromJson] reads, to remember the channel across restarts.
+  Map<String, Object?> toJson() => {
+        'id': id,
+        'snippet': {
+          'title': title,
+          if (thumbnailUrl != null)
+            'thumbnails': {
+              'default': {'url': thumbnailUrl},
+            },
+        },
+      };
+}
+
 /// A YouTube API call that failed. [reason] is YouTube's error reason when it gave one (for
 /// example `liveStreamingNotEnabled`), else the HTTP status.
 class YouTubeApiException implements Exception {
@@ -140,6 +176,15 @@ class YouTubeApi {
   final Future<String> Function({bool refresh}) token;
 
   static const _base = 'https://www.googleapis.com/youtube/v3';
+
+  /// The channel the token acts for, or null when the account has none. One unit of quota.
+  Future<YouTubeChannel?> myChannel() async {
+    final json = await _call('GET', '/channels', {'part': 'id,snippet', 'mine': 'true'});
+    final items = (json['items'] as List?) ?? const [];
+    if (items.isEmpty) return null;
+    final channel = YouTubeChannel.fromJson((items.first as Map).cast());
+    return channel.title.isEmpty ? null : channel;
+  }
 
   /// Our own stream [id], or null when it no longer exists.
   Future<YouTubeStream?> stream(String id) async {

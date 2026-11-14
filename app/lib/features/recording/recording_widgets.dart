@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:replay_protocol/replay_protocol.dart';
 
+import '../../core/ui/ir_colors.dart';
+import '../../core/ui/ir_widgets.dart';
 import '../../l10n/app_localizations.dart';
 
 // Full-session recording (SPEC §3.8) as both roles show it: the Camera for its own buttons, every
@@ -312,10 +314,10 @@ class RecordingStatusText extends StatelessWidget {
   }
 }
 
-/// The full-session recording as one small control (SPEC §3.8): a camera icon while idle, a
-/// `● 12:34` pill while recording (`⏸ 12:34` paused). Tapping it opens [showRecordingDialog]
-/// with the state, the time recorded, the space left and the actions, so a stray tap never
-/// starts or stops anything.
+//// The full-session recording as one small control (SPEC §3.8): a camera key while idle, a
+/// `● 12:34` pill while recording (`⏸ 12:34` paused). Tapping it opens [showRecordingDialog], a
+/// bottom sheet with the state, the time recorded, the space left and the actions, so a stray tap
+/// never starts or stops anything.
 class RecordingButton extends StatelessWidget {
   const RecordingButton({
     super.key,
@@ -335,7 +337,7 @@ class RecordingButton extends StatelessWidget {
   final VoidCallback onPause;
   final VoidCallback onFinish;
 
-  /// Prefix of the keys: `<prefix>-button`, and in the dialog `<prefix>-record`,
+  /// Prefix of the keys: `<prefix>-button`, and in the sheet `<prefix>-record`,
   /// `<prefix>-record-include`, `<prefix>-pause`, `<prefix>-finish`.
   final String keyPrefix;
 
@@ -348,10 +350,13 @@ class RecordingButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final c = context.ir;
     final rec = recording;
     final state = rec?.state ?? SessionRecordingState.idle;
-    final red = dim ? RecordingBar.dimRed : const Color(0xFFE53935);
-    final fg = dim ? RecordingBar.dimColor : (overVideo ? Colors.white : null);
+    final dimColor = c.muted.withValues(alpha: 0.55);
+    final red = dim ? c.live.withValues(alpha: 0.5) : c.live;
+    final fg = dim ? dimColor : (overVideo ? Colors.white : c.text);
+    final bg = dim ? Colors.transparent : (overVideo ? Colors.black.withValues(alpha: 0.6) : c.surface);
     void open() => showRecordingDialog(
           context,
           recording: rec,
@@ -360,44 +365,54 @@ class RecordingButton extends StatelessWidget {
           onFinish: onFinish,
           keyPrefix: keyPrefix,
         );
-    if (state == SessionRecordingState.idle) {
-      return IconButton(
-        key: ValueKey('$keyPrefix-button'),
-        tooltip: l10n.recTitle,
-        color: fg,
-        style: overVideo ? IconButton.styleFrom(backgroundColor: Colors.black54) : null,
-        constraints: const BoxConstraints.tightFor(width: 48, height: 48),
-        onPressed: enabled ? open : null,
-        icon: const Icon(Icons.videocam_outlined),
-      );
-    }
     final recordingNow = state == SessionRecordingState.recording;
     final warn = rec?.lowSpace ?? false;
-    return Tooltip(
-      message: l10n.recTitle,
-      child: OutlinedButton.icon(
-        key: ValueKey('$keyPrefix-button'),
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size(48, 40),
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          foregroundColor: dim ? RecordingBar.dimColor : (recordingNow ? red : fg),
-          backgroundColor: overVideo ? Colors.black54 : null,
-          side: BorderSide(color: recordingNow || warn ? red : (fg ?? Colors.grey), width: recordingNow ? 2 : 1),
-        ),
-        onPressed: enabled ? open : null,
-        icon: Icon(recordingNow ? Icons.fiber_manual_record : Icons.pause, size: 16, color: recordingNow ? red : fg),
-        label: Text(
+    final border = recordingNow || warn ? red : (dim ? dimColor : (overVideo ? Colors.white54 : c.line));
+    final Widget content;
+    if (state == SessionRecordingState.idle) {
+      content = Icon(Icons.videocam_outlined, color: fg, size: 22);
+    } else {
+      content = Row(mainAxisSize: MainAxisSize.min, children: [
+        if (recordingNow)
+          IrLiveDot(color: red, size: 10, blink: !dim)
+        else
+          Icon(Icons.pause, size: 16, color: fg),
+        const SizedBox(width: 8),
+        Text(
           formatRecordingClock(rec!.elapsedMs),
           key: const ValueKey('rec-button-time'),
-          style: const TextStyle(fontWeight: FontWeight.bold, fontFeatures: [FontFeature.tabularFigures()]),
+          style: irMono(15, color: recordingNow && dim ? red : fg),
+        ),
+      ]);
+    }
+    return Tooltip(
+      message: l10n.recTitle,
+      child: Opacity(
+        opacity: enabled ? 1 : 0.45,
+        child: Material(
+          key: ValueKey('$keyPrefix-button'),
+          color: bg,
+          shape: StadiumBorder(side: BorderSide(color: border, width: recordingNow ? 2 : 1)),
+          child: InkWell(
+            customBorder: const StadiumBorder(),
+            onTap: enabled ? open : null,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: state == SessionRecordingState.idle ? 12 : 14),
+                child: Center(widthFactor: 1, child: content),
+              ),
+            ),
+          ),
         ),
       ),
     );
   }
 }
 
-/// The recording's state (time, parts, space left) and what can be done from it: start, or
-/// include the last 30 s; pause; resume; finish (which asks again, it cannot be undone).
+/// The recording's state (time, parts, space left) and what can be done from it, in a bottom
+/// sheet: start, or include the last 30 s; pause; resume; finish (which asks again, it cannot be
+/// undone).
 Future<void> showRecordingDialog(
   BuildContext context, {
   required SessionRecording? recording,
@@ -408,41 +423,69 @@ Future<void> showRecordingDialog(
 }) {
   final l10n = AppLocalizations.of(context);
   final state = recording?.state ?? SessionRecordingState.idle;
-  const red = Color(0xFFE53935);
-  Widget action(String key, IconData icon, String label, VoidCallback onTap, {Color? color}) => SimpleDialogOption(
-        key: ValueKey('$keyPrefix-$key'),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        onPressed: onTap,
-        child: Row(children: [
-          Icon(icon, color: color),
-          const SizedBox(width: 16),
-          Flexible(child: Text(label, style: Theme.of(context).textTheme.titleMedium)),
-        ]),
-      );
-  return showDialog<void>(
+  return showModalBottomSheet<void>(
     context: context,
-    builder: (dialogContext) {
+    isScrollControlled: true,
+    useSafeArea: true,
+    showDragHandle: true,
+    constraints: const BoxConstraints(maxWidth: 560),
+    builder: (sheetContext) {
+      final c = sheetContext.ir;
       void run(VoidCallback f) {
-        Navigator.of(dialogContext).pop();
+        Navigator.of(sheetContext).pop();
         f();
       }
 
-      return SimpleDialog(
-        key: ValueKey('$keyPrefix-dialog'),
-        title: Text(l10n.recTitle),
-        children: [
+      Widget action(String key, IconData icon, String label, VoidCallback onTap, {Color? color, bool primary = false}) =>
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-            child: RecordingStatusText(recording: recording),
-          ),
-          const Divider(),
+            padding: const EdgeInsets.only(top: 8),
+            child: primary
+                ? SizedBox(height: 56, child: IrKey(
+                    key: ValueKey('$keyPrefix-$key'),
+                    led: color,
+                    onPressed: onTap,
+                    child: Center(child: Row(children: [
+                      Icon(icon, color: color ?? c.text),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(label, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: c.text)),
+                      ),
+                    ])),
+                  ))
+                : OutlinedButton(
+                    key: ValueKey('$keyPrefix-$key'),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(56),
+                      alignment: AlignmentDirectional.centerStart,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      foregroundColor: color ?? c.text,
+                      side: BorderSide(color: color ?? c.line),
+                    ),
+                    onPressed: onTap,
+                    child: Row(children: [
+                      Icon(icon),
+                      const SizedBox(width: 12),
+                      Expanded(child: Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
+                    ]),
+                  ),
+          );
+
+      return SingleChildScrollView(
+        key: ValueKey('$keyPrefix-dialog'),
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text(l10n.recTitle, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: c.text)),
+          const SizedBox(height: 10),
+          IrPanel(child: RecordingStatusText(recording: recording)),
+          const SizedBox(height: 4),
           if (state != SessionRecordingState.recording) ...[
             action(
               'record',
               Icons.fiber_manual_record,
               state == SessionRecordingState.paused ? l10n.recResumeFromNow : l10n.recFromNow,
               () => run(() => onRecord(0)),
-              color: red,
+              color: c.live,
+              primary: true,
             ),
             action(
               'record-include',
@@ -454,13 +497,13 @@ Future<void> showRecordingDialog(
             ),
           ],
           if (state == SessionRecordingState.recording)
-            action('pause', Icons.pause, l10n.recPause, () => run(onPause)),
+            action('pause', Icons.pause, l10n.recPause, () => run(onPause), primary: true),
           if (state != SessionRecordingState.idle)
             action('finish', Icons.stop, l10n.recFinish, () async {
-              Navigator.of(dialogContext).pop();
+              Navigator.of(sheetContext).pop();
               if (await confirmFinishRecording(context, recording?.elapsedMs ?? 0)) onFinish();
-            }),
-        ],
+            }, color: c.liveText),
+        ]),
       );
     },
   );

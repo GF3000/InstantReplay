@@ -4,7 +4,7 @@ import 'dart:ui' show Locale;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:instant_replay/features/broadcast/scoreboard_controller.dart';
 import 'package:instant_replay/l10n/app_localizations.dart';
-import 'package:replay_capture_android/replay_capture_android.dart' show OverlayState;
+import 'package:replay_capture_android/replay_capture_android.dart' show OverlayState, OverlayStyle;
 import 'package:replay_protocol/replay_protocol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -169,6 +169,60 @@ void main() {
       expect(periodLabel(en, period: 4, periods: 4), 'Q4');
       expect(periodLabel(en, period: 2, periods: 3), 'P2');
       expect(periodLabel(es, period: 1, periods: 1), '');
+    });
+
+    group('style', () {
+      ScoreboardSettings settings(ScoreboardStyle style) => ScoreboardSettings(
+            homeName: 'Halcones',
+            awayName: 'Leones de Madrid',
+            homeColor: 1,
+            awayColor: 2,
+            periods: 2,
+            periodMs: 60000,
+            countDown: false,
+            style: style,
+          );
+
+      test('classic (the default) sends names cut to 5 letters', () {
+        final c = controller()..overlayEnabled = true;
+        expect(overlays.last.style, OverlayStyle.classic);
+        c.apply(SettingsCommand(settings(ScoreboardStyle.classic)));
+        expect(c.current.home.name, 'HALCONES', reason: 'stored in full');
+        expect(overlays.last.style, OverlayStyle.classic);
+        expect(overlays.last.homeName, 'HALCO');
+        expect(overlays.last.awayName, 'LEONE');
+      });
+
+      test('plate sends the full names; switching back cuts them again', () {
+        final c = controller()..overlayEnabled = true;
+        c.apply(SettingsCommand(settings(ScoreboardStyle.plate)));
+        expect(overlays.last.style, OverlayStyle.plate);
+        expect(overlays.last.homeName, 'HALCONES');
+        expect(overlays.last.awayName, 'LEONES DE MADRID');
+        expect(overlays.last.periodLabel, '1H', reason: 'the same short period label as the bar');
+
+        c.apply(SettingsCommand(settings(ScoreboardStyle.classic)));
+        expect(overlays.last.style, OverlayStyle.classic);
+        expect(overlays.last.homeName, 'HALCO');
+      });
+
+      test('a running clock keeps the style when commands re-anchor it', () {
+        final c = controller()
+          ..overlayEnabled = true
+          ..apply(SettingsCommand(settings(ScoreboardStyle.plate)))
+          ..apply(const ClockStartCommand());
+        now += 5000;
+        c.apply(const ScoreCommand(team: Team.home, delta: 1));
+        expect(c.current.style, ScoreboardStyle.plate);
+        expect(overlays.last.style, OverlayStyle.plate);
+      });
+
+      test('the style survives a restart', () {
+        controller().apply(SettingsCommand(settings(ScoreboardStyle.plate)));
+        controller().overlayEnabled = true;
+        expect(overlays.last.style, OverlayStyle.plate);
+        expect(overlays.last.awayName, 'LEONES DE MADRID');
+      });
     });
 
     test('uses the Camera language when pushed', () {

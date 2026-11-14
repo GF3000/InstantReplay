@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/ui/ir_colors.dart';
 import '../../../l10n/app_localizations.dart';
 import 'tags.dart';
 
@@ -57,43 +58,18 @@ class _TagList extends ConsumerWidget {
           onReorderItem: notifier.reorder,
           itemBuilder: (context, i) {
             final t = tags[i];
-            return ListTile(
+            return Padding(
               key: ValueKey(t.id),
-              minTileHeight: 64,
-              leading: Icon(Icons.circle, color: t.colour, size: 28),
-              title: Text(t.label(l10n), style: const TextStyle(fontSize: 18)),
-              onTap: () async {
-                final r = await showTagDialog(context, name: t.label(l10n), color: t.color);
-                // An untouched default keeps following the app language.
-                if (r != null) {
-                  notifier.update(t.id, name: r.name == t.label(l10n) ? null : r.name, color: r.color);
-                }
-              },
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    tooltip: l10n.viewerTagDelete,
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () {
-                      notifier.remove(t.id);
-                      // Next to the drag handle, a slip is easy: offer an undo.
-                      ScaffoldMessenger.of(context)
-                        ..hideCurrentSnackBar()
-                        ..showSnackBar(SnackBar(
-                          content: Text(l10n.viewerTagDeleted(t.label(l10n))),
-                          action: SnackBarAction(
-                            label: l10n.viewerTagUndo,
-                            onPressed: () => notifier.restore(t, i),
-                          ),
-                        ));
-                    },
-                  ),
-                  ReorderableDragStartListener(
-                    index: i,
-                    child: const Padding(padding: EdgeInsets.all(12), child: Icon(Icons.drag_handle)),
-                  ),
-                ],
+              padding: const EdgeInsets.fromLTRB(16, 3, 16, 3),
+              // A flat bordered panel; its own Material so the row's ink shows.
+              child: Material(
+                color: context.ir.surface,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                  side: BorderSide(color: context.ir.line),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: _tagRow(context, l10n, notifier, t, i),
               ),
             );
           },
@@ -101,6 +77,107 @@ class _TagList extends ConsumerWidget {
       ),
     );
   }
+
+  Widget _tagRow(BuildContext context, AppLocalizations l10n, TagsNotifier notifier, ViewerTag t, int i) => ListTile(
+    minTileHeight: 60,
+    leading: TagSwatch(color: t.color),
+    title: Text(t.label(l10n), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+    onTap: () async {
+      final r = await showTagDialog(context, name: t.label(l10n), color: t.color);
+      // An untouched default keeps following the app language.
+      if (r != null) {
+        notifier.update(t.id, name: r.name == t.label(l10n) ? null : r.name, color: r.color);
+      }
+    },
+    trailing: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          tooltip: l10n.viewerTagDelete,
+          icon: const Icon(Icons.delete_outline),
+          onPressed: () {
+            notifier.remove(t.id);
+            // Next to the drag handle, a slip is easy: offer an undo.
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(
+                SnackBar(
+                  content: Text(l10n.viewerTagDeleted(t.label(l10n))),
+                  action: SnackBarAction(label: l10n.viewerTagUndo, onPressed: () => notifier.restore(t, i)),
+                ),
+              );
+          },
+        ),
+        ReorderableDragStartListener(
+          index: i,
+          child: const Padding(padding: EdgeInsets.all(12), child: Icon(Icons.drag_handle)),
+        ),
+      ],
+    ),
+  );
+}
+
+/// One colour of the palette: a bordered square cell with the colour; the selected one has an
+/// amber border, an amber-tinted fill and a check.
+class _ColourChoice extends StatelessWidget {
+  const _ColourChoice({required this.color, required this.selected, required this.onTap});
+
+  final int color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ir;
+    final colour = Color(color);
+    final onColour = ThemeData.estimateBrightnessForColor(colour) == Brightness.dark ? Colors.white : Colors.black;
+    return Semantics(
+      selected: selected,
+      button: true,
+      child: Material(
+        key: ValueKey('tag-color-$color'),
+        color: selected ? c.signalSoft : c.bg,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4),
+          side: BorderSide(color: selected ? c.signal : c.line, width: selected ? 2 : 1),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(4),
+          onTap: onTap,
+          child: SizedBox.square(
+            dimension: 48,
+            child: Center(
+              child: Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(color: colour, borderRadius: BorderRadius.circular(2)),
+                child: selected ? Icon(Icons.check, size: 20, color: onColour) : null,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A tag's colour as a small square swatch.
+class TagSwatch extends StatelessWidget {
+  const TagSwatch({super.key, required this.color, this.size = 22});
+
+  final int color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      color: Color(color),
+      borderRadius: BorderRadius.circular(2),
+      boxShadow: [BoxShadow(color: Color(color).withValues(alpha: 0.5), blurRadius: 6)],
+    ),
+  );
 }
 
 /// Name and colour of a new or edited tag; null when cancelled.
@@ -158,16 +235,11 @@ class _TagDialogState extends State<_TagDialog> {
             Text(l10n.viewerTagColor, style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 8),
             Wrap(
-              spacing: 4,
-              runSpacing: 4,
+              spacing: 6,
+              runSpacing: 6,
               children: [
                 for (final c in tagPalette)
-                  IconButton(
-                    key: ValueKey('tag-color-$c'),
-                    iconSize: 32,
-                    onPressed: () => setState(() => _color = c),
-                    icon: Icon(c == _color ? Icons.check_circle : Icons.circle, color: Color(c)),
-                  ),
+                  _ColourChoice(color: c, selected: c == _color, onTap: () => setState(() => _color = c)),
               ],
             ),
           ],

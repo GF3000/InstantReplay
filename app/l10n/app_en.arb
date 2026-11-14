@@ -252,8 +252,12 @@
   "viewerReviewPlaylistPosition": "{index} / {count}",
   "@viewerReviewPlaylistPosition": {
     "placeholders": {
-      "index": {"type": "int"},
-      "count": {"type": "int"}
+      "index": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
     }
   },
   "viewerReviewPlay": "Play",
@@ -569,7 +573,9 @@
   "libraryWatchAll": "{count, plural, =1{Watch 1 clip} other{Watch all ({count})}}",
   "@libraryWatchAll": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "libraryDelete": "Delete",
@@ -798,25 +804,33 @@
   "scoreboardGoToPeriod": "Go to {period}",
   "@scoreboardGoToPeriod": {
     "placeholders": {
-      "period": {"type": "String"}
+      "period": {
+        "type": "String"
+      }
     }
   },
   "scoreboardBackToPeriod": "Back to {period}",
   "@scoreboardBackToPeriod": {
     "placeholders": {
-      "period": {"type": "String"}
+      "period": {
+        "type": "String"
+      }
     }
   },
   "scoreboardPeriodConfirmTitle": "Go to {period}?",
   "@scoreboardPeriodConfirmTitle": {
     "placeholders": {
-      "period": {"type": "String"}
+      "period": {
+        "type": "String"
+      }
     }
   },
   "scoreboardPeriodConfirmBody": "The clock stops and goes to {time}.",
   "@scoreboardPeriodConfirmBody": {
     "placeholders": {
-      "time": {"type": "String"}
+      "time": {
+        "type": "String"
+      }
     }
   },
   "scoreboardPeriodConfirm": "Change period",
@@ -840,7 +854,9 @@
   "switchRoleViewersBody": "{count, plural, =1{A viewer is connected. Switching role stops the camera and disconnects it.} other{{count} viewers are connected. Switching role stops the camera and disconnects them.}}",
   "@switchRoleViewersBody": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "clipReserveTitle": "Replay reserve",
@@ -852,7 +868,9 @@
   "clipOnCamera": "On the camera",
   "@clipReserveHint": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "broadcastReplayScoreboard": "Scoreboard during replays",
@@ -861,20 +879,24 @@
   "roleBroadcastEntry": "Broadcast a match · beta",
   "roleBroadcastDescription": "Streams to YouTube with a scoreboard and replays.",
   "checkTitle": "Before going live",
-  "checkKeyOk": "YouTube stream key saved",
+  "checkKeyOk": "Streams with the saved stream key",
   "checkKeyMissing": "No YouTube stream key yet",
   "checkKeyAction": "Add",
   "checkQualityUnknown": "Quality: the camera is starting",
   "checkQualityOk": "Quality {profile}",
   "@checkQualityOk": {
     "placeholders": {
-      "profile": {"type": "String"}
+      "profile": {
+        "type": "String"
+      }
     }
   },
   "checkQualityLow": "Quality {profile}: YouTube looks better at 1080p",
   "@checkQualityLow": {
     "placeholders": {
-      "profile": {"type": "String"}
+      "profile": {
+        "type": "String"
+      }
     }
   },
   "checkQualityAction": "Use 1080p",
@@ -944,7 +966,13 @@
   "youtubePrivacyUnlisted": "Unlisted",
   "youtubePrivacyPrivate": "Private",
   "youtubeDefaultTitle": "Match {date}",
-  "@youtubeDefaultTitle": {"placeholders": {"date": {"type": "String"}}},
+  "@youtubeDefaultTitle": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "youtubeLifeReady": "Ready: goes live as soon as the stream arrives",
   "youtubeLifeStarting": "YouTube is starting the live",
   "youtubeLifeLive": "Live on YouTube",
@@ -961,12 +989,309 @@
   "youtubeErrorForbidden": "YouTube refused access. Sign in again.",
   "youtubeErrorNetwork": "Can't reach YouTube. Check the internet connection.",
   "youtubeErrorSignIn": "Couldn't sign in: {message}",
-  "@youtubeErrorSignIn": {"placeholders": {"message": {"type": "String"}}},
+  "@youtubeErrorSignIn": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
   "youtubeErrorApi": "YouTube error: {message}",
-  "@youtubeErrorApi": {"placeholders": {"message": {"type": "String"}}},
+  "@youtubeErrorApi": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
   "youtubeQr": "QR",
   "youtubeQrTitle": "Watch the live",
   "youtubeQrClose": "Close",
   "youtubeNeedSignIn": "The stream goes to your YouTube account: sign in again in the stream settings, or switch to Stream key.",
-  "youtubeShare": "Share"
+  "youtubeShare": "Share",
+  "reviewDraw": "Draw",
+  "reviewDrawActive": "Drawing on",
+  "reviewChangeTag": "Change tag",
+  "reviewExport": "Export",
+  "reviewMore": "More",
+  "reviewAirSend": "Air replay",
+  "reviewAirStop": "Take off air",
+  "reviewOnAirBanner": "ON AIR · YOUTUBE SEES IT",
+  "reviewClipOf": "clip {index} of {count}",
+  "@reviewClipOf": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewFrameCounter": "F {frame} / {total}",
+  "@reviewFrameCounter": {
+    "placeholders": {
+      "frame": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewFrameBack": "−1 fr",
+  "reviewFrameForward": "+1 fr",
+  "reviewLoading": "Loading the clip…",
+  "reviewRetry": "Retry",
+  "reviewToolArrow": "Arrow",
+  "reviewToolCircle": "Circle",
+  "reviewToolLine": "Line",
+  "reviewToolPen": "Pen",
+  "reviewToolEraser": "Eraser",
+  "reviewToolSelect": "Move",
+  "reviewThick": "Thick",
+  "reviewUndo": "Undo",
+  "reviewClearAll": "Clear",
+  "reviewDeleteMark": "Delete",
+  "reviewDone": "Done",
+  "connectStepCamera": "Camera",
+  "connectStepCode": "Code",
+  "connectStepSession": "Session",
+  "connectScanSubtitle": "It's on the camera's screen",
+  "connectManual": "Type the address by hand",
+  "connectCodeHint": "The 6 big digits under the camera's QR",
+  "connectOtherCamera": "Choose another camera",
+  "connectPickerConnectedTo": "Connected to {name}",
+  "@connectPickerConnectedTo": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "connectPickerQuestion": "What are you recording?",
+  "connectPickerContinue": "Continue this session",
+  "connectPickerNewMatch": "New match",
+  "connectPickerNewTraining": "New training",
+  "connectPickerNewOther": "Other session",
+  "connectPickerNameHint": "Empty: type and date",
+  "libFilterAll": "All",
+  "libFilterMatches": "Matches",
+  "libFilterTrainings": "Training",
+  "libSelect": "Select",
+  "libSelectCancel": "Cancel",
+  "libExportCount": "Export {count}",
+  "@libExportCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "libShare": "Share",
+  "libEmptyHint": "Clips you save live appear here.",
+  "libFilterEmpty": "Nothing with this filter.",
+  "libError": "Couldn't open the library",
+  "libRetry": "Retry",
+  "libTemplatesBuiltIn": "Built-in",
+  "libTemplatesImported": "Imported",
+  "liveSaveTitle": "Save play",
+  "liveSaveSubtitle": "the last {seconds} s and {post} s more",
+  "@liveSaveSubtitle": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      },
+      "post": {
+        "type": "int"
+      }
+    }
+  },
+  "liveOnAirBadge": "LIVE",
+  "liveNoSoundBadge": "STREAM WITHOUT SOUND",
+  "liveMicOpen": "Mic on",
+  "liveMicClosed": "Mic off",
+  "liveMenu": "Menu",
+  "liveRestart": "Restart",
+  "liveClipsEmptyHint": "Tap Save play right after a good moment.",
+  "liveTagPanelTitle": "Saved · what was it?",
+  "livePlayClip": "Watch",
+  "liveTeams": "{home} vs {away}",
+  "@liveTeams": {
+    "placeholders": {
+      "home": {
+        "type": "String"
+      },
+      "away": {
+        "type": "String"
+      }
+    }
+  },
+  "liveGlanceTitle": "Match at a glance",
+  "liveGlanceHint": "Tap a mark to review it",
+  "camWhatYouTubeSees": "What YouTube sees",
+  "camNoSound": "NO SOUND",
+  "camStreamTitle": "Stream",
+  "camOnAirYouTube": "Live on YouTube",
+  "camOnAirFor": "on air",
+  "camMbps": "Mbps",
+  "camViewersLabel": "viewers",
+  "camStopStream": "Stop streaming",
+  "camStopShort": "Stop",
+  "camMicOpen": "Microphone on",
+  "camMicOpenHint": "Tap to turn it off",
+  "camMicClosed": "Microphone off",
+  "camMicClosedHint": "YouTube hears nothing · tap to turn it on",
+  "camTileTemperature": "Temperature",
+  "camTileMemory": "Memory",
+  "camTileViewers": "Viewers",
+  "camTileOutbox": "To send",
+  "camTileCharging": "Charging",
+  "camConnectViewerSub": "QR and code · {count, plural, =0{nobody connected} =1{1 connected} other{{count} connected}}",
+  "@camConnectViewerSub": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "camPairSheetSub": "Scan it from InstantReplay on the bench tablet or phone",
+  "camPairOrCode": "Or type this code in the viewer",
+  "camConnectedNow": "Connected now",
+  "camClose": "Close",
+  "camShareLive": "Share the live",
+  "camShareLiveSub": "YouTube link for families",
+  "camShareSheetSub": "Scan it with the phone camera: it opens the live on YouTube",
+  "camShareHint": "“Share…” opens WhatsApp, email and the other apps on the phone.",
+  "camShareAction": "Share…",
+  "camPrivacyChangeHint": "Change it in Prepare the stream.",
+  "camPrepareStream": "Prepare the stream",
+  "camBlackScreen": "Black screen",
+  "camScoreboardShort": "Scoreboard",
+  "camReadyTitle": "Ready to go live",
+  "camReadySub": "Everything is checked. Go live when you want.",
+  "camAmberHint": "Amber warnings do not stop you from going live.",
+  "camOperatingTitle": "Recording · screen off to save battery",
+  "camSavedForNext": "Saved for the next match",
+  "camTabDestination": "Destination",
+  "camTabDestinationSub": "YouTube · account or key",
+  "camTabImage": "Picture and sound",
+  "camTabImageSub": "Quality and microphone",
+  "camTabReplays": "Replays",
+  "camTabReplaysSub": "How they look on air",
+  "camStepImage": "Picture",
+  "camStepCheck": "Check",
+  "camWhereStream": "Where does it go?",
+  "camQualityTitle": "Picture quality",
+  "camQualityLow": "Saver",
+  "camQualityNormal": "Normal",
+  "camQualityHigh": "High",
+  "camQualityLowSub": "mobile data",
+  "camQualityNormalSub": "recommended",
+  "camQualityHighSub": "good Wi-Fi",
+  "camQualityPerHour": "≈ {gigabytes} GB per hour",
+  "@camQualityPerHour": {
+    "placeholders": {
+      "gigabytes": {
+        "type": "String"
+      }
+    }
+  },
+  "camQualityAuto": "If the connection drops, the stream lowers the quality by itself so it does not cut.",
+  "camFineTune": "Fine tune",
+  "camSoundTitle": "Sound",
+  "camMicTitle": "Camera microphone",
+  "camMicSub": "Sound of the venue. You can mute it on air.",
+  "camReplaysTitle": "How replays look",
+  "camGoLiveNow": "Start streaming",
+  "camGoLiveLast": "Go live, like last time",
+  "camNext": "Next",
+  "camSummary": "SUMMARY",
+  "camSumKey": "Key",
+  "camSumYouTube": "YouTube · {privacy}",
+  "@camSumYouTube": {
+    "placeholders": {
+      "privacy": {
+        "type": "String"
+      }
+    }
+  },
+  "camSumReplay": "Replay",
+  "camSumScoreboardOn": "with scoreboard",
+  "camSumScoreboardOff": "badge only",
+  "camYes": "Yes",
+  "camNo": "No",
+  "camWhoCanSee": "Who can see it",
+  "camPrivacyPublicSub": "Anyone can find it",
+  "camPrivacyUnlistedSub": "Only with the link",
+  "camPrivacyPrivateSub": "Only your account",
+  "camBack": "Back",
+  "sbPageTitle": "Broadcast scoreboard",
+  "sbStyle": "Style",
+  "sbClassic": "Classic",
+  "sbClassicSub": "A thin bar. Names up to 5 letters.",
+  "sbPlate": "Plate",
+  "sbPlateSub": "Two rows. Full names up to 16 letters.",
+  "sbDefault": "DEFAULT",
+  "sbClassicCut": "The Classic style cuts names to 5 letters. Plate shows them in full.",
+  "sbPreview": "PREVIEW",
+  "sbHomeTeam": "Home team",
+  "sbAwayTeam": "Away team",
+  "sbTeamName": "Name",
+  "sbSizeOnScreen": "Size on screen",
+  "sbMatch": "Match",
+  "sbReplayBadge": "REPLAY",
+  "sbClockStart": "Start clock",
+  "sbClockPause": "Pause clock",
+  "camShareLoading": "Preparing the YouTube link…",
+  "camShareLoadingSub": "It takes a few seconds the first time; then it opens at once.",
+  "camShareRetry": "Try again",
+  "sbVisibility": "What shows",
+  "sbOnAir": "Scoreboard on air",
+  "sbOnAirSub": "Turn it off to stream without a scoreboard",
+  "sbControls": "Scoreboard controls on this screen",
+  "sbControlsSub": "Hide them when someone else keeps the score",
+  "sbChangeColour": "Change colour",
+  "camInfoTitle": "Camera status",
+  "camRecordingTitle": "Camera recording",
+  "camSameWifi": "Viewers must be on the same Wi-Fi network as this camera, or connected to its hotspot.",
+  "connectSameWifi": "This device and the camera must be on the same Wi-Fi network (or this device on the camera's hotspot).",
+  "settingsAppTitle": "App settings",
+  "viewerThisScreen": "This screen",
+  "viewerSaveButtons": "Save buttons",
+  "checkAccountOk": "Streams to the YouTube account {email}",
+  "@checkAccountOk": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "checkAccountSignIn": "Sign in to the YouTube account to stream",
+  "liveMicClosedBadge": "MIC CLOSED",
+  "ytAccountCheckChannel": "Streams to the YouTube channel {channel}",
+  "@ytAccountCheckChannel": {
+    "placeholders": {
+      "channel": {
+        "type": "String"
+      }
+    }
+  },
+  "ytAccountKeyLocked": "You're using your YouTube account. Sign out to stream with a key.",
+  "ytAccountOrUseKey": "Or sign out and stream with a stream key.",
+  "ytAccountErrorQuota": "The YouTube API daily quota is used up.",
+  "reviewColourRed": "red",
+  "reviewColourYellow": "yellow",
+  "reviewColourWhite": "white",
+  "reviewColourBlue": "blue",
+  "reviewColourBlack": "black",
+  "liveOnYouTubeBadge": "ON AIR",
+  "ytRemoteOrUseKey": "Or sign out on the Camera and stream with a stream key.",
+  "ytRemoteNeedSignIn": "The stream goes to the Camera's YouTube account: sign in again on the Camera, or switch to Stream key.",
+  "ytRemoteNoCamera": "The Camera didn't answer. Check the connection and try again.",
+  "ytRemoteUnavailable": "This Camera can't use a YouTube account. Use a stream key.",
+  "ytRemoteKeyLocked": "The Camera is using its YouTube account. To stream with a key, sign out on the Camera.",
+  "ytRemoteSignInHelp": "The YouTube account is set up on the Camera: sign in with Google there, once. Meanwhile you can stream with a key.",
+  "ytRemoteOnCamera": "Signed in on the Camera",
+  "ytDestKey": "Streams with a manual key"
 }

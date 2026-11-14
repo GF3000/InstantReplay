@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:replay_protocol/replay_protocol.dart' show SessionRecordingState;
 
+import '../../core/ui/ir_colors.dart';
 import '../../l10n/app_localizations.dart';
 import '../library/library_providers.dart';
 import '../library/presentation/library_page.dart';
@@ -14,94 +16,96 @@ import 'tags/tag_editor_page.dart';
 import 'ui/camera_status.dart';
 import 'ui/connect_view.dart';
 import 'ui/live_control_view.dart';
+import 'ui/save_button_settings.dart';
 import 'viewer_providers.dart';
 
 /// Viewer role (SPEC §5, §6): connect to a Camera, watch live, save and review clips.
+///
+/// Top bar while paired: the camera's name over the session / teams, the camera-status pill, the
+/// stream's mic (broadcast mode) and one menu button with every other action in a sheet. It fits
+/// 360 dp; wide screens also get Library and Settings as direct buttons.
 class ViewerPage extends ConsumerWidget {
   const ViewerPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final c = context.ir;
     final setup = ref.watch(viewerSetupProvider);
     final camera = setup.paired ? ref.watch(linkStateProvider.select((s) => s?.camera)) : null;
     final library = ref.watch(libraryEnabledProvider);
     final session = ref.watch(activeSessionProvider);
+    final teams = setup.paired
+        ? ref.watch(viewerScoreboardProvider.select((s) => s == null ? null : (s.home.name, s.away.name)))
+        : null;
+    final subtitle = [
+      ?camera?.profileId,
+      ?session?.name,
+      if (teams case (final home, final away)) l10n.liveTeams(home, away),
+    ].join(' · ');
+    final wide = MediaQuery.sizeOf(context).width >= 900;
+    final menu = IconButton(
+      key: const ValueKey('viewer-menu'),
+      tooltip: l10n.liveMenu,
+      icon: const Icon(Icons.menu),
+      onPressed: () => _openMenu(context, ref),
+    );
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: setup.paired ? 48 : null,
-        title: Text(
-          camera == null ? l10n.roleViewer : _cameraTitle(camera.name, camera.profileId),
-          overflow: TextOverflow.ellipsis,
-        ),
-        actions: [
-          if (setup.paired) const CameraStatusIndicator(),
-          if (setup.paired) const ViewerMicButton(),
-          if (setup.paired) const ViewerRecordingButton(),
-          if (setup.paired) const ViewerPanelsButton(),
-          IconButton(
-            key: const ValueKey('viewer-settings'),
-            tooltip: l10n.settingsTitle,
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () => context.push('/viewer/settings'),
-          ),
-          PopupMenuButton<_MenuItem>(
-            key: const ValueKey('viewer-menu'),
-            icon: const Icon(Icons.more_vert),
-            onSelected: (item) async {
-              switch (item) {
-                case _MenuItem.tags:
-                  await Navigator.of(context).push(TagEditorPage.route());
-                case _MenuItem.library:
-                  await Navigator.of(context).push(LibraryPage.route());
-                case _MenuItem.changeSession:
-                  ref.read(activeSessionProvider.notifier).close();
-                case _MenuItem.clipReserve:
-                  await showDialog<void>(context: context, builder: (_) => const _ClipReserveDialog());
-                case _MenuItem.changeCamera:
-                  await ref.read(viewerSetupProvider.notifier).changeCamera();
-                case _MenuItem.switchRole:
-                  // Connected: switching drops the live view and, on Android, the clip transfers.
-                  final connected = ref.read(linkStateProvider)?.phase == LinkPhase.connected;
-                  if (connected && !await confirmSwitchRole(context, l10n.switchRoleViewerBody)) return;
-                  await ref.read(roleProvider.notifier).clear();
-                  if (context.mounted) context.go('/');
-              }
-            },
-            itemBuilder: (_) => [
-              // Android edits the tags of the session's template, so it needs a session first.
-              if (!library || session != null)
-                PopupMenuItem(
-                  value: _MenuItem.tags,
-                  child: ListTile(leading: const Icon(Icons.sell_outlined), title: Text(l10n.viewerTagsEdit)),
-                ),
-              if (library)
-                PopupMenuItem(
-                  value: _MenuItem.library,
-                  child: ListTile(leading: const Icon(Icons.video_library_outlined), title: Text(l10n.libraryTitle)),
-                ),
-              if (library && session != null)
-                PopupMenuItem(
-                  value: _MenuItem.changeSession,
-                  child: ListTile(leading: const Icon(Icons.event_note), title: Text(l10n.libraryChangeSession)),
-                ),
-              if (setup.paired && ref.read(viewerClipReserveProvider) != null)
-                PopupMenuItem(
-                  key: const ValueKey('viewer-menu-clip-reserve'),
-                  value: _MenuItem.clipReserve,
-                  child: ListTile(leading: const Icon(Icons.inventory_2_outlined), title: Text(l10n.clipReserveTitle)),
-                ),
-              if (setup.paired && !setup.addressFixed)
-                PopupMenuItem(
-                  value: _MenuItem.changeCamera,
-                  child: ListTile(leading: const Icon(Icons.link_off), title: Text(l10n.viewerChangeCamera)),
-                ),
-              PopupMenuItem(
-                value: _MenuItem.switchRole,
-                child: ListTile(leading: const Icon(Icons.swap_horiz), title: Text(l10n.switchRole)),
+        toolbarHeight: setup.paired ? 56 : null,
+        titleSpacing: 16,
+        title: camera == null
+            ? Text(l10n.roleViewer, overflow: TextOverflow.ellipsis)
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    camera.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 19, height: 1.1, fontWeight: FontWeight.w700),
+                  ),
+                  if (subtitle.isNotEmpty)
+                    Text(
+                      subtitle,
+                      key: const ValueKey('viewer-subtitle'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: c.muted),
+                    ),
+                ],
               ),
-            ],
-          ),
+        actions: [
+          if (setup.paired) ...[
+            const CameraStatusIndicator(),
+            // Recording the whole match: one tap away, not only in the menu. An icon (red while
+            // recording); its time is already in the status pill, so the bar fits a phone.
+            const _RecordKey(),
+            const SizedBox(width: 6),
+            ViewerMicButton(labelled: wide),
+            if (wide && library)
+              Padding(
+                padding: const EdgeInsetsDirectional.only(start: 6),
+                child: OutlinedButton(
+                  key: const ValueKey('viewer-library'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(48, 44),
+                    side: BorderSide(color: c.line),
+                  ),
+                  onPressed: () => Navigator.of(context).push(LibraryPage.route()),
+                  child: Text(l10n.libraryTitle),
+                ),
+              ),
+          ] else
+            IconButton(
+              key: const ValueKey('viewer-settings'),
+              tooltip: l10n.settingsTitle,
+              icon: const Icon(Icons.settings_outlined),
+              onPressed: () => context.push('/viewer/settings'),
+            ),
+          menu,
+          const SizedBox(width: 4),
         ],
       ),
       body: SafeArea(
@@ -114,10 +118,127 @@ class ViewerPage extends ConsumerWidget {
     );
   }
 
-  static String _cameraTitle(String name, String? profile) => profile == null ? name : '$name · $profile';
+  /// Every action of the screen in one sheet; the panel switches act in place, the rest close it.
+  Future<void> _openMenu(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context);
+    final item = await showModalBottomSheet<_MenuItem>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      constraints: BoxConstraints(maxWidth: 560, maxHeight: MediaQuery.sizeOf(context).height * 0.9),
+      builder: (_) => const _MenuSheet(),
+    );
+    if (item == null || !context.mounted) return;
+    switch (item) {
+      case _MenuItem.tags:
+        await Navigator.of(context).push(TagEditorPage.route());
+      case _MenuItem.library:
+        await Navigator.of(context).push(LibraryPage.route());
+      case _MenuItem.changeSession:
+        ref.read(activeSessionProvider.notifier).close();
+      case _MenuItem.recording:
+        openViewerRecording(context, ref);
+      case _MenuItem.clipReserve:
+        await showDialog<void>(context: context, builder: (_) => const _ClipReserveDialog());
+      case _MenuItem.changeCamera:
+        await ref.read(viewerSetupProvider.notifier).changeCamera();
+      case _MenuItem.settings:
+        await context.push('/viewer/settings');
+      case _MenuItem.switchRole:
+        // Connected: switching drops the live view and, on Android, the clip transfers.
+        final connected = ref.read(linkStateProvider)?.phase == LinkPhase.connected;
+        if (connected && !await confirmSwitchRole(context, l10n.switchRoleViewerBody)) return;
+        await ref.read(roleProvider.notifier).clear();
+        if (context.mounted) context.go('/');
+    }
+  }
 }
 
-enum _MenuItem { tags, library, changeSession, clipReserve, changeCamera, switchRole }
+enum _MenuItem { tags, library, changeSession, recording, clipReserve, changeCamera, settings, switchRole }
+
+class _MenuSheet extends ConsumerWidget {
+  const _MenuSheet();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final c = context.ir;
+    final setup = ref.watch(viewerSetupProvider);
+    final library = ref.watch(libraryEnabledProvider);
+    final session = ref.watch(activeSessionProvider);
+    final recording = setup.paired ? ref.watch(sessionRecordingProvider) : null;
+    final recordingEnabled = ref.watch(
+      linkStateProvider.select((s) => s?.phase == LinkPhase.connected && (s?.status?.recording ?? false)),
+    );
+    final reserve = setup.paired ? ref.watch(viewerClipReserveProvider) : null;
+    Widget entry(_MenuItem item, IconData icon, String label, {String? key, bool enabled = true}) => ListTile(
+      key: key == null ? null : ValueKey(key),
+      minTileHeight: 56,
+      enabled: enabled,
+      leading: Icon(icon),
+      title: Text(label, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+      onTap: () => Navigator.of(context).pop(item),
+    );
+    Widget section(String label) => Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 16, 4),
+      child: Text(
+        label.toUpperCase(),
+        style: irMono(12, weight: FontWeight.w600, color: c.muted),
+      ),
+    );
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Android edits the tags of the session's template, so it needs a session first.
+            if (!library || session != null)
+              entry(_MenuItem.tags, Icons.sell_outlined, l10n.viewerTagsEdit, key: 'viewer-menu-tags'),
+            if (library)
+              entry(_MenuItem.library, Icons.video_library_outlined, l10n.libraryTitle, key: 'viewer-menu-library'),
+            if (library && session != null)
+              entry(
+                _MenuItem.changeSession,
+                Icons.event_note,
+                l10n.libraryChangeSession,
+                key: 'viewer-menu-change-session',
+              ),
+            if (recording != null)
+              entry(
+                _MenuItem.recording,
+                Icons.videocam_outlined,
+                l10n.recTitle,
+                key: 'viewer-menu-recording',
+                enabled: recordingEnabled,
+              ),
+            if (reserve != null)
+              entry(
+                _MenuItem.clipReserve,
+                Icons.inventory_2_outlined,
+                l10n.clipReserveTitle,
+                key: 'viewer-menu-clip-reserve',
+              ),
+            if (setup.paired) ...[
+              // About this screen: what it shows, and how its Save buttons behave.
+              const Divider(height: 1),
+              section(l10n.viewerThisScreen),
+              const ViewerPanelToggles(),
+              section(l10n.viewerSaveButtons),
+              const SaveButtonSettings(),
+              const Divider(height: 1),
+            ],
+            if (setup.paired && !setup.addressFixed)
+              entry(_MenuItem.changeCamera, Icons.link_off, l10n.viewerChangeCamera, key: 'viewer-menu-change-camera'),
+            entry(_MenuItem.settings, Icons.settings_outlined, l10n.settingsAppTitle, key: 'viewer-menu-settings'),
+            entry(_MenuItem.switchRole, Icons.swap_horiz, l10n.switchRole, key: 'viewer-menu-switch-role'),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 /// The Camera's replay reserve, changed from this viewer; the value follows the Camera's status.
 class _ClipReserveDialog extends ConsumerWidget {
@@ -176,5 +297,33 @@ class _Session extends ConsumerWidget {
       );
     }
     return const LiveControlView();
+  }
+}
+
+/// The full-session recording's key in the top bar: an outlined dot when idle, filled red while
+/// recording (amber when paused). It opens the same dialog as the menu (start, pause, finish).
+/// Hidden when the Camera does not offer recording; its time is in the status pill.
+class _RecordKey extends ConsumerWidget {
+  const _RecordKey();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final recording = ref.watch(sessionRecordingProvider);
+    if (recording == null) return const SizedBox.shrink();
+    final l10n = AppLocalizations.of(context);
+    final c = context.ir;
+    final connected = ref.watch(linkStateProvider.select((s) => s?.phase == LinkPhase.connected));
+    final capturing = ref.watch(linkStateProvider.select((s) => s?.status?.recording ?? false));
+    final (icon, color) = switch (recording.state) {
+      SessionRecordingState.recording => (Icons.fiber_manual_record, c.live),
+      SessionRecordingState.paused => (Icons.pause_circle_filled, c.warn),
+      SessionRecordingState.idle => (Icons.radio_button_checked, c.text),
+    };
+    return IconButton(
+      key: const ValueKey('viewer-record-key'),
+      tooltip: l10n.recTitle,
+      onPressed: connected && capturing ? () => openViewerRecording(context, ref) : null,
+      icon: Icon(icon, color: color),
+    );
   }
 }

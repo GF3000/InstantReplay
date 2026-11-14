@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:replay_protocol/replay_protocol.dart';
 
+import '../../../core/ui/ir_colors.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../recording/recording_widgets.dart';
 import '../data/session_link.dart';
@@ -38,53 +39,99 @@ class CameraHealth {
 }
 
 String _problemText(AppLocalizations l10n, CameraProblem p, CameraStatus? s) => switch (p) {
-      CameraProblem.disconnected => l10n.viewerProblemDisconnected,
-      CameraProblem.notRecording => l10n.viewerStatusIdle,
-      CameraProblem.hot => l10n.viewerProblemHot,
-      CameraProblem.batteryLow => l10n.viewerProblemBatteryLow(s?.batteryPercent ?? 0),
-    };
+  CameraProblem.disconnected => l10n.viewerProblemDisconnected,
+  CameraProblem.notRecording => l10n.viewerStatusIdle,
+  CameraProblem.hot => l10n.viewerProblemHot,
+  CameraProblem.batteryLow => l10n.viewerProblemBatteryLow(s?.batteryPercent ?? 0),
+};
 
-/// The REC dot for the app bar. Tap for details.
+/// The compact camera-status pill of the top bar: a green dot and `REC` (plus the full
+/// recording's clock while it runs), or a red warning when something needs action. Tap for the
+/// gauges.
 class CameraStatusIndicator extends ConsumerWidget {
   const CameraStatusIndicator({super.key});
-
-  static const okColor = Color(0xFF43A047);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    final scheme = Theme.of(context).colorScheme;
+    final c = context.ir;
     final link = ref.watch(linkStateProvider);
     final health = CameraHealth.of(link);
-    final (color, text) = health.connecting
-        ? (scheme.outline, l10n.viewerLinkConnecting)
+    final rec = link?.status?.sessionRecording;
+    final clock = health.ok && rec != null && rec.state != SessionRecordingState.idle
+        ? formatRecordingClock(rec.elapsedMs)
+        : null;
+    final problem = !health.ok && !health.connecting;
+    final (dotColor, text) = health.connecting
+        ? (c.muted, l10n.viewerLinkConnecting)
         : health.ok
-            ? (okColor, l10n.viewerStatusRec)
-            : (scheme.error, _problemText(l10n, health.problems.first, link?.status));
+        ? (c.ok, l10n.viewerStatusRec)
+        : (c.live, _problemText(l10n, health.problems.first, link?.status));
     final more = health.problems.length > 1 ? ' +${health.problems.length - 1}' : '';
+    final fg = problem ? c.liveText : c.text;
     return Tooltip(
       message: l10n.viewerStatusTitle,
-      child: InkWell(
-        key: const ValueKey('viewer-status'),
-        borderRadius: BorderRadius.circular(24),
-        onTap: () => showCameraStatusSheet(context),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 48, maxWidth: 200),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(health.ok ? Icons.fiber_manual_record : Icons.warning_rounded, size: 18, color: color),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    '$text$more',
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontWeight: FontWeight.bold, color: health.ok ? null : color),
-                  ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: Material(
+          color: problem ? c.liveSoft : c.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(4),
+            side: BorderSide(color: problem ? c.live : c.line),
+          ),
+          child: InkWell(
+            key: const ValueKey('viewer-status'),
+            borderRadius: BorderRadius.circular(4),
+            onTap: () => showCameraStatusSheet(context),
+            child: ConstrainedBox(
+              // Narrow phones: a shorter pill, so the camera's name keeps some room.
+              constraints: BoxConstraints(
+                minHeight: 48,
+                minWidth: 48,
+                maxWidth: MediaQuery.sizeOf(context).width < 400 ? 140 : 170,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (problem)
+                      Icon(Icons.warning_rounded, size: 18, color: c.live)
+                    else
+                      Container(
+                        key: const ValueKey('viewer-status-dot'),
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: dotColor,
+                          shape: BoxShape.circle,
+                          boxShadow: health.ok
+                              ? [BoxShadow(color: dotColor.withValues(alpha: 0.7), blurRadius: 8)]
+                              : null,
+                        ),
+                      ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        '$text$more',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: health.ok
+                            ? irMono(13, weight: FontWeight.w600, color: fg)
+                            : TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: fg),
+                      ),
+                    ),
+                    if (clock != null) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        clock,
+                        key: const ValueKey('viewer-status-clock'),
+                        style: irMono(13, weight: FontWeight.w600, color: fg),
+                      ),
+                    ],
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),
@@ -94,102 +141,184 @@ class CameraStatusIndicator extends ConsumerWidget {
 }
 
 Future<void> showCameraStatusSheet(BuildContext context) => showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      constraints: const BoxConstraints(maxWidth: 480),
-      builder: (_) => const CameraStatusDetails(),
-    );
+  context: context,
+  showDragHandle: true,
+  isScrollControlled: true,
+  constraints: BoxConstraints(maxWidth: 560, maxHeight: MediaQuery.sizeOf(context).height * 0.9),
+  builder: (_) => const CameraStatusDetails(),
+);
 
-/// fps, buffer, pending clips, temperature and battery, plus any problem in full.
+/// The camera's gauges: battery, temperature, replay buffer, frame rate and pending clips as
+/// tiles with a mono value and a thin bar, plus any problem in full and the full recording.
 class CameraStatusDetails extends ConsumerWidget {
   const CameraStatusDetails({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    final scheme = Theme.of(context).colorScheme;
+    final c = context.ir;
     final link = ref.watch(linkStateProvider);
     final health = CameraHealth.of(link);
     final s = link?.phase == LinkPhase.connected ? link?.status : null;
-    Widget row(IconData icon, String label, String value, {bool alert = false}) => ListTile(
-          dense: true,
-          leading: Icon(icon, color: alert ? scheme.error : null),
-          title: Text(label),
-          trailing: Text(value, style: TextStyle(fontSize: 16, color: alert ? scheme.error : null)),
-        );
+    final name = link?.camera?.name;
+    final batteryLow = health.problems.contains(CameraProblem.batteryLow);
+    final hot = s != null && s.thermalStatus >= hotThermalStatus;
+    final gauges = <Widget>[
+      if (s != null) ...[
+        if (s.batteryPercent case final p?)
+          _Gauge(
+            icon: s.plugged == true
+                ? Icons.battery_charging_full
+                : batteryLow
+                ? Icons.battery_alert
+                : Icons.battery_std,
+            label: l10n.viewerStatusBatteryLabel,
+            value: l10n.viewerStatusBatteryPercent(p),
+            detail: switch (s.plugged) {
+              true => l10n.viewerStatusCharging,
+              false => l10n.viewerStatusNotCharging,
+              null => null,
+            },
+            level: p / 100,
+            color: batteryLow ? c.live : (p <= 40 ? c.warn : c.ok),
+            alert: batteryLow,
+          ),
+        _Gauge(
+          icon: Icons.thermostat,
+          label: l10n.viewerStatusTemperatureLabel,
+          value: s.batteryTempC != null
+              ? l10n.viewerStatusTemperature(s.batteryTempC!.toStringAsFixed(0))
+              : _thermalName(l10n, s.thermalStatus),
+          detail: s.batteryTempC != null ? _thermalName(l10n, s.thermalStatus) : null,
+          level: ((s.thermalStatus.clamp(0, 6) + 1) / 7).toDouble(),
+          color: hot ? c.live : (s.thermalStatus >= 1 ? c.warn : c.ok),
+          alert: hot,
+        ),
+        _Gauge(
+          icon: Icons.history,
+          label: l10n.viewerStatusBufferLabel,
+          value: l10n.viewerStatusSeconds((s.bufferMs / 1000).round()),
+          level: (s.bufferMs / 60000).clamp(0, 1).toDouble(),
+          color: c.signal,
+        ),
+        _Gauge(
+          icon: Icons.speed,
+          label: l10n.viewerStatusFpsLabel,
+          value: l10n.viewerStatusFps(s.fps.round()),
+          level: (s.fps / 30).clamp(0, 1).toDouble(),
+          color: s.fps < 20 ? c.warn : c.ok,
+        ),
+        _Gauge(
+          icon: Icons.fiber_manual_record,
+          label: l10n.viewerStatusRecording,
+          value: s.recording ? l10n.viewerStatusRec : l10n.viewerStatusIdle,
+          color: s.recording ? c.ok : c.live,
+          alert: !s.recording,
+        ),
+        _Gauge(icon: Icons.outbox, label: l10n.viewerStatusPendingLabel, value: '${s.outboxClips}'),
+      ],
+    ];
     return SafeArea(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Text(l10n.viewerStatusTitle, style: Theme.of(context).textTheme.titleLarge),
-            ),
-            if (health.connecting) ListTile(leading: const Icon(Icons.sync), title: Text(l10n.viewerLinkConnecting)),
+            Text(l10n.viewerStatusTitle, style: Theme.of(context).textTheme.titleLarge),
+            if (name != null) Text(name, style: TextStyle(fontSize: 14, color: c.muted)),
+            const SizedBox(height: 12),
+            if (health.connecting)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Icon(Icons.sync, color: c.muted),
+                    const SizedBox(width: 12),
+                    Text(l10n.viewerLinkConnecting, style: const TextStyle(fontSize: 16)),
+                  ],
+                ),
+              ),
             for (final p in health.problems)
-              ListTile(
-                leading: Icon(Icons.warning_rounded, color: scheme.error),
-                title: Text(
-                  _problemText(l10n, p, s),
-                  style: TextStyle(color: scheme.error, fontWeight: FontWeight.bold),
+              Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: c.liveSoft,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: c.live),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning_rounded, color: c.live),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _problemText(l10n, p, s),
+                        style: TextStyle(color: c.liveText, fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            if (s != null) ...[
-              row(
-                Icons.fiber_manual_record,
-                l10n.viewerStatusRecording,
-                s.recording ? l10n.viewerStatusRec : l10n.viewerStatusIdle,
-                alert: !s.recording,
+            if (gauges.isNotEmpty)
+              LayoutBuilder(
+                builder: (context, box) {
+                  final columns = box.maxWidth >= 480 ? 3 : 2;
+                  final width = (box.maxWidth - 8 * (columns - 1)) / columns;
+                  return Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [for (final g in gauges) SizedBox(width: width, child: g)],
+                  );
+                },
               ),
-              row(Icons.speed, l10n.viewerStatusFpsLabel, l10n.viewerStatusFps(s.fps.round())),
-              row(Icons.history, l10n.viewerStatusBufferLabel, l10n.viewerStatusSeconds((s.bufferMs / 1000).round())),
-              row(Icons.outbox, l10n.viewerStatusPendingLabel, '${s.outboxClips}'),
-              // Longer than the other values: under the label, not beside it.
-              if (s.sessionRecording case final r?)
-                ListTile(
-                  dense: true,
-                  leading: Icon(Icons.videocam, color: r.lowSpace ? scheme.error : null),
-                  title: Text(l10n.recTitle),
-                  subtitle: Text(
-                    [
-                      switch (r.state) {
-                        SessionRecordingState.idle => l10n.recIdle,
-                        SessionRecordingState.recording => formatRecordingClock(r.elapsedMs),
-                        SessionRecordingState.paused => l10n.recPaused(formatRecordingClock(r.elapsedMs)),
-                      },
-                      if (r.remainingMs case final left?)
-                        r.lowSpace ? l10n.recLowSpace(formatRecordingSpan(left)) : l10n.recRemaining(formatRecordingSpan(left)),
-                    ].join(' · '),
-                    style: TextStyle(fontSize: 16, color: r.lowSpace ? scheme.error : null),
-                  ),
+            // Longer than the other values: a full-width tile.
+            if (s?.sessionRecording case final r?) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: c.bg,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: r.lowSpace ? c.live : c.line),
                 ),
-              row(
-                Icons.thermostat,
-                l10n.viewerStatusTemperatureLabel,
-                [
-                  if (s.batteryTempC case final t?) l10n.viewerStatusTemperature(t.toStringAsFixed(0)),
-                  _thermalName(l10n, s.thermalStatus),
-                ].join(' · '),
-                alert: s.thermalStatus >= hotThermalStatus,
+                child: Row(
+                  children: [
+                    Icon(Icons.videocam, color: r.lowSpace ? c.live : c.muted),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            l10n.recTitle,
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: c.muted),
+                          ),
+                          Text(
+                            [
+                              switch (r.state) {
+                                SessionRecordingState.idle => l10n.recIdle,
+                                SessionRecordingState.recording => formatRecordingClock(r.elapsedMs),
+                                SessionRecordingState.paused => l10n.recPaused(formatRecordingClock(r.elapsedMs)),
+                              },
+                              if (r.remainingMs case final left?)
+                                r.lowSpace
+                                    ? l10n.recLowSpace(formatRecordingSpan(left))
+                                    : l10n.recRemaining(formatRecordingSpan(left)),
+                            ].join(' · '),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: r.lowSpace ? c.liveText : c.text,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              if (s.batteryPercent case final p?)
-                row(
-                  s.plugged == true
-                      ? Icons.battery_charging_full
-                      : health.problems.contains(CameraProblem.batteryLow)
-                          ? Icons.battery_alert
-                          : Icons.battery_std,
-                  l10n.viewerStatusBatteryLabel,
-                  [
-                    l10n.viewerStatusBatteryPercent(p),
-                    if (s.plugged case final plugged?)
-                      plugged ? l10n.viewerStatusCharging : l10n.viewerStatusNotCharging,
-                  ].join(' · '),
-                  alert: health.problems.contains(CameraProblem.batteryLow),
-                ),
             ],
           ],
         ),
@@ -198,12 +327,101 @@ class CameraStatusDetails extends ConsumerWidget {
   }
 
   static String _thermalName(AppLocalizations l10n, int status) => switch (status) {
-        <= 0 => l10n.thermalNone,
-        1 => l10n.thermalLight,
-        2 => l10n.thermalModerate,
-        3 => l10n.thermalSevere,
-        4 => l10n.thermalCritical,
-        5 => l10n.thermalEmergency,
-        _ => l10n.thermalShutdown,
-      };
+    <= 0 => l10n.thermalNone,
+    1 => l10n.thermalLight,
+    2 => l10n.thermalModerate,
+    3 => l10n.thermalSevere,
+    4 => l10n.thermalCritical,
+    5 => l10n.thermalEmergency,
+    _ => l10n.thermalShutdown,
+  };
+}
+
+/// One gauge tile: label, a big mono value, an optional detail and a thin level bar.
+class _Gauge extends StatelessWidget {
+  const _Gauge({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.detail,
+    this.level,
+    this.color,
+    this.alert = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final String? detail;
+
+  /// 0–1; null draws no bar.
+  final double? level;
+  final Color? color;
+  final bool alert;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ir;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: c.bg,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: alert ? c.live : c.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: alert ? c.live : c.muted),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: c.muted),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(value, maxLines: 1, style: irMono(22, color: alert ? c.liveText : c.text)),
+          ),
+          if (detail != null)
+            Text(
+              detail!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 13, color: c.muted),
+            ),
+          const SizedBox(height: 6),
+          if (level case final level?)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(2),
+              child: SizedBox(
+                height: 4,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ColoredBox(color: c.line),
+                    FractionallySizedBox(
+                      alignment: AlignmentDirectional.centerStart,
+                      widthFactor: level.clamp(0, 1).toDouble(),
+                      child: ColoredBox(color: color ?? c.signal),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            const SizedBox(height: 4),
+        ],
+      ),
+    );
+  }
 }

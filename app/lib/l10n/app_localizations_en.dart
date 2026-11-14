@@ -1323,7 +1323,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get checkTitle => 'Before going live';
 
   @override
-  String get checkKeyOk => 'YouTube stream key saved';
+  String get checkKeyOk => 'Streams with the saved stream key';
 
   @override
   String get checkKeyMissing => 'No YouTube stream key yet';
@@ -1580,4 +1580,636 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get youtubeShare => 'Share';
+
+  @override
+  String get reviewDraw => 'Draw';
+
+  @override
+  String get reviewDrawActive => 'Drawing on';
+
+  @override
+  String get reviewChangeTag => 'Change tag';
+
+  @override
+  String get reviewExport => 'Export';
+
+  @override
+  String get reviewMore => 'More';
+
+  @override
+  String get reviewAirSend => 'Air replay';
+
+  @override
+  String get reviewAirStop => 'Take off air';
+
+  @override
+  String get reviewOnAirBanner => 'ON AIR · YOUTUBE SEES IT';
+
+  @override
+  String reviewClipOf(int index, int count) {
+    return 'clip $index of $count';
+  }
+
+  @override
+  String reviewFrameCounter(int frame, int total) {
+    return 'F $frame / $total';
+  }
+
+  @override
+  String get reviewFrameBack => '−1 fr';
+
+  @override
+  String get reviewFrameForward => '+1 fr';
+
+  @override
+  String get reviewLoading => 'Loading the clip…';
+
+  @override
+  String get reviewRetry => 'Retry';
+
+  @override
+  String get reviewToolArrow => 'Arrow';
+
+  @override
+  String get reviewToolCircle => 'Circle';
+
+  @override
+  String get reviewToolLine => 'Line';
+
+  @override
+  String get reviewToolPen => 'Pen';
+
+  @override
+  String get reviewToolEraser => 'Eraser';
+
+  @override
+  String get reviewToolSelect => 'Move';
+
+  @override
+  String get reviewThick => 'Thick';
+
+  @override
+  String get reviewUndo => 'Undo';
+
+  @override
+  String get reviewClearAll => 'Clear';
+
+  @override
+  String get reviewDeleteMark => 'Delete';
+
+  @override
+  String get reviewDone => 'Done';
+
+  @override
+  String get connectStepCamera => 'Camera';
+
+  @override
+  String get connectStepCode => 'Code';
+
+  @override
+  String get connectStepSession => 'Session';
+
+  @override
+  String get connectScanSubtitle => 'It\'s on the camera\'s screen';
+
+  @override
+  String get connectManual => 'Type the address by hand';
+
+  @override
+  String get connectCodeHint => 'The 6 big digits under the camera\'s QR';
+
+  @override
+  String get connectOtherCamera => 'Choose another camera';
+
+  @override
+  String connectPickerConnectedTo(String name) {
+    return 'Connected to $name';
+  }
+
+  @override
+  String get connectPickerQuestion => 'What are you recording?';
+
+  @override
+  String get connectPickerContinue => 'Continue this session';
+
+  @override
+  String get connectPickerNewMatch => 'New match';
+
+  @override
+  String get connectPickerNewTraining => 'New training';
+
+  @override
+  String get connectPickerNewOther => 'Other session';
+
+  @override
+  String get connectPickerNameHint => 'Empty: type and date';
+
+  @override
+  String get libFilterAll => 'All';
+
+  @override
+  String get libFilterMatches => 'Matches';
+
+  @override
+  String get libFilterTrainings => 'Training';
+
+  @override
+  String get libSelect => 'Select';
+
+  @override
+  String get libSelectCancel => 'Cancel';
+
+  @override
+  String libExportCount(int count) {
+    return 'Export $count';
+  }
+
+  @override
+  String get libShare => 'Share';
+
+  @override
+  String get libEmptyHint => 'Clips you save live appear here.';
+
+  @override
+  String get libFilterEmpty => 'Nothing with this filter.';
+
+  @override
+  String get libError => 'Couldn\'t open the library';
+
+  @override
+  String get libRetry => 'Retry';
+
+  @override
+  String get libTemplatesBuiltIn => 'Built-in';
+
+  @override
+  String get libTemplatesImported => 'Imported';
+
+  @override
+  String get liveSaveTitle => 'Save play';
+
+  @override
+  String liveSaveSubtitle(int seconds, int post) {
+    return 'the last $seconds s and $post s more';
+  }
+
+  @override
+  String get liveOnAirBadge => 'LIVE';
+
+  @override
+  String get liveNoSoundBadge => 'STREAM WITHOUT SOUND';
+
+  @override
+  String get liveMicOpen => 'Mic on';
+
+  @override
+  String get liveMicClosed => 'Mic off';
+
+  @override
+  String get liveMenu => 'Menu';
+
+  @override
+  String get liveRestart => 'Restart';
+
+  @override
+  String get liveClipsEmptyHint => 'Tap Save play right after a good moment.';
+
+  @override
+  String get liveTagPanelTitle => 'Saved · what was it?';
+
+  @override
+  String get livePlayClip => 'Watch';
+
+  @override
+  String liveTeams(String home, String away) {
+    return '$home vs $away';
+  }
+
+  @override
+  String get liveGlanceTitle => 'Match at a glance';
+
+  @override
+  String get liveGlanceHint => 'Tap a mark to review it';
+
+  @override
+  String get camWhatYouTubeSees => 'What YouTube sees';
+
+  @override
+  String get camNoSound => 'NO SOUND';
+
+  @override
+  String get camStreamTitle => 'Stream';
+
+  @override
+  String get camOnAirYouTube => 'Live on YouTube';
+
+  @override
+  String get camOnAirFor => 'on air';
+
+  @override
+  String get camMbps => 'Mbps';
+
+  @override
+  String get camViewersLabel => 'viewers';
+
+  @override
+  String get camStopStream => 'Stop streaming';
+
+  @override
+  String get camStopShort => 'Stop';
+
+  @override
+  String get camMicOpen => 'Microphone on';
+
+  @override
+  String get camMicOpenHint => 'Tap to turn it off';
+
+  @override
+  String get camMicClosed => 'Microphone off';
+
+  @override
+  String get camMicClosedHint => 'YouTube hears nothing · tap to turn it on';
+
+  @override
+  String get camTileTemperature => 'Temperature';
+
+  @override
+  String get camTileMemory => 'Memory';
+
+  @override
+  String get camTileViewers => 'Viewers';
+
+  @override
+  String get camTileOutbox => 'To send';
+
+  @override
+  String get camTileCharging => 'Charging';
+
+  @override
+  String camConnectViewerSub(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count connected',
+      one: '1 connected',
+      zero: 'nobody connected',
+    );
+    return 'QR and code · $_temp0';
+  }
+
+  @override
+  String get camPairSheetSub =>
+      'Scan it from InstantReplay on the bench tablet or phone';
+
+  @override
+  String get camPairOrCode => 'Or type this code in the viewer';
+
+  @override
+  String get camConnectedNow => 'Connected now';
+
+  @override
+  String get camClose => 'Close';
+
+  @override
+  String get camShareLive => 'Share the live';
+
+  @override
+  String get camShareLiveSub => 'YouTube link for families';
+
+  @override
+  String get camShareSheetSub =>
+      'Scan it with the phone camera: it opens the live on YouTube';
+
+  @override
+  String get camShareHint =>
+      '“Share…” opens WhatsApp, email and the other apps on the phone.';
+
+  @override
+  String get camShareAction => 'Share…';
+
+  @override
+  String get camPrivacyChangeHint => 'Change it in Prepare the stream.';
+
+  @override
+  String get camPrepareStream => 'Prepare the stream';
+
+  @override
+  String get camBlackScreen => 'Black screen';
+
+  @override
+  String get camScoreboardShort => 'Scoreboard';
+
+  @override
+  String get camReadyTitle => 'Ready to go live';
+
+  @override
+  String get camReadySub => 'Everything is checked. Go live when you want.';
+
+  @override
+  String get camAmberHint => 'Amber warnings do not stop you from going live.';
+
+  @override
+  String get camOperatingTitle => 'Recording · screen off to save battery';
+
+  @override
+  String get camSavedForNext => 'Saved for the next match';
+
+  @override
+  String get camTabDestination => 'Destination';
+
+  @override
+  String get camTabDestinationSub => 'YouTube · account or key';
+
+  @override
+  String get camTabImage => 'Picture and sound';
+
+  @override
+  String get camTabImageSub => 'Quality and microphone';
+
+  @override
+  String get camTabReplays => 'Replays';
+
+  @override
+  String get camTabReplaysSub => 'How they look on air';
+
+  @override
+  String get camStepImage => 'Picture';
+
+  @override
+  String get camStepCheck => 'Check';
+
+  @override
+  String get camWhereStream => 'Where does it go?';
+
+  @override
+  String get camQualityTitle => 'Picture quality';
+
+  @override
+  String get camQualityLow => 'Saver';
+
+  @override
+  String get camQualityNormal => 'Normal';
+
+  @override
+  String get camQualityHigh => 'High';
+
+  @override
+  String get camQualityLowSub => 'mobile data';
+
+  @override
+  String get camQualityNormalSub => 'recommended';
+
+  @override
+  String get camQualityHighSub => 'good Wi-Fi';
+
+  @override
+  String camQualityPerHour(String gigabytes) {
+    return '≈ $gigabytes GB per hour';
+  }
+
+  @override
+  String get camQualityAuto =>
+      'If the connection drops, the stream lowers the quality by itself so it does not cut.';
+
+  @override
+  String get camFineTune => 'Fine tune';
+
+  @override
+  String get camSoundTitle => 'Sound';
+
+  @override
+  String get camMicTitle => 'Camera microphone';
+
+  @override
+  String get camMicSub => 'Sound of the venue. You can mute it on air.';
+
+  @override
+  String get camReplaysTitle => 'How replays look';
+
+  @override
+  String get camGoLiveNow => 'Start streaming';
+
+  @override
+  String get camGoLiveLast => 'Go live, like last time';
+
+  @override
+  String get camNext => 'Next';
+
+  @override
+  String get camSummary => 'SUMMARY';
+
+  @override
+  String get camSumKey => 'Key';
+
+  @override
+  String camSumYouTube(String privacy) {
+    return 'YouTube · $privacy';
+  }
+
+  @override
+  String get camSumReplay => 'Replay';
+
+  @override
+  String get camSumScoreboardOn => 'with scoreboard';
+
+  @override
+  String get camSumScoreboardOff => 'badge only';
+
+  @override
+  String get camYes => 'Yes';
+
+  @override
+  String get camNo => 'No';
+
+  @override
+  String get camWhoCanSee => 'Who can see it';
+
+  @override
+  String get camPrivacyPublicSub => 'Anyone can find it';
+
+  @override
+  String get camPrivacyUnlistedSub => 'Only with the link';
+
+  @override
+  String get camPrivacyPrivateSub => 'Only your account';
+
+  @override
+  String get camBack => 'Back';
+
+  @override
+  String get sbPageTitle => 'Broadcast scoreboard';
+
+  @override
+  String get sbStyle => 'Style';
+
+  @override
+  String get sbClassic => 'Classic';
+
+  @override
+  String get sbClassicSub => 'A thin bar. Names up to 5 letters.';
+
+  @override
+  String get sbPlate => 'Plate';
+
+  @override
+  String get sbPlateSub => 'Two rows. Full names up to 16 letters.';
+
+  @override
+  String get sbDefault => 'DEFAULT';
+
+  @override
+  String get sbClassicCut =>
+      'The Classic style cuts names to 5 letters. Plate shows them in full.';
+
+  @override
+  String get sbPreview => 'PREVIEW';
+
+  @override
+  String get sbHomeTeam => 'Home team';
+
+  @override
+  String get sbAwayTeam => 'Away team';
+
+  @override
+  String get sbTeamName => 'Name';
+
+  @override
+  String get sbSizeOnScreen => 'Size on screen';
+
+  @override
+  String get sbMatch => 'Match';
+
+  @override
+  String get sbReplayBadge => 'REPLAY';
+
+  @override
+  String get sbClockStart => 'Start clock';
+
+  @override
+  String get sbClockPause => 'Pause clock';
+
+  @override
+  String get camShareLoading => 'Preparing the YouTube link…';
+
+  @override
+  String get camShareLoadingSub =>
+      'It takes a few seconds the first time; then it opens at once.';
+
+  @override
+  String get camShareRetry => 'Try again';
+
+  @override
+  String get sbVisibility => 'What shows';
+
+  @override
+  String get sbOnAir => 'Scoreboard on air';
+
+  @override
+  String get sbOnAirSub => 'Turn it off to stream without a scoreboard';
+
+  @override
+  String get sbControls => 'Scoreboard controls on this screen';
+
+  @override
+  String get sbControlsSub => 'Hide them when someone else keeps the score';
+
+  @override
+  String get sbChangeColour => 'Change colour';
+
+  @override
+  String get camInfoTitle => 'Camera status';
+
+  @override
+  String get camRecordingTitle => 'Camera recording';
+
+  @override
+  String get camSameWifi =>
+      'Viewers must be on the same Wi-Fi network as this camera, or connected to its hotspot.';
+
+  @override
+  String get connectSameWifi =>
+      'This device and the camera must be on the same Wi-Fi network (or this device on the camera\'s hotspot).';
+
+  @override
+  String get settingsAppTitle => 'App settings';
+
+  @override
+  String get viewerThisScreen => 'This screen';
+
+  @override
+  String get viewerSaveButtons => 'Save buttons';
+
+  @override
+  String checkAccountOk(String email) {
+    return 'Streams to the YouTube account $email';
+  }
+
+  @override
+  String get checkAccountSignIn => 'Sign in to the YouTube account to stream';
+
+  @override
+  String get liveMicClosedBadge => 'MIC CLOSED';
+
+  @override
+  String ytAccountCheckChannel(String channel) {
+    return 'Streams to the YouTube channel $channel';
+  }
+
+  @override
+  String get ytAccountKeyLocked =>
+      'You\'re using your YouTube account. Sign out to stream with a key.';
+
+  @override
+  String get ytAccountOrUseKey => 'Or sign out and stream with a stream key.';
+
+  @override
+  String get ytAccountErrorQuota => 'The YouTube API daily quota is used up.';
+
+  @override
+  String get reviewColourRed => 'red';
+
+  @override
+  String get reviewColourYellow => 'yellow';
+
+  @override
+  String get reviewColourWhite => 'white';
+
+  @override
+  String get reviewColourBlue => 'blue';
+
+  @override
+  String get reviewColourBlack => 'black';
+
+  @override
+  String get liveOnYouTubeBadge => 'ON AIR';
+
+  @override
+  String get ytRemoteOrUseKey =>
+      'Or sign out on the Camera and stream with a stream key.';
+
+  @override
+  String get ytRemoteNeedSignIn =>
+      'The stream goes to the Camera\'s YouTube account: sign in again on the Camera, or switch to Stream key.';
+
+  @override
+  String get ytRemoteNoCamera =>
+      'The Camera didn\'t answer. Check the connection and try again.';
+
+  @override
+  String get ytRemoteUnavailable =>
+      'This Camera can\'t use a YouTube account. Use a stream key.';
+
+  @override
+  String get ytRemoteKeyLocked =>
+      'The Camera is using its YouTube account. To stream with a key, sign out on the Camera.';
+
+  @override
+  String get ytRemoteSignInHelp =>
+      'The YouTube account is set up on the Camera: sign in with Google there, once. Meanwhile you can stream with a key.';
+
+  @override
+  String get ytRemoteOnCamera => 'Signed in on the Camera';
+
+  @override
+  String get ytDestKey => 'Streams with a manual key';
 }

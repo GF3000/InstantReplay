@@ -40,7 +40,9 @@ class _Link extends LinkStateNotifier {
   final ReplayInfo? replay;
 
   @override
-  LinkState? build() => LinkState(
+  LinkState? build() => _state(replay);
+
+  LinkState _state(ReplayInfo? replay) => LinkState(
     phase: LinkPhase.connected,
     camera: const CameraInfo(protocolVersion: 1, cameraId: 'c', name: 'Pitch'),
     status: CameraStatus(
@@ -54,6 +56,9 @@ class _Link extends LinkStateNotifier {
       replay: replay,
     ),
   );
+
+  /// The Camera reports [replay] on air (null: back to live).
+  void report(ReplayInfo? replay) => state = _state(replay);
 }
 
 /// Records what the replay controls send.
@@ -151,36 +156,16 @@ Finder _key(String k) => find.byKey(ValueKey(k));
 
 void main() {
   group('a tap on a clip', () {
-    testWidgets('while streaming, a clip on the Camera asks; "Also on air" sends it and opens it', (tester) async {
+    testWidgets('while streaming, opens the review on the tablet only, with Air replay', (tester) async {
       final remote = await _pump(tester, ClipTile(clip: _clip()));
       await tester.tap(find.byType(ClipTile));
       await tester.pumpAndSettle();
-      expect(find.text('Only on this tablet'), findsOneWidget);
-      expect(find.text('Also on air'), findsOneWidget);
-      await tester.tap(_key('replay-choice-air'));
-      await tester.pumpAndSettle();
-      expect(remote.sent, [const ReplayAir(clipId: 'c1').encode()]);
+      // No question first: reviewing never goes on air by itself.
+      expect(find.byType(SimpleDialog), findsNothing);
       expect(find.byType(ReviewPage), findsOneWidget);
-    });
-
-    testWidgets('"Only on this tablet" opens it without going on air', (tester) async {
-      final remote = await _pump(tester, ClipTile(clip: _clip()));
-      await tester.tap(find.byType(ClipTile));
-      await tester.pumpAndSettle();
-      await tester.tap(_key('replay-choice-tablet'));
-      await tester.pumpAndSettle();
       expect(remote.sent, isEmpty);
-      expect(find.byType(ReviewPage), findsOneWidget);
-    });
-
-    testWidgets('dismissing the question opens nothing', (tester) async {
-      final remote = await _pump(tester, ClipTile(clip: _clip()));
-      await tester.tap(find.byType(ClipTile));
-      await tester.pumpAndSettle();
-      await tester.tapAt(const Offset(5, 5));
-      await tester.pumpAndSettle();
-      expect(remote.sent, isEmpty);
-      expect(find.byType(ReviewPage), findsNothing);
+      expect(_key('review-air'), findsOneWidget);
+      expect(find.text('Air replay'), findsOneWidget);
     });
 
     for (final (name, clip, link) in [
@@ -188,15 +173,120 @@ void main() {
       ('without an active stream', _clip(), () => _Link(stream: _idle)),
       ('in replay mode', _clip(), () => _Link(stream: null)),
     ]) {
-      testWidgets('$name opens at once, without asking', (tester) async {
+      testWidgets('$name opens without Air replay', (tester) async {
         final remote = await _pump(tester, ClipTile(clip: clip), link: link);
         await tester.tap(find.byType(ClipTile));
         await tester.pumpAndSettle();
-        expect(_key('replay-choice'), findsNothing);
-        expect(remote.sent, isEmpty);
         expect(find.byType(ReviewPage), findsOneWidget);
+        expect(_key('review-air'), findsNothing);
+        expect(remote.sent, isEmpty);
       });
     }
+  });
+
+  group('Air replay on the review page', () {
+    const onAir = ReplayInfo(clipId: 'c1', speed: 0.5, positionMs: 0, durationMs: 20000);
+
+    Future<(_Remote, _Link)> open(WidgetTester tester, {Size size = const Size(1280, 800)}) async {
+      late _Link link;
+      final remote = await _pump(
+        tester,
+        ReviewPage(clip: _clip(), replayBar: true),
+        link: () => link = _Link(),
+        size: size,
+      );
+      await tester.pumpAndSettle();
+      return (remote, link);
+    }
+
+    Finder speed(String label) => find.descendant(of: _key('review-speed'), matching: find.text(label));
+
+    testWidgets('sends the clip at the current speed; the tablet then mirrors the stream', (tester) async {
+      final (remote, link) = await open(tester);
+      await tester.tap(speed('0.5×'));
+      await tester.pumpAndSettle();
+      // Before it goes on air, the speed is the tablet's own.
+      expect(remote.sent, isEmpty);
+
+      await tester.tap(_key('review-air'));
+      await tester.pumpAndSettle();
+      expect(remote.sent, [const ReplayAir(clipId: 'c1', speed: 0.5).encode()]);
+
+      link.report(onAir);
+      await tester.pumpAndSettle();
+      expect(_key('review-on-air'), findsOneWidget);
+      expect(find.text('REPLAY ON AIR'), findsOneWidget);
+      // One speed control for both: the bar has none of its own.
+      expect(_key('viewer-replay-stop'), findsOneWidget);
+      expect(_key('viewer-replay-speed'), findsNothing);
+      // One red button on air: Back to live, no separate Take off air.
+      expect(_key('review-air'), findsNothing);
+      expect(find.text('Take off air'), findsNothing);
+
+      await tester.tap(speed('1×'));
+      await tester.pumpAndSettle();
+      expect(remote.sent.last, const ReplaySpeed(speed: 1).encode());
+
+      // Back to live: the stream leaves the replay.
+      await tester.tap(_key('viewer-replay-stop'));
+      await tester.pumpAndSettle();
+      expect(remote.sent.last, const ReplayStop().encode());
+    });
+
+    testWidgets('on a phone the button keeps only its icon', (tester) async {
+      final (remote, _) = await open(tester, size: const Size(360, 640));
+      expect(find.text('Air replay'), findsNothing);
+      await tester.tap(_key('review-air'));
+      await tester.pumpAndSettle();
+      expect(remote.sent, [const ReplayAir(clipId: 'c1').encode()]);
+    });
+
+    testWidgets('leaving the page after airing it goes back to live', (tester) async {
+      late _Link link;
+      final remote = await _pump(
+        tester,
+        Builder(
+          builder: (context) => TextButton(
+            onPressed: () => Navigator.of(context).push(ReviewPage.route(_clip(), replayBar: true)),
+            child: const Text('open'),
+          ),
+        ),
+        link: () => link = _Link(),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      await tester.tap(_key('review-air'));
+      await tester.pumpAndSettle();
+      link.report(onAir);
+      await tester.pumpAndSettle();
+      tester.state<NavigatorState>(find.byType(Navigator)).pop();
+      await tester.pumpAndSettle();
+      expect(remote.sent.last, const ReplayStop().encode());
+    });
+
+    testWidgets('Back to live on air takes the replay off and returns the tablet to live', (tester) async {
+      late _Link link;
+      final remote = await _pump(
+        tester,
+        Builder(
+          builder: (context) => TextButton(
+            onPressed: () => Navigator.of(context).push(ReviewPage.route(_clip(), replayBar: true)),
+            child: const Text('open'),
+          ),
+        ),
+        link: () => link = _Link(),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      await tester.tap(_key('review-air'));
+      await tester.pumpAndSettle();
+      link.report(onAir);
+      await tester.pumpAndSettle();
+      await tester.tap(_key('viewer-replay-stop'));
+      await tester.pumpAndSettle();
+      expect(remote.sent.last, const ReplayStop().encode());
+      expect(find.byType(ReviewPage), findsNothing);
+    });
   });
 
   group('the replay bar', () {
@@ -282,7 +372,7 @@ void main() {
     // The on-air bar has no speed of its own: the review page's control drives both.
     expect(_key('viewer-replay-stop'), findsOneWidget);
     expect(_key('viewer-replay-speed'), findsNothing);
-    await tester.tap(find.text('0.5×'));
+    await tester.tap(find.descendant(of: _key('review-speed'), matching: find.text('0.5×')));
     await tester.pumpAndSettle();
     expect(remote.sent, [const ReplaySpeed(speed: 0.5).encode()]);
 

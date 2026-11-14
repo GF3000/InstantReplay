@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/ui/ir_colors.dart';
 import '../../l10n/app_localizations.dart';
 
 /// True to go ahead with a role switch that would cut something off: a stream on air, connected
@@ -9,6 +10,7 @@ Future<bool> confirmSwitchRole(BuildContext context, String body) async {
   final ok = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
+      icon: Icon(Icons.swap_horiz, color: context.ir.liveText),
       title: Text(l10n.switchRoleTitle),
       content: Text(body),
       actions: [
@@ -20,7 +22,12 @@ Future<bool> confirmSwitchRole(BuildContext context, String body) async {
         ),
         FilledButton(
           key: const ValueKey('switch-role-confirm'),
-          style: FilledButton.styleFrom(minimumSize: const Size(64, 48)),
+          // Red: switching cuts something off (the stream, the viewers or this connection).
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(64, 48),
+            backgroundColor: context.ir.live,
+            foregroundColor: context.ir.onLive,
+          ),
           onPressed: () => Navigator.of(context).pop(true),
           child: Text(l10n.switchRole),
         ),

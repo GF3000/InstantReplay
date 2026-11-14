@@ -2255,7 +2255,7 @@ abstract class AppLocalizations {
   /// No description provided for @checkKeyOk.
   ///
   /// In en, this message translates to:
-  /// **'YouTube stream key saved'**
+  /// **'Streams with the saved stream key'**
   String get checkKeyOk;
 
   /// No description provided for @checkKeyMissing.
@@ -2719,6 +2719,1182 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Share'**
   String get youtubeShare;
+
+  /// No description provided for @reviewDraw.
+  ///
+  /// In en, this message translates to:
+  /// **'Draw'**
+  String get reviewDraw;
+
+  /// No description provided for @reviewDrawActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Drawing on'**
+  String get reviewDrawActive;
+
+  /// No description provided for @reviewChangeTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Change tag'**
+  String get reviewChangeTag;
+
+  /// No description provided for @reviewExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Export'**
+  String get reviewExport;
+
+  /// No description provided for @reviewMore.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get reviewMore;
+
+  /// No description provided for @reviewAirSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Air replay'**
+  String get reviewAirSend;
+
+  /// No description provided for @reviewAirStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Take off air'**
+  String get reviewAirStop;
+
+  /// No description provided for @reviewOnAirBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'ON AIR · YOUTUBE SEES IT'**
+  String get reviewOnAirBanner;
+
+  /// No description provided for @reviewClipOf.
+  ///
+  /// In en, this message translates to:
+  /// **'clip {index} of {count}'**
+  String reviewClipOf(int index, int count);
+
+  /// No description provided for @reviewFrameCounter.
+  ///
+  /// In en, this message translates to:
+  /// **'F {frame} / {total}'**
+  String reviewFrameCounter(int frame, int total);
+
+  /// No description provided for @reviewFrameBack.
+  ///
+  /// In en, this message translates to:
+  /// **'−1 fr'**
+  String get reviewFrameBack;
+
+  /// No description provided for @reviewFrameForward.
+  ///
+  /// In en, this message translates to:
+  /// **'+1 fr'**
+  String get reviewFrameForward;
+
+  /// No description provided for @reviewLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading the clip…'**
+  String get reviewLoading;
+
+  /// No description provided for @reviewRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get reviewRetry;
+
+  /// No description provided for @reviewToolArrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrow'**
+  String get reviewToolArrow;
+
+  /// No description provided for @reviewToolCircle.
+  ///
+  /// In en, this message translates to:
+  /// **'Circle'**
+  String get reviewToolCircle;
+
+  /// No description provided for @reviewToolLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Line'**
+  String get reviewToolLine;
+
+  /// No description provided for @reviewToolPen.
+  ///
+  /// In en, this message translates to:
+  /// **'Pen'**
+  String get reviewToolPen;
+
+  /// No description provided for @reviewToolEraser.
+  ///
+  /// In en, this message translates to:
+  /// **'Eraser'**
+  String get reviewToolEraser;
+
+  /// No description provided for @reviewToolSelect.
+  ///
+  /// In en, this message translates to:
+  /// **'Move'**
+  String get reviewToolSelect;
+
+  /// No description provided for @reviewThick.
+  ///
+  /// In en, this message translates to:
+  /// **'Thick'**
+  String get reviewThick;
+
+  /// No description provided for @reviewUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get reviewUndo;
+
+  /// No description provided for @reviewClearAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get reviewClearAll;
+
+  /// No description provided for @reviewDeleteMark.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get reviewDeleteMark;
+
+  /// No description provided for @reviewDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get reviewDone;
+
+  /// No description provided for @connectStepCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera'**
+  String get connectStepCamera;
+
+  /// No description provided for @connectStepCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Code'**
+  String get connectStepCode;
+
+  /// No description provided for @connectStepSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Session'**
+  String get connectStepSession;
+
+  /// No description provided for @connectScanSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'It\'s on the camera\'s screen'**
+  String get connectScanSubtitle;
+
+  /// No description provided for @connectManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Type the address by hand'**
+  String get connectManual;
+
+  /// No description provided for @connectCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The 6 big digits under the camera\'s QR'**
+  String get connectCodeHint;
+
+  /// No description provided for @connectOtherCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose another camera'**
+  String get connectOtherCamera;
+
+  /// No description provided for @connectPickerConnectedTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected to {name}'**
+  String connectPickerConnectedTo(String name);
+
+  /// No description provided for @connectPickerQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'What are you recording?'**
+  String get connectPickerQuestion;
+
+  /// No description provided for @connectPickerContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue this session'**
+  String get connectPickerContinue;
+
+  /// No description provided for @connectPickerNewMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'New match'**
+  String get connectPickerNewMatch;
+
+  /// No description provided for @connectPickerNewTraining.
+  ///
+  /// In en, this message translates to:
+  /// **'New training'**
+  String get connectPickerNewTraining;
+
+  /// No description provided for @connectPickerNewOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other session'**
+  String get connectPickerNewOther;
+
+  /// No description provided for @connectPickerNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Empty: type and date'**
+  String get connectPickerNameHint;
+
+  /// No description provided for @libFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get libFilterAll;
+
+  /// No description provided for @libFilterMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'Matches'**
+  String get libFilterMatches;
+
+  /// No description provided for @libFilterTrainings.
+  ///
+  /// In en, this message translates to:
+  /// **'Training'**
+  String get libFilterTrainings;
+
+  /// No description provided for @libSelect.
+  ///
+  /// In en, this message translates to:
+  /// **'Select'**
+  String get libSelect;
+
+  /// No description provided for @libSelectCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get libSelectCancel;
+
+  /// No description provided for @libExportCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Export {count}'**
+  String libExportCount(int count);
+
+  /// No description provided for @libShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get libShare;
+
+  /// No description provided for @libEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Clips you save live appear here.'**
+  String get libEmptyHint;
+
+  /// No description provided for @libFilterEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing with this filter.'**
+  String get libFilterEmpty;
+
+  /// No description provided for @libError.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open the library'**
+  String get libError;
+
+  /// No description provided for @libRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get libRetry;
+
+  /// No description provided for @libTemplatesBuiltIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Built-in'**
+  String get libTemplatesBuiltIn;
+
+  /// No description provided for @libTemplatesImported.
+  ///
+  /// In en, this message translates to:
+  /// **'Imported'**
+  String get libTemplatesImported;
+
+  /// No description provided for @liveSaveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Save play'**
+  String get liveSaveTitle;
+
+  /// No description provided for @liveSaveSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'the last {seconds} s and {post} s more'**
+  String liveSaveSubtitle(int seconds, int post);
+
+  /// No description provided for @liveOnAirBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'LIVE'**
+  String get liveOnAirBadge;
+
+  /// No description provided for @liveNoSoundBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'STREAM WITHOUT SOUND'**
+  String get liveNoSoundBadge;
+
+  /// No description provided for @liveMicOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Mic on'**
+  String get liveMicOpen;
+
+  /// No description provided for @liveMicClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Mic off'**
+  String get liveMicClosed;
+
+  /// No description provided for @liveMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Menu'**
+  String get liveMenu;
+
+  /// No description provided for @liveRestart.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart'**
+  String get liveRestart;
+
+  /// No description provided for @liveClipsEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap Save play right after a good moment.'**
+  String get liveClipsEmptyHint;
+
+  /// No description provided for @liveTagPanelTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved · what was it?'**
+  String get liveTagPanelTitle;
+
+  /// No description provided for @livePlayClip.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch'**
+  String get livePlayClip;
+
+  /// No description provided for @liveTeams.
+  ///
+  /// In en, this message translates to:
+  /// **'{home} vs {away}'**
+  String liveTeams(String home, String away);
+
+  /// No description provided for @liveGlanceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Match at a glance'**
+  String get liveGlanceTitle;
+
+  /// No description provided for @liveGlanceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a mark to review it'**
+  String get liveGlanceHint;
+
+  /// No description provided for @camWhatYouTubeSees.
+  ///
+  /// In en, this message translates to:
+  /// **'What YouTube sees'**
+  String get camWhatYouTubeSees;
+
+  /// No description provided for @camNoSound.
+  ///
+  /// In en, this message translates to:
+  /// **'NO SOUND'**
+  String get camNoSound;
+
+  /// No description provided for @camStreamTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Stream'**
+  String get camStreamTitle;
+
+  /// No description provided for @camOnAirYouTube.
+  ///
+  /// In en, this message translates to:
+  /// **'Live on YouTube'**
+  String get camOnAirYouTube;
+
+  /// No description provided for @camOnAirFor.
+  ///
+  /// In en, this message translates to:
+  /// **'on air'**
+  String get camOnAirFor;
+
+  /// No description provided for @camMbps.
+  ///
+  /// In en, this message translates to:
+  /// **'Mbps'**
+  String get camMbps;
+
+  /// No description provided for @camViewersLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'viewers'**
+  String get camViewersLabel;
+
+  /// No description provided for @camStopStream.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop streaming'**
+  String get camStopStream;
+
+  /// No description provided for @camStopShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get camStopShort;
+
+  /// No description provided for @camMicOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone on'**
+  String get camMicOpen;
+
+  /// No description provided for @camMicOpenHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to turn it off'**
+  String get camMicOpenHint;
+
+  /// No description provided for @camMicClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone off'**
+  String get camMicClosed;
+
+  /// No description provided for @camMicClosedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube hears nothing · tap to turn it on'**
+  String get camMicClosedHint;
+
+  /// No description provided for @camTileTemperature.
+  ///
+  /// In en, this message translates to:
+  /// **'Temperature'**
+  String get camTileTemperature;
+
+  /// No description provided for @camTileMemory.
+  ///
+  /// In en, this message translates to:
+  /// **'Memory'**
+  String get camTileMemory;
+
+  /// No description provided for @camTileViewers.
+  ///
+  /// In en, this message translates to:
+  /// **'Viewers'**
+  String get camTileViewers;
+
+  /// No description provided for @camTileOutbox.
+  ///
+  /// In en, this message translates to:
+  /// **'To send'**
+  String get camTileOutbox;
+
+  /// No description provided for @camTileCharging.
+  ///
+  /// In en, this message translates to:
+  /// **'Charging'**
+  String get camTileCharging;
+
+  /// No description provided for @camConnectViewerSub.
+  ///
+  /// In en, this message translates to:
+  /// **'QR and code · {count, plural, =0{nobody connected} =1{1 connected} other{{count} connected}}'**
+  String camConnectViewerSub(int count);
+
+  /// No description provided for @camPairSheetSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan it from InstantReplay on the bench tablet or phone'**
+  String get camPairSheetSub;
+
+  /// No description provided for @camPairOrCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Or type this code in the viewer'**
+  String get camPairOrCode;
+
+  /// No description provided for @camConnectedNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected now'**
+  String get camConnectedNow;
+
+  /// No description provided for @camClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get camClose;
+
+  /// No description provided for @camShareLive.
+  ///
+  /// In en, this message translates to:
+  /// **'Share the live'**
+  String get camShareLive;
+
+  /// No description provided for @camShareLiveSub.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube link for families'**
+  String get camShareLiveSub;
+
+  /// No description provided for @camShareSheetSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan it with the phone camera: it opens the live on YouTube'**
+  String get camShareSheetSub;
+
+  /// No description provided for @camShareHint.
+  ///
+  /// In en, this message translates to:
+  /// **'“Share…” opens WhatsApp, email and the other apps on the phone.'**
+  String get camShareHint;
+
+  /// No description provided for @camShareAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Share…'**
+  String get camShareAction;
+
+  /// No description provided for @camPrivacyChangeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Change it in Prepare the stream.'**
+  String get camPrivacyChangeHint;
+
+  /// No description provided for @camPrepareStream.
+  ///
+  /// In en, this message translates to:
+  /// **'Prepare the stream'**
+  String get camPrepareStream;
+
+  /// No description provided for @camBlackScreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Black screen'**
+  String get camBlackScreen;
+
+  /// No description provided for @camScoreboardShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Scoreboard'**
+  String get camScoreboardShort;
+
+  /// No description provided for @camReadyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to go live'**
+  String get camReadyTitle;
+
+  /// No description provided for @camReadySub.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything is checked. Go live when you want.'**
+  String get camReadySub;
+
+  /// No description provided for @camAmberHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Amber warnings do not stop you from going live.'**
+  String get camAmberHint;
+
+  /// No description provided for @camOperatingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording · screen off to save battery'**
+  String get camOperatingTitle;
+
+  /// No description provided for @camSavedForNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved for the next match'**
+  String get camSavedForNext;
+
+  /// No description provided for @camTabDestination.
+  ///
+  /// In en, this message translates to:
+  /// **'Destination'**
+  String get camTabDestination;
+
+  /// No description provided for @camTabDestinationSub.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube · account or key'**
+  String get camTabDestinationSub;
+
+  /// No description provided for @camTabImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Picture and sound'**
+  String get camTabImage;
+
+  /// No description provided for @camTabImageSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Quality and microphone'**
+  String get camTabImageSub;
+
+  /// No description provided for @camTabReplays.
+  ///
+  /// In en, this message translates to:
+  /// **'Replays'**
+  String get camTabReplays;
+
+  /// No description provided for @camTabReplaysSub.
+  ///
+  /// In en, this message translates to:
+  /// **'How they look on air'**
+  String get camTabReplaysSub;
+
+  /// No description provided for @camStepImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Picture'**
+  String get camStepImage;
+
+  /// No description provided for @camStepCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Check'**
+  String get camStepCheck;
+
+  /// No description provided for @camWhereStream.
+  ///
+  /// In en, this message translates to:
+  /// **'Where does it go?'**
+  String get camWhereStream;
+
+  /// No description provided for @camQualityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Picture quality'**
+  String get camQualityTitle;
+
+  /// No description provided for @camQualityLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Saver'**
+  String get camQualityLow;
+
+  /// No description provided for @camQualityNormal.
+  ///
+  /// In en, this message translates to:
+  /// **'Normal'**
+  String get camQualityNormal;
+
+  /// No description provided for @camQualityHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get camQualityHigh;
+
+  /// No description provided for @camQualityLowSub.
+  ///
+  /// In en, this message translates to:
+  /// **'mobile data'**
+  String get camQualityLowSub;
+
+  /// No description provided for @camQualityNormalSub.
+  ///
+  /// In en, this message translates to:
+  /// **'recommended'**
+  String get camQualityNormalSub;
+
+  /// No description provided for @camQualityHighSub.
+  ///
+  /// In en, this message translates to:
+  /// **'good Wi-Fi'**
+  String get camQualityHighSub;
+
+  /// No description provided for @camQualityPerHour.
+  ///
+  /// In en, this message translates to:
+  /// **'≈ {gigabytes} GB per hour'**
+  String camQualityPerHour(String gigabytes);
+
+  /// No description provided for @camQualityAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'If the connection drops, the stream lowers the quality by itself so it does not cut.'**
+  String get camQualityAuto;
+
+  /// No description provided for @camFineTune.
+  ///
+  /// In en, this message translates to:
+  /// **'Fine tune'**
+  String get camFineTune;
+
+  /// No description provided for @camSoundTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound'**
+  String get camSoundTitle;
+
+  /// No description provided for @camMicTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera microphone'**
+  String get camMicTitle;
+
+  /// No description provided for @camMicSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound of the venue. You can mute it on air.'**
+  String get camMicSub;
+
+  /// No description provided for @camReplaysTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How replays look'**
+  String get camReplaysTitle;
+
+  /// No description provided for @camGoLiveNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Start streaming'**
+  String get camGoLiveNow;
+
+  /// No description provided for @camGoLiveLast.
+  ///
+  /// In en, this message translates to:
+  /// **'Go live, like last time'**
+  String get camGoLiveLast;
+
+  /// No description provided for @camNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get camNext;
+
+  /// No description provided for @camSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'SUMMARY'**
+  String get camSummary;
+
+  /// No description provided for @camSumKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Key'**
+  String get camSumKey;
+
+  /// No description provided for @camSumYouTube.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube · {privacy}'**
+  String camSumYouTube(String privacy);
+
+  /// No description provided for @camSumReplay.
+  ///
+  /// In en, this message translates to:
+  /// **'Replay'**
+  String get camSumReplay;
+
+  /// No description provided for @camSumScoreboardOn.
+  ///
+  /// In en, this message translates to:
+  /// **'with scoreboard'**
+  String get camSumScoreboardOn;
+
+  /// No description provided for @camSumScoreboardOff.
+  ///
+  /// In en, this message translates to:
+  /// **'badge only'**
+  String get camSumScoreboardOff;
+
+  /// No description provided for @camYes.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes'**
+  String get camYes;
+
+  /// No description provided for @camNo.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get camNo;
+
+  /// No description provided for @camWhoCanSee.
+  ///
+  /// In en, this message translates to:
+  /// **'Who can see it'**
+  String get camWhoCanSee;
+
+  /// No description provided for @camPrivacyPublicSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone can find it'**
+  String get camPrivacyPublicSub;
+
+  /// No description provided for @camPrivacyUnlistedSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Only with the link'**
+  String get camPrivacyUnlistedSub;
+
+  /// No description provided for @camPrivacyPrivateSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Only your account'**
+  String get camPrivacyPrivateSub;
+
+  /// No description provided for @camBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get camBack;
+
+  /// No description provided for @sbPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Broadcast scoreboard'**
+  String get sbPageTitle;
+
+  /// No description provided for @sbStyle.
+  ///
+  /// In en, this message translates to:
+  /// **'Style'**
+  String get sbStyle;
+
+  /// No description provided for @sbClassic.
+  ///
+  /// In en, this message translates to:
+  /// **'Classic'**
+  String get sbClassic;
+
+  /// No description provided for @sbClassicSub.
+  ///
+  /// In en, this message translates to:
+  /// **'A thin bar. Names up to 5 letters.'**
+  String get sbClassicSub;
+
+  /// No description provided for @sbPlate.
+  ///
+  /// In en, this message translates to:
+  /// **'Plate'**
+  String get sbPlate;
+
+  /// No description provided for @sbPlateSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Two rows. Full names up to 16 letters.'**
+  String get sbPlateSub;
+
+  /// No description provided for @sbDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'DEFAULT'**
+  String get sbDefault;
+
+  /// No description provided for @sbClassicCut.
+  ///
+  /// In en, this message translates to:
+  /// **'The Classic style cuts names to 5 letters. Plate shows them in full.'**
+  String get sbClassicCut;
+
+  /// No description provided for @sbPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'PREVIEW'**
+  String get sbPreview;
+
+  /// No description provided for @sbHomeTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Home team'**
+  String get sbHomeTeam;
+
+  /// No description provided for @sbAwayTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Away team'**
+  String get sbAwayTeam;
+
+  /// No description provided for @sbTeamName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get sbTeamName;
+
+  /// No description provided for @sbSizeOnScreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Size on screen'**
+  String get sbSizeOnScreen;
+
+  /// No description provided for @sbMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Match'**
+  String get sbMatch;
+
+  /// No description provided for @sbReplayBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'REPLAY'**
+  String get sbReplayBadge;
+
+  /// No description provided for @sbClockStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start clock'**
+  String get sbClockStart;
+
+  /// No description provided for @sbClockPause.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause clock'**
+  String get sbClockPause;
+
+  /// No description provided for @camShareLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing the YouTube link…'**
+  String get camShareLoading;
+
+  /// No description provided for @camShareLoadingSub.
+  ///
+  /// In en, this message translates to:
+  /// **'It takes a few seconds the first time; then it opens at once.'**
+  String get camShareLoadingSub;
+
+  /// No description provided for @camShareRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get camShareRetry;
+
+  /// No description provided for @sbVisibility.
+  ///
+  /// In en, this message translates to:
+  /// **'What shows'**
+  String get sbVisibility;
+
+  /// No description provided for @sbOnAir.
+  ///
+  /// In en, this message translates to:
+  /// **'Scoreboard on air'**
+  String get sbOnAir;
+
+  /// No description provided for @sbOnAirSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn it off to stream without a scoreboard'**
+  String get sbOnAirSub;
+
+  /// No description provided for @sbControls.
+  ///
+  /// In en, this message translates to:
+  /// **'Scoreboard controls on this screen'**
+  String get sbControls;
+
+  /// No description provided for @sbControlsSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide them when someone else keeps the score'**
+  String get sbControlsSub;
+
+  /// No description provided for @sbChangeColour.
+  ///
+  /// In en, this message translates to:
+  /// **'Change colour'**
+  String get sbChangeColour;
+
+  /// No description provided for @camInfoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera status'**
+  String get camInfoTitle;
+
+  /// No description provided for @camRecordingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera recording'**
+  String get camRecordingTitle;
+
+  /// No description provided for @camSameWifi.
+  ///
+  /// In en, this message translates to:
+  /// **'Viewers must be on the same Wi-Fi network as this camera, or connected to its hotspot.'**
+  String get camSameWifi;
+
+  /// No description provided for @connectSameWifi.
+  ///
+  /// In en, this message translates to:
+  /// **'This device and the camera must be on the same Wi-Fi network (or this device on the camera\'s hotspot).'**
+  String get connectSameWifi;
+
+  /// No description provided for @settingsAppTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'App settings'**
+  String get settingsAppTitle;
+
+  /// No description provided for @viewerThisScreen.
+  ///
+  /// In en, this message translates to:
+  /// **'This screen'**
+  String get viewerThisScreen;
+
+  /// No description provided for @viewerSaveButtons.
+  ///
+  /// In en, this message translates to:
+  /// **'Save buttons'**
+  String get viewerSaveButtons;
+
+  /// No description provided for @checkAccountOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Streams to the YouTube account {email}'**
+  String checkAccountOk(String email);
+
+  /// No description provided for @checkAccountSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to the YouTube account to stream'**
+  String get checkAccountSignIn;
+
+  /// No description provided for @liveMicClosedBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'MIC CLOSED'**
+  String get liveMicClosedBadge;
+
+  /// No description provided for @ytAccountCheckChannel.
+  ///
+  /// In en, this message translates to:
+  /// **'Streams to the YouTube channel {channel}'**
+  String ytAccountCheckChannel(String channel);
+
+  /// No description provided for @ytAccountKeyLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re using your YouTube account. Sign out to stream with a key.'**
+  String get ytAccountKeyLocked;
+
+  /// No description provided for @ytAccountOrUseKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Or sign out and stream with a stream key.'**
+  String get ytAccountOrUseKey;
+
+  /// No description provided for @ytAccountErrorQuota.
+  ///
+  /// In en, this message translates to:
+  /// **'The YouTube API daily quota is used up.'**
+  String get ytAccountErrorQuota;
+
+  /// No description provided for @reviewColourRed.
+  ///
+  /// In en, this message translates to:
+  /// **'red'**
+  String get reviewColourRed;
+
+  /// No description provided for @reviewColourYellow.
+  ///
+  /// In en, this message translates to:
+  /// **'yellow'**
+  String get reviewColourYellow;
+
+  /// No description provided for @reviewColourWhite.
+  ///
+  /// In en, this message translates to:
+  /// **'white'**
+  String get reviewColourWhite;
+
+  /// No description provided for @reviewColourBlue.
+  ///
+  /// In en, this message translates to:
+  /// **'blue'**
+  String get reviewColourBlue;
+
+  /// No description provided for @reviewColourBlack.
+  ///
+  /// In en, this message translates to:
+  /// **'black'**
+  String get reviewColourBlack;
+
+  /// No description provided for @liveOnYouTubeBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'ON AIR'**
+  String get liveOnYouTubeBadge;
+
+  /// No description provided for @ytRemoteOrUseKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Or sign out on the Camera and stream with a stream key.'**
+  String get ytRemoteOrUseKey;
+
+  /// No description provided for @ytRemoteNeedSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'The stream goes to the Camera\'s YouTube account: sign in again on the Camera, or switch to Stream key.'**
+  String get ytRemoteNeedSignIn;
+
+  /// No description provided for @ytRemoteNoCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'The Camera didn\'t answer. Check the connection and try again.'**
+  String get ytRemoteNoCamera;
+
+  /// No description provided for @ytRemoteUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This Camera can\'t use a YouTube account. Use a stream key.'**
+  String get ytRemoteUnavailable;
+
+  /// No description provided for @ytRemoteKeyLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'The Camera is using its YouTube account. To stream with a key, sign out on the Camera.'**
+  String get ytRemoteKeyLocked;
+
+  /// No description provided for @ytRemoteSignInHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'The YouTube account is set up on the Camera: sign in with Google there, once. Meanwhile you can stream with a key.'**
+  String get ytRemoteSignInHelp;
+
+  /// No description provided for @ytRemoteOnCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in on the Camera'**
+  String get ytRemoteOnCamera;
+
+  /// No description provided for @ytDestKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Streams with a manual key'**
+  String get ytDestKey;
 }
 
 class _AppLocalizationsDelegate

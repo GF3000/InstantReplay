@@ -2,6 +2,7 @@
 library;
 
 import 'broadcast.dart';
+import 'youtube.dart';
 
 typedef Json = Map<String, Object?>;
 
@@ -185,6 +186,7 @@ class CameraStatus {
     this.zoom,
     this.reserve,
     this.replay,
+    this.youtube,
   });
 
   factory CameraStatus.fromJson(Json j) => CameraStatus(
@@ -220,6 +222,10 @@ class CameraStatus {
           final Json r => ReplayInfo.fromJson(r),
           _ => null,
         },
+        youtube: switch (j['youtube']) {
+          final Json y => YouTubeStatus.fromJson(y),
+          _ => null,
+        },
       );
 
   /// The capture pipeline is running (the ring buffer is filling). Not the full-session
@@ -252,6 +258,10 @@ class CameraStatus {
   /// A clip on air instead of the live picture (SPEC §12.6); null otherwise.
   final ReplayInfo? replay;
 
+  /// Broadcast mode only: the Camera's YouTube account and live (SPEC §12.1); null from a Camera
+  /// without it (older versions), and viewers then offer only the stream key.
+  final YouTubeStatus? youtube;
+
   /// This status with another [zoom] and [reserve]; every other field kept.
   CameraStatus withControls({ZoomInfo? zoom, int? reserve}) => CameraStatus(
         recording: recording,
@@ -268,6 +278,7 @@ class CameraStatus {
         zoom: zoom,
         reserve: reserve,
         replay: replay,
+        youtube: youtube,
       );
 
   /// This status with another [replay]; every other field kept.
@@ -286,6 +297,7 @@ class CameraStatus {
         zoom: zoom,
         reserve: reserve,
         replay: replay,
+        youtube: youtube,
       );
 
   Json toJson() => {
@@ -303,7 +315,27 @@ class CameraStatus {
         if (zoom != null) 'zoom': zoom!.toJson(),
         if (reserve != null) 'reserve': {'size': reserve},
         if (replay != null) 'replay': replay!.toJson(),
+        if (youtube != null) 'youtube': youtube!.toJson(),
       };
+
+  /// This status with another [youtube]; every other field kept.
+  CameraStatus withYouTube(YouTubeStatus? youtube) => CameraStatus(
+        recording: recording,
+        fps: fps,
+        bufferMs: bufferMs,
+        outboxClips: outboxClips,
+        thermalStatus: thermalStatus,
+        batteryTempC: batteryTempC,
+        batteryPercent: batteryPercent,
+        plugged: plugged,
+        sessionRecording: sessionRecording,
+        scoreboard: scoreboard,
+        broadcast: broadcast,
+        zoom: zoom,
+        reserve: reserve,
+        replay: replay,
+        youtube: youtube,
+      );
 }
 
 /// A clip on air (SPEC §12.6).

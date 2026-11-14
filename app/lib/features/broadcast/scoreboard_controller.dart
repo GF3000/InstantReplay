@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:replay_capture_android/replay_capture_android.dart' show OverlayState;
+import 'package:replay_capture_android/replay_capture_android.dart' show OverlayState, OverlayStyle;
 import 'package:replay_protocol/replay_protocol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -122,6 +122,7 @@ ScoreboardState rebuild(ScoreboardState s, {required int clockMs, required bool 
       clockRunning: running,
       visible: s.visible,
       scale: s.scale,
+      style: s.style,
     );
 
 /// The period as shown on air: `1T`/`2T` (es) or `1H`/`2H` (en) for halves, `P1`… for thirds,
@@ -133,11 +134,12 @@ String periodLabel(AppLocalizations l10n, {required int period, required int per
       _ => '',
     };
 
-/// The native overlay for [s].
+/// The native overlay for [s]: names upper-case and as drawn in its style (5 letters on the
+/// classic bar, full on the plate).
 OverlayState overlayFor(ScoreboardState s, AppLocalizations l10n) => OverlayState(
       visible: s.visible,
-      homeName: s.home.name.toUpperCase(),
-      awayName: s.away.name.toUpperCase(),
+      homeName: ScoreboardState.displayName(s.home.name, s.style).toUpperCase(),
+      awayName: ScoreboardState.displayName(s.away.name, s.style).toUpperCase(),
       homeScore: s.home.score,
       awayScore: s.away.score,
       homeColor: s.home.color,
@@ -147,4 +149,8 @@ OverlayState overlayFor(ScoreboardState s, AppLocalizations l10n) => OverlayStat
       clockRunning: s.clockRunning,
       countDown: s.countDown,
       scalePercent: s.scale,
+      style: switch (s.style) {
+        ScoreboardStyle.classic => OverlayStyle.classic,
+        ScoreboardStyle.plate => OverlayStyle.plate,
+      },
     );

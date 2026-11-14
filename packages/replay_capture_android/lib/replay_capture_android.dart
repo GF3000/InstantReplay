@@ -13,6 +13,7 @@ export 'src/capture_api.g.dart'
         ClipState,
         LiveViewerStats,
         OverlayState,
+        OverlayStyle,
         RecordingEnd,
         RecordingSaved,
         RecordingState,
@@ -140,6 +141,14 @@ class ReplayCapture implements CaptureEventsApi {
 
   /// Microphone on air on/off, live; false when it cannot be turned on.
   Future<bool> broadcastSetAudio(bool audio) => _host.broadcastSetAudio(audio);
+
+  /// The stream's microphone level in dBFS (−90…0, muted or not); null without an open mic.
+  /// Cheap; poll ~10 Hz while a meter is shown.
+  Future<double?> broadcastMicLevel() => _host.broadcastMicLevel();
+
+  /// Measures the microphone before going live, so [broadcastMicLevel] has a level with no
+  /// stream (only with the permission already granted; never asks).
+  Future<void> broadcastMicPreview(bool on) => _host.broadcastMicPreview(on);
 
   /// [scoreboard]: keep the scoreboard over the replay (off: only the [label] badge).
   Future<ReplayStatus> replayStart(String clipId, {double speed = 1, required String label, bool scoreboard = false}) =>

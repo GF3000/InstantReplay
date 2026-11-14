@@ -1,13 +1,16 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:instant_replay/core/preferences.dart';
 import 'package:instant_replay/features/viewer/data/viewer_api.dart';
+import 'package:instant_replay/features/viewer/ui/connect_view.dart';
 import 'package:instant_replay/features/viewer/viewer_providers.dart';
+import 'package:instant_replay/l10n/app_localizations.dart';
 import 'package:replay_protocol/replay_protocol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -205,5 +208,64 @@ void main() {
     );
     expect((await api.info()).name, 'Cam');
     expect(seen.single.headers['Authorization'], 'Bearer tok');
+  });
+
+  group('code cells', () {
+    Future<ProviderContainer> pumpCode(WidgetTester tester) async {
+      final c = await container(handler: okToken);
+      await tester.runAsync(() => c.read(viewerSetupProvider.notifier).setAddress('10.0.0.2'));
+      await tester.pumpWidget(UncontrolledProviderScope(
+        container: c,
+        child: const MaterialApp(
+          locale: Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(body: PairForm()),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      return c;
+    }
+
+    final field = find.byKey(const ValueKey('viewer-code-field'));
+    String cells(WidgetTester tester) => [
+          for (final t in tester.widgetList<Text>(
+            find.descendant(of: find.byType(PairForm), matching: find.byType(Text)),
+          ))
+            if (t.data case final d? when RegExp(r'^\d$').hasMatch(d)) d,
+        ].join();
+
+    testWidgets('one digit per cell; a wrong code shows under the cells and clears them', (tester) async {
+      final c = await pumpCode(tester);
+      expect(find.text('1 · Camera'), findsOneWidget, reason: 'the step indicator');
+      await tester.enterText(field, '12a34');
+      await tester.pump();
+      expect(cells(tester), '1234');
+      expect(requests, isEmpty);
+
+      await tester.enterText(field, '000000');
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+      await tester.pumpAndSettle();
+      expect(requests, hasLength(1), reason: 'sent at the 6th digit');
+      expect(c.read(viewerSetupProvider).error, PairError.wrongCode);
+      expect(find.byKey(const ValueKey('viewer-code-error')), findsOneWidget);
+      expect(cells(tester), isEmpty);
+    });
+
+    testWidgets('fits a phone on its side', (tester) async {
+      tester.view.physicalSize = const Size(640, 360);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await pumpCode(tester);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a pasted code connects', (tester) async {
+      final c = await pumpCode(tester);
+      await tester.enterText(field, '123456');
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+      await tester.pumpAndSettle();
+      expect(c.read(viewerSetupProvider).token, 'tok');
+    });
   });
 }

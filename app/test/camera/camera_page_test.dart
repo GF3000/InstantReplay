@@ -1,9 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:instant_replay/app/app.dart';
 import 'package:instant_replay/features/broadcast/preflight.dart';
+import 'package:instant_replay/features/broadcast/youtube/youtube_account.dart';
+import 'package:instant_replay/features/broadcast/youtube/youtube_api.dart';
+import 'package:instant_replay/features/broadcast/youtube/youtube_providers.dart';
 import 'package:instant_replay/core/capabilities.dart';
 import 'package:instant_replay/core/preferences.dart';
 import 'package:instant_replay/features/camera/camera_page.dart';
@@ -24,6 +29,7 @@ Future<SharedPreferences> _pumpCamera(
   double width = 2400,
   FakeServerPlatform? server,
   Map<String, Object> saved = const {},
+  YouTubeAccount? youtube,
 }) async {
   // A landscape phone; tests that read the whole status panel use a taller view.
   tester.view.physicalSize = Size(width, height);
@@ -38,11 +44,56 @@ Future<SharedPreferences> _pumpCamera(
       captureLayerProvider.overrideWithValue(fake),
       serverPlatformProvider.overrideWithValue((server ?? FakeServerPlatform()).platform),
       streamServerReachableProvider.overrideWithValue((_) async => true),
+      if (youtube != null) youtubeAccountProvider.overrideWithValue(youtube),
     ],
     child: const InstantReplayApp(),
   ));
   await tester.pumpAndSettle();
   return prefs;
+}
+
+/// A YouTube account for the checklist: only who it is and whether it is the destination.
+class _FakeYouTubeAccount implements YouTubeAccount {
+  _FakeYouTubeAccount({this.email, this.channel, this.wasActive = false});
+
+  @override
+  String? email;
+
+  @override
+  YouTubeChannel? channel;
+
+  /// Account mode from the last session, without a session now.
+  bool wasActive;
+
+  @override
+  bool get active => email != null || wasActive;
+
+  @override
+  Stream<void> get changes => const Stream.empty();
+
+  @override
+  YouTubeBroadcast? get current => null;
+
+  @override
+  Future<YouTubeBroadcast?> refresh() async => null;
+
+  @override
+  Future<YouTubeIngest?> ingest() async => null;
+
+  /// The share link's prefetch: YouTube never answers here.
+  @override
+  Future<YouTubeTarget> ensureLive({required String defaultTitle}) => Completer<YouTubeTarget>().future;
+
+  @override
+  Object? noSuchMethod(Invocation invocation) => throw UnimplementedError('${invocation.memberName}');
+}
+
+/// Opens "Prepare the stream" on a landscape phone and steps to its checklist.
+Future<void> _openChecklistStep(WidgetTester tester) async {
+  await _tapVisible(tester, find.byKey(const ValueKey('camera-broadcast-settings')));
+  for (var i = 0; i < 3; i++) {
+    await _tapNow(tester, find.byKey(const ValueKey('broadcast-config-next')));
+  }
 }
 
 /// Opens the collapsed "Advanced" section (profile, statistics, diagnostics).
@@ -100,7 +151,7 @@ void main() {
 
   testWidgets('starts even when notifications are denied', (tester) async {
     final fake = FakeCaptureLayer(notificationsGranted: false);
-    await _pumpCamera(tester, fake);
+    await _pumpCamera(tester, fake, height: 2400);
     expect(fake.starts, ['1080p30']);
     expect(find.textContaining('Notifications are off'), findsOneWidget);
   });
@@ -177,7 +228,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(fake.calls.last, 'preview:false');
     expect(find.byType(Texture), findsNothing);
-    expect(find.text('REC · buffer 42 s · outbox 3 · 36.5 °C'), findsOneWidget);
+    // Status tiles readable at a glance: memory, clips to send, temperature, battery.
+    Finder tile(String key, String text) => find.descendant(of: find.byKey(Key(key)), matching: find.text(text));
+    expect(tile('camera-op-capture', '42 s'), findsOneWidget);
+    expect(tile('camera-op-outbox', '3'), findsOneWidget);
+    expect(tile('camera-op-temperature', '36.5 °C'), findsOneWidget);
+    expect(tile('camera-op-battery', '80 %'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('camera-operating')));
     await tester.pumpAndSettle();
@@ -188,7 +244,7 @@ void main() {
 
   testWidgets('camera errors are shown until dismissed', (tester) async {
     final fake = FakeCaptureLayer();
-    await _pumpCamera(tester, fake);
+    await _pumpCamera(tester, fake, height: 2400);
 
     fake.errorsController.add('Camera device disconnected');
     await tester.pumpAndSettle();
@@ -223,7 +279,7 @@ void main() {
   });
 
   testWidgets('the Advanced section is collapsed and holds the profile selector', (tester) async {
-    await _pumpCamera(tester, FakeCaptureLayer());
+    await _pumpCamera(tester, FakeCaptureLayer(), height: 2400);
     expect(find.text('Advanced'), findsOneWidget);
     expect(find.byKey(const Key('camera-profile')), findsNothing);
     expect(find.text('Frame rate'), findsNothing);
@@ -585,10 +641,12 @@ void main() {
       fake.micGranted = true;
       await _tapVisible(tester, find.byKey(const ValueKey('check-mic-action')));
       expect(fake.calls, contains('micPermission'));
-      expect(find.text('Microphone allowed'), findsOneWidget);
+      // Only what is missing shows: the microphone line goes once it is allowed.
+      expect(find.text('Microphone not allowed: the stream will be silent'), findsNothing);
+      expect(find.text('No YouTube stream key yet'), findsOneWidget);
       expect(fake.overlays.last.homeName, 'LOC');
-      expect(find.byKey(const Key('camera-broadcast-card')), findsOneWidget);
-      // The header carries the stream; without a key, Go live opens the settings.
+      expect(find.byKey(const Key('camera-scoreboard')), findsOneWidget);
+      // Without a key, Go live opens the settings.
       expect(find.byKey(const ValueKey('camera-broadcast-start')), findsOneWidget);
       expect(find.byTooltip('Enter the stream key first'), findsOneWidget);
     });
@@ -616,19 +674,37 @@ void main() {
       expect(fake.calls.last, 'broadcastStop');
     });
 
-    testWidgets('the phone keeps the score itself; pairing folds; the controls can be hidden', (tester) async {
+    testWidgets('the phone keeps the score itself; pairing opens in a sheet', (tester) async {
+      final server = FakeServerPlatform();
       final fake = FakeCaptureLayer();
-      await _pumpCamera(tester, fake, height: 2400, saved: {'role': 'broadcast'});
+      await _pumpCamera(tester, fake, height: 2400, server: server, saved: {'role': 'broadcast'});
+      // The strip is always there: no toggle to hide it.
       expect(find.byKey(const Key('camera-scoreboard')), findsOneWidget);
-      expect(find.byKey(const Key('camera-pairing-qr')), findsNothing, reason: 'folded');
-      expect(find.byKey(const Key('camera-pairing-folded')), findsOneWidget);
+      expect(find.byKey(const Key('camera-scoreboard-toggle')), findsNothing);
+      expect(find.byKey(const Key('camera-pairing-qr')), findsNothing, reason: 'in the sheet');
 
       await _tapNow(tester, find.byKey(const ValueKey('score-home-plus')));
       expect(fake.overlays.last.homeScore, 1);
 
-      await _tapNow(tester, find.byKey(const Key('camera-scoreboard-toggle')));
-      expect(find.byKey(const Key('camera-scoreboard')), findsNothing);
-      expect(find.byKey(const Key('camera-score')), findsOneWidget, reason: 'the score on air instead');
+      await _tapVisible(tester, find.byKey(const Key('camera-pairing-open')));
+      final code = server.last!.config.secrets.code;
+      expect(find.byKey(const Key('camera-pairing-sheet')), findsOneWidget);
+      expect(find.text('${code.substring(0, 3)} ${code.substring(3)}'), findsOneWidget);
+      expect(find.byKey(const Key('camera-pairing-sheet-qr')), findsOneWidget);
+      await _tapNow(tester, find.byKey(const Key('camera-pairing-sheet-close')));
+      expect(find.byKey(const Key('camera-pairing-sheet')), findsNothing);
+    });
+
+    testWidgets('scoreboard settings: the style is kept and sent with the rest', (tester) async {
+      final fake = FakeCaptureLayer();
+      await _pumpCamera(tester, fake, height: 2400, saved: {'role': 'broadcast'});
+      await _tapNow(tester, find.byKey(const Key('camera-scoreboard-settings')));
+      await tester.tap(find.byKey(const ValueKey('score-settings-style-plate')));
+      await tester.enterText(find.byKey(const ValueKey('score-settings-home-name')), 'leones');
+      await tester.pump();
+      expect(find.text('6 / 16'), findsOneWidget);
+      await _tapNow(tester, find.byKey(const ValueKey('score-settings-save')));
+      expect(fake.overlays.last.homeName, 'LEONES');
     });
 
     testWidgets('a replay on air shows on the broadcast card; speed and Back to live act on the Camera', (tester) async {
@@ -656,10 +732,12 @@ void main() {
       expect(find.byKey(const ValueKey('camera-replay')), findsNothing);
     });
 
-    testWidgets('the replay reserve is set from Advanced and remembered', (tester) async {
+    testWidgets('the replay reserve is set in Prepare the stream (Replays) and remembered', (tester) async {
       final fake = FakeCaptureLayer();
       final prefs = await _pumpCamera(tester, fake, height: 2400, saved: {'role': 'broadcast'});
-      await _openAdvanced(tester);
+      expect(find.byKey(const Key('camera-advanced')), findsNothing, reason: 'broadcast mode has no Advanced');
+      await _tapVisible(tester, find.byKey(const ValueKey('camera-broadcast-settings')));
+      await _tapVisible(tester, find.byKey(const ValueKey('broadcast-tab-replays')));
       await _tapVisible(tester, find.byKey(const ValueKey('camera-clip-reserve-plus')));
       expect(fake.calls.last, 'reserve:4');
       expect(prefs.getInt('camera.clipReserve'), 4);
@@ -699,10 +777,44 @@ void main() {
       expect(find.byTooltip('Mute the microphone on air'), findsOneWidget);
     });
 
+    testWidgets('the mic row shows the real level before going live and on air, dimmed bars while muted', (
+      tester,
+    ) async {
+      final fake = FakeCaptureLayer()..micLevelDb = -20;
+      await _pumpCamera(tester, fake, height: 2400, saved: {'role': 'broadcast', 'broadcast.key': 'abcd'});
+      final meter = find.descendant(
+        of: find.byKey(const ValueKey('camera-broadcast-mic')),
+        matching: find.byKey(const ValueKey('ir-mic-level')),
+      );
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(meter, findsOneWidget, reason: 'before going live: the mic is measured to try it');
+      expect(fake.micPreview, isTrue);
+
+      // A mic set off before going live is not listened to.
+      await _tapNow(tester, find.byKey(const ValueKey('camera-broadcast-mic')));
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(meter, findsNothing);
+      expect(fake.micPreview, isFalse);
+      await _tapNow(tester, find.byKey(const ValueKey('camera-broadcast-mic')));
+
+      await _tapNow(tester, find.byKey(const ValueKey('camera-broadcast-start')));
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(meter, findsOneWidget);
+      expect(find.byKey(const ValueKey('ir-mic-bar-2-on')), findsOneWidget);
+
+      await _tapNow(tester, find.byKey(const ValueKey('camera-broadcast-mic')));
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(meter, findsOneWidget, reason: 'muted: the bars still show people talking');
+
+      fake.micLevelDb = null; // No microphone (e.g. no permission).
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(meter, findsNothing);
+    });
+
     testWidgets('the operating screen shows the score and the stream', (tester) async {
       final fake = FakeCaptureLayer();
       await _pumpCamera(tester, fake, saved: {'role': 'broadcast'});
-      await _tapNow(tester, find.text('Start operating'));
+      await _tapVisible(tester, find.text('Black screen'));
       expect(_operating(tester), isTrue);
       expect(find.byKey(const Key('camera-score')), findsOneWidget);
       expect(find.text('0 – 0'), findsOneWidget);
@@ -715,6 +827,113 @@ void main() {
       fake.thermalController.add(ThermalEvent(status: 3, action: ThermalAction.reduceFps));
       await tester.pumpAndSettle();
       expect(fake.starts, ['1080p60']);
+    });
+
+    // A phone on its side (844×390, 640×360) and a tablet (1180×820), off air and on air.
+    for (final size in const [Size(844, 390), Size(640, 360), Size(800, 416), Size(1180, 820), Size(1280, 800)]) {
+      testWidgets('broadcasting fits ${size.width.toInt()}x${size.height.toInt()}', (tester) async {
+        final fake = FakeCaptureLayer();
+        await _pumpCamera(tester, fake,
+            width: size.width * 2.5, height: size.height * 2.5, saved: {'role': 'broadcast', 'broadcast.key': 'abcd'});
+        fake.statsController.add(stats(plugged: false));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        void onScreen(String key) {
+          final r = tester.getRect(find.byKey(ValueKey(key)));
+          expect(r.bottom, lessThanOrEqualTo(size.height), reason: key);
+          expect(r.right, lessThanOrEqualTo(size.width), reason: key);
+          expect(r.height, greaterThanOrEqualTo(47.9), reason: key);
+        }
+
+        for (final k in ['score-home-plus', 'score-away-plus', 'score-home-minus', 'score-clock-toggle', 'camera-broadcast-start']) {
+          onScreen(k);
+        }
+
+        await _tapNow(tester, find.byKey(const ValueKey('camera-broadcast-start')));
+        fake.broadcastState = BroadcastStatus(
+            state: BroadcastState.live, targetKbps: 4500, droppedFrames: 0, audio: false, bitrateKbps: 4400, uptimeMs: 3151000);
+        fake.broadcastController.add(fake.broadcastState);
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        // On air: uptime and bitrate in figures, an explicit Stop, the red microphone row.
+        expect(find.textContaining('52:31'), findsOneWidget);
+        expect(find.textContaining('4.4'), findsWidgets);
+        for (final k in ['camera-broadcast-stop', 'camera-broadcast-mic', 'score-home-plus', 'score-clock-toggle']) {
+          onScreen(k);
+        }
+        expect(find.text('NO SOUND'), findsNothing, reason: 'the no-sound badge is on the viewers, not on the Camera');
+      });
+    }
+
+    testWidgets("the checklist names the account's channel, with the email under it", (tester) async {
+      final account = _FakeYouTubeAccount(
+        email: 'coach@example.com',
+        channel: const YouTubeChannel(id: 'UC1', title: 'Coras TV'),
+      );
+      // A stored key too: the signed-in account still wins.
+      await _pumpCamera(tester, FakeCaptureLayer(),
+          width: 844 * 2.5, height: 390 * 2.5, saved: {'role': 'broadcast', 'broadcast.key': 'abcd'}, youtube: account);
+      await _openChecklistStep(tester);
+      expect(find.text('Streams to the YouTube channel Coras TV'), findsOneWidget);
+      expect(tester.widget<Text>(find.byKey(const ValueKey('check-key-sub'))).data, 'coach@example.com');
+      expect(find.text('Streams with a manual key'), findsNothing);
+    });
+
+    testWidgets('the checklist names the email when the channel is unknown',
+        (tester) async {
+      final account = _FakeYouTubeAccount(email: 'coach@example.com');
+      await _pumpCamera(tester, FakeCaptureLayer(),
+          width: 844 * 2.5, height: 390 * 2.5, saved: {'role': 'broadcast'}, youtube: account);
+      await _openChecklistStep(tester);
+      expect(find.text('Streams to the YouTube account coach@example.com'), findsOneWidget);
+      expect(find.byKey(const ValueKey('check-key-sub')), findsNothing);
+    });
+
+    testWidgets('the checklist asks to sign in when account mode has no session', (tester) async {
+      await _pumpCamera(tester, FakeCaptureLayer(),
+          width: 844 * 2.5,
+          height: 390 * 2.5,
+          saved: {'role': 'broadcast', 'broadcast.key': 'abcd'},
+          youtube: _FakeYouTubeAccount(wasActive: true));
+      await _openChecklistStep(tester);
+      expect(find.text('Sign in to the YouTube account to stream'), findsOneWidget);
+    });
+
+    testWidgets('the checklist names the key when signed out', (tester) async {
+      await _pumpCamera(tester, FakeCaptureLayer(),
+          width: 844 * 2.5,
+          height: 390 * 2.5,
+          saved: {'role': 'broadcast', 'broadcast.key': 'abcd'},
+          youtube: _FakeYouTubeAccount());
+      await _openChecklistStep(tester);
+      expect(find.text('Streams with a manual key'), findsOneWidget);
+    });
+
+    testWidgets('Prepare the stream: its red button saves and goes live', (tester) async {
+      final fake = FakeCaptureLayer();
+      await _pumpCamera(tester, fake, width: 844 * 2.5, height: 390 * 2.5, saved: {'role': 'broadcast'});
+      await _tapVisible(tester, find.byKey(const ValueKey('camera-broadcast-settings')));
+      expect(find.byKey(const ValueKey('broadcast-config-stepper')), findsOneWidget);
+      await tester.enterText(find.byKey(const ValueKey('broadcast-key')), 'abcd-efgh');
+      for (var i = 0; i < 3; i++) {
+        await _tapNow(tester, find.byKey(const ValueKey('broadcast-config-next')));
+      }
+      // The last step is the checklist, every line shown.
+      expect(find.byKey(const ValueKey('check-key')), findsOneWidget);
+      expect(find.byKey(const ValueKey('check-key-action')), findsNothing, reason: 'the key is typed on this page');
+      expect(tester.takeException(), isNull);
+      await _tapNow(tester, find.byKey(const ValueKey('broadcast-config-golive')));
+      expect(fake.broadcastConfigs.single.url, 'rtmp://a.rtmp.youtube.com/live2/abcd-efgh');
+    });
+
+    testWidgets('once everything is checked the list goes away (only what is missing shows)', (tester) async {
+      final fake = FakeCaptureLayer();
+      await _pumpCamera(tester, fake, height: 2400, saved: {'role': 'broadcast', 'broadcast.key': 'abcd'});
+      fake.statsController.add(stats(plugged: true));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('broadcast-checklist')), findsNothing);
+      expect(find.byKey(const Key('broadcast-checklist-ready')), findsNothing);
+      expect(find.text('Ready to go live'), findsNothing);
     });
   });
 }

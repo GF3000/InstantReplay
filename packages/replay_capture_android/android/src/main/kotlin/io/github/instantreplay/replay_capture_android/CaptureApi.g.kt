@@ -209,6 +209,21 @@ enum class ClipState(val raw: Int) {
   }
 }
 
+/**
+ * How the overlay draws the board: [classic] is the thin one-row bar, [plate] a two-row plate
+ * with full names (the replay badge follows the same style).
+ */
+enum class OverlayStyle(val raw: Int) {
+  CLASSIC(0),
+  PLATE(1);
+
+  companion object {
+    fun ofRaw(raw: Int): OverlayStyle? {
+      return values().firstOrNull { it.raw == raw }
+    }
+  }
+}
+
 enum class BroadcastState(val raw: Int) {
   IDLE(0),
   CONNECTING(1),
@@ -730,7 +745,10 @@ data class ReplayStatus (
  */
 data class OverlayState (
   val visible: Boolean,
-  /** Already upper-case, 1–5 characters. */
+  /**
+   * Already upper-case and as drawn: 1–5 characters for [OverlayStyle.classic], up to 16 for
+   * [OverlayStyle.plate].
+   */
   val homeName: String,
   val awayName: String,
   val homeScore: Long,
@@ -746,7 +764,8 @@ data class OverlayState (
   /** A running count-down clock stops at 0 on screen. */
   val countDown: Boolean,
   /** Bar size: 100 = 56 px high at 1080p. */
-  val scalePercent: Long
+  val scalePercent: Long,
+  val style: OverlayStyle
 )
  {
   companion object {
@@ -763,7 +782,8 @@ data class OverlayState (
       val clockRunning = pigeonVar_list[9] as Boolean
       val countDown = pigeonVar_list[10] as Boolean
       val scalePercent = pigeonVar_list[11] as Long
-      return OverlayState(visible, homeName, awayName, homeScore, awayScore, homeColor, awayColor, periodLabel, clockMs, clockRunning, countDown, scalePercent)
+      val style = pigeonVar_list[12] as OverlayStyle
+      return OverlayState(visible, homeName, awayName, homeScore, awayScore, homeColor, awayColor, periodLabel, clockMs, clockRunning, countDown, scalePercent, style)
     }
   }
   fun toList(): List<Any?> {
@@ -780,6 +800,7 @@ data class OverlayState (
       clockRunning,
       countDown,
       scalePercent,
+      style,
     )
   }
   override fun equals(other: Any?): Boolean {
@@ -790,7 +811,7 @@ data class OverlayState (
       return true
     }
     val other = other as OverlayState
-    return CaptureApiPigeonUtils.deepEquals(this.visible, other.visible) && CaptureApiPigeonUtils.deepEquals(this.homeName, other.homeName) && CaptureApiPigeonUtils.deepEquals(this.awayName, other.awayName) && CaptureApiPigeonUtils.deepEquals(this.homeScore, other.homeScore) && CaptureApiPigeonUtils.deepEquals(this.awayScore, other.awayScore) && CaptureApiPigeonUtils.deepEquals(this.homeColor, other.homeColor) && CaptureApiPigeonUtils.deepEquals(this.awayColor, other.awayColor) && CaptureApiPigeonUtils.deepEquals(this.periodLabel, other.periodLabel) && CaptureApiPigeonUtils.deepEquals(this.clockMs, other.clockMs) && CaptureApiPigeonUtils.deepEquals(this.clockRunning, other.clockRunning) && CaptureApiPigeonUtils.deepEquals(this.countDown, other.countDown) && CaptureApiPigeonUtils.deepEquals(this.scalePercent, other.scalePercent)
+    return CaptureApiPigeonUtils.deepEquals(this.visible, other.visible) && CaptureApiPigeonUtils.deepEquals(this.homeName, other.homeName) && CaptureApiPigeonUtils.deepEquals(this.awayName, other.awayName) && CaptureApiPigeonUtils.deepEquals(this.homeScore, other.homeScore) && CaptureApiPigeonUtils.deepEquals(this.awayScore, other.awayScore) && CaptureApiPigeonUtils.deepEquals(this.homeColor, other.homeColor) && CaptureApiPigeonUtils.deepEquals(this.awayColor, other.awayColor) && CaptureApiPigeonUtils.deepEquals(this.periodLabel, other.periodLabel) && CaptureApiPigeonUtils.deepEquals(this.clockMs, other.clockMs) && CaptureApiPigeonUtils.deepEquals(this.clockRunning, other.clockRunning) && CaptureApiPigeonUtils.deepEquals(this.countDown, other.countDown) && CaptureApiPigeonUtils.deepEquals(this.scalePercent, other.scalePercent) && CaptureApiPigeonUtils.deepEquals(this.style, other.style)
   }
 
   override fun hashCode(): Int {
@@ -807,10 +828,11 @@ data class OverlayState (
     result = 31 * result + CaptureApiPigeonUtils.deepHash(this.clockRunning)
     result = 31 * result + CaptureApiPigeonUtils.deepHash(this.countDown)
     result = 31 * result + CaptureApiPigeonUtils.deepHash(this.scalePercent)
+    result = 31 * result + CaptureApiPigeonUtils.deepHash(this.style)
     return result
   }
   override fun toString(): String {
-    return "OverlayState(visible=$visible, homeName=$homeName, awayName=$awayName, homeScore=$homeScore, awayScore=$awayScore, homeColor=$homeColor, awayColor=$awayColor, periodLabel=$periodLabel, clockMs=$clockMs, clockRunning=$clockRunning, countDown=$countDown, scalePercent=$scalePercent)"
+    return "OverlayState(visible=$visible, homeName=$homeName, awayName=$awayName, homeScore=$homeScore, awayScore=$awayScore, homeColor=$homeColor, awayColor=$awayColor, periodLabel=$periodLabel, clockMs=$clockMs, clockRunning=$clockRunning, countDown=$countDown, scalePercent=$scalePercent, style=$style)"
   }
 }
 
@@ -1176,90 +1198,95 @@ private open class CaptureApiPigeonCodec : StandardMessageCodec() {
       }
       130.toByte() -> {
         return (readValue(buffer) as Long?)?.let {
-          BroadcastState.ofRaw(it.toInt())
+          OverlayStyle.ofRaw(it.toInt())
         }
       }
       131.toByte() -> {
         return (readValue(buffer) as Long?)?.let {
-          RecordingState.ofRaw(it.toInt())
+          BroadcastState.ofRaw(it.toInt())
         }
       }
       132.toByte() -> {
         return (readValue(buffer) as Long?)?.let {
-          RecordingEnd.ofRaw(it.toInt())
+          RecordingState.ofRaw(it.toInt())
         }
       }
       133.toByte() -> {
         return (readValue(buffer) as Long?)?.let {
-          ThermalAction.ofRaw(it.toInt())
+          RecordingEnd.ofRaw(it.toInt())
         }
       }
       134.toByte() -> {
-        return (readValue(buffer) as? List<Any?>)?.let {
-          CaptureProfile.fromList(it)
+        return (readValue(buffer) as Long?)?.let {
+          ThermalAction.ofRaw(it.toInt())
         }
       }
       135.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          StartRequest.fromList(it)
+          CaptureProfile.fromList(it)
         }
       }
       136.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          StartResult.fromList(it)
+          StartRequest.fromList(it)
         }
       }
       137.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          SaveRequest.fromList(it)
+          StartResult.fromList(it)
         }
       }
       138.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          ClipInfo.fromList(it)
+          SaveRequest.fromList(it)
         }
       }
       139.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          CaptureStats.fromList(it)
+          ClipInfo.fromList(it)
         }
       }
       140.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          ReplayStatus.fromList(it)
+          CaptureStats.fromList(it)
         }
       }
       141.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          OverlayState.fromList(it)
+          ReplayStatus.fromList(it)
         }
       }
       142.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          BroadcastConfig.fromList(it)
+          OverlayState.fromList(it)
         }
       }
       143.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          BroadcastStatus.fromList(it)
+          BroadcastConfig.fromList(it)
         }
       }
       144.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          RecordingStatus.fromList(it)
+          BroadcastStatus.fromList(it)
         }
       }
       145.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          RecordingSaved.fromList(it)
+          RecordingStatus.fromList(it)
         }
       }
       146.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          ThermalEvent.fromList(it)
+          RecordingSaved.fromList(it)
         }
       }
       147.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          ThermalEvent.fromList(it)
+        }
+      }
+      148.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
           LiveViewerStats.fromList(it)
         }
@@ -1273,76 +1300,80 @@ private open class CaptureApiPigeonCodec : StandardMessageCodec() {
         stream.write(129)
         writeValue(stream, value.raw.toLong())
       }
-      is BroadcastState -> {
+      is OverlayStyle -> {
         stream.write(130)
         writeValue(stream, value.raw.toLong())
       }
-      is RecordingState -> {
+      is BroadcastState -> {
         stream.write(131)
         writeValue(stream, value.raw.toLong())
       }
-      is RecordingEnd -> {
+      is RecordingState -> {
         stream.write(132)
         writeValue(stream, value.raw.toLong())
       }
-      is ThermalAction -> {
+      is RecordingEnd -> {
         stream.write(133)
         writeValue(stream, value.raw.toLong())
       }
-      is CaptureProfile -> {
+      is ThermalAction -> {
         stream.write(134)
-        writeValue(stream, value.toList())
+        writeValue(stream, value.raw.toLong())
       }
-      is StartRequest -> {
+      is CaptureProfile -> {
         stream.write(135)
         writeValue(stream, value.toList())
       }
-      is StartResult -> {
+      is StartRequest -> {
         stream.write(136)
         writeValue(stream, value.toList())
       }
-      is SaveRequest -> {
+      is StartResult -> {
         stream.write(137)
         writeValue(stream, value.toList())
       }
-      is ClipInfo -> {
+      is SaveRequest -> {
         stream.write(138)
         writeValue(stream, value.toList())
       }
-      is CaptureStats -> {
+      is ClipInfo -> {
         stream.write(139)
         writeValue(stream, value.toList())
       }
-      is ReplayStatus -> {
+      is CaptureStats -> {
         stream.write(140)
         writeValue(stream, value.toList())
       }
-      is OverlayState -> {
+      is ReplayStatus -> {
         stream.write(141)
         writeValue(stream, value.toList())
       }
-      is BroadcastConfig -> {
+      is OverlayState -> {
         stream.write(142)
         writeValue(stream, value.toList())
       }
-      is BroadcastStatus -> {
+      is BroadcastConfig -> {
         stream.write(143)
         writeValue(stream, value.toList())
       }
-      is RecordingStatus -> {
+      is BroadcastStatus -> {
         stream.write(144)
         writeValue(stream, value.toList())
       }
-      is RecordingSaved -> {
+      is RecordingStatus -> {
         stream.write(145)
         writeValue(stream, value.toList())
       }
-      is ThermalEvent -> {
+      is RecordingSaved -> {
         stream.write(146)
         writeValue(stream, value.toList())
       }
-      is LiveViewerStats -> {
+      is ThermalEvent -> {
         stream.write(147)
+        writeValue(stream, value.toList())
+      }
+      is LiveViewerStats -> {
+        stream.write(148)
         writeValue(stream, value.toList())
       }
       else -> super.writeValue(stream, value)
@@ -1419,6 +1450,19 @@ interface CaptureHostApi {
    * it cannot be turned on (no permission, or no stream).
    */
   fun broadcastSetAudio(audio: Boolean): Boolean
+  /**
+   * What the stream's microphone hears now, in dBFS (−90…0; peak with a VU-like ~300 ms
+   * release), measured before muting so a muted mic still shows people talking. Null when no
+   * microphone is open (no stream, audio off at start, or no permission). Cheap: poll it ~10 Hz
+   * while a meter is on screen.
+   */
+  fun broadcastMicLevel(): Double?
+  /**
+   * Measures the microphone while no stream runs, so [broadcastMicLevel] has a level before
+   * going live (SPEC §12.7). Only with RECORD_AUDIO already granted (never asks); a stream takes
+   * the microphone over and the measuring resumes after it while still on. Broadcast mode only.
+   */
+  fun broadcastMicPreview(on: Boolean)
   /**
    * Puts clip [clipId] (ready or in the reserve) on air at [speed], replacing any running
    * replay; [label] is drawn over it (e.g. `REPETICIÓN`); the scoreboard too only when
@@ -1929,6 +1973,39 @@ interface CaptureHostApi {
             val audioArg = args[0] as Boolean
             val wrapped: List<Any?> = try {
               listOf(api.broadcastSetAudio(audioArg))
+            } catch (exception: Throwable) {
+              CaptureApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.replay_capture_android.CaptureHostApi.broadcastMicLevel$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            val wrapped: List<Any?> = try {
+              listOf(api.broadcastMicLevel())
+            } catch (exception: Throwable) {
+              CaptureApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.replay_capture_android.CaptureHostApi.broadcastMicPreview$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val onArg = args[0] as Boolean
+            val wrapped: List<Any?> = try {
+              api.broadcastMicPreview(onArg)
+              listOf(null)
             } catch (exception: Throwable) {
               CaptureApiPigeonUtils.wrapError(exception)
             }

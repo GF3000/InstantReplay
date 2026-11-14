@@ -152,6 +152,8 @@ void main() {
       const ReplayAir(clipId: 'c1', speed: 0.5),
       const ReplaySpeed(speed: 0.25),
       const ReplayStop(),
+      const MicLevel(db: -18.5),
+      const MicLevel(db: null),
       const ClipChanged(
         clip: ClipDto(id: 'c', requestId: 'r', state: ClipState.acked, createdAtMs: 1, reserved: true),
       ),
@@ -167,6 +169,26 @@ void main() {
           replay: ReplayInfo(clipId: 'c1', speed: 0.5, positionMs: 1200, durationMs: 20000),
         ),
       ),
+      const StatusUpdate(
+        status: CameraStatus(
+          recording: true,
+          fps: 30,
+          bufferMs: 1,
+          outboxClips: 0,
+          thermalStatus: 0,
+          youtube: _youtube,
+        ),
+      ),
+      const YouTubeCmd(
+        requestId: 'r1',
+        action: YouTubeAction.save,
+        title: 'Final',
+        description: 'Copa',
+        privacy: 'public',
+      ),
+      const YouTubeCmd(requestId: 'r2', action: YouTubeAction.prepare),
+      const YouTubeResult(requestId: 'r1', status: _youtube, server: 'rtmp://a.rtmp.youtube.com/live2'),
+      const YouTubeResult(requestId: 'r2', errorCode: 'quota', errorMessage: 'daily limit'),
       const Ping(),
       const Pong(),
     ];
@@ -181,6 +203,15 @@ void main() {
 
     test('unknown types decode to null', () {
       expect(WsMessage.decode('{"type":"future_thing","x":1}'), isNull);
+    });
+
+    test('MicLevel: dBFS with one decimal; no db means no microphone', () {
+      expect(const MicLevel(db: -23.46).toJson(), {'type': 'mic_level', 'db': -23.5});
+      expect(const MicLevel(db: null).toJson(), {'type': 'mic_level'});
+      expect((WsMessage.decode('{"type":"mic_level","db":-6}')! as MicLevel).db, -6.0);
+      expect((WsMessage.decode('{"type":"mic_level","db":-41.25}')! as MicLevel).db, -41.25);
+      expect((WsMessage.decode('{"type":"mic_level"}')! as MicLevel).db, isNull);
+      expect((WsMessage.decode(const MicLevel(db: -90).encode())! as MicLevel).db, -90.0);
     });
 
     test('RecStart: includeSeconds is omitted at 0 and defaults to 0', () {
@@ -296,8 +327,33 @@ void main() {
         )),
         elapsedMs: 3000,
       );
-      expect(renamed.home.name, 'BARCE');
+      // Names are kept whole (up to 16); the classic bar draws only the first 5 letters.
+      expect(renamed.home.name, 'BARCELONA');
+      expect(ScoreboardState.displayName(renamed.home.name, ScoreboardStyle.classic), 'BARCE');
+      expect(ScoreboardState.displayName(renamed.home.name, ScoreboardStyle.plate), 'BARCELONA');
+      expect(renamed.style, ScoreboardStyle.classic);
       expect(renamed.away.name, 'VIS');
+      expect(ScoreboardState.normalizeName('a' * 30, 'X').length, ScoreboardState.maxNameLength);
+      final plate = renamed.apply(
+        SettingsCommand(ScoreboardSettings(
+          homeName: 'barcelona',
+          awayName: 'vis',
+          homeColor: 5,
+          awayColor: 6,
+          periods: 2,
+          periodMs: s0.periodMs,
+          countDown: false,
+          style: ScoreboardStyle.plate,
+        )),
+        elapsedMs: 0,
+      );
+      expect(plate.style, ScoreboardStyle.plate);
+      expect(ScoreboardState.fromJson(plate.toJson()).style, ScoreboardStyle.plate);
+      expect(ScoreboardState.fromJson(s0.toJson()..remove('style')).style, ScoreboardStyle.classic);
+      // A viewer older than the style sends settings without it: the board keeps its style.
+      final old = ScoreboardSettings.fromJson(plate.settings.toJson()..remove('style'));
+      expect(old.style, isNull);
+      expect(plate.apply(SettingsCommand(old), elapsedMs: 0).style, ScoreboardStyle.plate);
       expect(renamed.periods, 4);
       expect((renamed.clockMs, renamed.clockRunning), (3000, true));
     });
@@ -341,5 +397,53 @@ void main() {
       expect(WsMessage.decode('{"type":"scoreboard_cmd","action":"explode"}'), isNull);
       expect(WsMessage.decode('{"type":"scoreboard_cmd","action":"score","team":"nobody","delta":1}'), isNull);
     });
+
+    test('YouTube: status fields, result ok, and unknown actions or fields are ignored', () {
+      final back = CameraStatus.fromJson(
+        (WsMessage.decode(const StatusUpdate(
+          status: CameraStatus(recording: true, fps: 30, bufferMs: 1, outboxClips: 0, thermalStatus: 0, youtube: _youtube),
+        ).encode())! as StatusUpdate)
+            .status
+            .toJson(),
+      ).youtube!;
+      expect(back.destination, YouTubeDestination.account);
+      expect((back.email, back.channelTitle, back.signedIn), ('coach@example.com', 'Coras TV', true));
+      expect((back.live!.title, back.live!.privacy, back.live!.lifeCycle), ('Final', 'unlisted', 'ready'));
+      expect(back.live!.url, 'https://youtu.be/b1');
+
+      // An older Camera: no youtube in the status.
+      final old = CameraStatus.fromJson(
+          {'recording': true, 'fps': 30, 'bufferMs': 1, 'outboxClips': 0, 'thermalStatus': 0});
+      expect(old.youtube, isNull);
+
+      // A newer Camera's destination or fields.
+      final newer = YouTubeStatus.fromJson({'destination': 'satellite', 'accountAvailable': true, 'x': 1});
+      expect((newer.destination, newer.signedIn), (YouTubeDestination.none, false));
+
+      expect(const YouTubeResult(requestId: 'r').ok, isTrue);
+      expect(const YouTubeResult(requestId: 'r', errorCode: 'api').ok, isFalse);
+      // A newer viewer's action: ignored like an unknown type.
+      expect(WsMessage.decode('{"type":"youtube_cmd","requestId":"r","action":"teleport"}'), isNull);
+      // The key never travels.
+      expect(const YouTubeResult(requestId: 'r', status: _youtube, server: 'rtmp://x').encode(), isNot(contains('key')));
+    });
   });
 }
+
+const _youtube = YouTubeStatus(
+  destination: YouTubeDestination.account,
+  email: 'coach@example.com',
+  channelId: 'UC1',
+  channelTitle: 'Coras TV',
+  live: YouTubeLiveInfo(
+    id: 'b1',
+    title: 'Final',
+    description: 'Copa',
+    privacy: 'unlisted',
+    lifeCycle: 'ready',
+    url: 'https://youtu.be/b1',
+  ),
+  ingest: 'none',
+  errorCode: 'quota',
+  errorMessage: 'daily limit',
+);
