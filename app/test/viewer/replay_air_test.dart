@@ -219,21 +219,18 @@ void main() {
       // One speed control for both: the bar has none of its own.
       expect(_key('viewer-replay-stop'), findsOneWidget);
       expect(_key('viewer-replay-speed'), findsNothing);
-      expect(find.text('Take off air'), findsOneWidget);
+      // One red button on air: Back to live, no separate Take off air.
+      expect(_key('review-air'), findsNothing);
+      expect(find.text('Take off air'), findsNothing);
 
       await tester.tap(speed('1×'));
       await tester.pumpAndSettle();
       expect(remote.sent.last, const ReplaySpeed(speed: 1).encode());
 
-      // Take off air: back to live, the review stays open.
-      await tester.tap(_key('review-air'));
+      // Back to live: the stream leaves the replay.
+      await tester.tap(_key('viewer-replay-stop'));
       await tester.pumpAndSettle();
       expect(remote.sent.last, const ReplayStop().encode());
-      link.report(null);
-      await tester.pumpAndSettle();
-      expect(find.byType(ReviewPage), findsOneWidget);
-      expect(_key('viewer-replay'), findsNothing);
-      expect(find.text('Air replay'), findsOneWidget);
     });
 
     testWidgets('on a phone the button keeps only its icon', (tester) async {
@@ -265,6 +262,30 @@ void main() {
       tester.state<NavigatorState>(find.byType(Navigator)).pop();
       await tester.pumpAndSettle();
       expect(remote.sent.last, const ReplayStop().encode());
+    });
+
+    testWidgets('Back to live on air takes the replay off and returns the tablet to live', (tester) async {
+      late _Link link;
+      final remote = await _pump(
+        tester,
+        Builder(
+          builder: (context) => TextButton(
+            onPressed: () => Navigator.of(context).push(ReviewPage.route(_clip(), replayBar: true)),
+            child: const Text('open'),
+          ),
+        ),
+        link: () => link = _Link(),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      await tester.tap(_key('review-air'));
+      await tester.pumpAndSettle();
+      link.report(onAir);
+      await tester.pumpAndSettle();
+      await tester.tap(_key('viewer-replay-stop'));
+      await tester.pumpAndSettle();
+      expect(remote.sent.last, const ReplayStop().encode());
+      expect(find.byType(ReviewPage), findsNothing);
     });
   });
 

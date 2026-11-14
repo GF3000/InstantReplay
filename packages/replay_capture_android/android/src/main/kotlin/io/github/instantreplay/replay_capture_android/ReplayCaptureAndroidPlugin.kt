@@ -182,6 +182,7 @@ class ReplayCaptureAndroidPlugin :
                 attachProgram = capture::setProgramSurface,
                 deviceStats = { lastEngineStats },
                 onStatus = { status -> mainHandler.post { onBroadcastStatus(status) } },
+                micGranted = ::hasMicPermission,
             )
         }
         outbox.attach(ring)
@@ -333,6 +334,10 @@ class ReplayCaptureAndroidPlugin :
     override fun broadcastSetAudio(audio: Boolean): Boolean = broadcaster?.setMuted(!audio) ?: false
 
     override fun broadcastMicLevel(): Double? = broadcaster?.micLevelDbfs()
+
+    override fun broadcastMicPreview(on: Boolean) {
+        broadcaster?.setMicPreview(on)
+    }
 
     // Replays on air (SPEC §12.6).
 

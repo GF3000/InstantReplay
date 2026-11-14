@@ -467,6 +467,11 @@ abstract class CaptureHostApi {
   /// while a meter is on screen.
   double? broadcastMicLevel();
 
+  /// Measures the microphone while no stream runs, so [broadcastMicLevel] has a level before
+  /// going live (SPEC §12.7). Only with RECORD_AUDIO already granted (never asks); a stream takes
+  /// the microphone over and the measuring resumes after it while still on. Broadcast mode only.
+  void broadcastMicPreview(bool on);
+
   // Replays on air (SPEC §12.6). Only while a broadcast is active.
 
   /// Puts clip [clipId] (ready or in the reserve) on air at [speed], replacing any running

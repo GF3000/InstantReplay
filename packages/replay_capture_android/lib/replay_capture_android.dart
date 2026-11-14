@@ -146,6 +146,10 @@ class ReplayCapture implements CaptureEventsApi {
   /// Cheap; poll ~10 Hz while a meter is shown.
   Future<double?> broadcastMicLevel() => _host.broadcastMicLevel();
 
+  /// Measures the microphone before going live, so [broadcastMicLevel] has a level with no
+  /// stream (only with the permission already granted; never asks).
+  Future<void> broadcastMicPreview(bool on) => _host.broadcastMicPreview(on);
+
   /// [scoreboard]: keep the scoreboard over the replay (off: only the [label] badge).
   Future<ReplayStatus> replayStart(String clipId, {double speed = 1, required String label, bool scoreboard = false}) =>
       _host.replayStart(clipId, speed, label, scoreboard);

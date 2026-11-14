@@ -300,15 +300,8 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
     _follow();
   }
 
-  /// "Take off air": the stream goes back to live; the review stays open on the tablet.
-  void _takeOffAir() {
-    _remote.replayStop();
-    _aired = false;
-    setState(() => _mirror = false);
-    unawaited(_player.setLooping(widget.playlist == null));
-  }
-
-  /// Back to live from this page: stops the replay and closes the page.
+  /// Back to live from this page (the one red button while this clip is on air): stops the
+  /// replay on air and closes the page.
   void _backToLive() {
     _remote.replayStop();
     _aired = false;
@@ -496,12 +489,9 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
     final live = widget.replayBar && clip.clipId != null;
     final streaming = live && (ref.watch(viewerBroadcastProvider)?.active ?? false);
     final airing = live && ref.watch(viewerReplayProvider.select((r) => r != null && r.clipId == clip.clipId));
-    final air = airing || canGoOnAir(clip, streaming: streaming)
-        ? _AirButton(
-            airing: airing,
-            labelled: MediaQuery.sizeOf(context).width >= 600,
-            onPressed: airing ? _takeOffAir : _goOnAir,
-          )
+    // On air, the replay bar's Back to live is the only way off: no second red button.
+    final air = !airing && canGoOnAir(clip, streaming: streaming)
+        ? _AirButton(labelled: MediaQuery.sizeOf(context).width >= 600, onPressed: _goOnAir)
         : null;
     return Scaffold(
       appBar: AppBar(
@@ -515,7 +505,8 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
       ),
       body: SafeArea(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          if (live) ViewerReplayBar(clipId: clip.clipId, speed: !_mirror, onStop: _mirror ? _backToLive : null),
+          if (live)
+            ViewerReplayBar(clipId: clip.clipId, speed: !_mirror, onStop: _mirror || airing ? _backToLive : null),
           Expanded(child: _failed ? _error(l10n) : _playerView(l10n, layout, airing: airing)),
         ]),
       ),
@@ -1080,9 +1071,7 @@ class _ZoomChip extends StatelessWidget {
 /// "Air replay" (outlined in live red) or, while this clip is on air, "Take off air" (filled red,
 /// blinking dot).
 class _AirButton extends StatelessWidget {
-  const _AirButton({required this.airing, required this.labelled, required this.onPressed});
-
-  final bool airing;
+  const _AirButton({required this.labelled, required this.onPressed});
 
   /// False on a narrow phone: the icon only, with a tooltip.
   final bool labelled;
@@ -1092,13 +1081,13 @@ class _AirButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.ir;
     final l10n = AppLocalizations.of(context);
-    final fg = airing ? c.onLive : c.liveText;
-    final label = airing ? l10n.reviewAirStop : l10n.reviewAirSend;
+    final fg = c.liveText;
+    final label = l10n.reviewAirSend;
     return Tooltip(
       message: label,
       child: Material(
         key: const ValueKey('review-air'),
-        color: airing ? c.live : c.liveSoft,
+        color: c.liveSoft,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4), side: BorderSide(color: c.live)),
         child: InkWell(
           onTap: onPressed,
@@ -1108,7 +1097,7 @@ class _AirButton extends StatelessWidget {
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: labelled ? 14 : 8),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                if (airing) IrLiveDot(color: fg, size: 9) else Icon(Icons.sensors, size: 20, color: fg),
+                Icon(Icons.sensors, size: 20, color: fg),
                 if (labelled) ...[
                   const SizedBox(width: 8),
                   Text(label, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: fg)),

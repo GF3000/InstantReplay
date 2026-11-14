@@ -69,27 +69,6 @@ internal class AudioEncoder(
         if (started) thread.join(1000) else releaseResources()
     }
 
-    @SuppressLint("MissingPermission") // The caller checked RECORD_AUDIO.
-    private fun openMic(): AudioRecord? {
-        val minBuffer = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
-        if (minBuffer <= 0) return null
-        // CAMCORDER is tuned for video recording (the mic facing the scene); MIC as a fallback.
-        for (source in intArrayOf(MediaRecorder.AudioSource.CAMCORDER, MediaRecorder.AudioSource.MIC)) {
-            val record = try {
-                AudioRecord(
-                    source, SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT,
-                    maxOf(minBuffer * 2, CHUNK_BYTES * 4),
-                )
-            } catch (e: Exception) {
-                Log.w(TAG, "AudioRecord source $source failed", e)
-                continue
-            }
-            if (record.state == AudioRecord.STATE_INITIALIZED) return record
-            record.release()
-        }
-        return null
-    }
-
     private fun loop() {
         Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO)
         val pcm = ByteArray(CHUNK_BYTES) // zeros: silence unless the mic overwrites it
@@ -164,7 +143,29 @@ internal class AudioEncoder(
         const val SAMPLE_RATE = 48_000
         const val BITRATE = 128_000
         private const val SAMPLES_PER_CHUNK = 1024 // one AAC-LC frame
-        private const val CHUNK_BYTES = SAMPLES_PER_CHUNK * 2 // mono PCM16
+        const val CHUNK_BYTES = SAMPLES_PER_CHUNK * 2 // mono PCM16
         private const val INPUT_TIMEOUT_US = 10_000L
+
+        /** The stream microphone (CAMCORDER, else MIC) at 48 kHz mono PCM16; null if refused. */
+        @SuppressLint("MissingPermission") // The caller checked RECORD_AUDIO.
+        fun openMic(): AudioRecord? {
+            val minBuffer = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
+            if (minBuffer <= 0) return null
+            // CAMCORDER is tuned for video recording (the mic facing the scene); MIC as a fallback.
+            for (source in intArrayOf(MediaRecorder.AudioSource.CAMCORDER, MediaRecorder.AudioSource.MIC)) {
+                val record = try {
+                    AudioRecord(
+                        source, SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT,
+                        maxOf(minBuffer * 2, CHUNK_BYTES * 4),
+                    )
+                } catch (e: Exception) {
+                    Log.w(TAG, "AudioRecord source $source failed", e)
+                    continue
+                }
+                if (record.state == AudioRecord.STATE_INITIALIZED) return record
+                record.release()
+            }
+            return null
+        }
     }
 }

@@ -93,6 +93,10 @@ abstract interface class CaptureLayer {
   /// open microphone. Cheap; poll ~10 Hz only while a meter needs it.
   Future<double?> broadcastMicLevel();
 
+  /// Measures the microphone with no stream, so [broadcastMicLevel] has a level before going
+  /// live. Never asks for the permission (without it, nothing).
+  Future<void> broadcastMicPreview(bool on);
+
   /// What the scoreboard overlay shows. Cheap; call on every change.
   Future<void> setOverlay(OverlayState overlay);
 
@@ -237,6 +241,9 @@ class PluginCaptureLayer implements CaptureLayer {
 
   @override
   Future<double?> broadcastMicLevel() => _capture.broadcastMicLevel();
+
+  @override
+  Future<void> broadcastMicPreview(bool on) => _capture.broadcastMicPreview(on);
 
   @override
   Future<void> setOverlay(OverlayState overlay) => _capture.setOverlay(overlay);

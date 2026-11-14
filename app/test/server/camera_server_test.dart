@@ -690,25 +690,28 @@ void main() {
       await v.close();
     });
 
-    test('while the stream runs with a microphone, viewers get its level; null once it stops', () async {
+    test('viewers get the mic level before going live (mic on) and on air; none with it off', () async {
+      capture.micLevelDb = -23.44;
       final v = await greeted('viewer-a');
       capture.statsController.add(stats());
-      await v.next<StatusUpdate>();
-      expect(capture.micLevelPolls, 0, reason: 'nothing polls before a stream');
+      expect((await v.next<MicLevel>()).db, -23.4, reason: 'before going live: measured');
+      expect(capture.micPreview, isTrue);
 
-      capture.micLevelDb = -23.44;
       v.send(const BroadcastConfigure(key: 'abcd-efgh-1234'));
-      await v.next<StatusUpdate>();
       v.send(const BroadcastStart());
-      expect((await v.next<MicLevel>()).db, -23.4);
+      await _eventually(() => host.info.state == BroadcastStreamState.connecting);
       capture.micLevelDb = -12;
       expect((await v.next<MicLevel>()).db, -12);
 
+      // Mic off, then off the air: nothing is measured any more.
+      v.send(const BroadcastConfigure(key: 'abcd-efgh-1234', audio: false));
+      await _eventually(() => capture.calls.contains('broadcastAudio:false'));
       v.send(const BroadcastStop());
       expect((await v.next<MicLevel>()).db, isNull);
+      expect(capture.micPreview, isFalse);
       final polls = capture.micLevelPolls;
       await Future<void>.delayed(const Duration(milliseconds: 250));
-      expect(capture.micLevelPolls, polls, reason: 'polling stops with the stream');
+      expect(capture.micLevelPolls, polls, reason: 'polling stops');
       await v.close();
     });
 

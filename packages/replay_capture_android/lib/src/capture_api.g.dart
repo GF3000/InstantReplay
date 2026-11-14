@@ -1949,6 +1949,27 @@ class CaptureHostApi {
     return pigeonVar_replyValue as double?;
   }
 
+  /// Measures the microphone while no stream runs, so [broadcastMicLevel] has a level before
+  /// going live (SPEC §12.7). Only with RECORD_AUDIO already granted (never asks); a stream takes
+  /// the microphone over and the measuring resumes after it while still on. Broadcast mode only.
+  Future<void> broadcastMicPreview(bool on) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.replay_capture_android.CaptureHostApi.broadcastMicPreview$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[on]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+  }
+
   /// Puts clip [clipId] (ready or in the reserve) on air at [speed], replacing any running
   /// replay; [label] is drawn over it (e.g. `REPETICIÓN`); the scoreboard too only when
   /// [scoreboard]. Completes once the first frame is

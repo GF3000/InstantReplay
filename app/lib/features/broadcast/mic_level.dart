@@ -4,13 +4,15 @@ import 'package:flutter/foundation.dart';
 
 /// The stream microphone's level on the Camera (SPEC §12.7), in dBFS; null without an open mic.
 ///
-/// Polls [read] every [interval] (10 Hz) only while [active] (a stream is running) and someone
-/// listens (the mic button on screen, or the API server with viewers connected). Otherwise it
-/// does nothing and holds null.
+/// Polls [read] every [interval] (10 Hz) only while [active] and someone listens (the mic button
+/// on screen, or the API server with viewers connected). Otherwise it does nothing and holds
+/// null. [onRunning] hears when polling starts and stops (the Camera opens the microphone to
+/// measure it before going live only meanwhile).
 class MicLevelPoller extends ChangeNotifier implements ValueListenable<double?> {
-  MicLevelPoller({required this.read, this.interval = const Duration(milliseconds: 100)});
+  MicLevelPoller({required this.read, this.onRunning, this.interval = const Duration(milliseconds: 100)});
 
   final Future<double?> Function() read;
+  final void Function(bool running)? onRunning;
   final Duration interval;
 
   Timer? _timer;
@@ -47,8 +49,10 @@ class MicLevelPoller extends ChangeNotifier implements ValueListenable<double?> 
     final run = _active && hasListeners;
     if (run && _timer == null) {
       _timer = Timer.periodic(interval, (_) => _poll());
+      onRunning?.call(true);
       _poll();
     } else if (!run) {
+      if (_timer != null) onRunning?.call(false);
       _timer?.cancel();
       _timer = null;
       // Nobody left to tell (a widget may be unmounting): clear quietly.
@@ -82,6 +86,7 @@ class MicLevelPoller extends ChangeNotifier implements ValueListenable<double?> 
   @override
   void dispose() {
     _disposed = true;
+    if (_timer != null) onRunning?.call(false);
     _timer?.cancel();
     _timer = null;
     super.dispose();
