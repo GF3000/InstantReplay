@@ -374,13 +374,18 @@ compilación que incluya el visor web.</p>
     final socket = _ViewerSocket(channel, DateTime.now());
     _sockets.add(socket);
     channel.stream.listen(
-      (raw) => unawaited(_onMessage(socket, raw)),
+      (raw) => _onFrame(socket, raw),
       onDone: () => _onSocketGone(socket),
       onError: (Object _) => _onSocketGone(socket),
     );
   }
 
-  Future<void> _onMessage(_ViewerSocket s, Object? raw) async {
+  /// A frame from a viewer. Hello and Ping are answered at once; everything else runs in order
+  /// per socket and lane, each command after the previous one finished, so "configure, then
+  /// start" from one viewer never starts with the old key. Live-view signaling has its own lane,
+  /// so a Go live that waits for YouTube does not hold up the picture, and YouTube commands run
+  /// beside both (the viewer waits for each answer).
+  void _onFrame(_ViewerSocket s, Object? raw) {
     s.lastSeen = DateTime.now();
     final WsMessage? message;
     try {
@@ -390,10 +395,42 @@ compilación que incluya el visor web.</p>
       return;
     }
     if (message == null) return; // A newer viewer's message type.
-    if (!s.greeted && message is! Hello && message is! Ping) {
+    final m = message;
+    if (!s.greeted && m is! Hello && m is! Ping) {
       s.send(const ErrorMessage(code: 'hello_required', message: 'Send hello first.'));
       return;
     }
+    switch (m) {
+      case Hello() || Ping():
+        unawaited(_onMessage(s, m));
+      case YouTubeCmd():
+        unawaited(_youtubeCommand(s, m));
+      case LiveStart() || LiveStop() || RtcAnswer() || RtcIce():
+        s.signaling = s.signaling.then((_) => _onMessage(s, m));
+      default:
+        s.commands = s.commands.then((_) => _onMessage(s, m));
+    }
+  }
+
+  /// Runs [cmd] with the Camera's YouTube account and answers the sender with the new state (or
+  /// the error); every viewer gets the state in the next status, pushed at once.
+  Future<void> _youtubeCommand(_ViewerSocket s, YouTubeCmd cmd) async {
+    try {
+      final server = await _broadcastHost().youtubeCommand(cmd);
+      s.send(YouTubeResult(requestId: cmd.requestId, status: broadcast?.youtube, server: server));
+    } catch (e) {
+      final code = e is BroadcastException ? e.code : 'api';
+      s.send(YouTubeResult(
+        requestId: cmd.requestId,
+        status: broadcast?.youtube,
+        errorCode: code.startsWith('youtube_') ? code.substring('youtube_'.length) : code,
+        errorMessage: e is BroadcastException ? e.message : '$e',
+      ));
+    }
+  }
+
+  /// Never throws: a failure goes back to the sender as [ErrorMessage].
+  Future<void> _onMessage(_ViewerSocket s, WsMessage message) async {
     try {
       switch (message) {
         case Hello():
@@ -451,8 +488,11 @@ compilación que incluya el visor web.</p>
           await _broadcastHost().replaySpeed(speed);
         case ReplayStop():
           await _broadcastHost().replayStop();
+        case YouTubeCmd():
+          await _youtubeCommand(s, message);
         case Welcome() ||
               RtcOffer() ||
+              YouTubeResult() ||
               ClipChanged() ||
               StatusUpdate() ||
               RecordingFinished() ||
@@ -579,8 +619,8 @@ compilación que incluya el visor web.</p>
     final host = broadcast;
     final active = host != null && host.active;
     var withHost = !active
-        ? (status.scoreboard == null && status.broadcast == null ? status : withBroadcast(status))
-        : withBroadcast(status, scoreboard: host.scoreboard, broadcast: host.info);
+        ? (status.scoreboard == null && status.broadcast == null && status.youtube == null ? status : withBroadcast(status))
+        : withBroadcast(status, scoreboard: host.scoreboard, broadcast: host.info, youtube: host.youtube);
     final replay = active ? host.replay : null;
     if (replay != withHost.replay) withHost = withHost.withReplay(replay);
     final c = controls;
@@ -707,6 +747,10 @@ class _ViewerSocket {
 
   /// Local candidates held while this viewer's offer is being created.
   List<RtcIce>? pendingIce;
+
+  /// The last queued command and live-view signaling message (see `CameraServer._onFrame`).
+  Future<void> commands = Future.value();
+  Future<void> signaling = Future.value();
 
   bool get greeted => viewerId != null;
 

@@ -615,8 +615,16 @@
   "checkAccountOk": "Emite en la cuenta de YouTube {email}",
   "checkAccountSignIn": "Inicia sesión en la cuenta de YouTube para emitir",
   "liveMicClosedBadge": "MICRO CERRADO",
-  "ytAccountCheckChannel": "Emite en el canal de YouTube {channel}",
+  "ytAccountCheckChannel": "Emite en el canal {channel}",
   "ytAccountKeyLocked": "Estás usando tu cuenta de YouTube. Cierra sesión para emitir con una clave.",
   "ytAccountOrUseKey": "O cierra sesión y emite con una clave de emisión.",
-  "ytAccountErrorQuota": "Se ha agotado la cuota diaria de la API de YouTube."
+  "ytAccountErrorQuota": "Se ha agotado la cuota diaria de la API de YouTube.",
+  "ytRemoteOrUseKey": "O cierra sesión en la cámara y emite con una clave de emisión.",
+  "ytRemoteNeedSignIn": "La emisión va a la cuenta de YouTube de la cámara: vuelve a iniciar sesión en la cámara, o cambia a Clave.",
+  "ytRemoteNoCamera": "La cámara no ha respondido. Revisa la conexión e inténtalo de nuevo.",
+  "ytRemoteUnavailable": "Esta cámara no puede usar una cuenta de YouTube. Usa una clave de emisión.",
+  "ytRemoteKeyLocked": "La cámara usa su cuenta de YouTube. Para emitir con una clave, cierra sesión en la cámara.",
+  "ytRemoteSignInHelp": "La cuenta de YouTube se configura en la cámara: inicia sesión con Google allí, una vez. Mientras tanto puedes emitir con una clave.",
+  "ytRemoteOnCamera": "Sesión iniciada en la cámara",
+  "ytDestKey": "Emite con clave manual"
 }

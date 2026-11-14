@@ -169,6 +169,26 @@ void main() {
           replay: ReplayInfo(clipId: 'c1', speed: 0.5, positionMs: 1200, durationMs: 20000),
         ),
       ),
+      const StatusUpdate(
+        status: CameraStatus(
+          recording: true,
+          fps: 30,
+          bufferMs: 1,
+          outboxClips: 0,
+          thermalStatus: 0,
+          youtube: _youtube,
+        ),
+      ),
+      const YouTubeCmd(
+        requestId: 'r1',
+        action: YouTubeAction.save,
+        title: 'Final',
+        description: 'Copa',
+        privacy: 'public',
+      ),
+      const YouTubeCmd(requestId: 'r2', action: YouTubeAction.prepare),
+      const YouTubeResult(requestId: 'r1', status: _youtube, server: 'rtmp://a.rtmp.youtube.com/live2'),
+      const YouTubeResult(requestId: 'r2', errorCode: 'quota', errorMessage: 'daily limit'),
       const Ping(),
       const Pong(),
     ];
@@ -373,5 +393,53 @@ void main() {
       expect(WsMessage.decode('{"type":"scoreboard_cmd","action":"explode"}'), isNull);
       expect(WsMessage.decode('{"type":"scoreboard_cmd","action":"score","team":"nobody","delta":1}'), isNull);
     });
+
+    test('YouTube: status fields, result ok, and unknown actions or fields are ignored', () {
+      final back = CameraStatus.fromJson(
+        (WsMessage.decode(const StatusUpdate(
+          status: CameraStatus(recording: true, fps: 30, bufferMs: 1, outboxClips: 0, thermalStatus: 0, youtube: _youtube),
+        ).encode())! as StatusUpdate)
+            .status
+            .toJson(),
+      ).youtube!;
+      expect(back.destination, YouTubeDestination.account);
+      expect((back.email, back.channelTitle, back.signedIn), ('coach@example.com', 'Coras TV', true));
+      expect((back.live!.title, back.live!.privacy, back.live!.lifeCycle), ('Final', 'unlisted', 'ready'));
+      expect(back.live!.url, 'https://youtu.be/b1');
+
+      // An older Camera: no youtube in the status.
+      final old = CameraStatus.fromJson(
+          {'recording': true, 'fps': 30, 'bufferMs': 1, 'outboxClips': 0, 'thermalStatus': 0});
+      expect(old.youtube, isNull);
+
+      // A newer Camera's destination or fields.
+      final newer = YouTubeStatus.fromJson({'destination': 'satellite', 'accountAvailable': true, 'x': 1});
+      expect((newer.destination, newer.signedIn), (YouTubeDestination.none, false));
+
+      expect(const YouTubeResult(requestId: 'r').ok, isTrue);
+      expect(const YouTubeResult(requestId: 'r', errorCode: 'api').ok, isFalse);
+      // A newer viewer's action: ignored like an unknown type.
+      expect(WsMessage.decode('{"type":"youtube_cmd","requestId":"r","action":"teleport"}'), isNull);
+      // The key never travels.
+      expect(const YouTubeResult(requestId: 'r', status: _youtube, server: 'rtmp://x').encode(), isNot(contains('key')));
+    });
   });
 }
+
+const _youtube = YouTubeStatus(
+  destination: YouTubeDestination.account,
+  email: 'coach@example.com',
+  channelId: 'UC1',
+  channelTitle: 'Coras TV',
+  live: YouTubeLiveInfo(
+    id: 'b1',
+    title: 'Final',
+    description: 'Copa',
+    privacy: 'unlisted',
+    lifeCycle: 'ready',
+    url: 'https://youtu.be/b1',
+  ),
+  ingest: 'none',
+  errorCode: 'quota',
+  errorMessage: 'daily limit',
+);

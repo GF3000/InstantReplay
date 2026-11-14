@@ -833,11 +833,8 @@ class _BroadcastPanel extends ConsumerWidget {
     final replay = ref.watch(replayInfoProvider).value;
     final server = ref.watch(cameraServerProvider);
     final youtube = ref.watch(youtubeActiveAccountProvider).value;
-    if (youtube != null) {
-      // Ask YouTube for the live's link now, so "Share the live" opens at once (no-op when known).
-      final title = youtubeDefaultTitle(l10n, DateTime.now());
-      WidgetsBinding.instance.addPostFrameCallback((_) => YouTubeLinkCache.prefetch(youtube, title));
-    }
+    // The live's link is read once per sign-in by the Camera's YouTube (cameraYouTubeProvider),
+    // never from here: a screen that rebuilds every second must not ask YouTube.
     final stats = state.stats;
     final gap = SizedBox(height: compact ? 8 : 12);
 

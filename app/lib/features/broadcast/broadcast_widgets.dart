@@ -6,6 +6,8 @@ import '../../core/ui/ir_colors.dart';
 import '../../core/ui/ir_widgets.dart';
 import '../../l10n/app_localizations.dart';
 import '../recording/recording_widgets.dart' show formatRecordingClock;
+import 'ui/youtube_share.dart' show youtubeErrorMessage;
+import 'youtube/youtube_account.dart' show YouTubeAccountException;
 
 export 'ui/scoreboard_panel.dart';
 export 'ui/scoreboard_settings_page.dart';
@@ -45,6 +47,9 @@ String broadcastErrorMessage(AppLocalizations l10n, String code, String? message
       'not_live' => l10n.replayNotLive,
       'replay_unavailable' => l10n.replayUnavailable,
       'replay_failed' => l10n.replayFailed(message ?? code),
+      // The Camera's YouTube account could not prepare the live for a viewer's Go live.
+      _ when code.startsWith('youtube_') =>
+        youtubeErrorMessage(l10n, YouTubeAccountException(code.substring('youtube_'.length), message), remote: true),
       _ => l10n.broadcastFailed(message ?? code),
     };
 

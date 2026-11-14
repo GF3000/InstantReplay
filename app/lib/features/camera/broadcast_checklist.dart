@@ -92,15 +92,13 @@ class _BroadcastChecklistState extends ConsumerState<BroadcastChecklist> {
       _Item(
         key: 'key',
         ok: destinationOk,
-        label: accountMode
-            ? (channel != null
-                ? l10n.ytAccountCheckChannel(channel.title)
-                : email != null
-                    ? l10n.checkAccountOk(email)
-                    : l10n.checkAccountSignIn)
-            : info.configured
-                ? l10n.checkKeyOk
-                : l10n.checkKeyMissing,
+        label: youtubeDestinationLine(
+          l10n,
+          account: accountMode,
+          email: email,
+          channel: channel?.title,
+          keyConfigured: info.configured,
+        ),
         sub: channel == null ? null : email,
         action: destinationOk || widget.inPage ? null : l10n.checkKeyAction,
         onAction: () async {

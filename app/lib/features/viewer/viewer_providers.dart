@@ -313,7 +313,8 @@ final class BroadcastNotice {
   BroadcastNotice(this.code, this.message);
 
   /// `broadcast_failed`, `not_configured`, `mic_permission` or `not_broadcast_mode`; for replays on
-  /// air `not_live`, `replay_unavailable` or `replay_failed`.
+  /// air `not_live`, `replay_unavailable` or `replay_failed`; `youtube_<code>` when the Camera's
+  /// YouTube account could not prepare the live for Go live.
   final String code;
   final String? message;
 
@@ -342,7 +343,8 @@ class ViewerBroadcastNotifier extends Notifier<BroadcastNotice?> {
     ref.listen(sessionLinkProvider, (_, link) {
       unawaited(sub?.cancel());
       sub = link?.messages.listen((m) {
-        if (m case ErrorMessage(:final code, :final message) when BroadcastNotice.codes.contains(code)) {
+        if (m case ErrorMessage(:final code, :final message)
+            when BroadcastNotice.codes.contains(code) || code.startsWith('youtube_')) {
           state = BroadcastNotice(code, message);
         }
       });

@@ -265,8 +265,9 @@ class _CopyLinkButtonState extends State<_CopyLinkButton> {
   }
 }
 
-/// The live's link, asked of YouTube ahead of time so "Share the live" opens at once: the
-/// broadcast screens call [prefetch]; going live and sharing reuse or refresh the same entry.
+/// The live's link once asked of YouTube, so sharing again or going live soon after reuse it.
+/// Nothing asks ahead of time from a screen: the Camera reads its current live once per sign-in
+/// (`CameraYouTube`), and a link is only created by Go live or an explicit Share / Retry.
 abstract final class YouTubeLinkCache {
   /// A link this old is checked with YouTube again (the live may have ended).
   static const maxAge = Duration(minutes: 10);
@@ -278,14 +279,6 @@ abstract final class YouTubeLinkCache {
     final e = _entries[account];
     if (e == null || e.value == null || DateTime.now().difference(e.at) > maxAge) return null;
     return e.value;
-  }
-
-  /// Asks YouTube unless a recent answer or a request is already there. Errors stay quiet here:
-  /// sharing asks again and shows them.
-  static void prefetch(YouTubeAccount account, String defaultTitle) {
-    final e = _entries[account];
-    if (e != null && (e.value == null ? !e.failed : DateTime.now().difference(e.at) <= maxAge)) return;
-    unawaited(fetch(account, defaultTitle).then((_) {}, onError: (_) {}));
   }
 
   /// The link, from a request in flight, or a new request when there is none or [force].
@@ -327,22 +320,26 @@ Future<YouTubeTarget?> prepareYouTubeLive(BuildContext context, YouTubeAccount y
   return null;
 }
 
-/// The share button: the sheet opens at once. With a recent link (see [YouTubeLinkCache]) the QR
-/// is there straight away; otherwise it says it is preparing the link while YouTube answers, and
-/// shows the error with Retry in place if that fails.
-Future<void> shareYouTubeLive(BuildContext context, YouTubeAccount youtube) => showDialog<void>(
-  context: context,
-  useSafeArea: false,
-  builder: (context) => Dialog.fullscreen(
-    key: const ValueKey('youtube-qr-dialog'),
-    child: _ShareLiveSheet(account: youtube),
-  ),
-);
+/// The share button: the sheet opens at once. With a known link (a recent one from
+/// [YouTubeLinkCache], or the account's current live while it can still be used) the QR is there
+/// straight away; otherwise it says it is preparing the link while YouTube answers (on a viewer:
+/// the Camera asks YouTube), and shows the error with Retry in place if that fails. [remote]:
+/// the account is the Camera's, seen from a viewer (errors say to sign out on the Camera).
+Future<void> shareYouTubeLive(BuildContext context, YouTubeAccount youtube, {bool remote = false}) =>
+    showDialog<void>(
+      context: context,
+      useSafeArea: false,
+      builder: (context) => Dialog.fullscreen(
+        key: const ValueKey('youtube-qr-dialog'),
+        child: _ShareLiveSheet(account: youtube, remote: remote),
+      ),
+    );
 
 class _ShareLiveSheet extends StatefulWidget {
-  const _ShareLiveSheet({required this.account});
+  const _ShareLiveSheet({required this.account, required this.remote});
 
   final YouTubeAccount account;
+  final bool remote;
 
   @override
   State<_ShareLiveSheet> createState() => _ShareLiveSheetState();
@@ -355,7 +352,9 @@ class _ShareLiveSheetState extends State<_ShareLiveSheet> {
   @override
   void initState() {
     super.initState();
-    _target = YouTubeLinkCache.ready(widget.account);
+    final current = widget.account.current;
+    _target = YouTubeLinkCache.ready(widget.account) ??
+        (current != null && current.lifeCycle.usable ? (server: '', key: '', broadcast: current) : null);
     if (_target == null) WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
@@ -388,6 +387,7 @@ class _ShareLiveSheetState extends State<_ShareLiveSheet> {
         : youtubeErrorMessage(
             l10n,
             error is YouTubeAccountException ? error : YouTubeAccountException('api', '$error'),
+            remote: widget.remote,
           );
     return IrQrSheet(
       closeKey: const ValueKey('youtube-qr-close'),
@@ -471,16 +471,36 @@ String youtubeLifeCycleLabel(AppLocalizations l10n, YouTubeLifeCycle c) => switc
 };
 
 /// The message for a failed account action. When signed in, it ends with the way out (sign out
-/// and stream with a key), so the account never leaves the user unable to stream.
-String youtubeErrorMessage(AppLocalizations l10n, YouTubeAccountException e) {
-  String orKey(String message) => '$message ${l10n.ytAccountOrUseKey}';
+/// and stream with a key), so the account never leaves the user unable to stream. [remote]: the
+/// action ran on the Camera for a viewer, so the way out is signing out on the Camera.
+String youtubeErrorMessage(AppLocalizations l10n, YouTubeAccountException e, {bool remote = false}) {
+  String orKey(String message) => '$message ${remote ? l10n.ytRemoteOrUseKey : l10n.ytAccountOrUseKey}';
   return switch (e.code) {
     'live_not_enabled' => orKey(l10n.youtubeErrorLiveNotEnabled),
     'quota' => orKey(l10n.ytAccountErrorQuota),
     'forbidden' => orKey(l10n.youtubeErrorForbidden),
-    'not_signed_in' => l10n.youtubeErrorForbidden,
+    'not_signed_in' => remote ? l10n.ytRemoteNeedSignIn : l10n.youtubeErrorForbidden,
     'network' => orKey(l10n.youtubeErrorNetwork),
     'sign_in_failed' => l10n.youtubeErrorSignIn(e.message ?? e.code),
+    'no_camera' => l10n.ytRemoteNoCamera,
+    'unavailable' => l10n.ytRemoteUnavailable,
     _ => orKey(l10n.youtubeErrorApi(e.message ?? e.code)),
   };
+}
+
+/// Where the stream goes, in the same words on the Camera's checklist and on every viewer:
+/// «Emite en el canal X» (the account's email when its channel is unknown), a sign-in request
+/// when account mode has no session, else «Emite con clave manual» or the missing key.
+String youtubeDestinationLine(
+  AppLocalizations l10n, {
+  required bool account,
+  String? email,
+  String? channel,
+  required bool keyConfigured,
+}) {
+  if (account) {
+    if (email == null) return l10n.checkAccountSignIn;
+    return channel != null ? l10n.ytAccountCheckChannel(channel) : l10n.checkAccountOk(email);
+  }
+  return keyConfigured ? l10n.ytDestKey : l10n.checkKeyMissing;
 }

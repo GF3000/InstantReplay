@@ -2163,7 +2163,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String ytAccountCheckChannel(String channel) {
-    return 'Emite en el canal de YouTube $channel';
+    return 'Emite en el canal $channel';
   }
 
   @override
@@ -2177,4 +2177,34 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get ytAccountErrorQuota =>
       'Se ha agotado la cuota diaria de la API de YouTube.';
+
+  @override
+  String get ytRemoteOrUseKey =>
+      'O cierra sesión en la cámara y emite con una clave de emisión.';
+
+  @override
+  String get ytRemoteNeedSignIn =>
+      'La emisión va a la cuenta de YouTube de la cámara: vuelve a iniciar sesión en la cámara, o cambia a Clave.';
+
+  @override
+  String get ytRemoteNoCamera =>
+      'La cámara no ha respondido. Revisa la conexión e inténtalo de nuevo.';
+
+  @override
+  String get ytRemoteUnavailable =>
+      'Esta cámara no puede usar una cuenta de YouTube. Usa una clave de emisión.';
+
+  @override
+  String get ytRemoteKeyLocked =>
+      'La cámara usa su cuenta de YouTube. Para emitir con una clave, cierra sesión en la cámara.';
+
+  @override
+  String get ytRemoteSignInHelp =>
+      'La cuenta de YouTube se configura en la cámara: inicia sesión con Google allí, una vez. Mientras tanto puedes emitir con una clave.';
+
+  @override
+  String get ytRemoteOnCamera => 'Sesión iniciada en la cámara';
+
+  @override
+  String get ytDestKey => 'Emite con clave manual';
 }

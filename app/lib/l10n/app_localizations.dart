@@ -3811,6 +3811,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The YouTube API daily quota is used up.'**
   String get ytAccountErrorQuota;
+
+  /// No description provided for @ytRemoteOrUseKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Or sign out on the Camera and stream with a stream key.'**
+  String get ytRemoteOrUseKey;
+
+  /// No description provided for @ytRemoteNeedSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'The stream goes to the Camera\'s YouTube account: sign in again on the Camera, or switch to Stream key.'**
+  String get ytRemoteNeedSignIn;
+
+  /// No description provided for @ytRemoteNoCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'The Camera didn\'t answer. Check the connection and try again.'**
+  String get ytRemoteNoCamera;
+
+  /// No description provided for @ytRemoteUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This Camera can\'t use a YouTube account. Use a stream key.'**
+  String get ytRemoteUnavailable;
+
+  /// No description provided for @ytRemoteKeyLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'The Camera is using its YouTube account. To stream with a key, sign out on the Camera.'**
+  String get ytRemoteKeyLocked;
+
+  /// No description provided for @ytRemoteSignInHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'The YouTube account is set up on the Camera: sign in with Google there, once. Meanwhile you can stream with a key.'**
+  String get ytRemoteSignInHelp;
+
+  /// No description provided for @ytRemoteOnCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in on the Camera'**
+  String get ytRemoteOnCamera;
+
+  /// No description provided for @ytDestKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Streams with a manual key'**
+  String get ytDestKey;
 }
 
 class _AppLocalizationsDelegate

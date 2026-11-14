@@ -32,10 +32,15 @@ typedef BroadcastConfigResult = ({
 /// the channel and its server and key come back as if typed.
 ///
 /// [canGoLive] (the stream is off) makes the main button "Start streaming"; otherwise it saves.
+///
+/// [remoteYouTube]: on a viewer, [youtube] is the Camera's account (`RemoteYouTubeAccount`). The
+/// Camera runs every account action; the viewer never signs in or out, and says so: sign in or
+/// out on the Camera. A save in account mode comes back with an empty key (the Camera keeps it).
 Future<BroadcastConfigResult?> showBroadcastConfigDialog(
   BuildContext context,
   BroadcastInfo info, {
   YouTubeAccount? youtube,
+  bool remoteYouTube = false,
   bool canGoLive = false,
   Widget? checklist,
   Widget? recording,
@@ -46,6 +51,7 @@ Future<BroadcastConfigResult?> showBroadcastConfigDialog(
     builder: (_) => _StreamSetupPage(
       info: info,
       youtube: youtube,
+      remoteYouTube: remoteYouTube,
       canGoLive: canGoLive,
       checklist: checklist,
       recording: recording,
@@ -65,6 +71,7 @@ class _StreamSetupPage extends StatefulWidget {
   const _StreamSetupPage({
     required this.info,
     this.youtube,
+    this.remoteYouTube = false,
     required this.canGoLive,
     this.checklist,
     this.recording,
@@ -73,6 +80,9 @@ class _StreamSetupPage extends StatefulWidget {
 
   final BroadcastInfo info;
   final YouTubeAccount? youtube;
+
+  /// [youtube] is the Camera's account, seen from a viewer.
+  final bool remoteYouTube;
   final bool canGoLive;
   final Widget? checklist;
 
@@ -166,12 +176,16 @@ class _StreamSetupPageState extends State<_StreamSetupPage> {
       await action(youtube);
     } on YouTubeAccountException catch (e) {
       if (mounted && e.code != 'canceled') {
-        setState(() => _error = youtubeErrorMessage(AppLocalizations.of(context), e));
+        setState(() => _error = youtubeErrorMessage(AppLocalizations.of(context), e, remote: widget.remoteYouTube));
       }
     } catch (e) {
       if (mounted) {
         setState(
-          () => _error = youtubeErrorMessage(AppLocalizations.of(context), YouTubeAccountException('api', '$e')),
+          () => _error = youtubeErrorMessage(
+            AppLocalizations.of(context),
+            YouTubeAccountException('api', '$e'),
+            remote: widget.remoteYouTube,
+          ),
         );
       }
     } finally {
@@ -245,7 +259,9 @@ class _StreamSetupPageState extends State<_StreamSetupPage> {
           privacy: _privacy,
           fresh: _fresh || !(_live?.lifeCycle.usable ?? false),
         );
-        if (mounted) Navigator.of(context).pop(_result(server: target.server, key: target.key, goLive: goLive));
+        // From a viewer the key stays on the Camera (empty here): null keeps it there.
+        final key = target.key.isEmpty ? null : target.key;
+        if (mounted) Navigator.of(context).pop(_result(server: target.server, key: key, goLive: goLive));
       }),
     );
   }
@@ -601,6 +617,7 @@ class _StreamSetupPageState extends State<_StreamSetupPage> {
         final youtube = widget.youtube;
         return [
           if (headings) heading(l10n.camWhereStream),
+          if (widget.remoteYouTube) ...[_destinationLine(l10n), const SizedBox(height: 12)],
           if (youtube != null) ...[
             _ModeChoice(
               mode: _mode,
@@ -758,6 +775,33 @@ class _StreamSetupPageState extends State<_StreamSetupPage> {
     ];
   }
 
+  /// Where the stream goes now, in the Camera checklist's words (on a viewer).
+  Widget _destinationLine(AppLocalizations l10n) {
+    final c = context.ir;
+    final y = widget.youtube;
+    final account = y != null && y.active;
+    final ok = account ? y.email != null : widget.info.configured;
+    return Row(
+      children: [
+        Icon(ok ? Icons.check_circle : Icons.warning_amber_rounded, size: 20, color: ok ? c.ok : c.warnText),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            youtubeDestinationLine(
+              l10n,
+              account: account,
+              email: y?.email,
+              channel: y?.channel?.title,
+              keyConfigured: widget.info.configured,
+            ),
+            key: const ValueKey('broadcast-destination-line'),
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: ok ? c.text : c.warnText),
+          ),
+        ),
+      ],
+    );
+  }
+
   /// Why the key choice is off while signed in, with the way out.
   Widget _keyLockedNotice(AppLocalizations l10n) {
     final c = context.ir;
@@ -771,15 +815,24 @@ class _StreamSetupPageState extends State<_StreamSetupPage> {
             Icon(Icons.lock_outline, size: 20, color: c.muted),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(l10n.ytAccountKeyLocked, style: TextStyle(fontSize: 14, color: c.text)),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  widget.remoteYouTube ? l10n.ytRemoteKeyLocked : l10n.ytAccountKeyLocked,
+                  style: TextStyle(fontSize: 14, color: c.text),
+                ),
+              ),
             ),
-            const SizedBox(width: 8),
-            TextButton(
-              key: const ValueKey('broadcast-key-locked-sign-out'),
-              style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
-              onPressed: _busy ? null : _signOut,
-              child: Text(l10n.youtubeSignOut),
-            ),
+            // On a viewer the way out is on the Camera: no sign-out here.
+            if (!widget.remoteYouTube) ...[
+              const SizedBox(width: 8),
+              TextButton(
+                key: const ValueKey('broadcast-key-locked-sign-out'),
+                style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+                onPressed: _busy ? null : _signOut,
+                child: Text(l10n.youtubeSignOut),
+              ),
+            ],
           ],
         ),
       ),
@@ -800,6 +853,25 @@ class _StreamSetupPageState extends State<_StreamSetupPage> {
               style: TextStyle(color: c.liveText),
             ),
           );
+    if (!signedIn && widget.remoteYouTube) {
+      // The account is set up on the Camera, once; a key works meanwhile.
+      return [
+        IrPanel(
+          key: const ValueKey('youtube-remote-sign-in'),
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          child: Row(
+            children: [
+              Icon(Icons.videocam, size: 22, color: c.muted),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(l10n.ytRemoteSignInHelp, style: TextStyle(fontSize: 14, color: c.text)),
+              ),
+            ],
+          ),
+        ),
+        ?errorText,
+      ];
+    }
     if (!signedIn) {
       return [
         Text(l10n.youtubeAccountHelp, style: TextStyle(fontSize: 14, color: c.muted)),
@@ -871,12 +943,23 @@ class _StreamSetupPageState extends State<_StreamSetupPage> {
                 ],
               ),
             ),
-            OutlinedButton(
-              key: const ValueKey('youtube-sign-out'),
-              style: OutlinedButton.styleFrom(minimumSize: const Size(48, 44)),
-              onPressed: _busy ? null : _signOut,
-              child: Text(l10n.youtubeSignOut),
-            ),
+            if (widget.remoteYouTube)
+              // Signed in on the Camera: signing out happens there.
+              Tooltip(
+                message: l10n.ytRemoteOnCamera,
+                child: Padding(
+                  key: const ValueKey('youtube-on-camera'),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Icon(Icons.videocam, size: 22, color: c.muted),
+                ),
+              )
+            else
+              OutlinedButton(
+                key: const ValueKey('youtube-sign-out'),
+                style: OutlinedButton.styleFrom(minimumSize: const Size(48, 44)),
+                onPressed: _busy ? null : _signOut,
+                child: Text(l10n.youtubeSignOut),
+              ),
           ],
         ),
       ),

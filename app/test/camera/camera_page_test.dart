@@ -867,7 +867,7 @@ void main() {
       await _openChecklistStep(tester);
       expect(find.text('Streams to the YouTube channel Coras TV'), findsOneWidget);
       expect(tester.widget<Text>(find.byKey(const ValueKey('check-key-sub'))).data, 'coach@example.com');
-      expect(find.text('Streams with the saved stream key'), findsNothing);
+      expect(find.text('Streams with a manual key'), findsNothing);
     });
 
     testWidgets('the checklist names the email when the channel is unknown',
@@ -897,7 +897,7 @@ void main() {
           saved: {'role': 'broadcast', 'broadcast.key': 'abcd'},
           youtube: _FakeYouTubeAccount());
       await _openChecklistStep(tester);
-      expect(find.text('Streams with the saved stream key'), findsOneWidget);
+      expect(find.text('Streams with a manual key'), findsOneWidget);
     });
 
     testWidgets('Prepare the stream: its red button saves and goes live', (tester) async {

@@ -1279,5 +1279,13 @@
   },
   "ytAccountKeyLocked": "You're using your YouTube account. Sign out to stream with a key.",
   "ytAccountOrUseKey": "Or sign out and stream with a stream key.",
-  "ytAccountErrorQuota": "The YouTube API daily quota is used up."
+  "ytAccountErrorQuota": "The YouTube API daily quota is used up.",
+  "ytRemoteOrUseKey": "Or sign out on the Camera and stream with a stream key.",
+  "ytRemoteNeedSignIn": "The stream goes to the Camera's YouTube account: sign in again on the Camera, or switch to Stream key.",
+  "ytRemoteNoCamera": "The Camera didn't answer. Check the connection and try again.",
+  "ytRemoteUnavailable": "This Camera can't use a YouTube account. Use a stream key.",
+  "ytRemoteKeyLocked": "The Camera is using its YouTube account. To stream with a key, sign out on the Camera.",
+  "ytRemoteSignInHelp": "The YouTube account is set up on the Camera: sign in with Google there, once. Meanwhile you can stream with a key.",
+  "ytRemoteOnCamera": "Signed in on the Camera",
+  "ytDestKey": "Streams with a manual key"
 }

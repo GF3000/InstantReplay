@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:replay_protocol/replay_protocol.dart' show BroadcastInfo, BroadcastStreamState;
+import 'package:replay_protocol/replay_protocol.dart' show BroadcastInfo, BroadcastStreamState, YouTubeDestination;
 
 import '../../../core/panels.dart';
 import '../../../core/ui/ir_colors.dart';
@@ -17,7 +17,7 @@ import '../tags/tags.dart';
 import '../viewer_providers.dart';
 import 'clip_list.dart';
 import 'replay_air.dart';
-import '../../broadcast/youtube/youtube_providers.dart';
+import '../remote_youtube.dart';
 
 /// Main Viewer screen, "balanced" layout (UX §3.2): a large live view and a large Save key.
 ///
@@ -743,12 +743,12 @@ class ViewerBroadcastBar extends ConsumerWidget {
     if (info == null) return const SizedBox.shrink();
     final connected = ref.watch(linkStateProvider.select((s) => s?.phase == LinkPhase.connected));
     final remote = ref.read(viewerBroadcastNoticeProvider.notifier);
-    final youtube = ref.watch(youtubeActiveAccountProvider).value;
-    if (youtube != null) {
-      // Ask YouTube for the live's link now, so "Share the live" opens at once (no-op when known).
-      final title = youtubeDefaultTitle(AppLocalizations.of(context), DateTime.now());
-      WidgetsBinding.instance.addPostFrameCallback((_) => YouTubeLinkCache.prefetch(youtube, title));
-    }
+    // YouTube is the Camera's: its account, its live and its link come in the status, and the
+    // Camera runs every YouTube action (this viewer never calls YouTube).
+    final youtubeStatus = ref.watch(viewerYouTubeStatusProvider).value;
+    final youtube = ref.read(viewerYouTubeAccountProvider);
+    final available = youtubeStatus != null && youtubeStatus.accountAvailable;
+    final share = youtubeStatus != null && youtubeStatus.destination == YouTubeDestination.account && youtubeStatus.signedIn;
     return Padding(
       key: const ValueKey('viewer-broadcast'),
       padding: const EdgeInsets.fromLTRB(12, 6, 8, 0),
@@ -757,13 +757,14 @@ class ViewerBroadcastBar extends ConsumerWidget {
         enabled: connected,
         keyPrefix: 'viewer-broadcast',
         onStart: () => _goLive(context, ref, info),
-        onShare: youtube == null ? null : () => shareYouTubeLive(context, youtube),
+        onShare: share ? () => shareYouTubeLive(context, youtube, remote: true) : null,
         onStop: remote.stop,
         onConfigure: () async {
           final result = await showBroadcastConfigDialog(
             context,
             info,
-            youtube: ref.read(youtubeAccountProvider),
+            youtube: available ? youtube : null,
+            remoteYouTube: true,
             canGoLive: !info.active,
           );
           if (result == null) return;
@@ -774,27 +775,22 @@ class ViewerBroadcastBar extends ConsumerWidget {
             audio: result.audio,
             replayScoreboard: result.replayScoreboard,
           );
-          if (result.goLive && context.mounted) await _goLive(context, ref, ref.read(viewerBroadcastProvider) ?? info);
+          if (result.goLive && context.mounted) _goLive(context, ref, ref.read(viewerBroadcastProvider) ?? info);
         },
       ),
     );
   }
 
-  /// Go live from the bar or from the stream setup page.
-  static Future<void> _goLive(BuildContext context, WidgetRef ref, BroadcastInfo info) async {
+  /// Go live from the bar or from the stream setup page. In YouTube account mode the Camera
+  /// prepares the live itself before streaming (and says why not, if it cannot).
+  static void _goLive(BuildContext context, WidgetRef ref, BroadcastInfo info) {
     final remote = ref.read(viewerBroadcastNoticeProvider.notifier);
-    // Account mode: a live must be there to receive the stream, and the Camera must use its key.
-    final account = ref.read(youtubeAccountProvider);
-    if (account != null && account.active) {
-      if (account.email == null) {
-        ScaffoldMessenger.maybeOf(
-          context,
-        )?.showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).youtubeNeedSignIn)));
-        return;
-      }
-      final target = await prepareYouTubeLive(context, account);
-      if (target == null) return;
-      remote.configure(server: target.server, key: target.key, targetKbps: info.targetKbps, audio: info.audio);
+    final youtube = ref.read(viewerYouTubeAccountProvider).status;
+    if (youtube != null && youtube.destination == YouTubeDestination.account && !youtube.signedIn) {
+      ScaffoldMessenger.maybeOf(
+        context,
+      )?.showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).ytRemoteNeedSignIn)));
+      return;
     }
     remote.start();
   }

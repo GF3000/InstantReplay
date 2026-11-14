@@ -14,6 +14,10 @@ import 'broadcast_controller.dart';
 import 'broadcast_host.dart';
 import 'replay_controller.dart';
 import 'scoreboard_controller.dart';
+import 'ui/youtube_share.dart' show youtubeDefaultTitle;
+import 'youtube/camera_youtube.dart';
+import 'youtube/youtube_account.dart';
+import 'youtube/youtube_providers.dart';
 
 // Broadcast mode on the Camera (SPEC §12): the scoreboard and the stream live as long as the
 // Camera screen, and the API server reaches them through [broadcastHostProvider].
@@ -93,16 +97,32 @@ final replayInfoProvider = StreamProvider.autoDispose<ReplayInfo?>((ref) async* 
   yield* controller.changes.map((_) => controller.current);
 });
 
+/// The Camera's YouTube account as viewers reach it; null without account support.
+final cameraYouTubeProvider = Provider.autoDispose<CameraYouTube?>((ref) {
+  final account = ref.watch(youtubeAccountProvider);
+  if (account == null) return null;
+  final l10n = ref.watch(cameraL10nProvider);
+  final youtube = CameraYouTube(
+    account: account,
+    stream: ref.watch(broadcastControllerProvider),
+    defaultTitle: () => youtubeDefaultTitle(l10n(), DateTime.now()),
+  );
+  ref.onDispose(youtube.dispose);
+  return youtube;
+});
+
 /// What the API server sees of broadcast mode.
 final broadcastHostProvider = Provider.autoDispose<BroadcastHost>((ref) {
   final scoreboard = ref.watch(scoreboardControllerProvider);
   final stream = ref.watch(broadcastControllerProvider);
   final replay = ref.watch(replayControllerProvider);
+  final youtube = ref.watch(cameraYouTubeProvider);
   final changes = StreamController<void>.broadcast();
   final subs = [
     scoreboard.changes.listen((_) => changes.add(null)),
     stream.stateChanges.listen((_) => changes.add(null)),
     replay.changes.listen((_) => changes.add(null)),
+    ?youtube?.changes.listen((_) => changes.add(null)),
   ];
   ref.listen(cameraSessionProvider.select((s) => s.broadcast), (_, _) => changes.add(null));
   ref.onDispose(() {
@@ -115,6 +135,7 @@ final broadcastHostProvider = Provider.autoDispose<BroadcastHost>((ref) {
     scoreboard: scoreboard,
     stream: stream,
     replay: replay,
+    youtube: youtube,
     isActive: () => ref.read(cameraSessionProvider).broadcast,
     changes: changes.stream,
   );
@@ -128,12 +149,14 @@ class CameraBroadcast implements BroadcastHost {
     required this._replay,
     required this._isActive,
     required this.changes,
+    this._youtube,
   });
 
   final ScoreboardController _scoreboard;
   final BroadcastController _stream;
   final ReplayController _replay;
   final bool Function() _isActive;
+  final CameraYouTube? _youtube;
 
   @override
   final Stream<void> changes;
@@ -170,7 +193,24 @@ class CameraBroadcast implements BroadcastHost {
       );
 
   @override
-  Future<bool> start() => _stream.start();
+  Future<bool> start() async {
+    await _youtube?.prepareStart();
+    return _stream.start();
+  }
+
+  @override
+  YouTubeStatus? get youtube => _youtube?.status;
+
+  @override
+  Future<String?> youtubeCommand(YouTubeCmd command) async {
+    final youtube = _youtube;
+    if (youtube == null) throw const BroadcastException('youtube_unavailable');
+    try {
+      return await youtube.run(command);
+    } on YouTubeAccountException catch (e) {
+      throw BroadcastException('youtube_${e.code}', e.message);
+    }
+  }
 
   @override
   Future<void> stop() => _stream.stop();

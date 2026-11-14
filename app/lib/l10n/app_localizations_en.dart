@@ -2164,4 +2164,34 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ytAccountErrorQuota => 'The YouTube API daily quota is used up.';
+
+  @override
+  String get ytRemoteOrUseKey =>
+      'Or sign out on the Camera and stream with a stream key.';
+
+  @override
+  String get ytRemoteNeedSignIn =>
+      'The stream goes to the Camera\'s YouTube account: sign in again on the Camera, or switch to Stream key.';
+
+  @override
+  String get ytRemoteNoCamera =>
+      'The Camera didn\'t answer. Check the connection and try again.';
+
+  @override
+  String get ytRemoteUnavailable =>
+      'This Camera can\'t use a YouTube account. Use a stream key.';
+
+  @override
+  String get ytRemoteKeyLocked =>
+      'The Camera is using its YouTube account. To stream with a key, sign out on the Camera.';
+
+  @override
+  String get ytRemoteSignInHelp =>
+      'The YouTube account is set up on the Camera: sign in with Google there, once. Meanwhile you can stream with a key.';
+
+  @override
+  String get ytRemoteOnCamera => 'Signed in on the Camera';
+
+  @override
+  String get ytDestKey => 'Streams with a manual key';
 }
