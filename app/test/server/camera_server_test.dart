@@ -9,6 +9,9 @@ import 'package:instant_replay/features/broadcast/broadcast_controller.dart';
 import 'package:instant_replay/features/broadcast/broadcast_providers.dart' show CameraBroadcast;
 import 'package:instant_replay/features/broadcast/replay_controller.dart';
 import 'package:instant_replay/features/broadcast/scoreboard_controller.dart';
+import 'package:instant_replay/features/broadcast/youtube/camera_youtube.dart';
+import 'package:instant_replay/features/broadcast/youtube/youtube_account.dart';
+import 'package:instant_replay/features/broadcast/youtube/youtube_api.dart';
 import 'package:instant_replay/features/server/api_server.dart' show CameraControls;
 import 'package:instant_replay/features/server/camera_server.dart';
 import 'package:instant_replay/features/server/pairing.dart';
@@ -534,6 +537,7 @@ void main() {
     late bool active;
     late CameraBroadcast host;
     late int nowMs;
+    late _FakeYouTube yt;
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
@@ -553,7 +557,10 @@ void main() {
         l10n: () => lookupAppLocalizations(const Locale('en')),
         isLive: () => stream.info.active,
       );
+      yt = _FakeYouTube();
+      final youtube = CameraYouTube(account: yt, stream: stream, defaultTitle: () => 'Match 14/11/2026');
       final changes = StreamController<void>.broadcast();
+      youtube.changes.listen((_) => changes.add(null));
       scoreboard.changes.listen((_) => changes.add(null));
       stream.stateChanges.listen((_) => changes.add(null));
       replay.changes.listen((_) => changes.add(null));
@@ -563,6 +570,7 @@ void main() {
         replay: replay,
         isActive: () => active,
         changes: changes.stream,
+        youtube: youtube,
       );
       await startServer(broadcast: host);
     });
@@ -727,6 +735,149 @@ void main() {
       final e = await v.next<ErrorMessage>();
       expect((e.code, e.message), ('broadcast_failed', 'no route'));
       await v.close();
+    });
+
+    test('configure then start sent back to back run in order (the new key is used)', () async {
+      final v = await greeted('viewer-a');
+      capture.statsController.add(stats());
+      await v.next<StatusUpdate>();
+      v.send(const BroadcastConfigure(key: 'first-key'));
+      v.send(const BroadcastStart());
+      await _eventually(() => capture.broadcastConfigs.isNotEmpty);
+      expect(capture.broadcastConfigs.single.url, endsWith('/first-key'));
+      expect(v.received.whereType<ErrorMessage>(), isEmpty, reason: 'never not_configured');
+      await v.close();
+    });
+
+    group('YouTube through the Camera', () {
+      Future<YouTubeStatus> youtubeWhere(_Viewer v, bool Function(YouTubeStatus y) test) async {
+        while (true) {
+          final y = (await v.next<StatusUpdate>()).status.youtube;
+          if (y != null && test(y)) return y;
+        }
+      }
+
+      Future<YouTubeResult> ask(_Viewer v, YouTubeCmd cmd) {
+        v.send(cmd);
+        return v.next<YouTubeResult>();
+      }
+
+      test('signed out: the status says key or none; commands need a sign-in on the Camera', () async {
+        final v = await greeted('viewer-a');
+        capture.statsController.add(stats());
+        var y = (await v.next<StatusUpdate>()).status.youtube!;
+        expect((y.destination, y.signedIn, y.accountAvailable), (YouTubeDestination.none, false, true));
+
+        v.send(const BroadcastConfigure(key: 'abcd'));
+        y = await youtubeWhere(v, (y) => y.destination == YouTubeDestination.key);
+        final r = await ask(v, const YouTubeCmd(requestId: 'r1', action: YouTubeAction.prepare));
+        expect((r.requestId, r.errorCode), ('r1', 'not_signed_in'));
+        expect(r.status!.errorCode, 'not_signed_in');
+        expect(yt.calls, isEmpty, reason: 'YouTube is never asked without a session');
+        await v.close();
+      });
+
+      test('the channel, the live and its link reach every viewer; the key never does', () async {
+        await yt.signIn();
+        final raw = <String>[];
+        final ws = await WebSocket.connect('ws://127.0.0.1:$port${Api.ws}?${Api.tokenParam}=$_token');
+        ws.listen((m) => raw.add(m as String));
+        ws.add(Hello(protocolVersion: protocolVersion, viewerId: 'viewer-raw').encode());
+        final a = await greeted('viewer-a');
+        final b = await greeted('viewer-b');
+        capture.statsController.add(stats());
+        final y = (await a.next<StatusUpdate>()).status.youtube!;
+        expect(y.destination, YouTubeDestination.account);
+        expect((y.channelTitle, y.email), ('Coras TV', 'coach@example.com'));
+        expect(y.live, isNull);
+
+        final r = await ask(
+          a,
+          const YouTubeCmd(
+            requestId: 'save-1',
+            action: YouTubeAction.save,
+            title: 'Final',
+            description: 'Copa',
+            privacy: 'public',
+          ),
+        );
+        expect(r.ok, isTrue);
+        expect(r.server, 'rtmp://yt/live2');
+        expect((r.status!.live!.title, r.status!.live!.privacy, r.status!.live!.url), ('Final', 'public', 'https://youtu.be/b1'));
+        expect(yt.saves.single, ('Final', 'Copa', YouTubePrivacy.public, false));
+        // The Camera streams to the account's key from now on.
+        expect(host.info.configured, isTrue);
+        expect(host.info.keyHint, '-key');
+        // Every viewer sees the live.
+        final seen = await youtubeWhere(b, (y) => y.live != null);
+        expect(seen.live!.title, 'Final');
+
+        // A new live, and an empty title gets the Camera's default.
+        final created = await ask(a, const YouTubeCmd(requestId: 'c', action: YouTubeAction.create, privacy: 'private'));
+        expect(created.ok, isTrue);
+        expect(yt.saves.last, ('Match 14/11/2026', '', YouTubePrivacy.private, true));
+
+        final refreshed = await ask(b, const YouTubeCmd(requestId: 'f', action: YouTubeAction.refresh));
+        expect(refreshed.status!.ingest, 'good');
+
+        await _eventually(() => raw.length > 3);
+        expect(raw.join(), isNot(contains('secret-account-key')));
+        await ws.close();
+        await a.close();
+        await b.close();
+      });
+
+      test('an error goes back to who asked and stays in the status until a success', () async {
+        await yt.signIn();
+        final v = await greeted('viewer-a');
+        yt.fail = const YouTubeAccountException('quota', 'daily limit');
+        final r = await ask(v, const YouTubeCmd(requestId: 'p', action: YouTubeAction.prepare));
+        expect((r.errorCode, r.errorMessage), ('quota', 'daily limit'));
+        expect(host.youtube!.errorCode, 'quota');
+        yt.fail = null;
+        expect((await ask(v, const YouTubeCmd(requestId: 'p2', action: YouTubeAction.prepare))).ok, isTrue);
+        expect(host.youtube!.errorCode, isNull);
+        await v.close();
+      });
+
+      test("a viewer's Go live in account mode prepares the live first, then streams to its key", () async {
+        await yt.signIn();
+        final v = await greeted('viewer-a');
+        v.send(const BroadcastConfigure(key: 'manual-key', targetKbps: 3000));
+        v.send(const BroadcastStart());
+        await _eventually(() => capture.broadcastConfigs.isNotEmpty);
+        expect(yt.calls, contains('ensureLive'));
+        expect(capture.broadcastConfigs.single.url, 'rtmp://yt/live2/secret-account-key');
+        expect(capture.broadcastConfigs.single.targetKbps, 3000, reason: 'the settings sent just before');
+        await v.close();
+      });
+
+      test('account mode without a session: Go live says to sign in on the Camera; useKey leaves it', () async {
+        yt.wasActive = true;
+        final v = await greeted('viewer-a');
+        v.send(const BroadcastConfigure(key: 'manual-key'));
+        v.send(const BroadcastStart());
+        expect((await v.next<ErrorMessage>()).code, 'youtube_not_signed_in');
+        expect(capture.broadcastConfigs, isEmpty);
+
+        expect((await ask(v, const YouTubeCmd(requestId: 'k', action: YouTubeAction.useKey))).ok, isTrue);
+        expect(host.youtube!.destination, YouTubeDestination.key);
+        v.send(const BroadcastStart());
+        await _eventually(() => capture.broadcastConfigs.isNotEmpty);
+        expect(capture.broadcastConfigs.single.url, endsWith('/manual-key'));
+        await v.close();
+      });
+
+      test('a sign-in reads the current live once (never creates one) and does not retry a failure', () async {
+        yt.current = _live('b0', YouTubeLifeCycle.ready);
+        yt.fail = const YouTubeAccountException('network');
+        await yt.signIn();
+        await _eventually(() => yt.calls.contains('refresh'));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        expect(yt.calls.where((c) => c == 'refresh'), hasLength(1));
+        expect(yt.calls, isNot(contains('ensureLive')));
+        expect(yt.saves, isEmpty);
+      });
     });
 
     group('replays on air', () {
@@ -913,4 +1064,99 @@ class _FakeControls implements CameraControls {
 
   @override
   Stream<void> get changes => changesController.stream;
+}
+
+YouTubeBroadcast _live(String id, YouTubeLifeCycle life, {String title = 'Final', YouTubePrivacy privacy = YouTubePrivacy.unlisted}) =>
+    YouTubeBroadcast(
+      id: id,
+      title: title,
+      description: '',
+      privacy: privacy,
+      lifeCycle: life,
+      scheduledStartTime: null,
+    );
+
+/// The Camera's YouTube account: answers at once, remembers what it was asked.
+class _FakeYouTube implements YouTubeAccount {
+  final _changes = StreamController<void>.broadcast();
+  final calls = <String>[];
+  final saves = <(String, String, YouTubePrivacy, bool)>[];
+  YouTubeAccountException? fail;
+  bool wasActive = false;
+
+  @override
+  String? email;
+
+  @override
+  YouTubeChannel? channel;
+
+  @override
+  YouTubeBroadcast? current;
+
+  @override
+  Future<void> signIn() async {
+    email = 'coach@example.com';
+    channel = const YouTubeChannel(id: 'UC1', title: 'Coras TV');
+    _changes.add(null);
+  }
+
+  @override
+  bool get active => email != null || wasActive;
+
+  @override
+  Future<void> setActive(bool value) async {
+    if (!value && email != null) return;
+    wasActive = value;
+    _changes.add(null);
+  }
+
+  @override
+  Stream<void> get changes => _changes.stream;
+
+  void _call(String name) {
+    calls.add(name);
+    if (fail case final e?) throw e;
+  }
+
+  YouTubeTarget get _target => (server: 'rtmp://yt/live2', key: 'secret-account-key', broadcast: current!);
+
+  @override
+  Future<YouTubeTarget> save({
+    required String title,
+    required String description,
+    required YouTubePrivacy privacy,
+    bool fresh = false,
+  }) async {
+    _call('save');
+    saves.add((title, description, privacy, fresh));
+    current = _live(fresh ? 'b${saves.length}' : 'b1', YouTubeLifeCycle.ready, title: title, privacy: privacy);
+    _changes.add(null);
+    return _target;
+  }
+
+  @override
+  Future<YouTubeTarget> ensureLive({required String defaultTitle}) async {
+    _call('ensureLive');
+    current ??= _live('b1', YouTubeLifeCycle.ready, title: defaultTitle);
+    _changes.add(null);
+    return _target;
+  }
+
+  @override
+  Future<YouTubeBroadcast?> refresh() async {
+    _call('refresh');
+    return current;
+  }
+
+  @override
+  Future<YouTubeIngest?> ingest() async => YouTubeIngest.good;
+
+  @override
+  Future<void> restore() async {}
+
+  @override
+  Future<void> signOut() async {}
+
+  @override
+  void dispose() {}
 }

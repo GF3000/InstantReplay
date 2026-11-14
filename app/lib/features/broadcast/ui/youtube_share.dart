@@ -290,7 +290,9 @@ abstract final class YouTubeLinkCache {
     entry.future.then((v) {
       entry.value = v;
       entry.at = DateTime.now();
-    }, onError: (_) => entry.failed = true);
+    }, onError: (Object _) {
+      entry.failed = true;
+    });
     return entry.future;
   }
 }

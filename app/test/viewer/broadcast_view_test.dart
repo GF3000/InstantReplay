@@ -32,10 +32,11 @@ const _info = BroadcastInfo(
 
 /// A Camera in broadcast mode.
 class _BroadcastLink extends LinkStateNotifier {
-  _BroadcastLink({this.board = _board, this.info = _info});
+  _BroadcastLink({this.board = _board, this.info = _info, this.youtube});
 
   final ScoreboardState? board;
   final BroadcastInfo? info;
+  final YouTubeStatus? youtube;
 
   @override
   LinkState? build() => LinkState(
@@ -49,6 +50,7 @@ class _BroadcastLink extends LinkStateNotifier {
           thermalStatus: 0,
           scoreboard: board,
           broadcast: info,
+          youtube: youtube,
         ),
       );
 }
@@ -315,6 +317,88 @@ void main() {
 
     await tester.tap(_key('viewer-broadcast-start'));
     expect(remote.sent.last, 'start');
+  });
+
+  group("YouTube through the Camera", () {
+    const idle = BroadcastInfo(
+      state: BroadcastStreamState.idle,
+      configured: true,
+      server: BroadcastInfo.defaultServer,
+      keyHint: 'WXYZ',
+      targetKbps: 4500,
+      audio: true,
+    );
+    const live = YouTubeLiveInfo(
+      id: 'b1',
+      title: 'Final',
+      privacy: 'unlisted',
+      lifeCycle: 'ready',
+      url: 'https://youtu.be/b1',
+    );
+    const account = YouTubeStatus(
+      destination: YouTubeDestination.account,
+      email: 'coach@example.com',
+      channelId: 'UC1',
+      channelTitle: 'Coras TV',
+      live: live,
+    );
+
+    testWidgets("the Camera's account: Share shows its link at once; the settings show its channel", (tester) async {
+      await _pump(tester, link: () => _BroadcastLink(info: idle, youtube: account));
+      await tester.tap(_key('viewer-broadcast-qr'));
+      await tester.pump();
+      expect(find.byKey(const ValueKey('youtube-qr-loading')), findsNothing);
+      expect(find.textContaining('youtu.be/b1'), findsWidgets);
+      await tester.tap(_key('youtube-qr-close'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(_key('viewer-broadcast-settings'));
+      await tester.pumpAndSettle();
+      expect(find.text('Streams to the YouTube channel Coras TV'), findsOneWidget);
+      expect(find.byKey(const ValueKey('youtube-on-camera')), findsOneWidget);
+      expect(find.byKey(const ValueKey('youtube-sign-in')), findsNothing);
+    });
+
+    testWidgets('a Camera without YouTube state: no Share, only the key (as before)', (tester) async {
+      await _pump(tester, link: () => _BroadcastLink(info: idle));
+      expect(find.byKey(const ValueKey('viewer-broadcast-qr')), findsNothing);
+      await tester.tap(_key('viewer-broadcast-settings'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('broadcast-mode')), findsNothing);
+      expect(find.byKey(const ValueKey('broadcast-key')), findsOneWidget);
+    });
+
+    testWidgets('Start streaming from the settings sends their values, then start: the Camera prepares the live',
+        (tester) async {
+      final remote = await _pump(tester,
+          link: () => _BroadcastLink(
+                info: idle,
+                youtube: const YouTubeStatus(destination: YouTubeDestination.key, accountAvailable: false),
+              ));
+      await tester.tap(_key('viewer-broadcast-settings'));
+      await tester.pumpAndSettle();
+      await tester.tap(_key('broadcast-tab-image'));
+      await tester.pumpAndSettle();
+      await tester.tap(_key('broadcast-kbps-6000'));
+      await tester.tap(_key('broadcast-audio'));
+      await tester.pumpAndSettle();
+      await tester.tap(_key('broadcast-config-golive'));
+      await tester.pumpAndSettle();
+      expect(remote.sent, [(server: BroadcastInfo.defaultServer, key: null, targetKbps: 6000, audio: false), 'start'],
+          reason: 'no second configure with the old values');
+    });
+
+    testWidgets('account mode without a session on the Camera: Go live says to sign in there', (tester) async {
+      final remote = await _pump(tester,
+          link: () => _BroadcastLink(
+                info: idle,
+                youtube: const YouTubeStatus(destination: YouTubeDestination.account),
+              ));
+      await tester.tap(_key('viewer-broadcast-start'));
+      await tester.pump();
+      expect(find.textContaining('sign in again on the Camera'), findsOneWidget);
+      expect(remote.sent, isEmpty);
+    });
   });
 
   for (final size in const [Size(360, 640), Size(640, 360), Size(768, 1024), Size(1280, 800), Size(800, 1280)]) {
