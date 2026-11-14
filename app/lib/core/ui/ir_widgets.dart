@@ -218,7 +218,7 @@ class IrFilterChip extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(4),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 40),
+            constraints: const BoxConstraints(minHeight: 48),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -310,7 +310,7 @@ class IrMicToggle extends StatelessWidget {
     this.openLabel,
     this.closedLabel,
     this.subtitle,
-    this.height = 44,
+    this.height = 48,
   });
 
   final bool open;

@@ -2177,4 +2177,22 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get ytAccountErrorQuota =>
       'Se ha agotado la cuota diaria de la API de YouTube.';
+
+  @override
+  String get reviewColourRed => 'rojo';
+
+  @override
+  String get reviewColourYellow => 'amarillo';
+
+  @override
+  String get reviewColourWhite => 'blanco';
+
+  @override
+  String get reviewColourBlue => 'azul';
+
+  @override
+  String get reviewColourBlack => 'negro';
+
+  @override
+  String get liveOnYouTubeBadge => 'EN ANTENA';
 }

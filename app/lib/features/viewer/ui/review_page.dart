@@ -262,6 +262,9 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
 
   /// The replay on air changed: follow its speed, and its position when it starts or drifts.
   void _onReplay(ReplayInfo? replay) {
+    // Only while this page mirrors the stream: once taken off air, another tablet airing the same
+    // clip must not drive (or, on leaving, stop) it from here.
+    if (!_mirror) return;
     if (replay == null || replay.clipId != widget.clip.clipId) {
       // It ended on the Camera, or another clip replaced it: the stream is back on live.
       _aired = false;
@@ -301,6 +304,8 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
   void _takeOffAir() {
     _remote.replayStop();
     _aired = false;
+    setState(() => _mirror = false);
+    unawaited(_player.setLooping(widget.playlist == null));
   }
 
   /// Back to live from this page: stops the replay and closes the page.

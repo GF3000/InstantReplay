@@ -618,5 +618,11 @@
   "ytAccountCheckChannel": "Emite en el canal de YouTube {channel}",
   "ytAccountKeyLocked": "Estás usando tu cuenta de YouTube. Cierra sesión para emitir con una clave.",
   "ytAccountOrUseKey": "O cierra sesión y emite con una clave de emisión.",
-  "ytAccountErrorQuota": "Se ha agotado la cuota diaria de la API de YouTube."
+  "ytAccountErrorQuota": "Se ha agotado la cuota diaria de la API de YouTube.",
+  "reviewColourRed": "rojo",
+  "reviewColourYellow": "amarillo",
+  "reviewColourWhite": "blanco",
+  "reviewColourBlue": "azul",
+  "reviewColourBlack": "negro",
+  "liveOnYouTubeBadge": "EN ANTENA"
 }

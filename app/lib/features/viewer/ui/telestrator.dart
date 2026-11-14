@@ -614,7 +614,13 @@ class TelestratorToolbar extends StatelessWidget {
           for (final (i, colour) in TelestratorController.colors.indexed)
             _Swatch(
               key: ValueKey('draw-color-$i'),
-              tooltip: l10n.viewerDrawColor,
+              tooltip: '${l10n.viewerDrawColor}: ${[
+                l10n.reviewColourRed,
+                l10n.reviewColourYellow,
+                l10n.reviewColourWhite,
+                l10n.reviewColourBlue,
+                l10n.reviewColourBlack,
+              ][i]}',
               color: colour,
               selected: c.color == colour,
               onTap: () => c.color = colour,

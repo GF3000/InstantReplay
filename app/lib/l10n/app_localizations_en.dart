@@ -2164,4 +2164,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ytAccountErrorQuota => 'The YouTube API daily quota is used up.';
+
+  @override
+  String get reviewColourRed => 'red';
+
+  @override
+  String get reviewColourYellow => 'yellow';
+
+  @override
+  String get reviewColourWhite => 'white';
+
+  @override
+  String get reviewColourBlue => 'blue';
+
+  @override
+  String get reviewColourBlack => 'black';
+
+  @override
+  String get liveOnYouTubeBadge => 'ON AIR';
 }

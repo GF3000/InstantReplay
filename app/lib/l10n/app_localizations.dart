@@ -3811,6 +3811,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The YouTube API daily quota is used up.'**
   String get ytAccountErrorQuota;
+
+  /// No description provided for @reviewColourRed.
+  ///
+  /// In en, this message translates to:
+  /// **'red'**
+  String get reviewColourRed;
+
+  /// No description provided for @reviewColourYellow.
+  ///
+  /// In en, this message translates to:
+  /// **'yellow'**
+  String get reviewColourYellow;
+
+  /// No description provided for @reviewColourWhite.
+  ///
+  /// In en, this message translates to:
+  /// **'white'**
+  String get reviewColourWhite;
+
+  /// No description provided for @reviewColourBlue.
+  ///
+  /// In en, this message translates to:
+  /// **'blue'**
+  String get reviewColourBlue;
+
+  /// No description provided for @reviewColourBlack.
+  ///
+  /// In en, this message translates to:
+  /// **'black'**
+  String get reviewColourBlack;
+
+  /// No description provided for @liveOnYouTubeBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'ON AIR'**
+  String get liveOnYouTubeBadge;
 }
 
 class _AppLocalizationsDelegate

@@ -66,6 +66,9 @@ class ClipExporter {
         ClipExportResult.failed => l10n.viewerClipExportFailed,
       };
       if (message != null) messenger?.showSnackBar(SnackBar(content: Text(message)));
+    } catch (_) {
+      // A failed download (web) would otherwise be an unhandled error with no word to the user.
+      messenger?.showSnackBar(SnackBar(content: Text(l10n.viewerClipExportFailed)));
     } finally {
       _busy = false;
     }

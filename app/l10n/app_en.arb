@@ -1279,5 +1279,11 @@
   },
   "ytAccountKeyLocked": "You're using your YouTube account. Sign out to stream with a key.",
   "ytAccountOrUseKey": "Or sign out and stream with a stream key.",
-  "ytAccountErrorQuota": "The YouTube API daily quota is used up."
+  "ytAccountErrorQuota": "The YouTube API daily quota is used up.",
+  "reviewColourRed": "red",
+  "reviewColourYellow": "yellow",
+  "reviewColourWhite": "white",
+  "reviewColourBlue": "blue",
+  "reviewColourBlack": "black",
+  "liveOnYouTubeBadge": "ON AIR"
 }

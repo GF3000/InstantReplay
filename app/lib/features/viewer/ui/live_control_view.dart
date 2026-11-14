@@ -165,8 +165,8 @@ class MatchGlance extends ConsumerWidget {
   const MatchGlance({super.key});
 
   /// Tap area of a mark (the mark itself is 14 × 30).
-  static const _markWidth = 32.0;
-  static const _markHeight = 42.0;
+  static const _markWidth = 48.0;
+  static const _markHeight = 48.0;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -180,7 +180,8 @@ class MatchGlance extends ConsumerWidget {
     final first = times.isEmpty ? 0 : times.reduce((a, b) => a < b ? a : b);
     final last = times.isEmpty ? 0 : times.reduce((a, b) => a > b ? a : b);
     // At least ten minutes wide, so a few early clips do not spread over the whole axis.
-    final span = (last - first).clamp(10 * 60000, 1 << 50);
+    // max, not clamp: on the web (dart2js) `1 << 50` is 0 and clamp would throw.
+    final span = (last - first) < 10 * 60000 ? 10 * 60000 : last - first;
     // Oldest first, so the newest marks are drawn on top.
     final ordered = [...clips]..sort((a, b) => a.requestedAt.compareTo(b.requestedAt));
     return Padding(
@@ -444,7 +445,7 @@ class LivePanel extends ConsumerWidget {
               top: 8,
               child: _Badge(
                 key: const ValueKey('viewer-live-badge'),
-                text: l10n.liveOnAirBadge,
+                text: streaming ? l10n.liveOnYouTubeBadge : l10n.liveOnAirBadge,
                 // Red only when YouTube sees it.
                 background: streaming ? ir.live : Colors.black.withValues(alpha: 0.72),
                 foreground: streaming ? ir.onLive : Colors.white,
