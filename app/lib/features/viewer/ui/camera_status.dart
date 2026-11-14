@@ -84,7 +84,12 @@ class CameraStatusIndicator extends ConsumerWidget {
             borderRadius: BorderRadius.circular(4),
             onTap: () => showCameraStatusSheet(context),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 44, minWidth: 48, maxWidth: 170),
+              // Narrow phones: a shorter pill, so the camera's name keeps some room.
+              constraints: BoxConstraints(
+                minHeight: 48,
+                minWidth: 48,
+                maxWidth: MediaQuery.sizeOf(context).width < 400 ? 140 : 170,
+              ),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 child: Row(

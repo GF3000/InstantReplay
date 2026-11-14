@@ -51,6 +51,8 @@ class _BroadcastChecklistState extends ConsumerState<BroadcastChecklist> {
   }
 
   Future<void> _recheck() async {
+    // The list may be gone (on air, page closed) by the time a dialog or permission prompt returns.
+    if (!mounted) return;
     final server = ref.read(broadcastControllerProvider).info.server;
     final capture = ref.read(captureLayerProvider);
     final results = await Future.wait([

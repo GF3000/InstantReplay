@@ -112,6 +112,8 @@ class ScoreboardPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, c) {
+      // A narrow panel (a phone upright) needs the small keys too, or the score is squeezed out.
+      final compact = this.compact || c.maxWidth < 440;
       final home = _TeamControl(
         team: Team.home,
         state: state,
@@ -192,7 +194,7 @@ class _TeamControl extends StatelessWidget {
     final color = Color(t.color);
     final keyHeight = compact ? 56.0 : 68.0;
     final minus = SizedBox(
-      width: compact ? 44 : 60,
+      width: compact ? 48 : 60,
       height: keyHeight,
       child: IrKey(
         key: ValueKey('score-${team.name}-minus'),

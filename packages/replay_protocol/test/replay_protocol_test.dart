@@ -350,6 +350,10 @@ void main() {
       expect(plate.style, ScoreboardStyle.plate);
       expect(ScoreboardState.fromJson(plate.toJson()).style, ScoreboardStyle.plate);
       expect(ScoreboardState.fromJson(s0.toJson()..remove('style')).style, ScoreboardStyle.classic);
+      // A viewer older than the style sends settings without it: the board keeps its style.
+      final old = ScoreboardSettings.fromJson(plate.settings.toJson()..remove('style'));
+      expect(old.style, isNull);
+      expect(plate.apply(SettingsCommand(old), elapsedMs: 0).style, ScoreboardStyle.plate);
       expect(renamed.periods, 4);
       expect((renamed.clockMs, renamed.clockRunning), (3000, true));
     });

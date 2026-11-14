@@ -66,7 +66,7 @@ class _ScoreboardSettingsPageState extends State<_ScoreboardSettingsPage> {
   late int _awayColor = widget.current.awayColor;
   late int _periods = widget.current.periods.clamp(1, ScoreboardState.maxPeriods);
   late bool _countDown = widget.current.countDown;
-  late ScoreboardStyle _style = widget.current.style;
+  late ScoreboardStyle _style = widget.current.style ?? widget.state?.style ?? ScoreboardStyle.classic;
   late bool _onAir = widget.onAir;
   late bool _controls = widget.controlsShown;
   late int _scale = ScoreboardState.scales.contains(widget.current.scale)

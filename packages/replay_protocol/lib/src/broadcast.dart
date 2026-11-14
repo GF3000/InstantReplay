@@ -55,7 +55,7 @@ class ScoreboardSettings {
     required this.periodMs,
     required this.countDown,
     this.scale = ScoreboardState.defaultScale,
-    this.style = ScoreboardStyle.classic,
+    this.style,
   });
 
   factory ScoreboardSettings.fromJson(Json j) => ScoreboardSettings(
@@ -67,7 +67,8 @@ class ScoreboardSettings {
         periodMs: j['periodMs']! as int,
         countDown: j['countDown']! as bool,
         scale: j['scale'] as int? ?? ScoreboardState.defaultScale,
-        style: ScoreboardStyle.parse(j['style']),
+        // Absent (a viewer older than the style): keep the board's current style.
+        style: j['style'] == null ? null : ScoreboardStyle.parse(j['style']),
       );
 
   final String homeName;
@@ -82,7 +83,9 @@ class ScoreboardSettings {
 
   /// Overlay size in percent of the base bar (SPEC §12.5).
   final int scale;
-  final ScoreboardStyle style;
+
+  /// Null keeps the board's current style.
+  final ScoreboardStyle? style;
 
   Json toJson() => {
         'homeName': homeName,
@@ -93,7 +96,7 @@ class ScoreboardSettings {
         'periodMs': periodMs,
         'countDown': countDown,
         'scale': scale,
-        'style': style.name,
+        if (style != null) 'style': style!.name,
       };
 }
 
@@ -221,7 +224,7 @@ class ScoreboardState {
       periodMs: periodMs,
       countDown: s.countDown,
       scale: s.scale.clamp(50, 250),
-      style: s.style,
+      style: s.style ?? base.style,
     );
     // A new clock mode or length restarts the period clock, paused.
     return clockChanged ? next._copy(clockMs: next.periodStartMs, clockRunning: false) : next;
