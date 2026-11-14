@@ -100,7 +100,7 @@ void main() {
 
   testWidgets('starts even when notifications are denied', (tester) async {
     final fake = FakeCaptureLayer(notificationsGranted: false);
-    await _pumpCamera(tester, fake);
+    await _pumpCamera(tester, fake, height: 2400);
     expect(fake.starts, ['1080p30']);
     expect(find.textContaining('Notifications are off'), findsOneWidget);
   });
@@ -193,7 +193,7 @@ void main() {
 
   testWidgets('camera errors are shown until dismissed', (tester) async {
     final fake = FakeCaptureLayer();
-    await _pumpCamera(tester, fake);
+    await _pumpCamera(tester, fake, height: 2400);
 
     fake.errorsController.add('Camera device disconnected');
     await tester.pumpAndSettle();
@@ -228,7 +228,7 @@ void main() {
   });
 
   testWidgets('the Advanced section is collapsed and holds the profile selector', (tester) async {
-    await _pumpCamera(tester, FakeCaptureLayer());
+    await _pumpCamera(tester, FakeCaptureLayer(), height: 2400);
     expect(find.text('Advanced'), findsOneWidget);
     expect(find.byKey(const Key('camera-profile')), findsNothing);
     expect(find.text('Frame rate'), findsNothing);
@@ -590,7 +590,9 @@ void main() {
       fake.micGranted = true;
       await _tapVisible(tester, find.byKey(const ValueKey('check-mic-action')));
       expect(fake.calls, contains('micPermission'));
-      expect(find.text('Microphone allowed'), findsOneWidget);
+      // Only what is missing shows: the microphone line goes once it is allowed.
+      expect(find.text('Microphone not allowed: the stream will be silent'), findsNothing);
+      expect(find.text('No YouTube stream key yet'), findsOneWidget);
       expect(fake.overlays.last.homeName, 'LOC');
       expect(find.byKey(const Key('camera-scoreboard')), findsOneWidget);
       // Without a key, Go live opens the settings.
@@ -679,10 +681,12 @@ void main() {
       expect(find.byKey(const ValueKey('camera-replay')), findsNothing);
     });
 
-    testWidgets('the replay reserve is set from Advanced and remembered', (tester) async {
+    testWidgets('the replay reserve is set in Prepare the stream (Replays) and remembered', (tester) async {
       final fake = FakeCaptureLayer();
       final prefs = await _pumpCamera(tester, fake, height: 2400, saved: {'role': 'broadcast'});
-      await _openAdvanced(tester);
+      expect(find.byKey(const Key('camera-advanced')), findsNothing, reason: 'broadcast mode has no Advanced');
+      await _tapVisible(tester, find.byKey(const ValueKey('camera-broadcast-settings')));
+      await _tapVisible(tester, find.byKey(const ValueKey('broadcast-tab-replays')));
       await _tapVisible(tester, find.byKey(const ValueKey('camera-clip-reserve-plus')));
       expect(fake.calls.last, 'reserve:4');
       expect(prefs.getInt('camera.clipReserve'), 4);
@@ -793,14 +797,14 @@ void main() {
       expect(fake.broadcastConfigs.single.url, 'rtmp://a.rtmp.youtube.com/live2/abcd-efgh');
     });
 
-    testWidgets('once everything is checked the list turns into one green line', (tester) async {
+    testWidgets('once everything is checked the list goes away (only what is missing shows)', (tester) async {
       final fake = FakeCaptureLayer();
       await _pumpCamera(tester, fake, height: 2400, saved: {'role': 'broadcast', 'broadcast.key': 'abcd'});
       fake.statsController.add(stats(plugged: true));
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('broadcast-checklist')), findsNothing);
-      expect(find.byKey(const Key('broadcast-checklist-ready')), findsOneWidget);
-      expect(find.text('Ready to go live'), findsOneWidget);
+      expect(find.byKey(const Key('broadcast-checklist-ready')), findsNothing);
+      expect(find.text('Ready to go live'), findsNothing);
     });
   });
 }

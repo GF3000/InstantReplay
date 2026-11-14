@@ -2115,4 +2115,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sbChangeColour => 'Change colour';
+
+  @override
+  String get camInfoTitle => 'Camera status';
+
+  @override
+  String get camRecordingTitle => 'Camera recording';
+
+  @override
+  String get camSameWifi =>
+      'Viewers must be on the same Wi-Fi network as this camera, or connected to its hotspot.';
+
+  @override
+  String get connectSameWifi =>
+      'This device and the camera must be on the same Wi-Fi network (or this device on the camera\'s hotspot).';
 }

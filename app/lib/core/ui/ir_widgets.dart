@@ -408,3 +408,32 @@ class _LevelState extends State<_Level> with SingleTickerProviderStateMixin {
     );
   }
 }
+
+/// A short note with an icon in a bordered strip (e.g. "same Wi-Fi" next to pairing).
+class IrNote extends StatelessWidget {
+  const IrNote({super.key, required this.icon, required this.text, this.color});
+
+  final IconData icon;
+  final String text;
+
+  /// Icon colour; [IrColors.info] by default.
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ir;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: c.surface,
+        border: Border.all(color: c.line),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(icon, size: 20, color: color ?? c.info),
+        const SizedBox(width: 10),
+        Expanded(child: Text(text, style: TextStyle(fontSize: 14, height: 1.3, color: c.text))),
+      ]),
+    );
+  }
+}

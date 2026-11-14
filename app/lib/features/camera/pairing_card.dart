@@ -90,6 +90,8 @@ class PairingCard extends ConsumerWidget {
         else ...[
           Text(l10n.cameraPairingScanHint, style: TextStyle(fontSize: 13, color: c.muted)),
           SelectableText(url, key: const Key('camera-pairing-url'), style: irMono(13, weight: FontWeight.w500, color: c.text)),
+          const SizedBox(height: 10),
+          IrNote(key: const Key('camera-pairing-same-wifi'), icon: Icons.wifi, text: l10n.camSameWifi),
         ],
       ]),
     );
@@ -152,6 +154,8 @@ class _PairingSheet extends ConsumerWidget {
               child: Icon(server.error != null ? Icons.error_outline : Icons.wifi_off, size: 64, color: c.muted),
             ),
       children: [
+        IrNote(key: const Key('camera-pairing-same-wifi'), icon: Icons.wifi, text: l10n.camSameWifi),
+        const SizedBox(height: 14),
         Text(l10n.camPairOrCode, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: c.muted)),
         FittedBox(
           fit: BoxFit.scaleDown,

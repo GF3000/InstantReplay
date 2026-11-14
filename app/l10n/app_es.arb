@@ -604,5 +604,9 @@
   "sbOnAirSub": "Apágalo para emitir sin marcador",
   "sbControls": "Controles del marcador en esta pantalla",
   "sbControlsSub": "Ocúltalos si otra persona lleva el marcador",
-  "sbChangeColour": "Cambiar color"
+  "sbChangeColour": "Cambiar color",
+  "camInfoTitle": "Estado de la cámara",
+  "camRecordingTitle": "Grabación de la cámara",
+  "camSameWifi": "Los visores tienen que estar en la misma red Wi-Fi que esta cámara, o conectados a su punto de acceso.",
+  "connectSameWifi": "Este dispositivo y la cámara tienen que estar en la misma red Wi-Fi (o este, en el punto de acceso de la cámara)."
 }

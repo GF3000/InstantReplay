@@ -216,6 +216,8 @@ class _NearbyCameras extends ConsumerWidget {
         const SizedBox(width: 10),
         Expanded(child: Container(height: 1, color: c.line)),
       ]),
+      const SizedBox(height: 8),
+      IrNote(key: const ValueKey('viewer-same-wifi'), icon: Icons.wifi, text: l10n.connectSameWifi),
       const SizedBox(height: 12),
       Container(
         clipBehavior: Clip.antiAlias,
@@ -421,6 +423,8 @@ class _PairFormState extends ConsumerState<PairForm> {
         const SizedBox(height: 4),
         Text(l10n.viewerCameraAt(cameraKey(base)), style: TextStyle(fontSize: 13, color: c.muted)),
       ],
+      const SizedBox(height: 12),
+      IrNote(icon: Icons.wifi, text: l10n.connectSameWifi),
       const SizedBox(height: 20),
       Stack(children: [
         ListenableBuilder(

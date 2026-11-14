@@ -15,8 +15,9 @@ import '../broadcast/youtube/youtube_providers.dart';
 
 /// What to check before going live (SPEC §12.7): stream key, 1080p, Internet, charging and the
 /// microphone, each with the fix at hand: a green check, or an amber warning with its button.
-/// Hidden on air. On the Camera's screen it shrinks to one green "Ready to go live" line once
-/// everything is fine; inside "Prepare the stream" ([inPage]) every line stays.
+/// Hidden on air. On the Camera's screen it shows only what is missing, and nothing once
+/// everything is fine (no "all good" line taking room); inside "Prepare the stream" ([inPage])
+/// every line stays.
 class BroadcastChecklist extends ConsumerStatefulWidget {
   const BroadcastChecklist({super.key, this.inPage = false});
 
@@ -139,9 +140,11 @@ class _BroadcastChecklistState extends ConsumerState<BroadcastChecklist> {
         ),
     ];
     final ready = items.every((i) => i.ok);
+    if (ready && !widget.inPage) return const SizedBox.shrink();
+    final shown = widget.inPage ? items : [for (final i in items) if (!i.ok) i];
 
     final rows = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      for (final (i, item) in items.indexed)
+      for (final (i, item) in shown.indexed)
         Container(
           key: ValueKey('check-${item.key}'),
           constraints: const BoxConstraints(minHeight: 52),
@@ -183,29 +186,6 @@ class _BroadcastChecklistState extends ConsumerState<BroadcastChecklist> {
         key: const Key('broadcast-checklist'),
         decoration: BoxDecoration(border: Border.all(color: c.line), borderRadius: BorderRadius.circular(4)),
         child: rows,
-      );
-    }
-
-    if (ready) {
-      // The "ready to go live" moment: one green line instead of five.
-      return Container(
-        key: const Key('broadcast-checklist-ready'),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: c.surface,
-          border: Border.all(color: c.ok),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Row(children: [
-          Icon(Icons.check_circle, color: c.ok, size: 28),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(l10n.camReadyTitle, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: c.text)),
-              Text(l10n.camReadySub, style: TextStyle(fontSize: 13, color: c.muted)),
-            ]),
-          ),
-        ]),
       );
     }
 

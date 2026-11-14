@@ -3727,6 +3727,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Change colour'**
   String get sbChangeColour;
+
+  /// No description provided for @camInfoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera status'**
+  String get camInfoTitle;
+
+  /// No description provided for @camRecordingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera recording'**
+  String get camRecordingTitle;
+
+  /// No description provided for @camSameWifi.
+  ///
+  /// In en, this message translates to:
+  /// **'Viewers must be on the same Wi-Fi network as this camera, or connected to its hotspot.'**
+  String get camSameWifi;
+
+  /// No description provided for @connectSameWifi.
+  ///
+  /// In en, this message translates to:
+  /// **'This device and the camera must be on the same Wi-Fi network (or this device on the camera\'s hotspot).'**
+  String get connectSameWifi;
 }
 
 class _AppLocalizationsDelegate

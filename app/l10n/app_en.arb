@@ -1251,5 +1251,9 @@
   "sbOnAirSub": "Turn it off to stream without a scoreboard",
   "sbControls": "Scoreboard controls on this screen",
   "sbControlsSub": "Hide them when someone else keeps the score",
-  "sbChangeColour": "Change colour"
+  "sbChangeColour": "Change colour",
+  "camInfoTitle": "Camera status",
+  "camRecordingTitle": "Camera recording",
+  "camSameWifi": "Viewers must be on the same Wi-Fi network as this camera, or connected to its hotspot.",
+  "connectSameWifi": "This device and the camera must be on the same Wi-Fi network (or this device on the camera's hotspot)."
 }

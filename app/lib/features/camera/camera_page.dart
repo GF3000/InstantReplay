@@ -604,7 +604,6 @@ class _AdvancedState extends ConsumerState<_Advanced> {
     final c = context.ir;
     final state = widget.state;
     final notifier = ref.read(cameraSessionProvider.notifier);
-    final stats = state.stats;
     final running = state.phase == CameraPhase.running;
 
     return IrPanel(
@@ -645,73 +644,9 @@ class _AdvancedState extends ConsumerState<_Advanced> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Replays on air exist only in broadcast mode, and so does their reserve.
-                  if (state.broadcast) ...[
-                    ClipReserveStepper(
-                      keyPrefix: 'camera-clip-reserve',
-                      size: state.clipReserve,
-                      max: CameraSessionNotifier.maxClipReserve,
-                      enabled: true,
-                      onChanged: notifier.setClipReserve,
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  if (state.profiles.isNotEmpty) ...[
-                    InputDecorator(
-                      decoration: InputDecoration(
-                        labelText: l10n.cameraProfile,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          key: const Key('camera-profile'),
-                          value: state.profileId,
-                          isExpanded: true,
-                          itemHeight: 56,
-                          items: [
-                            for (final p in state.profiles)
-                              DropdownMenuItem(value: p.id, child: Text(_profileLabel(context, p))),
-                          ],
-                          onChanged:
-                              state.phase == CameraPhase.starting ||
-                                  state.phase == CameraPhase.initializing ||
-                                  _streaming(ref)
-                              ? null
-                              : (id) => id == null ? null : notifier.selectProfile(id),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  if (state.cameraState != null) _StatRow(l10n.cameraStatCamera, state.cameraState!),
-                  if (stats == null)
-                    Text(l10n.cameraWaitingForStats, style: TextStyle(color: c.muted))
-                  else ...[
-                    _StatRow(l10n.cameraStatFps, l10n.cameraFpsValue(stats.fps.toStringAsFixed(1))),
-                    _StatRow(
-                      l10n.cameraStatGaps,
-                      l10n.cameraGapsValue(stats.gaps, stats.cameraGaps, stats.glGaps),
-                      alert: stats.gaps > 0,
-                    ),
-                    _StatRow(
-                      l10n.cameraStatBuffer,
-                      l10n.cameraBufferValue(stats.bufferMs ~/ 1000, _mb(stats.bufferBytes)),
-                    ),
-                    _StatRow(l10n.cameraStatOutbox, l10n.cameraOutboxValue(stats.outboxClips, _mb(stats.outboxBytes))),
-                    _StatRow(
-                      l10n.cameraStatBattery,
-                      l10n.cameraBatteryValue(
-                        _temperature(stats.batteryTempC),
-                        stats.batteryPercent == null ? '–' : '${stats.batteryPercent} %',
-                        stats.plugged ? l10n.cameraCharging : l10n.cameraNotCharging,
-                      ),
-                    ),
-                  ],
-                  if (state.thermalStatus != null)
-                    _StatRow(
-                      l10n.cameraStatThermal,
-                      thermalName(l10n, state.thermalStatus!),
-                      alert: state.thermalStatus! >= _thermalModerate,
-                    ),
+                  if (state.broadcast) ...[CameraClipReserveSetting(state: state), const SizedBox(height: 12)],
+                  if (state.profiles.isNotEmpty) ...[CameraProfileSetting(state: state), const SizedBox(height: 12)],
+                  _CameraInfoRows(state: state),
                   if (kDebugMode) ...[
                     const SizedBox(height: 12),
                     OutlinedButton.icon(
@@ -978,6 +913,13 @@ class _BroadcastPanel extends ConsumerWidget {
           subtitle: compact || info.active ? null : broadcastDetail(l10n, info),
           actions: [
             IconButton(
+              key: const Key('camera-info'),
+              tooltip: l10n.camInfoTitle,
+              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+              onPressed: () => _showCameraInfo(context),
+              icon: const Icon(Icons.info_outline),
+            ),
+            IconButton(
               key: const Key('camera-scoreboard-settings'),
               tooltip: l10n.scoreboardSettings,
               constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
@@ -1076,8 +1018,8 @@ class _BroadcastPanel extends ConsumerWidget {
         if (info.active) ...[_SettingsButton(info: info, enabled: running), const SizedBox(height: 8)],
         _BlackScreenButton(state: state, expand: true),
         gap,
+        // Quality and replay reserve live in "Prepare the stream"; the camera's state behind (i).
         ..._notices(context, ref, state),
-        _Advanced(state: state),
       ],
     );
   }
@@ -1417,6 +1359,8 @@ abstract final class _BroadcastActions {
       youtube: youtube,
       canGoLive: !info.active,
       checklist: const BroadcastChecklist(inPage: true),
+      recording: CameraProfileSetting(state: ref.read(cameraSessionProvider)),
+      replayReserve: CameraClipReserveSetting(state: ref.read(cameraSessionProvider)),
     );
     if (result == null) return;
     await controller.configure(
@@ -1712,3 +1656,136 @@ String _mb(int bytes) => (bytes / 1e6).toStringAsFixed(0);
 
 String _temperature(double? celsius, {int digits = 1}) =>
     celsius == null ? '–' : '${celsius.toStringAsFixed(digits)} °C';
+
+/// The recording quality (profile), as in the Advanced section; it applies at once and is locked
+/// while streaming. Shown in "Prepare the stream" on the Camera.
+class CameraProfileSetting extends ConsumerWidget {
+  const CameraProfileSetting({super.key, required this.state});
+
+  final CameraSessionState state;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final live = ref.watch(cameraSessionProvider);
+    final notifier = ref.read(cameraSessionProvider.notifier);
+    if (live.profiles.isEmpty) return const SizedBox.shrink();
+    return InputDecorator(
+      decoration: InputDecoration(
+        labelText: l10n.cameraProfile,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          key: const Key('camera-profile'),
+          value: live.profileId,
+          isExpanded: true,
+          itemHeight: 56,
+          items: [
+            for (final p in live.profiles)
+              DropdownMenuItem(value: p.id, child: Text(_AdvancedState._profileLabel(context, p))),
+          ],
+          onChanged: live.phase == CameraPhase.starting || live.phase == CameraPhase.initializing || _streaming(ref)
+              ? null
+              : (id) => id == null ? null : notifier.selectProfile(id),
+        ),
+      ),
+    );
+  }
+}
+
+/// How many replays the Camera keeps for "on air"; applies at once.
+class CameraClipReserveSetting extends ConsumerWidget {
+  const CameraClipReserveSetting({super.key, required this.state});
+
+  final CameraSessionState state;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final live = ref.watch(cameraSessionProvider);
+    return ClipReserveStepper(
+      keyPrefix: 'camera-clip-reserve',
+      size: live.clipReserve,
+      max: CameraSessionNotifier.maxClipReserve,
+      enabled: true,
+      onChanged: ref.read(cameraSessionProvider.notifier).setClipReserve,
+    );
+  }
+}
+
+/// Fps, gaps, buffer, outbox, battery and heat: the Advanced section in setup, the (i) sheet in
+/// broadcast mode.
+class _CameraInfoRows extends StatelessWidget {
+  const _CameraInfoRows({required this.state});
+
+  final CameraSessionState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final c = context.ir;
+    final stats = state.stats;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (state.cameraState != null) _StatRow(l10n.cameraStatCamera, state.cameraState!),
+        if (stats == null)
+          Text(l10n.cameraWaitingForStats, style: TextStyle(color: c.muted))
+        else ...[
+          _StatRow(l10n.cameraStatFps, l10n.cameraFpsValue(stats.fps.toStringAsFixed(1))),
+          _StatRow(
+            l10n.cameraStatGaps,
+            l10n.cameraGapsValue(stats.gaps, stats.cameraGaps, stats.glGaps),
+            alert: stats.gaps > 0,
+          ),
+          _StatRow(l10n.cameraStatBuffer, l10n.cameraBufferValue(stats.bufferMs ~/ 1000, _mb(stats.bufferBytes))),
+          _StatRow(l10n.cameraStatOutbox, l10n.cameraOutboxValue(stats.outboxClips, _mb(stats.outboxBytes))),
+          _StatRow(
+            l10n.cameraStatBattery,
+            l10n.cameraBatteryValue(
+              _temperature(stats.batteryTempC),
+              stats.batteryPercent == null ? '–' : '${stats.batteryPercent} %',
+              stats.plugged ? l10n.cameraCharging : l10n.cameraNotCharging,
+            ),
+          ),
+        ],
+        if (state.thermalStatus != null)
+          _StatRow(
+            l10n.cameraStatThermal,
+            thermalName(l10n, state.thermalStatus!),
+            alert: state.thermalStatus! >= _thermalModerate,
+          ),
+      ],
+    );
+  }
+}
+
+/// Broadcast mode: the (i) key in the header opens the camera's state.
+Future<void> _showCameraInfo(BuildContext context) => showModalBottomSheet<void>(
+  context: context,
+  isScrollControlled: true,
+  builder: (context) => Consumer(
+    builder: (context, ref, _) {
+      final l10n = AppLocalizations.of(context);
+      final c = context.ir;
+      final state = ref.watch(cameraSessionProvider);
+      return SafeArea(
+        child: SingleChildScrollView(
+          key: const Key('camera-info-sheet'),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                l10n.camInfoTitle,
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: c.text),
+              ),
+              const SizedBox(height: 12),
+              _CameraInfoRows(state: state),
+            ],
+          ),
+        ),
+      );
+    },
+  ),
+);
