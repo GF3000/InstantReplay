@@ -359,7 +359,7 @@
   "roleBroadcastEntry": "Retransmitir partido · beta",
   "roleBroadcastDescription": "Emite en YouTube con marcador y repeticiones.",
   "checkTitle": "Antes de emitir",
-  "checkKeyOk": "Clave de YouTube guardada",
+  "checkKeyOk": "Emite con la clave de emisión guardada",
   "checkKeyMissing": "Falta la clave de emisión de YouTube",
   "checkKeyAction": "Añadir",
   "checkQualityUnknown": "Calidad: la cámara está arrancando",
@@ -608,5 +608,10 @@
   "camInfoTitle": "Estado de la cámara",
   "camRecordingTitle": "Grabación de la cámara",
   "camSameWifi": "Los visores tienen que estar en la misma red Wi-Fi que esta cámara, o conectados a su punto de acceso.",
-  "connectSameWifi": "Este dispositivo y la cámara tienen que estar en la misma red Wi-Fi (o este, en el punto de acceso de la cámara)."
+  "connectSameWifi": "Este dispositivo y la cámara tienen que estar en la misma red Wi-Fi (o este, en el punto de acceso de la cámara).",
+  "settingsAppTitle": "Ajustes de la app",
+  "viewerThisScreen": "Esta pantalla",
+  "viewerSaveButtons": "Botones de Guardar",
+  "checkAccountOk": "Emite en la cuenta de YouTube {email}",
+  "checkAccountSignIn": "Inicia sesión en la cuenta de YouTube para emitir"
 }

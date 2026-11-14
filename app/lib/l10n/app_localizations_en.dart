@@ -1323,7 +1323,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get checkTitle => 'Before going live';
 
   @override
-  String get checkKeyOk => 'YouTube stream key saved';
+  String get checkKeyOk => 'Streams with the saved stream key';
 
   @override
   String get checkKeyMissing => 'No YouTube stream key yet';
@@ -2129,4 +2129,21 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get connectSameWifi =>
       'This device and the camera must be on the same Wi-Fi network (or this device on the camera\'s hotspot).';
+
+  @override
+  String get settingsAppTitle => 'App settings';
+
+  @override
+  String get viewerThisScreen => 'This screen';
+
+  @override
+  String get viewerSaveButtons => 'Save buttons';
+
+  @override
+  String checkAccountOk(String email) {
+    return 'Streams to the YouTube account $email';
+  }
+
+  @override
+  String get checkAccountSignIn => 'Sign in to the YouTube account to stream';
 }

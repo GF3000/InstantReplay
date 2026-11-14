@@ -1328,7 +1328,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get checkTitle => 'Antes de emitir';
 
   @override
-  String get checkKeyOk => 'Clave de YouTube guardada';
+  String get checkKeyOk => 'Emite con la clave de emisión guardada';
 
   @override
   String get checkKeyMissing => 'Falta la clave de emisión de YouTube';
@@ -2139,4 +2139,22 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get connectSameWifi =>
       'Este dispositivo y la cámara tienen que estar en la misma red Wi-Fi (o este, en el punto de acceso de la cámara).';
+
+  @override
+  String get settingsAppTitle => 'Ajustes de la app';
+
+  @override
+  String get viewerThisScreen => 'Esta pantalla';
+
+  @override
+  String get viewerSaveButtons => 'Botones de Guardar';
+
+  @override
+  String checkAccountOk(String email) {
+    return 'Emite en la cuenta de YouTube $email';
+  }
+
+  @override
+  String get checkAccountSignIn =>
+      'Inicia sesión en la cuenta de YouTube para emitir';
 }

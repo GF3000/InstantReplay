@@ -879,7 +879,7 @@
   "roleBroadcastEntry": "Broadcast a match · beta",
   "roleBroadcastDescription": "Streams to YouTube with a scoreboard and replays.",
   "checkTitle": "Before going live",
-  "checkKeyOk": "YouTube stream key saved",
+  "checkKeyOk": "Streams with the saved stream key",
   "checkKeyMissing": "No YouTube stream key yet",
   "checkKeyAction": "Add",
   "checkQualityUnknown": "Quality: the camera is starting",
@@ -1255,5 +1255,17 @@
   "camInfoTitle": "Camera status",
   "camRecordingTitle": "Camera recording",
   "camSameWifi": "Viewers must be on the same Wi-Fi network as this camera, or connected to its hotspot.",
-  "connectSameWifi": "This device and the camera must be on the same Wi-Fi network (or this device on the camera's hotspot)."
+  "connectSameWifi": "This device and the camera must be on the same Wi-Fi network (or this device on the camera's hotspot).",
+  "settingsAppTitle": "App settings",
+  "viewerThisScreen": "This screen",
+  "viewerSaveButtons": "Save buttons",
+  "checkAccountOk": "Streams to the YouTube account {email}",
+  "@checkAccountOk": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "checkAccountSignIn": "Sign in to the YouTube account to stream"
 }

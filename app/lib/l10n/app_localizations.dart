@@ -2255,7 +2255,7 @@ abstract class AppLocalizations {
   /// No description provided for @checkKeyOk.
   ///
   /// In en, this message translates to:
-  /// **'YouTube stream key saved'**
+  /// **'Streams with the saved stream key'**
   String get checkKeyOk;
 
   /// No description provided for @checkKeyMissing.
@@ -3751,6 +3751,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This device and the camera must be on the same Wi-Fi network (or this device on the camera\'s hotspot).'**
   String get connectSameWifi;
+
+  /// No description provided for @settingsAppTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'App settings'**
+  String get settingsAppTitle;
+
+  /// No description provided for @viewerThisScreen.
+  ///
+  /// In en, this message translates to:
+  /// **'This screen'**
+  String get viewerThisScreen;
+
+  /// No description provided for @viewerSaveButtons.
+  ///
+  /// In en, this message translates to:
+  /// **'Save buttons'**
+  String get viewerSaveButtons;
+
+  /// No description provided for @checkAccountOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Streams to the YouTube account {email}'**
+  String checkAccountOk(String email);
+
+  /// No description provided for @checkAccountSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to the YouTube account to stream'**
+  String get checkAccountSignIn;
 }
 
 class _AppLocalizationsDelegate

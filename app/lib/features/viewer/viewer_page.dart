@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:replay_protocol/replay_protocol.dart' show SessionRecordingState;
 
 import '../../core/ui/ir_colors.dart';
 import '../../l10n/app_localizations.dart';
@@ -15,6 +16,7 @@ import 'tags/tag_editor_page.dart';
 import 'ui/camera_status.dart';
 import 'ui/connect_view.dart';
 import 'ui/live_control_view.dart';
+import 'ui/save_button_settings.dart';
 import 'viewer_providers.dart';
 
 /// Viewer role (SPEC §5, §6): connect to a Camera, watch live, save and review clips.
@@ -77,6 +79,9 @@ class ViewerPage extends ConsumerWidget {
         actions: [
           if (setup.paired) ...[
             const CameraStatusIndicator(),
+            // Recording the whole match: one tap away, not only in the menu. An icon (red while
+            // recording); its time is already in the status pill, so the bar fits a phone.
+            const _RecordKey(),
             const SizedBox(width: 6),
             ViewerMicButton(labelled: wide),
             if (wide && library)
@@ -91,13 +96,6 @@ class ViewerPage extends ConsumerWidget {
                   onPressed: () => Navigator.of(context).push(LibraryPage.route()),
                   child: Text(l10n.libraryTitle),
                 ),
-              ),
-            if (wide)
-              IconButton(
-                key: const ValueKey('viewer-settings'),
-                tooltip: l10n.settingsTitle,
-                icon: const Icon(Icons.settings_outlined),
-                onPressed: () => context.push('/viewer/settings'),
               ),
           ] else
             IconButton(
@@ -223,14 +221,17 @@ class _MenuSheet extends ConsumerWidget {
                 key: 'viewer-menu-clip-reserve',
               ),
             if (setup.paired) ...[
+              // About this screen: what it shows, and how its Save buttons behave.
               const Divider(height: 1),
-              section(l10n.panelsTitle),
+              section(l10n.viewerThisScreen),
               const ViewerPanelToggles(),
+              section(l10n.viewerSaveButtons),
+              const SaveButtonSettings(),
               const Divider(height: 1),
             ],
             if (setup.paired && !setup.addressFixed)
               entry(_MenuItem.changeCamera, Icons.link_off, l10n.viewerChangeCamera, key: 'viewer-menu-change-camera'),
-            entry(_MenuItem.settings, Icons.settings_outlined, l10n.settingsTitle, key: 'viewer-menu-settings'),
+            entry(_MenuItem.settings, Icons.settings_outlined, l10n.settingsAppTitle, key: 'viewer-menu-settings'),
             entry(_MenuItem.switchRole, Icons.swap_horiz, l10n.switchRole, key: 'viewer-menu-switch-role'),
           ],
         ),
@@ -296,5 +297,33 @@ class _Session extends ConsumerWidget {
       );
     }
     return const LiveControlView();
+  }
+}
+
+/// The full-session recording's key in the top bar: an outlined dot when idle, filled red while
+/// recording (amber when paused). It opens the same dialog as the menu (start, pause, finish).
+/// Hidden when the Camera does not offer recording; its time is in the status pill.
+class _RecordKey extends ConsumerWidget {
+  const _RecordKey();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final recording = ref.watch(sessionRecordingProvider);
+    if (recording == null) return const SizedBox.shrink();
+    final l10n = AppLocalizations.of(context);
+    final c = context.ir;
+    final connected = ref.watch(linkStateProvider.select((s) => s?.phase == LinkPhase.connected));
+    final capturing = ref.watch(linkStateProvider.select((s) => s?.status?.recording ?? false));
+    final (icon, color) = switch (recording.state) {
+      SessionRecordingState.recording => (Icons.fiber_manual_record, c.live),
+      SessionRecordingState.paused => (Icons.pause_circle_filled, c.warn),
+      SessionRecordingState.idle => (Icons.radio_button_checked, c.text),
+    };
+    return IconButton(
+      key: const ValueKey('viewer-record-key'),
+      tooltip: l10n.recTitle,
+      onPressed: connected && capturing ? () => openViewerRecording(context, ref) : null,
+      icon: Icon(icon, color: color),
+    );
   }
 }

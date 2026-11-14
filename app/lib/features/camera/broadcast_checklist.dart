@@ -80,12 +80,23 @@ class _BroadcastChecklistState extends ConsumerState<BroadcastChecklist> {
     final profile = session.profile;
     final hd = _hd(session.profiles);
     final plugged = session.stats?.plugged;
+    // Where the stream goes is what was last saved in "Destination": the YouTube account (its own
+    // key, set when going live) or the pasted stream key. The line says which one will be used.
+    ref.watch(youtubeActiveAccountProvider); // rebuilds on sign-in / mode changes
+    final account = ref.watch(youtubeAccountProvider);
+    final accountMode = account != null && account.active;
+    final email = accountMode ? account.email : null;
+    final destinationOk = accountMode ? email != null : info.configured;
     final items = <_Item>[
       _Item(
         key: 'key',
-        ok: info.configured,
-        label: info.configured ? l10n.checkKeyOk : l10n.checkKeyMissing,
-        action: info.configured || widget.inPage ? null : l10n.checkKeyAction,
+        ok: destinationOk,
+        label: accountMode
+            ? (email != null ? l10n.checkAccountOk(email) : l10n.checkAccountSignIn)
+            : info.configured
+                ? l10n.checkKeyOk
+                : l10n.checkKeyMissing,
+        action: destinationOk || widget.inPage ? null : l10n.checkKeyAction,
         onAction: () async {
           final result = await showBroadcastConfigDialog(context, info, youtube: ref.read(youtubeAccountProvider));
           if (result == null) return;

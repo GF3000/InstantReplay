@@ -795,11 +795,12 @@ void _viewerPageTests() {
     for (final text in [
       'Edit tags',
       'Full recording',
-      'PANELS',
+      'THIS SCREEN',
+      'SAVE BUTTONS',
       'Live view',
       'Scoreboard',
       'Replays',
-      'Settings',
+      'App settings',
       'Switch role',
     ]) {
       expect(find.text(text), findsWidgets, reason: text);
@@ -808,7 +809,7 @@ void _viewerPageTests() {
     expect(find.byType(LivePanel), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('viewer-panel-viewerLive')));
     await tester.pumpAndSettle();
-    expect(find.text('Settings'), findsOneWidget, reason: 'the sheet stays open');
+    expect(find.text('App settings'), findsOneWidget, reason: 'the sheet stays open');
     expect(find.byType(LivePanel), findsNothing);
 
     // An action closes the sheet and runs: the full recording's dialog.
