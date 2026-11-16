@@ -211,14 +211,32 @@ enum class ClipState(val raw: Int) {
 
 /**
  * How the overlay draws the board: [classic] is the thin one-row bar, [plate] a two-row plate
- * with full names (the replay badge follows the same style).
+ * with full names, [banner] a wide bar with 3-letter names and a period + clock tab below (the
+ * replay badge follows the same style).
  */
 enum class OverlayStyle(val raw: Int) {
   CLASSIC(0),
-  PLATE(1);
+  PLATE(1),
+  BANNER(2);
 
   companion object {
     fun ofRaw(raw: Int): OverlayStyle? {
+      return values().firstOrNull { it.raw == raw }
+    }
+  }
+}
+
+/** Where the overlay sits on the frame, inside the safe margins. */
+enum class OverlayPosition(val raw: Int) {
+  TOP_LEFT(0),
+  TOP_CENTER(1),
+  TOP_RIGHT(2),
+  BOTTOM_LEFT(3),
+  BOTTOM_CENTER(4),
+  BOTTOM_RIGHT(5);
+
+  companion object {
+    fun ofRaw(raw: Int): OverlayPosition? {
       return values().firstOrNull { it.raw == raw }
     }
   }
@@ -747,7 +765,7 @@ data class OverlayState (
   val visible: Boolean,
   /**
    * Already upper-case and as drawn: 1–5 characters for [OverlayStyle.classic], up to 16 for
-   * [OverlayStyle.plate].
+   * [OverlayStyle.plate], up to 3 for [OverlayStyle.banner].
    */
   val homeName: String,
   val awayName: String,
@@ -765,7 +783,8 @@ data class OverlayState (
   val countDown: Boolean,
   /** Bar size: 100 = 56 px high at 1080p. */
   val scalePercent: Long,
-  val style: OverlayStyle
+  val style: OverlayStyle,
+  val position: OverlayPosition
 )
  {
   companion object {
@@ -783,7 +802,8 @@ data class OverlayState (
       val countDown = pigeonVar_list[10] as Boolean
       val scalePercent = pigeonVar_list[11] as Long
       val style = pigeonVar_list[12] as OverlayStyle
-      return OverlayState(visible, homeName, awayName, homeScore, awayScore, homeColor, awayColor, periodLabel, clockMs, clockRunning, countDown, scalePercent, style)
+      val position = pigeonVar_list[13] as OverlayPosition
+      return OverlayState(visible, homeName, awayName, homeScore, awayScore, homeColor, awayColor, periodLabel, clockMs, clockRunning, countDown, scalePercent, style, position)
     }
   }
   fun toList(): List<Any?> {
@@ -801,6 +821,7 @@ data class OverlayState (
       countDown,
       scalePercent,
       style,
+      position,
     )
   }
   override fun equals(other: Any?): Boolean {
@@ -811,7 +832,7 @@ data class OverlayState (
       return true
     }
     val other = other as OverlayState
-    return CaptureApiPigeonUtils.deepEquals(this.visible, other.visible) && CaptureApiPigeonUtils.deepEquals(this.homeName, other.homeName) && CaptureApiPigeonUtils.deepEquals(this.awayName, other.awayName) && CaptureApiPigeonUtils.deepEquals(this.homeScore, other.homeScore) && CaptureApiPigeonUtils.deepEquals(this.awayScore, other.awayScore) && CaptureApiPigeonUtils.deepEquals(this.homeColor, other.homeColor) && CaptureApiPigeonUtils.deepEquals(this.awayColor, other.awayColor) && CaptureApiPigeonUtils.deepEquals(this.periodLabel, other.periodLabel) && CaptureApiPigeonUtils.deepEquals(this.clockMs, other.clockMs) && CaptureApiPigeonUtils.deepEquals(this.clockRunning, other.clockRunning) && CaptureApiPigeonUtils.deepEquals(this.countDown, other.countDown) && CaptureApiPigeonUtils.deepEquals(this.scalePercent, other.scalePercent) && CaptureApiPigeonUtils.deepEquals(this.style, other.style)
+    return CaptureApiPigeonUtils.deepEquals(this.visible, other.visible) && CaptureApiPigeonUtils.deepEquals(this.homeName, other.homeName) && CaptureApiPigeonUtils.deepEquals(this.awayName, other.awayName) && CaptureApiPigeonUtils.deepEquals(this.homeScore, other.homeScore) && CaptureApiPigeonUtils.deepEquals(this.awayScore, other.awayScore) && CaptureApiPigeonUtils.deepEquals(this.homeColor, other.homeColor) && CaptureApiPigeonUtils.deepEquals(this.awayColor, other.awayColor) && CaptureApiPigeonUtils.deepEquals(this.periodLabel, other.periodLabel) && CaptureApiPigeonUtils.deepEquals(this.clockMs, other.clockMs) && CaptureApiPigeonUtils.deepEquals(this.clockRunning, other.clockRunning) && CaptureApiPigeonUtils.deepEquals(this.countDown, other.countDown) && CaptureApiPigeonUtils.deepEquals(this.scalePercent, other.scalePercent) && CaptureApiPigeonUtils.deepEquals(this.style, other.style) && CaptureApiPigeonUtils.deepEquals(this.position, other.position)
   }
 
   override fun hashCode(): Int {
@@ -829,10 +850,11 @@ data class OverlayState (
     result = 31 * result + CaptureApiPigeonUtils.deepHash(this.countDown)
     result = 31 * result + CaptureApiPigeonUtils.deepHash(this.scalePercent)
     result = 31 * result + CaptureApiPigeonUtils.deepHash(this.style)
+    result = 31 * result + CaptureApiPigeonUtils.deepHash(this.position)
     return result
   }
   override fun toString(): String {
-    return "OverlayState(visible=$visible, homeName=$homeName, awayName=$awayName, homeScore=$homeScore, awayScore=$awayScore, homeColor=$homeColor, awayColor=$awayColor, periodLabel=$periodLabel, clockMs=$clockMs, clockRunning=$clockRunning, countDown=$countDown, scalePercent=$scalePercent, style=$style)"
+    return "OverlayState(visible=$visible, homeName=$homeName, awayName=$awayName, homeScore=$homeScore, awayScore=$awayScore, homeColor=$homeColor, awayColor=$awayColor, periodLabel=$periodLabel, clockMs=$clockMs, clockRunning=$clockRunning, countDown=$countDown, scalePercent=$scalePercent, style=$style, position=$position)"
   }
 }
 
@@ -1203,90 +1225,95 @@ private open class CaptureApiPigeonCodec : StandardMessageCodec() {
       }
       131.toByte() -> {
         return (readValue(buffer) as Long?)?.let {
-          BroadcastState.ofRaw(it.toInt())
+          OverlayPosition.ofRaw(it.toInt())
         }
       }
       132.toByte() -> {
         return (readValue(buffer) as Long?)?.let {
-          RecordingState.ofRaw(it.toInt())
+          BroadcastState.ofRaw(it.toInt())
         }
       }
       133.toByte() -> {
         return (readValue(buffer) as Long?)?.let {
-          RecordingEnd.ofRaw(it.toInt())
+          RecordingState.ofRaw(it.toInt())
         }
       }
       134.toByte() -> {
         return (readValue(buffer) as Long?)?.let {
-          ThermalAction.ofRaw(it.toInt())
+          RecordingEnd.ofRaw(it.toInt())
         }
       }
       135.toByte() -> {
-        return (readValue(buffer) as? List<Any?>)?.let {
-          CaptureProfile.fromList(it)
+        return (readValue(buffer) as Long?)?.let {
+          ThermalAction.ofRaw(it.toInt())
         }
       }
       136.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          StartRequest.fromList(it)
+          CaptureProfile.fromList(it)
         }
       }
       137.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          StartResult.fromList(it)
+          StartRequest.fromList(it)
         }
       }
       138.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          SaveRequest.fromList(it)
+          StartResult.fromList(it)
         }
       }
       139.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          ClipInfo.fromList(it)
+          SaveRequest.fromList(it)
         }
       }
       140.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          CaptureStats.fromList(it)
+          ClipInfo.fromList(it)
         }
       }
       141.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          ReplayStatus.fromList(it)
+          CaptureStats.fromList(it)
         }
       }
       142.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          OverlayState.fromList(it)
+          ReplayStatus.fromList(it)
         }
       }
       143.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          BroadcastConfig.fromList(it)
+          OverlayState.fromList(it)
         }
       }
       144.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          BroadcastStatus.fromList(it)
+          BroadcastConfig.fromList(it)
         }
       }
       145.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          RecordingStatus.fromList(it)
+          BroadcastStatus.fromList(it)
         }
       }
       146.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          RecordingSaved.fromList(it)
+          RecordingStatus.fromList(it)
         }
       }
       147.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          ThermalEvent.fromList(it)
+          RecordingSaved.fromList(it)
         }
       }
       148.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          ThermalEvent.fromList(it)
+        }
+      }
+      149.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
           LiveViewerStats.fromList(it)
         }
@@ -1304,76 +1331,80 @@ private open class CaptureApiPigeonCodec : StandardMessageCodec() {
         stream.write(130)
         writeValue(stream, value.raw.toLong())
       }
-      is BroadcastState -> {
+      is OverlayPosition -> {
         stream.write(131)
         writeValue(stream, value.raw.toLong())
       }
-      is RecordingState -> {
+      is BroadcastState -> {
         stream.write(132)
         writeValue(stream, value.raw.toLong())
       }
-      is RecordingEnd -> {
+      is RecordingState -> {
         stream.write(133)
         writeValue(stream, value.raw.toLong())
       }
-      is ThermalAction -> {
+      is RecordingEnd -> {
         stream.write(134)
         writeValue(stream, value.raw.toLong())
       }
-      is CaptureProfile -> {
+      is ThermalAction -> {
         stream.write(135)
-        writeValue(stream, value.toList())
+        writeValue(stream, value.raw.toLong())
       }
-      is StartRequest -> {
+      is CaptureProfile -> {
         stream.write(136)
         writeValue(stream, value.toList())
       }
-      is StartResult -> {
+      is StartRequest -> {
         stream.write(137)
         writeValue(stream, value.toList())
       }
-      is SaveRequest -> {
+      is StartResult -> {
         stream.write(138)
         writeValue(stream, value.toList())
       }
-      is ClipInfo -> {
+      is SaveRequest -> {
         stream.write(139)
         writeValue(stream, value.toList())
       }
-      is CaptureStats -> {
+      is ClipInfo -> {
         stream.write(140)
         writeValue(stream, value.toList())
       }
-      is ReplayStatus -> {
+      is CaptureStats -> {
         stream.write(141)
         writeValue(stream, value.toList())
       }
-      is OverlayState -> {
+      is ReplayStatus -> {
         stream.write(142)
         writeValue(stream, value.toList())
       }
-      is BroadcastConfig -> {
+      is OverlayState -> {
         stream.write(143)
         writeValue(stream, value.toList())
       }
-      is BroadcastStatus -> {
+      is BroadcastConfig -> {
         stream.write(144)
         writeValue(stream, value.toList())
       }
-      is RecordingStatus -> {
+      is BroadcastStatus -> {
         stream.write(145)
         writeValue(stream, value.toList())
       }
-      is RecordingSaved -> {
+      is RecordingStatus -> {
         stream.write(146)
         writeValue(stream, value.toList())
       }
-      is ThermalEvent -> {
+      is RecordingSaved -> {
         stream.write(147)
         writeValue(stream, value.toList())
       }
-      is LiveViewerStats -> {
+      is ThermalEvent -> {
         stream.write(148)
+        writeValue(stream, value.toList())
+      }
+      is LiveViewerStats -> {
+        stream.write(149)
         writeValue(stream, value.toList())
       }
       else -> super.writeValue(stream, value)

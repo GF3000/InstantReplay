@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:replay_capture_android/replay_capture_android.dart' show OverlayState, OverlayStyle;
+import 'package:replay_capture_android/replay_capture_android.dart' show OverlayPosition, OverlayState, OverlayStyle;
 import 'package:replay_protocol/replay_protocol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -110,32 +110,28 @@ ScoreboardState anchoredAt(ScoreboardState s, int elapsedMs) {
   return rebuild(s, clockMs: ms, running: !(s.countDown && ms == 0));
 }
 
-/// [s] with another clock value and running flag; the protocol model keeps its copy private.
-ScoreboardState rebuild(ScoreboardState s, {required int clockMs, required bool running}) => ScoreboardState(
-      home: s.home,
-      away: s.away,
-      period: s.period,
-      periods: s.periods,
-      periodMs: s.periodMs,
-      countDown: s.countDown,
-      clockMs: clockMs,
-      clockRunning: running,
-      visible: s.visible,
-      scale: s.scale,
-      style: s.style,
-    );
+/// [s] with another clock value and running flag; every other field is kept by the model itself.
+ScoreboardState rebuild(ScoreboardState s, {required int clockMs, required bool running}) =>
+    s.withClock(clockMs: clockMs, running: running);
 
 /// The period as shown on air: `1T`/`2T` (es) or `1H`/`2H` (en) for halves, `P1`… for thirds,
-/// `Q1`… for quarters, nothing for a single period.
-String periodLabel(AppLocalizations l10n, {required int period, required int periods}) => switch (periods) {
-      2 => l10n.scoreboardHalf(period),
-      3 => 'P$period',
-      4 => 'Q$period',
-      _ => '',
-    };
+/// `Q1`… for quarters, nothing for a single period or when not [shown].
+String periodLabel(AppLocalizations l10n, {required int period, required int periods, bool shown = true}) =>
+    !shown
+        ? ''
+        : switch (periods) {
+            2 => l10n.scoreboardHalf(period),
+            3 => 'P$period',
+            4 => 'Q$period',
+            _ => '',
+          };
+
+/// [s]'s period label as it goes on air: empty when the board hides the period.
+String onAirPeriodLabel(AppLocalizations l10n, ScoreboardState s) =>
+    periodLabel(l10n, period: s.period, periods: s.periods, shown: s.showPeriod);
 
 /// The native overlay for [s]: names upper-case and as drawn in its style (5 letters on the
-/// classic bar, full on the plate).
+/// classic bar, full on the plate, 3 on the banner).
 OverlayState overlayFor(ScoreboardState s, AppLocalizations l10n) => OverlayState(
       visible: s.visible,
       homeName: ScoreboardState.displayName(s.home.name, s.style).toUpperCase(),
@@ -144,7 +140,7 @@ OverlayState overlayFor(ScoreboardState s, AppLocalizations l10n) => OverlayStat
       awayScore: s.away.score,
       homeColor: s.home.color,
       awayColor: s.away.color,
-      periodLabel: periodLabel(l10n, period: s.period, periods: s.periods),
+      periodLabel: onAirPeriodLabel(l10n, s),
       clockMs: s.clockMs,
       clockRunning: s.clockRunning,
       countDown: s.countDown,
@@ -152,5 +148,14 @@ OverlayState overlayFor(ScoreboardState s, AppLocalizations l10n) => OverlayStat
       style: switch (s.style) {
         ScoreboardStyle.classic => OverlayStyle.classic,
         ScoreboardStyle.plate => OverlayStyle.plate,
+        ScoreboardStyle.banner => OverlayStyle.banner,
+      },
+      position: switch (s.position) {
+        ScoreboardPosition.topLeft => OverlayPosition.topLeft,
+        ScoreboardPosition.topCenter => OverlayPosition.topCenter,
+        ScoreboardPosition.topRight => OverlayPosition.topRight,
+        ScoreboardPosition.bottomLeft => OverlayPosition.bottomLeft,
+        ScoreboardPosition.bottomCenter => OverlayPosition.bottomCenter,
+        ScoreboardPosition.bottomRight => OverlayPosition.bottomRight,
       },
     );

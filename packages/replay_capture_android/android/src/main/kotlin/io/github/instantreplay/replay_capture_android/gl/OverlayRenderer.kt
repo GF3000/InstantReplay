@@ -3,12 +3,17 @@ package io.github.instantreplay.replay_capture_android.gl
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.opengl.GLES20
 import android.opengl.GLUtils
 import android.opengl.Matrix
+import io.github.instantreplay.replay_capture_android.broadcast.BannerFont
+import io.github.instantreplay.replay_capture_android.broadcast.BannerLayout
 import io.github.instantreplay.replay_capture_android.broadcast.BarLayout
+import io.github.instantreplay.replay_capture_android.broadcast.BoardPosition
+import io.github.instantreplay.replay_capture_android.broadcast.BoardStyle
 import io.github.instantreplay.replay_capture_android.broadcast.CellKind
 import io.github.instantreplay.replay_capture_android.broadcast.PlateFont
 import io.github.instantreplay.replay_capture_android.broadcast.PlateLayout
@@ -19,8 +24,9 @@ import io.github.instantreplay.replay_capture_android.broadcast.ScoreboardText
 /**
  * The scoreboard overlay (SPEC §12.1): drawn with [Canvas] into a bitmap only when its text
  * changes (at most once per second while the clock runs), uploaded as a 2D texture and drawn as
- * an alpha-blended quad top-left on every frame. Two styles: the classic one-row bar and the
- * two-row plate ([ScoreboardState.plate]) drawn with the bundled IBM Plex [fonts].
+ * an alpha-blended quad at the chosen [BoardPosition] on every frame. Three styles: the classic
+ * one-row bar, the two-row plate and the banner with a period + clock tab, the last two drawn with
+ * the bundled IBM Plex [fonts].
  *
  * [set] may be called from any thread; everything else runs on the GL thread with a current
  * context. The bitmap is sized for a [referenceHeight]-high frame (the program); smaller targets
@@ -58,8 +64,27 @@ internal class OverlayRenderer(private val referenceHeight: Int, fonts: OverlayF
         textAlign = Paint.Align.CENTER
     }
 
-    /** The last state asked for the plate style (the replay badge follows it). */
-    val plate: Boolean get() = received?.state?.plate == true
+    private val bannerFill = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val bannerName = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        typeface = fonts.condensed
+        color = BANNER_TEXT
+        letterSpacing = 0.06f
+        textAlign = Paint.Align.CENTER
+    }
+    private val bannerScore = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        typeface = fonts.mono
+        color = BANNER_TEXT
+    }
+    private val bannerTab = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = fonts.mono }
+
+    /** The last state's style (the replay badge follows it). */
+    val style: BoardStyle get() = received?.state?.style ?: BoardStyle.CLASSIC
+
+    /** The last state's position (the replay badge keeps clear of it). */
+    val position: BoardPosition get() = received?.state?.position ?: BoardPosition.TOP_LEFT
+
+    /** The last state asks for the board on screen. */
+    val visible: Boolean get() = received?.state?.visible == true
 
     /** Replaces the state; a running clock advances from its value from now on. */
     fun set(state: ScoreboardState) {
@@ -87,17 +112,18 @@ internal class OverlayRenderer(private val referenceHeight: Int, fonts: OverlayF
         return textureWidth > 0
     }
 
-    /** Draws the board top-left with a safe margin into the current target of [frameWidth]×[frameHeight]. */
+    /** Draws the board at its position, inside the safe margins, into the current target of [frameWidth]×[frameHeight]. */
     fun draw(frameWidth: Int, frameHeight: Int) {
         if (textureWidth == 0) return
-        val height = if (shown?.plate == true) {
-            maxOf(1, Math.round(textureHeight.toFloat() * frameHeight / referenceHeight))
-        } else {
+        val height = if (shown?.style == BoardStyle.CLASSIC) {
             Scoreboard.barHeight(frameHeight, shown?.scalePercent ?: 100)
+        } else {
+            maxOf(1, Math.round(textureHeight.toFloat() * frameHeight / referenceHeight))
         }
         val width = textureWidth * height / textureHeight
-        val x = Scoreboard.margin(frameWidth)
-        val y = frameHeight - Scoreboard.margin(frameHeight) - height // GL origin is bottom-left
+        val position = shownFrom?.state?.position ?: BoardPosition.TOP_LEFT
+        val x = Scoreboard.placeX(position, frameWidth, width)
+        val y = Scoreboard.placeY(position, frameHeight, height)
         GLES20.glEnable(GLES20.GL_BLEND)
         GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE_MINUS_SRC_ALPHA) // premultiplied bitmap
         renderer.draw(texture, x, y, width, height, FLIP_Y)
@@ -110,16 +136,26 @@ internal class OverlayRenderer(private val referenceHeight: Int, fonts: OverlayF
     }
 
     private fun upload(text: ScoreboardText) {
-        val bitmap = if (text.plate) {
-            val row = Scoreboard.plateRow(referenceHeight, text.scalePercent)
-            plateName.textSize = row * Scoreboard.PLATE_NAME_SIZE
-            plateMono.textSize = row * Scoreboard.PLATE_MONO_SIZE
-            platePeriod.textSize = row * Scoreboard.PLATE_PERIOD_SIZE
-            renderPlate(text, Scoreboard.plateLayout(text, row, ::measurePlate))
-        } else {
-            val height = Scoreboard.barHeight(referenceHeight, text.scalePercent)
-            paint.textSize = height * Scoreboard.TEXT_SIZE
-            render(Scoreboard.layout(text, height, paint::measureText))
+        val bitmap = when (text.style) {
+            BoardStyle.PLATE -> {
+                val row = Scoreboard.plateRow(referenceHeight, text.scalePercent)
+                plateName.textSize = row * Scoreboard.PLATE_NAME_SIZE
+                plateMono.textSize = row * Scoreboard.PLATE_MONO_SIZE
+                platePeriod.textSize = row * Scoreboard.PLATE_PERIOD_SIZE
+                renderPlate(text, Scoreboard.plateLayout(text, row, ::measurePlate))
+            }
+            BoardStyle.BANNER -> {
+                val bar = Scoreboard.bannerBar(referenceHeight, text.scalePercent)
+                bannerName.textSize = bar * Scoreboard.BANNER_NAME_SIZE
+                bannerScore.textSize = bar * Scoreboard.BANNER_SCORE_SIZE
+                bannerTab.textSize = bar * Scoreboard.BANNER_TAB_SIZE
+                renderBanner(text, Scoreboard.bannerLayout(text, bar, ::measureBanner))
+            }
+            BoardStyle.CLASSIC -> {
+                val height = Scoreboard.barHeight(referenceHeight, text.scalePercent)
+                paint.textSize = height * Scoreboard.TEXT_SIZE
+                render(Scoreboard.layout(text, height, paint::measureText))
+            }
         }
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texture)
         GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0)
@@ -132,6 +168,64 @@ internal class OverlayRenderer(private val referenceHeight: Int, fonts: OverlayF
         PlateFont.NAME -> plateName.measureText(s)
         PlateFont.MONO -> plateMono.measureText(s)
         PlateFont.PERIOD -> platePeriod.measureText(s)
+    }
+
+    private fun measureBanner(font: BannerFont, s: String) = when (font) {
+        BannerFont.NAME -> bannerName.measureText(s)
+        BannerFont.SCORE -> bannerScore.measureText(s)
+        BannerFont.TAB -> bannerTab.measureText(s)
+    }
+
+    /** The banner: navy bar with team-coloured edges, NAME score-score NAME, and the period + clock tab below. */
+    private fun renderBanner(text: ScoreboardText, l: BannerLayout): Bitmap {
+        val bitmap = Bitmap.createBitmap(l.width, l.height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val bar = l.bar
+        val f = bannerFill
+        val barLeft = l.barX
+        val barRight = l.barX + l.barWidth
+
+        // Layered, never side by side: shapes that only touch at a fractional pixel would each
+        // cover part of it and leave a see-through seam burned into the stream. The tab first,
+        // starting under the bar (its top corners are hidden there); then the whole bar in navy;
+        // then the team-coloured edges over it, clipped to the bar's rounded ends.
+        f.color = BANNER_TAB
+        canvas.drawRoundRect(RectF(l.tabX, bar - 2 * l.radius, l.tabX + l.tabWidth, bar + l.tabHeight), l.radius, l.radius, f)
+        val barRect = RectF(barLeft, 0f, barRight, bar)
+        f.color = Scoreboard.BANNER_NAVY
+        canvas.drawRoundRect(barRect, l.radius, l.radius, f)
+        canvas.save()
+        canvas.clipPath(Path().apply { addRoundRect(barRect, l.radius, l.radius, Path.Direction.CW) })
+        f.color = text.homeColor or OPAQUE
+        canvas.drawRect(barLeft, 0f, barLeft + l.edge, bar, f)
+        f.color = text.awayColor or OPAQUE
+        canvas.drawRect(barRight - l.edge, 0f, barRight, bar, f)
+        canvas.restore()
+
+        val nameMetrics = bannerName.fontMetrics
+        val nameY = bar / 2 - (nameMetrics.ascent + nameMetrics.descent) / 2
+        canvas.drawText(text.homeName, l.homeNameX, nameY, bannerName)
+        canvas.drawText(text.awayName, l.awayNameX, nameY, bannerName)
+        val scoreMetrics = bannerScore.fontMetrics
+        val scoreY = bar / 2 - (scoreMetrics.ascent + scoreMetrics.descent) / 2
+        bannerScore.textAlign = Paint.Align.RIGHT
+        canvas.drawText(text.homeScore, l.homeScoreX, scoreY, bannerScore)
+        bannerScore.textAlign = Paint.Align.CENTER
+        canvas.drawText(Scoreboard.SEPARATOR, l.separatorX, scoreY, bannerScore)
+        bannerScore.textAlign = Paint.Align.LEFT
+        canvas.drawText(text.awayScore, l.awayScoreX, scoreY, bannerScore)
+
+        val tabMetrics = bannerTab.fontMetrics
+        val tabY = bar + l.tabHeight / 2 - (tabMetrics.ascent + tabMetrics.descent) / 2
+        if (text.period.isNotEmpty()) {
+            bannerTab.textAlign = Paint.Align.LEFT
+            bannerTab.color = BANNER_TAB_MUTED
+            canvas.drawText(text.period, l.periodX, tabY, bannerTab)
+        }
+        bannerTab.textAlign = Paint.Align.CENTER
+        bannerTab.color = BANNER_TAB_TEXT
+        canvas.drawText(text.clock, l.clockX, tabY, bannerTab)
+        return bitmap
     }
 
     private fun render(layout: BarLayout): Bitmap {
@@ -238,6 +332,12 @@ internal class OverlayRenderer(private val referenceHeight: Int, fonts: OverlayF
         const val PLATE_TEXT = 0xFFECEDEF.toInt()
         const val PLATE_MUTED = 0xFF9AA0A8.toInt()
         const val PLATE_CLOCK = 0xFFFFC107.toInt()
+
+        // Banner: deep navy bar (Scoreboard.BANNER_NAVY), amber tab with navy text (period a little lighter).
+        const val BANNER_TEXT = TEXT
+        const val BANNER_TAB = 0xF2F2C744.toInt()
+        const val BANNER_TAB_TEXT = 0xFF0B1240.toInt()
+        const val BANNER_TAB_MUTED = 0xB30B1240.toInt()
 
         /** Bitmap rows start at the top, GL texture rows at the bottom. */
         val FLIP_Y = FloatArray(16).also {

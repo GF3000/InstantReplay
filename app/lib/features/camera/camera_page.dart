@@ -8,6 +8,7 @@ import 'package:replay_capture_android/replay_capture_android.dart';
 import 'package:replay_protocol/replay_protocol.dart'
     show
         BroadcastInfo,
+        ScoreboardPosition,
         VisibleCommand,
         BroadcastStreamState,
         RecordingEndReason,
@@ -27,7 +28,7 @@ import '../broadcast/broadcast_host.dart';
 import '../broadcast/broadcast_providers.dart';
 import '../broadcast/broadcast_widgets.dart';
 import '../broadcast/replay_widgets.dart';
-import '../broadcast/scoreboard_controller.dart' show periodLabel;
+import '../broadcast/scoreboard_controller.dart' show onAirPeriodLabel;
 import '../recording/recording_widgets.dart';
 import '../role/confirm_switch_role.dart';
 import '../role/role.dart';
@@ -164,7 +165,8 @@ class _BroadcastStage extends ConsumerWidget {
           0.0,
           (box.maxHeight - stripMin).clamp(80.0, double.infinity),
         );
-        // No caption on the picture: the burned-in scoreboard sits top-left and must stay visible.
+        // No caption on the picture: the burned-in scoreboard must stay visible (the preview's own
+        // controls move out of its corner).
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -209,6 +211,9 @@ class _Preview extends ConsumerWidget {
       final notifier = ref.read(cameraSessionProvider.notifier);
       final running = state.phase == CameraPhase.running;
       final zoomable = state.maxZoom > 1;
+      // The burned-in board's corner, if a control sits there: that control takes the other side.
+      final board = state.broadcast ? ref.watch(scoreboardStateProvider).value : null;
+      final boardAt = board != null && board.visible ? board.position : null;
       return ColoredBox(
         color: Colors.black,
         child: Stack(
@@ -229,7 +234,8 @@ class _Preview extends ConsumerWidget {
             ),
             if (zoomable)
               PositionedDirectional(
-                end: 8,
+                start: boardAt == ScoreboardPosition.bottomRight ? 8 : null,
+                end: boardAt == ScoreboardPosition.bottomRight ? null : 8,
                 bottom: 8,
                 child: ZoomControl(
                   keyPrefix: 'camera-zoom',
@@ -245,7 +251,9 @@ class _Preview extends ConsumerWidget {
               top: 8,
               end: 8,
               child: Align(
-                alignment: AlignmentDirectional.topEnd,
+                alignment: boardAt == ScoreboardPosition.topRight
+                    ? AlignmentDirectional.topStart
+                    : AlignmentDirectional.topEnd,
                 child: _CameraRecording(state: state),
               ),
             ),
@@ -1416,7 +1424,7 @@ class _CameraScoreLine extends ConsumerWidget {
         ),
       ],
     );
-    final label = periodLabel(l10n, period: s.period, periods: s.periods);
+    final label = onAirPeriodLabel(l10n, s);
     return Wrap(
       key: const Key('camera-score'),
       spacing: 12,

@@ -456,7 +456,7 @@ flowchart LR
 
 - **Mode.** A role of its own (§12.7): *Camera* is replay mode (unchanged), *Broadcast a match* is broadcast mode. Broadcast passes `broadcast: true` in `StartRequest`; the camera texture is then 1080p instead of 720p. The HQ encoder stays on the direct path, so the clean ring buffer, clip saving and full-session recording keep working in broadcast mode.
 - **Program encoder.** Created when streaming starts, released when it stops. Fed by the GL thread every frame: camera texture + scoreboard quad (alpha-blended). H.264 High (fallback Main), 1080p30, CBR when supported (else VBR), **GOP 2 s**, target bitrate configurable (default **4500 kbps**, range 2500–6000).
-- **Overlay.** Drawn with Android `Canvas` into a bitmap only when its content changes (at most once per second while the clock runs), uploaded as a GL texture, drawn top-left with a safe margin. The same overlay is drawn on the 720p handoff, so the Viewer's live view shows what goes on air.
+- **Overlay.** Drawn with Android `Canvas` into a bitmap only when its content changes (at most once per second while the clock runs), uploaded as a GL texture, drawn at the chosen position (§12.5) inside a safe margin (3 % of each side; 6 % at the bottom, above the player controls and subtitles). The same overlay is drawn on the 720p handoff, so the Viewer's live view shows what goes on air.
 - **Audio.** Phone microphone → `AudioRecord` 48 kHz mono → AAC-LC 128 kbps. With the microphone off (or no permission) a **silent** AAC track is sent, because YouTube expects audio. `RECORD_AUDIO` is requested only when a broadcast with audio starts; the foreground service adds the `microphone` type.
 - **Timestamps.** Video (SurfaceTexture, `CLOCK_MONOTONIC`) and audio (`System.nanoTime` at read) share one clock, rebased to the stream start.
 - **RTMP.** RootEncoder `rtmp` module (Apache-2.0, JitPack). URL = server + `/` + stream key, e.g. `rtmp://a.rtmp.youtube.com/live2/<key>`; `rtmps://` also accepted. The encoded H.264 (Annex-B, straight from MediaCodec) and AAC are handed to the client; no re-muxing.
@@ -477,6 +477,9 @@ State lives on the **Camera** (Dart, persisted in preferences so an app restart 
 | `countDown` | Clock counts down from `periodMs` and stops at 0; otherwise counts up from 0 and keeps going past `periodMs` (added time) |
 | `clock` | `{ms, running}`: value when the status was built; a running clock advances locally on viewers |
 | `visible` | Overlay on/off |
+| `style` | `classic` (one-row bar, names cut to 5 letters, default), `plate` (two rows, full names up to 16) or `banner` (wide bar with big scores and a period + clock tab below, names cut to 3). Names are stored whole; only the overlay cuts them |
+| `showPeriod` | Period label on air, on by default; off, the board shows only the clock |
+| `position` | `topLeft` (default for every style), `topCenter`, `topRight`, `bottomLeft`, `bottomCenter`, `bottomRight` |
 
 Period label on air: 2 periods → `1T`/`2T` (es) or `1H`/`2H` (en); 4 periods → `Q1`…`Q4`; 1 period → none. Changing period pauses the clock and resets it (0, or `periodMs` when counting down).
 
@@ -485,7 +488,7 @@ Period label on air: 2 periods → `1T`/`2T` (es) or `1H`/`2H` (en); 4 periods �
 - `status` gains `scoreboard` and `broadcast`, both absent outside broadcast mode (viewers hide the controls, as with `sessionRecording`).
 - `broadcast`: `{state: idle|connecting|live|reconnecting|failed, configured, server, keyHint?, targetKbps, bitrateKbps?, uptimeMs?, audio, message?}`. The stream key is never sent back; `keyHint` is its last 4 characters.
 - Viewer → Camera:
-  - `scoreboard_cmd {action, …}`: `score {team: home|away, delta: ±1}`, `clock_start`, `clock_pause`, `clock_set {ms}`, `period {delta: ±1}`, `settings {settings}` (names, colors, periods, periodMs, countDown), `visible {visible}`, `reset` (scores 0, period 1, clock reset; teams and settings kept).
+  - `scoreboard_cmd {action, …}`: `score {team: home|away, delta: ±1}`, `clock_start`, `clock_pause`, `clock_set {ms}`, `period {delta: ±1}`, `settings {settings}` (names, colors, periods, periodMs, countDown, scale, style?, position?, showPeriod?; a missing style, position or showPeriod keeps the current one. Viewers up to 0.5.0 don't know `banner`: they show it as Classic and send `classic` back with every save, always without `position`, so a `classic` in settings without `position` keeps a Banner board. A Camera up to 0.5.0 shows `banner` as Classic and ignores position and showPeriod), `visible {visible}`, `reset` (scores 0, period 1, clock reset; teams and settings kept).
   - `broadcast_config {server, key?, targetKbps, audio}`: `key` omitted = keep the stored one. Stored on the Camera.
   - `broadcast_start`, `broadcast_stop`. Failures come back as `error` with `broadcast_failed`, `not_configured` or `mic_permission`.
 - The Camera screen shows the broadcast state and can start/stop it too; the stream key can be entered on either device.
@@ -500,7 +503,7 @@ Each device shows only what its person does; the choice is remembered per device
 - **Camera** (broadcast mode): the scoreboard controls on the phone itself, shown or hidden from the header. When hidden, the score on air is shown instead. Pairing folds to one line (code and connected viewers) and unfolds to the QR.
 - **Viewer**: a panels menu in the app bar shows or hides the **live view**, the **scoreboard** (broadcast mode only) and **replays** (Save, the clip list and tags). The stream and recording bars always stay.
 - Typical setups: (1) the Camera operator keeps the score, the bench tablet shows live + replays; (2) a second person keeps the score on a phone or tablet with only the scoreboard, no replays; (3) one bench device does everything.
-- Scoreboard settings include the overlay **size**: small (100 %), medium (130 %, default), large (160 %) of the base bar.
+- Scoreboard settings include the overlay **size**: small (100 %), medium (130 %, default), large (160 %) of the base bar; the **style** (Classic, Plate, Banner), each card drawing the board with the names as typed; and the **position**, picked on a 16:9 miniature of the picture with six places, the board drawn there at its size. The REPLAY badge follows the style and moves to the top-left when the board is shown over the replay in the top-right corner. Names are cut by visible characters, never inside an emoji or a flag. The Camera preview and the viewers' live view move their own badges and buttons out of the board's corner (to the other side), so the score on air stays visible.
 
 ### 12.6 Replays on air
 A viewer can put a clip that is still on the Camera on air: the Camera decodes it and composes it instead of the live picture, with the scoreboard on top. Only clips on the Camera qualify (ready or in the reserve, §3.4); older library clips stay on the tablet (uploading them back is out of scope, as are telestrator drawings on air).

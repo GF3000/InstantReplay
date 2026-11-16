@@ -2055,6 +2055,44 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sbPlateSub => 'Two rows. Full names up to 16 letters.';
 
   @override
+  String get sbBanner => 'Banner';
+
+  @override
+  String get sbBannerSub =>
+      'A wide bar with a big score and the clock below. 3-letter names.';
+
+  @override
+  String get sbBannerCut =>
+      'The Banner style cuts names to 3 letters. The Plate shows them in full.';
+
+  @override
+  String get sbPosition => 'Position on screen';
+
+  @override
+  String get sbPositionTopLeft => 'Top left';
+
+  @override
+  String get sbPositionTopCenter => 'Top centre';
+
+  @override
+  String get sbPositionTopRight => 'Top right';
+
+  @override
+  String get sbPositionBottomLeft => 'Bottom left';
+
+  @override
+  String get sbPositionBottomCenter => 'Bottom centre';
+
+  @override
+  String get sbPositionBottomRight => 'Bottom right';
+
+  @override
+  String get sbShowPeriod => 'Show the period';
+
+  @override
+  String get sbShowPeriodSub => 'Turn it off to show only the clock';
+
+  @override
   String get sbDefault => 'DEFAULT';
 
   @override
