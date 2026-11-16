@@ -172,8 +172,12 @@ class ReplayStatus {
 }
 
 /// How the overlay draws the board: [classic] is the thin one-row bar, [plate] a two-row plate
-/// with full names (the replay badge follows the same style).
-enum OverlayStyle { classic, plate }
+/// with full names, [banner] a wide bar with 3-letter names and a period + clock tab below (the
+/// replay badge follows the same style).
+enum OverlayStyle { classic, plate, banner }
+
+/// Where the overlay sits on the frame, inside the safe margins.
+enum OverlayPosition { topLeft, topCenter, topRight, bottomLeft, bottomCenter, bottomRight }
 
 /// What the scoreboard overlay shows (SPEC §12.2). Dart owns the state; native only draws it and
 /// advances a running clock from [clockMs] by its own monotonic clock, starting when received.
@@ -192,12 +196,13 @@ class OverlayState {
     required this.countDown,
     required this.scalePercent,
     required this.style,
+    required this.position,
   });
 
   bool visible;
 
   /// Already upper-case and as drawn: 1–5 characters for [OverlayStyle.classic], up to 16 for
-  /// [OverlayStyle.plate].
+  /// [OverlayStyle.plate], up to 3 for [OverlayStyle.banner].
   String homeName;
   String awayName;
   int homeScore;
@@ -221,6 +226,8 @@ class OverlayState {
   int scalePercent;
 
   OverlayStyle style;
+
+  OverlayPosition position;
 }
 
 class BroadcastConfig {

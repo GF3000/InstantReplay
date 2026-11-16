@@ -116,10 +116,22 @@ enum ClipState {
 }
 
 /// How the overlay draws the board: [classic] is the thin one-row bar, [plate] a two-row plate
-/// with full names (the replay badge follows the same style).
+/// with full names, [banner] a wide bar with 3-letter names and a period + clock tab below (the
+/// replay badge follows the same style).
 enum OverlayStyle {
   classic,
   plate,
+  banner,
+}
+
+/// Where the overlay sits on the frame, inside the safe margins.
+enum OverlayPosition {
+  topLeft,
+  topCenter,
+  topRight,
+  bottomLeft,
+  bottomCenter,
+  bottomRight,
 }
 
 enum BroadcastState {
@@ -716,12 +728,13 @@ class OverlayState {
     required this.countDown,
     required this.scalePercent,
     required this.style,
+    required this.position,
   });
 
   bool visible;
 
   /// Already upper-case and as drawn: 1–5 characters for [OverlayStyle.classic], up to 16 for
-  /// [OverlayStyle.plate].
+  /// [OverlayStyle.plate], up to 3 for [OverlayStyle.banner].
   String homeName;
 
   String awayName;
@@ -751,6 +764,8 @@ class OverlayState {
 
   OverlayStyle style;
 
+  OverlayPosition position;
+
   List<Object?> _toList() {
     return <Object?>[
       visible,
@@ -766,6 +781,7 @@ class OverlayState {
       countDown,
       scalePercent,
       style,
+      position,
     ];
   }
 
@@ -788,6 +804,7 @@ class OverlayState {
       countDown: result[10]! as bool,
       scalePercent: result[11]! as int,
       style: result[12]! as OverlayStyle,
+      position: result[13]! as OverlayPosition,
     );
   }
 
@@ -800,7 +817,7 @@ class OverlayState {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(visible, other.visible) && _deepEquals(homeName, other.homeName) && _deepEquals(awayName, other.awayName) && _deepEquals(homeScore, other.homeScore) && _deepEquals(awayScore, other.awayScore) && _deepEquals(homeColor, other.homeColor) && _deepEquals(awayColor, other.awayColor) && _deepEquals(periodLabel, other.periodLabel) && _deepEquals(clockMs, other.clockMs) && _deepEquals(clockRunning, other.clockRunning) && _deepEquals(countDown, other.countDown) && _deepEquals(scalePercent, other.scalePercent) && _deepEquals(style, other.style);
+    return _deepEquals(visible, other.visible) && _deepEquals(homeName, other.homeName) && _deepEquals(awayName, other.awayName) && _deepEquals(homeScore, other.homeScore) && _deepEquals(awayScore, other.awayScore) && _deepEquals(homeColor, other.homeColor) && _deepEquals(awayColor, other.awayColor) && _deepEquals(periodLabel, other.periodLabel) && _deepEquals(clockMs, other.clockMs) && _deepEquals(clockRunning, other.clockRunning) && _deepEquals(countDown, other.countDown) && _deepEquals(scalePercent, other.scalePercent) && _deepEquals(style, other.style) && _deepEquals(position, other.position);
   }
 
   @override
@@ -809,7 +826,7 @@ class OverlayState {
 
   @override
   String toString() {
-    return 'OverlayState(visible: $visible, homeName: $homeName, awayName: $awayName, homeScore: $homeScore, awayScore: $awayScore, homeColor: $homeColor, awayColor: $awayColor, periodLabel: $periodLabel, clockMs: $clockMs, clockRunning: $clockRunning, countDown: $countDown, scalePercent: $scalePercent, style: $style)';
+    return 'OverlayState(visible: $visible, homeName: $homeName, awayName: $awayName, homeScore: $homeScore, awayScore: $awayScore, homeColor: $homeColor, awayColor: $awayColor, periodLabel: $periodLabel, clockMs: $clockMs, clockRunning: $clockRunning, countDown: $countDown, scalePercent: $scalePercent, style: $style, position: $position)';
   }
 }
 
@@ -1250,59 +1267,62 @@ class _PigeonCodec extends StandardMessageCodec {
     }    else if (value is OverlayStyle) {
       buffer.putUint8(130);
       writeValue(buffer, value.index);
-    }    else if (value is BroadcastState) {
+    }    else if (value is OverlayPosition) {
       buffer.putUint8(131);
       writeValue(buffer, value.index);
-    }    else if (value is RecordingState) {
+    }    else if (value is BroadcastState) {
       buffer.putUint8(132);
       writeValue(buffer, value.index);
-    }    else if (value is RecordingEnd) {
+    }    else if (value is RecordingState) {
       buffer.putUint8(133);
       writeValue(buffer, value.index);
-    }    else if (value is ThermalAction) {
+    }    else if (value is RecordingEnd) {
       buffer.putUint8(134);
       writeValue(buffer, value.index);
-    }    else if (value is CaptureProfile) {
+    }    else if (value is ThermalAction) {
       buffer.putUint8(135);
-      writeValue(buffer, value.encode());
-    }    else if (value is StartRequest) {
+      writeValue(buffer, value.index);
+    }    else if (value is CaptureProfile) {
       buffer.putUint8(136);
       writeValue(buffer, value.encode());
-    }    else if (value is StartResult) {
+    }    else if (value is StartRequest) {
       buffer.putUint8(137);
       writeValue(buffer, value.encode());
-    }    else if (value is SaveRequest) {
+    }    else if (value is StartResult) {
       buffer.putUint8(138);
       writeValue(buffer, value.encode());
-    }    else if (value is ClipInfo) {
+    }    else if (value is SaveRequest) {
       buffer.putUint8(139);
       writeValue(buffer, value.encode());
-    }    else if (value is CaptureStats) {
+    }    else if (value is ClipInfo) {
       buffer.putUint8(140);
       writeValue(buffer, value.encode());
-    }    else if (value is ReplayStatus) {
+    }    else if (value is CaptureStats) {
       buffer.putUint8(141);
       writeValue(buffer, value.encode());
-    }    else if (value is OverlayState) {
+    }    else if (value is ReplayStatus) {
       buffer.putUint8(142);
       writeValue(buffer, value.encode());
-    }    else if (value is BroadcastConfig) {
+    }    else if (value is OverlayState) {
       buffer.putUint8(143);
       writeValue(buffer, value.encode());
-    }    else if (value is BroadcastStatus) {
+    }    else if (value is BroadcastConfig) {
       buffer.putUint8(144);
       writeValue(buffer, value.encode());
-    }    else if (value is RecordingStatus) {
+    }    else if (value is BroadcastStatus) {
       buffer.putUint8(145);
       writeValue(buffer, value.encode());
-    }    else if (value is RecordingSaved) {
+    }    else if (value is RecordingStatus) {
       buffer.putUint8(146);
       writeValue(buffer, value.encode());
-    }    else if (value is ThermalEvent) {
+    }    else if (value is RecordingSaved) {
       buffer.putUint8(147);
       writeValue(buffer, value.encode());
-    }    else if (value is LiveViewerStats) {
+    }    else if (value is ThermalEvent) {
       buffer.putUint8(148);
+      writeValue(buffer, value.encode());
+    }    else if (value is LiveViewerStats) {
+      buffer.putUint8(149);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -1320,43 +1340,46 @@ class _PigeonCodec extends StandardMessageCodec {
         return value == null ? null : OverlayStyle.values[value];
       case 131:
         final value = readValue(buffer) as int?;
-        return value == null ? null : BroadcastState.values[value];
+        return value == null ? null : OverlayPosition.values[value];
       case 132:
         final value = readValue(buffer) as int?;
-        return value == null ? null : RecordingState.values[value];
+        return value == null ? null : BroadcastState.values[value];
       case 133:
         final value = readValue(buffer) as int?;
-        return value == null ? null : RecordingEnd.values[value];
+        return value == null ? null : RecordingState.values[value];
       case 134:
         final value = readValue(buffer) as int?;
-        return value == null ? null : ThermalAction.values[value];
+        return value == null ? null : RecordingEnd.values[value];
       case 135:
-        return CaptureProfile.decode(readValue(buffer)!);
+        final value = readValue(buffer) as int?;
+        return value == null ? null : ThermalAction.values[value];
       case 136:
-        return StartRequest.decode(readValue(buffer)!);
+        return CaptureProfile.decode(readValue(buffer)!);
       case 137:
-        return StartResult.decode(readValue(buffer)!);
+        return StartRequest.decode(readValue(buffer)!);
       case 138:
-        return SaveRequest.decode(readValue(buffer)!);
+        return StartResult.decode(readValue(buffer)!);
       case 139:
-        return ClipInfo.decode(readValue(buffer)!);
+        return SaveRequest.decode(readValue(buffer)!);
       case 140:
-        return CaptureStats.decode(readValue(buffer)!);
+        return ClipInfo.decode(readValue(buffer)!);
       case 141:
-        return ReplayStatus.decode(readValue(buffer)!);
+        return CaptureStats.decode(readValue(buffer)!);
       case 142:
-        return OverlayState.decode(readValue(buffer)!);
+        return ReplayStatus.decode(readValue(buffer)!);
       case 143:
-        return BroadcastConfig.decode(readValue(buffer)!);
+        return OverlayState.decode(readValue(buffer)!);
       case 144:
-        return BroadcastStatus.decode(readValue(buffer)!);
+        return BroadcastConfig.decode(readValue(buffer)!);
       case 145:
-        return RecordingStatus.decode(readValue(buffer)!);
+        return BroadcastStatus.decode(readValue(buffer)!);
       case 146:
-        return RecordingSaved.decode(readValue(buffer)!);
+        return RecordingStatus.decode(readValue(buffer)!);
       case 147:
-        return ThermalEvent.decode(readValue(buffer)!);
+        return RecordingSaved.decode(readValue(buffer)!);
       case 148:
+        return ThermalEvent.decode(readValue(buffer)!);
+      case 149:
         return LiveViewerStats.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);

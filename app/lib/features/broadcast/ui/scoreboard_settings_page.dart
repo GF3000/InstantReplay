@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:replay_protocol/replay_protocol.dart';
@@ -9,9 +11,10 @@ import '../scoreboard_controller.dart' show periodLabel;
 import 'scoreboard_panel.dart' show onColor, teamPalette;
 
 /// The scoreboard's settings (B2_Marcador): whether the board goes on air and whether this screen
-/// shows its controls (both apply at once), style (Classic bar or Plate, each card drawing the
-/// board with the names as typed), team names and colours, size on screen, periods, minutes and
-/// clock direction. Null when cancelled. [state] feeds the cards with the current scores and clock.
+/// shows its controls (both apply at once), style (Classic bar, Plate or Banner, each card drawing
+/// the board with the names as typed), position on the picture, team names and colours, size on
+/// screen, periods, whether the period shows on air, minutes and clock direction. Null when
+/// cancelled. [state] feeds the cards with the current scores and clock.
 ///
 /// [onAirChanged] (with [onAir], the board's current visibility) and [onControlsChanged] (with
 /// [controlsShown]) add their switch only when given.
@@ -66,7 +69,10 @@ class _ScoreboardSettingsPageState extends State<_ScoreboardSettingsPage> {
   late int _awayColor = widget.current.awayColor;
   late int _periods = widget.current.periods.clamp(1, ScoreboardState.maxPeriods);
   late bool _countDown = widget.current.countDown;
+  late bool _showPeriod = widget.current.showPeriod ?? widget.state?.showPeriod ?? true;
   late ScoreboardStyle _style = widget.current.style ?? widget.state?.style ?? ScoreboardStyle.classic;
+  late ScoreboardPosition _position =
+      widget.current.position ?? widget.state?.position ?? ScoreboardPosition.defaultPosition;
   late bool _onAir = widget.onAir;
   late bool _controls = widget.controlsShown;
   late int _scale = ScoreboardState.scales.contains(widget.current.scale)
@@ -104,6 +110,8 @@ class _ScoreboardSettingsPageState extends State<_ScoreboardSettingsPage> {
         countDown: _countDown,
         scale: _scale,
         style: _style,
+        position: _position,
+        showPeriod: _showPeriod,
       ),
     );
   }
@@ -122,7 +130,7 @@ class _ScoreboardSettingsPageState extends State<_ScoreboardSettingsPage> {
       homeScore: s?.home.score ?? 0,
       awayScore: s?.away.score ?? 0,
       clock: formatClock(s?.clockAt(0) ?? (_countDown ? minutes * 60000 : 0)),
-      period: periodLabel(l10n, period: period, periods: _periods),
+      period: periodLabel(l10n, period: period, periods: _periods, shown: _showPeriod),
     );
   }
 
@@ -162,6 +170,16 @@ class _ScoreboardSettingsPageState extends State<_ScoreboardSettingsPage> {
               Text(l10n.sbStyle, style: _label(c)),
               const SizedBox(height: 8),
               styleCards,
+              const SizedBox(height: 18),
+              Text(l10n.sbPosition, style: _label(c)),
+              const SizedBox(height: 8),
+              _PositionPicker(
+                data: data,
+                style: _style,
+                scale: _scale,
+                position: _position,
+                onChanged: (p) => setState(() => _position = p),
+              ),
             ];
             final fields = _fields(l10n, c, foldColours: !wide);
             if (wide) {
@@ -265,10 +283,16 @@ class _ScoreboardSettingsPageState extends State<_ScoreboardSettingsPage> {
   }
 
   List<Widget> _fields(AppLocalizations l10n, IrColors c, {required bool foldColours}) {
-    final classic = _style == ScoreboardStyle.classic;
+    // Classic and Banner draw only the first letters of a name; the Plate draws it whole.
+    final shown = _style.cutsNames ? _style.nameLength : null;
+    final cutWarning = switch (_style) {
+      ScoreboardStyle.classic => l10n.sbClassicCut,
+      ScoreboardStyle.banner => l10n.sbBannerCut,
+      ScoreboardStyle.plate => null,
+    };
     Widget team(String title, TextEditingController name, int color, ValueChanged<int> onColor, String key) {
       final length = name.text.trim().length;
-      final cut = classic && length > ScoreboardState.classicNameLength;
+      final cut = shown != null && length > shown;
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -291,7 +315,7 @@ class _ScoreboardSettingsPageState extends State<_ScoreboardSettingsPage> {
               SizedBox(
                 width: 64,
                 child: Text(
-                  '$length / ${classic ? ScoreboardState.classicNameLength : ScoreboardState.maxNameLength}',
+                  '$length / ${shown ?? ScoreboardState.maxNameLength}',
                   key: ValueKey('score-settings-$key-count'),
                   textAlign: TextAlign.end,
                   style: irMono(13, weight: FontWeight.w500, color: cut ? c.warnText : c.muted),
@@ -315,17 +339,17 @@ class _ScoreboardSettingsPageState extends State<_ScoreboardSettingsPage> {
       team(l10n.sbHomeTeam, _homeName, _homeColor, (v) => setState(() => _homeColor = v), 'home'),
       const SizedBox(height: 18),
       team(l10n.sbAwayTeam, _awayName, _awayColor, (v) => setState(() => _awayColor = v), 'away'),
-      if (classic) ...[
+      if (cutWarning != null) ...[
         const SizedBox(height: 14),
         Container(
-          key: const ValueKey('score-settings-classic-cut'),
+          key: ValueKey('score-settings-${_style.name}-cut'),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: c.signalSoft,
             border: Border.all(color: c.warn.withValues(alpha: 0.5)),
             borderRadius: BorderRadius.circular(4),
           ),
-          child: Text(l10n.sbClassicCut, style: TextStyle(fontSize: 14, color: c.warnText)),
+          child: Text(cutWarning, style: TextStyle(fontSize: 14, color: c.warnText)),
         ),
       ],
       const SizedBox(height: 18),
@@ -353,6 +377,17 @@ class _ScoreboardSettingsPageState extends State<_ScoreboardSettingsPage> {
         mono: true,
         onChanged: (p) => setState(() => _periods = p),
       ),
+      const SizedBox(height: 10),
+      IrPanel(
+        padding: EdgeInsets.zero,
+        child: _SwitchRow(
+          key: const ValueKey('score-settings-show-period'),
+          title: l10n.sbShowPeriod,
+          subtitle: l10n.sbShowPeriodSub,
+          value: _showPeriod,
+          onChanged: (v) => setState(() => _showPeriod = v),
+        ),
+      ),
       const SizedBox(height: 18),
       TextField(
         key: const ValueKey('score-settings-minutes'),
@@ -376,7 +411,7 @@ class _ScoreboardSettingsPageState extends State<_ScoreboardSettingsPage> {
   }
 }
 
-/// Classic and Plate as two choice cards, each with a small drawing of the style.
+/// Classic, Plate and Banner as choice cards, each with a small drawing of the style.
 class _StyleCards extends StatelessWidget {
   const _StyleCards({required this.data, required this.style, required this.onChanged});
 
@@ -441,12 +476,13 @@ class _StyleCards extends StatelessWidget {
 
     final classic = card(ScoreboardStyle.classic, l10n.sbClassic, l10n.sbClassicSub, tag: l10n.sbDefault);
     final plate = card(ScoreboardStyle.plate, l10n.sbPlate, l10n.sbPlateSub);
+    final banner = card(ScoreboardStyle.banner, l10n.sbBanner, l10n.sbBannerSub);
     return LayoutBuilder(
       builder: (context, box) {
-        if (box.maxWidth < 420) {
+        if (box.maxWidth < 560) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [classic, const SizedBox(height: 10), plate],
+            children: [classic, const SizedBox(height: 10), plate, const SizedBox(height: 10), banner],
           );
         }
         return IntrinsicHeight(
@@ -456,10 +492,120 @@ class _StyleCards extends StatelessWidget {
               Expanded(child: classic),
               const SizedBox(width: 12),
               Expanded(child: plate),
+              const SizedBox(width: 12),
+              Expanded(child: banner),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+/// The picture as a 16:9 frame with the six places the board can go; the chosen one shows the
+/// board in its style and at its [scale], the others a dot to tap.
+class _PositionPicker extends StatelessWidget {
+  const _PositionPicker({
+    required this.data,
+    required this.style,
+    required this.scale,
+    required this.position,
+    required this.onChanged,
+  });
+
+  final ScoreboardPreviewData data;
+  final ScoreboardStyle style;
+
+  /// Board size in percent of the base bar.
+  final int scale;
+  final ScoreboardPosition position;
+  final ValueChanged<ScoreboardPosition> onChanged;
+
+  static String label(AppLocalizations l10n, ScoreboardPosition p) => switch (p) {
+    ScoreboardPosition.topLeft => l10n.sbPositionTopLeft,
+    ScoreboardPosition.topCenter => l10n.sbPositionTopCenter,
+    ScoreboardPosition.topRight => l10n.sbPositionTopRight,
+    ScoreboardPosition.bottomLeft => l10n.sbPositionBottomLeft,
+    ScoreboardPosition.bottomCenter => l10n.sbPositionBottomCenter,
+    ScoreboardPosition.bottomRight => l10n.sbPositionBottomRight,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final c = context.ir;
+    // Aligned so the width cap holds inside the stretched settings column.
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: AspectRatio(
+          aspectRatio: 16 / 9,
+          // A Material, so the spots' ink shows on the picture.
+          child: Material(
+            color: const Color(0xFF2E3B2A),
+            clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+              side: BorderSide(color: c.line),
+            ),
+            child: LayoutBuilder(
+              builder: (context, box) {
+                // The board at its share of the frame, as on air.
+                final bar = box.maxHeight * ScoreboardState.baseBarFraction * scale / 100;
+                return Stack(
+                  children: [
+                    for (final p in ScoreboardPosition.values)
+                      Align(
+                        alignment: Alignment(p.column - 1.0, p.top ? -1 : 1),
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            box.maxWidth * 0.03,
+                            box.maxHeight * 0.03,
+                            box.maxWidth * 0.03,
+                            box.maxHeight * 0.06,
+                          ),
+                          child: Semantics(
+                            button: true,
+                            selected: p == position,
+                            label: label(l10n, p),
+                            child: InkWell(
+                              key: ValueKey('score-settings-position-${p.name}'),
+                              borderRadius: BorderRadius.circular(4),
+                              onTap: () => onChanged(p),
+                              child: p == position
+                                  ? ConstrainedBox(
+                                      constraints: BoxConstraints(maxWidth: box.maxWidth * 0.45),
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: ScoreboardPreview(data: data, style: style, barHeight: bar),
+                                      ),
+                                    )
+                                  : SizedBox.square(
+                                      dimension: 48,
+                                      child: Center(
+                                        child: Container(
+                                          width: 18,
+                                          height: 18,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: Colors.white.withValues(alpha: 0.25),
+                                            border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 2),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -504,9 +650,109 @@ class ScoreboardPreview extends StatelessWidget {
   static const _plateCell = Color(0x0DFFFFFF);
   static const _amber = Color(0xFFFFC107);
   static const _grey = Color(0xFF9AA0A8);
+  static const _navy = Color(0xF20B1240);
+  static const _tab = Color(0xF2F2C744);
+  static const _tabText = Color(0xFF0B1240);
 
   @override
-  Widget build(BuildContext context) => style == ScoreboardStyle.classic ? _classic() : _plate();
+  Widget build(BuildContext context) => switch (style) {
+    ScoreboardStyle.classic => _classic(),
+    ScoreboardStyle.plate => _plate(),
+    ScoreboardStyle.banner => _banner(context),
+  };
+
+  /// Mirrors the native banner (`Scoreboard.bannerLayout`): navy bar with team-coloured edges,
+  /// both names centred in equal columns and scores reserving two digits, so the dash sits in the
+  /// middle; the period + clock tab hangs below.
+  Widget _banner(BuildContext context) {
+    final h = barHeight * 1.15;
+    final r = Radius.circular(h * 0.06);
+    final base = DefaultTextStyle.of(context).style;
+    final name = base.merge(
+      TextStyle(
+        color: Colors.white,
+        fontSize: h * 0.46,
+        fontWeight: FontWeight.w600,
+        letterSpacing: h * 0.03,
+        height: 1,
+      ),
+    );
+    final score = base.merge(irMono(h * 0.62, color: Colors.white, height: 1));
+    final tab = base.merge(irMono(h * 0.34, color: _tabText, height: 1));
+    double width(String text, TextStyle style) => (TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: TextDirection.ltr,
+      textScaler: TextScaler.noScaling,
+    )..layout()).width;
+    String zeros(String s) => s.replaceAll(RegExp('[0-9]'), '0');
+    final home = ScoreboardState.displayName(data.homeName, ScoreboardStyle.banner);
+    final away = ScoreboardState.displayName(data.awayName, ScoreboardStyle.banner);
+    final names = math.max(width(home, name), width(away, name));
+    final scores = [
+      width(zeros('${data.homeScore}'), score),
+      width(zeros('${data.awayScore}'), score),
+      width('00', score),
+    ].reduce(math.max);
+    Widget cell(String text, TextStyle style, double w, TextAlign align) => SizedBox(
+      width: w,
+      child: Text(text, style: style, textAlign: align, maxLines: 1, softWrap: false, textScaler: TextScaler.noScaling),
+    );
+    Widget edge(int color) => Container(width: h * 0.09, height: h, color: Color(color));
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.all(r),
+          child: Container(
+            height: h,
+            color: _navy,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                edge(data.homeColor),
+                SizedBox(width: h * 0.4),
+                cell(home, name, names, TextAlign.center),
+                SizedBox(width: h * 0.45),
+                cell('${data.homeScore}', score, scores, TextAlign.right),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: h * 0.12),
+                  child: Text('-', style: score, textScaler: TextScaler.noScaling),
+                ),
+                cell('${data.awayScore}', score, scores, TextAlign.left),
+                SizedBox(width: h * 0.45),
+                cell(away, name, names, TextAlign.center),
+                SizedBox(width: h * 0.4),
+                edge(data.awayColor),
+              ],
+            ),
+          ),
+        ),
+        Container(
+          height: h * 0.52,
+          padding: EdgeInsets.symmetric(horizontal: h * 0.28),
+          decoration: BoxDecoration(
+            color: _tab,
+            borderRadius: BorderRadius.only(bottomLeft: r, bottomRight: r),
+          ),
+          // No alignment here: it would stretch the tab to the whole width.
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (data.period.isNotEmpty) ...[
+                Text(
+                  data.period,
+                  style: tab.copyWith(color: _tabText.withValues(alpha: 0.7)),
+                  textScaler: TextScaler.noScaling,
+                ),
+                SizedBox(width: h * 0.22),
+              ],
+              cell(data.clock, tab, width(zeros(data.clock), tab), TextAlign.center),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 
   Widget _classic() {
     final h = barHeight;
@@ -728,31 +974,35 @@ class _SwitchRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.ir;
+    // Transparent Material: the ink shows over the panel's opaque colour.
     return MergeSemantics(
-      child: InkWell(
-        onTap: () => onChanged(!value),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 64),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        title,
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: c.text),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(subtitle, style: TextStyle(fontSize: 13, color: c.muted)),
-                    ],
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: () => onChanged(!value),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 64),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          title,
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: c.text),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(subtitle, style: TextStyle(fontSize: 13, color: c.muted)),
+                      ],
+                    ),
                   ),
-                ),
-                Switch(value: value, onChanged: onChanged),
-              ],
+                  Switch(value: value, onChanged: onChanged),
+                ],
+              ),
             ),
           ),
         ),

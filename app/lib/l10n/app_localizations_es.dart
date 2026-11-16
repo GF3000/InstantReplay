@@ -2065,6 +2065,44 @@ class AppLocalizationsEs extends AppLocalizations {
   String get sbPlateSub => 'Dos filas. Nombres completos de hasta 16 letras.';
 
   @override
+  String get sbBanner => 'Banda';
+
+  @override
+  String get sbBannerSub =>
+      'Barra ancha con el resultado grande y el reloj debajo. Nombres de 3 letras.';
+
+  @override
+  String get sbBannerCut =>
+      'El estilo Banda corta los nombres a 3 letras. En Placa se ven completos.';
+
+  @override
+  String get sbPosition => 'Posición en pantalla';
+
+  @override
+  String get sbPositionTopLeft => 'Arriba a la izquierda';
+
+  @override
+  String get sbPositionTopCenter => 'Arriba en el centro';
+
+  @override
+  String get sbPositionTopRight => 'Arriba a la derecha';
+
+  @override
+  String get sbPositionBottomLeft => 'Abajo a la izquierda';
+
+  @override
+  String get sbPositionBottomCenter => 'Abajo en el centro';
+
+  @override
+  String get sbPositionBottomRight => 'Abajo a la derecha';
+
+  @override
+  String get sbShowPeriod => 'Mostrar el periodo';
+
+  @override
+  String get sbShowPeriodSub => 'Apágalo para que solo se vea el reloj';
+
+  @override
   String get sbDefault => 'POR DEFECTO';
 
   @override

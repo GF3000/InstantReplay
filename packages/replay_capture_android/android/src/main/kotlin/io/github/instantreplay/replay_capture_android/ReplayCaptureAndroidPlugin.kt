@@ -19,6 +19,8 @@ import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.PluginRegistry
 import io.flutter.view.TextureRegistry
 import io.github.instantreplay.replay_capture_android.broadcast.Broadcaster
+import io.github.instantreplay.replay_capture_android.broadcast.BoardPosition
+import io.github.instantreplay.replay_capture_android.broadcast.BoardStyle
 import io.github.instantreplay.replay_capture_android.broadcast.ScoreboardState
 import io.github.instantreplay.replay_capture_android.buffer.RingBuffer
 import io.github.instantreplay.replay_capture_android.broadcast.ReplayPlayer
@@ -302,7 +304,19 @@ class ReplayCaptureAndroidPlugin :
                 clockRunning = overlay.clockRunning,
                 countDown = overlay.countDown,
                 scalePercent = overlay.scalePercent.toInt(),
-                plate = overlay.style == OverlayStyle.PLATE,
+                style = when (overlay.style) {
+                    OverlayStyle.CLASSIC -> BoardStyle.CLASSIC
+                    OverlayStyle.PLATE -> BoardStyle.PLATE
+                    OverlayStyle.BANNER -> BoardStyle.BANNER
+                },
+                position = when (overlay.position) {
+                    OverlayPosition.TOP_LEFT -> BoardPosition.TOP_LEFT
+                    OverlayPosition.TOP_CENTER -> BoardPosition.TOP_CENTER
+                    OverlayPosition.TOP_RIGHT -> BoardPosition.TOP_RIGHT
+                    OverlayPosition.BOTTOM_LEFT -> BoardPosition.BOTTOM_LEFT
+                    OverlayPosition.BOTTOM_CENTER -> BoardPosition.BOTTOM_CENTER
+                    OverlayPosition.BOTTOM_RIGHT -> BoardPosition.BOTTOM_RIGHT
+                },
             ),
         )
     }

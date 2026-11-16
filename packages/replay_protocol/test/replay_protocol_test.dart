@@ -358,6 +358,117 @@ void main() {
       expect((renamed.clockMs, renamed.clockRunning), (3000, true));
     });
 
+    test('banner style cuts names to 3 letters; position round-trips and is kept when absent', () {
+      expect(ScoreboardState.displayName('PARLA', ScoreboardStyle.banner), 'PAR');
+      expect(ScoreboardState.displayName('CO', ScoreboardStyle.banner), 'CO');
+      expect(s0.position, ScoreboardPosition.topLeft);
+      expect(ScoreboardStyle.parse('banner'), ScoreboardStyle.banner);
+      expect(ScoreboardPosition.parse('nowhere'), ScoreboardPosition.topLeft);
+      expect(ScoreboardPosition.bottomCenter.top, isFalse);
+      expect(ScoreboardPosition.topRight.top, isTrue);
+
+      final moved = s0.apply(
+        SettingsCommand(ScoreboardSettings(
+          homeName: 'par',
+          awayName: 'cor',
+          homeColor: 5,
+          awayColor: 6,
+          periods: 2,
+          periodMs: s0.periodMs,
+          countDown: false,
+          style: ScoreboardStyle.banner,
+          position: ScoreboardPosition.bottomCenter,
+        )),
+        elapsedMs: 0,
+      );
+      expect((moved.style, moved.position), (ScoreboardStyle.banner, ScoreboardPosition.bottomCenter));
+      final back = ScoreboardState.fromJson(moved.toJson());
+      expect(back, moved);
+      expect(ScoreboardState.fromJson(moved.toJson()..remove('position')).position, ScoreboardPosition.topLeft);
+      // A viewer older than the position sends settings without it: the board stays where it is.
+      final old = ScoreboardSettings.fromJson(moved.settings.toJson()..remove('position'));
+      expect(old.position, isNull);
+      expect(moved.apply(SettingsCommand(old), elapsedMs: 0).position, ScoreboardPosition.bottomCenter);
+    });
+
+    test('withClock keeps every other field', () {
+      const s = ScoreboardState(
+        home: TeamState(name: 'PAR', score: 3, color: 1),
+        away: TeamState(name: 'COR', score: 4, color: 2),
+        style: ScoreboardStyle.banner,
+        position: ScoreboardPosition.bottomRight,
+        showPeriod: false,
+        scale: 160,
+        visible: false,
+      );
+      final moved = s.withClock(clockMs: 1234, running: true);
+      expect((moved.clockMs, moved.clockRunning), (1234, true));
+      expect(moved.withClock(clockMs: s.clockMs, running: s.clockRunning), s);
+    });
+
+    test('a pre-banner viewer saving "classic" keeps a banner board; a new viewer can change it', () {
+      ScoreboardSettings settings(ScoreboardStyle style, {ScoreboardPosition? position}) => ScoreboardSettings(
+            homeName: 'a',
+            awayName: 'b',
+            homeColor: 1,
+            awayColor: 2,
+            periods: 2,
+            periodMs: s0.periodMs,
+            countDown: false,
+            style: style,
+            position: position,
+          );
+      final banner = s0.apply(
+        SettingsCommand(settings(ScoreboardStyle.banner, position: ScoreboardPosition.topLeft)),
+        elapsedMs: 0,
+      );
+      expect(banner.style, ScoreboardStyle.banner);
+      // 0.5.0 viewers read "banner" as classic and send it back with every save, without a position.
+      expect(banner.apply(SettingsCommand(settings(ScoreboardStyle.classic)), elapsedMs: 0).style,
+          ScoreboardStyle.banner);
+      // They can still choose the plate, and a classic board stays theirs to change.
+      expect(banner.apply(SettingsCommand(settings(ScoreboardStyle.plate)), elapsedMs: 0).style,
+          ScoreboardStyle.plate);
+      final current = banner.apply(
+        SettingsCommand(settings(ScoreboardStyle.classic, position: ScoreboardPosition.topLeft)),
+        elapsedMs: 0,
+      );
+      expect(current.style, ScoreboardStyle.classic);
+    });
+
+    test('names are cut by visible characters, never inside an emoji or a flag', () {
+      expect(ScoreboardState.displayName('AB🦁X', ScoreboardStyle.banner), 'AB🦁');
+      expect(ScoreboardState.displayName('🇪🇸ESP', ScoreboardStyle.banner), '🇪🇸ES');
+      expect(ScoreboardState.displayName('ABCDEFG', ScoreboardStyle.classic), 'ABCDE');
+      expect(ScoreboardState.normalizeName('🦁' * 20, 'X'), '🦁' * ScoreboardState.maxNameLength);
+      expect(ScoreboardStyle.banner.nameLength, ScoreboardState.bannerNameLength);
+      expect(ScoreboardStyle.plate.cutsNames, isFalse);
+      expect(ScoreboardPosition.bottomCenter.column, 1);
+    });
+
+    test('the period can be hidden; older viewers and states keep it shown', () {
+      expect(s0.showPeriod, isTrue);
+      final hidden = s0.apply(
+        SettingsCommand(ScoreboardSettings(
+          homeName: 'a',
+          awayName: 'b',
+          homeColor: 1,
+          awayColor: 2,
+          periods: 2,
+          periodMs: s0.periodMs,
+          countDown: false,
+          showPeriod: false,
+        )),
+        elapsedMs: 0,
+      );
+      expect(hidden.showPeriod, isFalse);
+      expect(ScoreboardState.fromJson(hidden.toJson()), hidden);
+      expect(ScoreboardState.fromJson(hidden.toJson()..remove('showPeriod')).showPeriod, isTrue);
+      final old = ScoreboardSettings.fromJson(hidden.settings.toJson()..remove('showPeriod'));
+      expect(old.showPeriod, isNull);
+      expect(hidden.apply(SettingsCommand(old), elapsedMs: 0).showPeriod, isFalse);
+    });
+
     test('period changes pause and reset the clock; reset keeps teams', () {
       final s = s0
           .apply(const ClockStartCommand(), elapsedMs: 0)

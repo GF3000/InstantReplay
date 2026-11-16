@@ -687,6 +687,41 @@ class _StreamingLink extends LinkStateNotifier {
   );
 }
 
+/// [_StreamingLink] with the burned-in board in the top-right corner.
+class _StreamingTopRightLink extends _StreamingLink {
+  @override
+  LinkState? build() {
+    final s = super.build()!;
+    final st = s.status!;
+    return LinkState(
+      phase: s.phase,
+      camera: s.camera,
+      status: CameraStatus(
+        recording: st.recording,
+        fps: st.fps,
+        bufferMs: st.bufferMs,
+        outboxClips: st.outboxClips,
+        thermalStatus: st.thermalStatus,
+        sessionRecording: st.sessionRecording,
+        broadcast: st.broadcast,
+        scoreboard: st.scoreboard!.apply(
+          SettingsCommand(ScoreboardSettings(
+            homeName: 'LIONS',
+            awayName: 'HAWKS',
+            homeColor: 0xFF1E88E5,
+            awayColor: 0xFFFAFAFA,
+            periods: 2,
+            periodMs: 45 * 60000,
+            countDown: false,
+            position: ScoreboardPosition.topRight,
+          )),
+          elapsedMs: 0,
+        ),
+      ),
+    );
+  }
+}
+
 class _FixedMicLevel extends ViewerMicLevelNotifier {
   _FixedMicLevel(this.db);
 
@@ -778,6 +813,18 @@ void _viewerPageTests() {
     );
     expect(find.byKey(const ValueKey('ir-mic-bar-2-on')), findsOneWidget);
     expect(find.byKey(const ValueKey('ir-mic-bar-3-off')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the live view keeps its badges off the burned-in board', (tester) async {
+    await pumpPage(tester, const Size(1280, 800), _StreamingLink.new);
+    final live = tester.getRect(find.byType(LivePanel));
+    expect(tester.getCenter(find.byKey(const ValueKey('viewer-no-sound-badge'))).dx, greaterThan(live.center.dx));
+    await tester.pumpWidget(const SizedBox());
+    // Board top-right: the badge that sat there moves to the left.
+    await pumpPage(tester, const Size(1280, 800), _StreamingTopRightLink.new);
+    final moved = tester.getRect(find.byType(LivePanel));
+    expect(tester.getCenter(find.byKey(const ValueKey('viewer-no-sound-badge'))).dx, lessThan(moved.center.dx));
     expect(tester.takeException(), isNull);
   });
 
