@@ -54,11 +54,11 @@ The script builds the Flutter web Viewer first (`flutter build web --release --n
 
 ```sh
 adb logcat -b crash                                              # native and Java crashes only
-adb logcat --pid=$(adb shell pidof -s io.github.instantreplay.instant_replay)
+adb logcat --pid=$(adb shell pidof -s dev.guillermofranco.instantreplay)
 adb logcat -s rtc                                                # libwebrtc native logs
 ```
 
-Filtering by pid keeps the output readable; re-run it after the app restarts (the pid changes). In PowerShell, run `adb shell pidof -s io.github.instantreplay.instant_replay` first and pass the number to `--pid`.
+Filtering by pid keeps the output readable; re-run it after the app restarts (the pid changes). In PowerShell, run `adb shell pidof -s dev.guillermofranco.instantreplay` first and pass the number to `--pid`.
 
 ## 6. The Lab harness (spike)
 

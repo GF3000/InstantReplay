@@ -15,7 +15,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "io.github.instantreplay.instant_replay"
+        applicationId = "dev.guillermofranco.instantreplay"
         minSdk = 29
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
