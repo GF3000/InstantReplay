@@ -1,0 +1,28 @@
+SHORT:
+Repeticiones instantáneas para tu equipo: graba, revisa y emite sin Internet.
+FULL:
+InstantReplay convierte un móvil Android en una cámara de repeticiones para entrenamientos y partidos de deportes de equipo.
+
+El móvil en el trípode graba sin parar y guarda siempre el último minuto. Desde el móvil o la tablet del entrenador ves el directo y, con un toque, recuperas los últimos 10 a 60 segundos para revisarlos al momento.
+
+CÓMO FUNCIONA
+• Cámara: un móvil Android graba en 1080p y sirve el directo y los clips.
+• Visor: otro móvil, una tablet o cualquier navegador en la misma Wi-Fi ve el directo y guarda jugadas.
+• Todo funciona en una red Wi-Fi local (el hotspot de un móvil o un router de viaje). No hace falta Internet ni crear una cuenta.
+
+REVISA CADA JUGADA
+• Botón grande de Guardar: 20 s por defecto, o 10, 30 o 60 s.
+• Etiquetas de un toque justo después de guardar.
+• Cámara lenta (0,25× y 0,5×), bucle y avance fotograma a fotograma.
+• Telestrador: dibuja sobre el vídeo para explicar la jugada.
+• Biblioteca de clips con filtros, exportación a la galería y botón de compartir.
+
+RETRANSMITE EL PARTIDO (OPCIONAL)
+• Emite en directo en YouTube Live con marcador en pantalla y repeticiones en antena.
+• Inicia sesión con tu cuenta de Google o pega una clave de emisión RTMP.
+
+PRIVACIDAD
+• Sin anuncios, sin analítica propia y sin servidores: el vídeo se queda en tus dispositivos salvo que decidas emitirlo.
+• Código abierto (Apache-2.0): github.com/GF3000/InstantReplay
+
+Requiere Android 10 o superior. Para el rol Cámara se recomienda un móvil con buena batería y un trípode.
