@@ -16,14 +16,20 @@
   tool/build_apk.ps1            # debug APK
   tool/build_apk.ps1 -Release   # release APK
   tool/build_apk.ps1 -Release -SplitPerAbi   # one release APK per CPU architecture
+  tool/build_apk.ps1 -Release -AppBundle -BuildNumber 5013   # Google Play AAB
 #>
 param(
   [switch]$Release,
   # arm64 alone is less than half the size of the universal APK.
-  [switch]$SplitPerAbi
+  [switch]$SplitPerAbi,
+  # Android App Bundle for Google Play instead of an APK.
+  [switch]$AppBundle,
+  # Overrides the build number from pubspec.yaml (the versionCode on Play).
+  [int]$BuildNumber = 0
 )
 
 $ErrorActionPreference = 'Stop'
+if ($AppBundle -and $SplitPerAbi) { throw '-SplitPerAbi does not apply to -AppBundle.' }
 
 function Invoke-Checked {
   param([string]$Exe, [string[]]$Arguments)
@@ -71,8 +77,10 @@ try {
   Get-ChildItem -Path $assetsDir -Recurse -File -Filter '*.symbols' | Remove-Item -Force
 
   $mode = if ($Release) { '--release' } else { '--debug' }
-  $buildArgs = @('build', 'apk', $mode)
+  $target = if ($AppBundle) { 'appbundle' } else { 'apk' }
+  $buildArgs = @('build', $target, $mode)
   if ($SplitPerAbi) { $buildArgs += '--split-per-abi' }
+  if ($BuildNumber -gt 0) { $buildArgs += "--build-number=$BuildNumber" }
   Invoke-Checked flutter $buildArgs
 }
 finally {

@@ -4,6 +4,7 @@
 #   tool/build_apk.sh            # debug APK
 #   tool/build_apk.sh --release  # release APK
 #   tool/build_apk.sh --release --split-per-abi  # one release APK per CPU architecture
+#   tool/build_apk.sh --release --appbundle --build-number=5013  # Google Play AAB
 #
 # 1. `flutter build web --release --no-web-resources-cdn`: CanvasKit and the other engine
 #    resources are copied into build/web instead of being loaded from Google's CDN, because
@@ -12,20 +13,33 @@
 # 3. Copy app/build/web to app/android/app/src/main/assets/web_viewer/ (Android native
 #    assets, git-ignored), minus debug symbols. Not Flutter assets: the web build would then
 #    contain the previous bundle recursively.
-# 4. `flutter build apk`. MainActivity extracts the bundle to filesDir at runtime.
+# 4. `flutter build apk` (or `appbundle` for Google Play). MainActivity extracts the bundle to
+#    filesDir at runtime.
+#
+# Google Play builds use versionCode 5000 + build number so they rank above the GitHub split
+# APKs (arm64 = 2000 + build number).
 set -euo pipefail
 
 mode="--debug"
 split=()
+target="apk"
+build_number=()
 for arg in "$@"; do
   case "$arg" in
     --release) mode="--release" ;;
     --debug) mode="--debug" ;;
     # One APK per CPU architecture (release only): arm64 alone is less than half the size.
     --split-per-abi) split=(--split-per-abi) ;;
-    *) echo "Unknown argument: $arg (expected --debug, --release or --split-per-abi)" >&2; exit 2 ;;
+    # Android App Bundle for Google Play instead of an APK.
+    --appbundle) target="appbundle" ;;
+    # Overrides the build number from pubspec.yaml (the versionCode on Play).
+    --build-number=*) build_number=("$arg") ;;
+    *) echo "Unknown argument: $arg (expected --debug, --release, --split-per-abi, --appbundle or --build-number=N)" >&2; exit 2 ;;
   esac
 done
+if [ "$target" = "appbundle" ] && [ ${#split[@]} -gt 0 ]; then
+  echo "--split-per-abi does not apply to --appbundle" >&2; exit 2
+fi
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 app_dir="$repo_root/app"
@@ -65,5 +79,5 @@ cp -R "$web_out/." "$assets_dir/"
 # CanvasKit debug symbols (~9 MB) are only useful to engine developers.
 find "$assets_dir" -name '*.symbols' -delete
 
-echo "==> flutter build apk $mode ${split[*]:-}"
-flutter build apk "$mode" "${split[@]}"
+echo "==> flutter build $target $mode ${split[*]:-} ${build_number[*]:-}"
+flutter build "$target" "$mode" "${split[@]}" "${build_number[@]}"
