@@ -3,28 +3,33 @@ package io.github.instantreplay.replay_capture_android.gl
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.opengl.GLES20
 import android.opengl.GLUtils
 import android.opengl.Matrix
+import io.github.instantreplay.replay_capture_android.broadcast.BoardPosition
+import io.github.instantreplay.replay_capture_android.broadcast.BoardStyle
 import io.github.instantreplay.replay_capture_android.broadcast.Scoreboard
 
 /**
- * A text badge drawn top-right over the program, e.g. `REPETICIÓN` during a replay on air
- * (SPEC §12.6). [text] and [plate] may be set from any thread; [draw] runs on the GL thread and
- * uploads the bitmap only when one of them changed. Sized for a [referenceHeight]-high frame like
- * the scoreboard. Classic: a red box. [plate] (follows the scoreboard style): the dark plate with
- * a red border, a red dot and the text in IBM Plex Mono.
+ * A text badge drawn top-right (top-left when [left]) over the program, e.g. `REPETICIÓN` during a
+ * replay on air (SPEC §12.6). [text], [style] and [left] may be set from any thread; [draw] runs on
+ * the GL thread and uploads the bitmap only when the text or style changed. Sized for a
+ * [referenceHeight]-high frame like the scoreboard. It follows the scoreboard [style]: classic, a
+ * red box; plate, the dark plate with a red border, a red dot and the text in IBM Plex Mono;
+ * banner, the navy bar with red edges.
  */
 internal class LabelRenderer(private val referenceHeight: Int, fonts: OverlayFonts) {
     @Volatile var text: String? = null
-    @Volatile var plate = false
+    @Volatile var style = BoardStyle.CLASSIC
+    @Volatile var left = false
 
     private val renderer = TextureRenderer(external = false)
     private val texture = TextureRenderer.create2dTexture(1, 1)
     private var uploaded: String? = null
-    private var uploadedPlate = false
+    private var uploadedStyle = BoardStyle.CLASSIC
     private var textureWidth = 0
     private var textureHeight = 0
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -39,17 +44,24 @@ internal class LabelRenderer(private val referenceHeight: Int, fonts: OverlayFon
         letterSpacing = 0.08f
     }
     private val plateFill = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val bannerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        typeface = fonts.mono
+        color = 0xFFFFFFFF.toInt()
+        letterSpacing = 0.08f
+    }
+    private val bannerFill = Paint(Paint.ANTI_ALIAS_FLAG)
 
     /** Draws the badge into the current target of [frameWidth]×[frameHeight]; nothing without text. */
     fun draw(frameWidth: Int, frameHeight: Int) {
         val t = text ?: return
-        val p = plate
-        if (t != uploaded || p != uploadedPlate) upload(t, p)
+        val st = style
+        if (t != uploaded || st != uploadedStyle) upload(t, st)
         if (textureWidth == 0) return
         val height = Scoreboard.barHeight(frameHeight)
         val width = textureWidth * height / textureHeight
-        val x = frameWidth - Scoreboard.margin(frameWidth) - width
-        val y = frameHeight - Scoreboard.margin(frameHeight) - height
+        val corner = if (left) BoardPosition.TOP_LEFT else BoardPosition.TOP_RIGHT
+        val x = Scoreboard.placeX(corner, frameWidth, width)
+        val y = Scoreboard.placeY(corner, frameHeight, height)
         GLES20.glEnable(GLES20.GL_BLEND)
         GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE_MINUS_SRC_ALPHA)
         renderer.draw(texture, x, y, width, height, FLIP_Y)
@@ -61,16 +73,20 @@ internal class LabelRenderer(private val referenceHeight: Int, fonts: OverlayFon
         GLES20.glDeleteTextures(1, intArrayOf(texture), 0)
     }
 
-    private fun upload(t: String, plate: Boolean) {
+    private fun upload(t: String, style: BoardStyle) {
         val height = Scoreboard.barHeight(referenceHeight)
-        val bitmap = if (plate) renderPlate(t, height) else renderClassic(t, height)
+        val bitmap = when (style) {
+            BoardStyle.CLASSIC -> renderClassic(t, height)
+            BoardStyle.PLATE -> renderPlate(t, height)
+            BoardStyle.BANNER -> renderBanner(t, height)
+        }
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texture)
         GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0)
         textureWidth = bitmap.width
         textureHeight = bitmap.height
         bitmap.recycle()
         uploaded = t
-        uploadedPlate = plate
+        uploadedStyle = style
     }
 
     private fun renderClassic(t: String, height: Int): Bitmap {
@@ -107,6 +123,29 @@ internal class LabelRenderer(private val referenceHeight: Int, fonts: OverlayFon
         plateFill.style = Paint.Style.STROKE
         plateFill.strokeWidth = border
         canvas.drawRoundRect(RectF(border / 2, border / 2, w - border / 2, h - border / 2), radius, radius, plateFill)
+        return bitmap
+    }
+
+    /** The banner's bar (same navy and proportions): red edges, the text in IBM Plex Mono. */
+    private fun renderBanner(t: String, height: Int): Bitmap {
+        val h = height.toFloat()
+        bannerPaint.textSize = h * 0.42f
+        val edge = h * Scoreboard.BANNER_EDGE
+        val pad = h * 0.45f
+        val width = kotlin.math.ceil(2 * (edge + pad) + bannerPaint.measureText(t)).toInt()
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val bar = RectF(0f, 0f, width.toFloat(), h)
+        val radius = h * Scoreboard.BANNER_RADIUS
+        // Navy first, then the edges over it, as on the board: no seam where they meet.
+        bannerFill.color = Scoreboard.BANNER_NAVY
+        canvas.drawRoundRect(bar, radius, radius, bannerFill)
+        canvas.clipPath(Path().apply { addRoundRect(bar, radius, radius, Path.Direction.CW) })
+        bannerFill.color = RED
+        canvas.drawRect(0f, 0f, edge, h, bannerFill)
+        canvas.drawRect(bar.right - edge, 0f, bar.right, h, bannerFill)
+        val m = bannerPaint.fontMetrics
+        canvas.drawText(t, edge + pad, h / 2 - (m.ascent + m.descent) / 2, bannerPaint)
         return bitmap
     }
 

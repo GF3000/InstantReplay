@@ -132,6 +132,62 @@ void main() {
     expect(s.scale, ScoreboardState.scales[2]);
   });
 
+  testWidgets('banner cuts names to 3 letters; the position comes back with the rest', (tester) async {
+    final result = await open(tester, const Size(1180, 820));
+    await tester.tap(find.byKey(const ValueKey('score-settings-style-banner')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('score-settings-home-name')), 'Parla');
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('score-settings-banner-cut')), findsOneWidget);
+    expect(find.text('5 / 3'), findsOneWidget);
+    final bottom = find.byKey(const ValueKey('score-settings-position-bottomCenter'));
+    await tester.ensureVisible(bottom);
+    await tester.pumpAndSettle();
+    await tester.tap(bottom);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('score-settings-save')));
+    await tester.pumpAndSettle();
+    final s = (await result)!;
+    expect(s.style, ScoreboardStyle.banner);
+    expect(s.homeName, 'PARLA', reason: 'stored in full, cut only on air');
+    expect(s.position, ScoreboardPosition.bottomCenter);
+  });
+
+  testWidgets('the period switch comes back with the rest', (tester) async {
+    final result = await open(tester, const Size(1180, 820));
+    final toggle = find.byKey(const ValueKey('score-settings-show-period'));
+    await tester.ensureVisible(toggle);
+    await tester.pumpAndSettle();
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('score-settings-save')));
+    await tester.pumpAndSettle();
+    expect((await result)!.showPeriod, isFalse);
+  });
+
+  testWidgets('on a phone every position can be tapped, and the last one tapped is saved', (tester) async {
+    final result = await open(tester, const Size(390, 844));
+    for (final p in [...ScoreboardPosition.values.skip(1), ScoreboardPosition.topRight]) {
+      final spot = find.byKey(ValueKey('score-settings-position-${p.name}'));
+      await tester.ensureVisible(spot);
+      await tester.pumpAndSettle();
+      await tester.tap(spot);
+      await tester.pumpAndSettle();
+    }
+    await tester.tap(find.byKey(const ValueKey('score-settings-save')));
+    await tester.pumpAndSettle();
+    expect((await result)!.position, ScoreboardPosition.topRight);
+  });
+
+  testWidgets('the position picker stays at most 480 wide on a tablet', (tester) async {
+    await open(tester, const Size(1180, 820));
+    final picker = find.ancestor(
+      of: find.byKey(const ValueKey('score-settings-position-topLeft')),
+      matching: find.byType(AspectRatio),
+    );
+    expect(tester.getSize(picker.first).width, lessThanOrEqualTo(480));
+  });
+
   testWidgets('a plate board keeps its style when saved without touching it', (tester) async {
     final plate = ScoreboardSettings(
       homeName: 'LEONES',

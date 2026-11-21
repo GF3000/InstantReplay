@@ -3608,6 +3608,78 @@ abstract class AppLocalizations {
   /// **'Two rows. Full names up to 16 letters.'**
   String get sbPlateSub;
 
+  /// No description provided for @sbBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Banner'**
+  String get sbBanner;
+
+  /// No description provided for @sbBannerSub.
+  ///
+  /// In en, this message translates to:
+  /// **'A wide bar with a big score and the clock below. 3-letter names.'**
+  String get sbBannerSub;
+
+  /// No description provided for @sbBannerCut.
+  ///
+  /// In en, this message translates to:
+  /// **'The Banner style cuts names to 3 letters. The Plate shows them in full.'**
+  String get sbBannerCut;
+
+  /// No description provided for @sbPosition.
+  ///
+  /// In en, this message translates to:
+  /// **'Position on screen'**
+  String get sbPosition;
+
+  /// No description provided for @sbPositionTopLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Top left'**
+  String get sbPositionTopLeft;
+
+  /// No description provided for @sbPositionTopCenter.
+  ///
+  /// In en, this message translates to:
+  /// **'Top centre'**
+  String get sbPositionTopCenter;
+
+  /// No description provided for @sbPositionTopRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Top right'**
+  String get sbPositionTopRight;
+
+  /// No description provided for @sbPositionBottomLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Bottom left'**
+  String get sbPositionBottomLeft;
+
+  /// No description provided for @sbPositionBottomCenter.
+  ///
+  /// In en, this message translates to:
+  /// **'Bottom centre'**
+  String get sbPositionBottomCenter;
+
+  /// No description provided for @sbPositionBottomRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Bottom right'**
+  String get sbPositionBottomRight;
+
+  /// No description provided for @sbShowPeriod.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the period'**
+  String get sbShowPeriod;
+
+  /// No description provided for @sbShowPeriodSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn it off to show only the clock'**
+  String get sbShowPeriodSub;
+
   /// No description provided for @sbDefault.
   ///
   /// In en, this message translates to:

@@ -424,6 +424,57 @@ class LivePanel extends ConsumerWidget {
     // The mic closed in broadcast mode: shown before going live too, so nobody starts silent by
     // mistake. The Camera itself shows no badge (its operator is not the one watching).
     final muted = stream != null && !stream.audio;
+    // The burned-in board's corner (broadcast mode): the badges and buttons there move to the other
+    // side, so the score on air stays visible.
+    final board = ref.watch(linkStateProvider.select((s) => s?.status?.scoreboard));
+    final boardAt = board != null && board.visible && board.position.column != 1 ? board.position : null;
+    bool atStart(bool top, bool start) =>
+        boardAt != null && boardAt.top == top && (boardAt.column == 0) == start ? !start : start;
+    final corners = <(bool, bool), List<Widget>>{};
+    void place(bool top, bool start, Widget w) => corners.putIfAbsent((top, atStart(top, start)), () => []).add(w);
+    if (overlay == null && connected) {
+      place(
+        true,
+        true,
+        _Badge(
+          key: const ValueKey('viewer-live-badge'),
+          text: streaming ? l10n.liveOnYouTubeBadge : l10n.liveOnAirBadge,
+          // Red only when YouTube sees it.
+          background: streaming ? ir.live : Colors.black.withValues(alpha: 0.72),
+          foreground: streaming ? ir.onLive : Colors.white,
+          dot: streaming ? null : ir.ok,
+        ),
+      );
+    }
+    if (muted) {
+      place(
+        true,
+        false,
+        _Badge(
+          key: const ValueKey('viewer-no-sound-badge'),
+          text: stream.active ? l10n.liveNoSoundBadge : l10n.liveMicClosedBadge,
+          background: ir.live,
+          foreground: ir.onLive,
+          icon: Icons.mic_off,
+        ),
+      );
+    }
+    if (zoom != null && connected) {
+      place(
+        false,
+        true,
+        ZoomControl(
+          keyPrefix: 'viewer-zoom',
+          ratio: zoom.ratio,
+          max: zoom.max,
+          enabled: connected,
+          onChanged: remote.zoom,
+        ),
+      );
+    }
+    if (link == LinkPhase.connected && live.phase != LivePhase.negotiating) {
+      place(false, false, _RestartButton(onPressed: () => ref.read(liveViewProvider.notifier).restart()));
+    }
     return ColoredBox(
       color: Colors.black,
       child: Stack(
@@ -439,49 +490,21 @@ class LivePanel extends ConsumerWidget {
                     onChanged: remote.zoom,
                     child: peer.buildView(),
                   ),
-          if (overlay == null && connected)
-            PositionedDirectional(
-              start: 8,
-              top: 8,
-              child: _Badge(
-                key: const ValueKey('viewer-live-badge'),
-                text: streaming ? l10n.liveOnYouTubeBadge : l10n.liveOnAirBadge,
-                // Red only when YouTube sees it.
-                background: streaming ? ir.live : Colors.black.withValues(alpha: 0.72),
-                foreground: streaming ? ir.onLive : Colors.white,
-                dot: streaming ? null : ir.ok,
-              ),
-            ),
-          if (muted)
-            PositionedDirectional(
-              end: 8,
-              top: 8,
-              child: _Badge(
-                key: const ValueKey('viewer-no-sound-badge'),
-                text: stream.active ? l10n.liveNoSoundBadge : l10n.liveMicClosedBadge,
-                background: ir.live,
-                foreground: ir.onLive,
-                icon: Icons.mic_off,
-              ),
-            ),
           if (overlay != null) Center(child: _Connecting(text: overlay)),
-          if (zoom != null && connected)
-            Positioned(
-              left: 4,
-              bottom: 4,
-              child: ZoomControl(
-                keyPrefix: 'viewer-zoom',
-                ratio: zoom.ratio,
-                max: zoom.max,
-                enabled: connected,
-                onChanged: remote.zoom,
-              ),
-            ),
-          if (link == LinkPhase.connected && live.phase != LivePhase.negotiating)
+          for (final MapEntry(key: (top, start), value: children) in corners.entries)
             PositionedDirectional(
-              end: 6,
-              bottom: 6,
-              child: _RestartButton(onPressed: () => ref.read(liveViewProvider.notifier).restart()),
+              start: start ? 6 : null,
+              end: start ? null : 6,
+              top: top ? 8 : null,
+              bottom: top ? null : 6,
+              // Two in one corner: badges stack, buttons sit side by side.
+              child: top
+                  ? Column(
+                      crossAxisAlignment: start ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+                      spacing: 6,
+                      children: children,
+                    )
+                  : Row(mainAxisSize: MainAxisSize.min, spacing: 6, children: children),
             ),
           const _SaveFlash(),
         ],

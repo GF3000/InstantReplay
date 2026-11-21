@@ -27,6 +27,9 @@ import android.os.Process
 import android.util.Range
 import android.view.Surface
 import io.github.instantreplay.replay_capture_android.broadcast.ReplayPlayer
+import io.github.instantreplay.replay_capture_android.broadcast.BoardPosition
+import io.github.instantreplay.replay_capture_android.broadcast.BoardStyle
+import io.github.instantreplay.replay_capture_android.broadcast.Scoreboard
 import io.github.instantreplay.replay_capture_android.broadcast.ScoreboardState
 import io.github.instantreplay.replay_capture_android.gl.LabelRenderer
 import io.github.instantreplay.replay_capture_android.buffer.RingBuffer
@@ -246,7 +249,7 @@ internal class CaptureEngine(
 
     /**
      * Puts [file] on air instead of the camera (SPEC §12.6), replacing any replay running; [badge]
-     * is drawn top-right. [onStarted] when its first frame is shown, [onEnded] once the program is
+     * is drawn top-right (top-left when the board shown over the replay is top-right). [onStarted] when its first frame is shown, [onEnded] once the program is
      * back on the camera (end of clip, [stopReplay], replacement or failure), with the error if any.
      * Broadcast mode only. The ring buffer keeps the camera picture: it is fed directly.
      */
@@ -635,8 +638,14 @@ internal class CaptureEngine(
             null
         }
 
-        // The replay badge follows the scoreboard style (classic box or plate).
-        if (replayShowing) label?.plate = overlay?.plate == true
+        // The replay badge follows the scoreboard style and keeps clear of its corner when the board
+        // is on screen over the replay (stable for the whole replay, not per frame).
+        if (replayShowing) {
+            overlay?.let {
+                label?.style = it.style
+                label?.left = Scoreboard.badgeOnLeft(it.position, boardShown = replayScoreboard && it.visible)
+            }
+        }
 
         // Broadcast program at most 30 fps, after the HQ frame so it can never delay it. The swap
         // doesn't block (swap interval 0): a backed-up encoder loses program frames, not HQ ones.

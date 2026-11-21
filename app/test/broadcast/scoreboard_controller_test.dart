@@ -4,7 +4,7 @@ import 'dart:ui' show Locale;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:instant_replay/features/broadcast/scoreboard_controller.dart';
 import 'package:instant_replay/l10n/app_localizations.dart';
-import 'package:replay_capture_android/replay_capture_android.dart' show OverlayState, OverlayStyle;
+import 'package:replay_capture_android/replay_capture_android.dart' show OverlayPosition, OverlayState, OverlayStyle;
 import 'package:replay_protocol/replay_protocol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -215,6 +215,74 @@ void main() {
         c.apply(const ScoreCommand(team: Team.home, delta: 1));
         expect(c.current.style, ScoreboardStyle.plate);
         expect(overlays.last.style, OverlayStyle.plate);
+      });
+
+      test('banner sends names cut to 3 letters and the chosen position', () {
+        final c = controller()..overlayEnabled = true;
+        expect(overlays.last.position, OverlayPosition.topLeft, reason: 'the same default for every style');
+        c.apply(SettingsCommand(ScoreboardSettings(
+          homeName: 'Parla',
+          awayName: 'Corral',
+          homeColor: 1,
+          awayColor: 2,
+          periods: 2,
+          periodMs: 60000,
+          countDown: false,
+          style: ScoreboardStyle.banner,
+          position: ScoreboardPosition.bottomCenter,
+        )));
+        expect(overlays.last.style, OverlayStyle.banner);
+        expect((overlays.last.homeName, overlays.last.awayName), ('PAR', 'COR'));
+        expect(overlays.last.position, OverlayPosition.bottomCenter);
+        // Settings from a viewer that doesn't know positions keep the board where it is.
+        c.apply(SettingsCommand(settings(ScoreboardStyle.classic)));
+        expect(overlays.last.position, OverlayPosition.bottomCenter);
+      });
+
+      test('position and the hidden period survive a running clock and a restart', () {
+        final c = controller()..overlayEnabled = true;
+        c.apply(SettingsCommand(ScoreboardSettings(
+          homeName: 'a',
+          awayName: 'b',
+          homeColor: 1,
+          awayColor: 2,
+          periods: 2,
+          periodMs: 60000,
+          countDown: false,
+          style: ScoreboardStyle.banner,
+          position: ScoreboardPosition.bottomRight,
+          showPeriod: false,
+        )));
+        c.apply(const ClockStartCommand());
+        now += 5000;
+        c.apply(const ScoreCommand(team: Team.home, delta: 1));
+        expect(c.current.position, ScoreboardPosition.bottomRight);
+        expect(c.current.showPeriod, isFalse);
+        expect(overlays.last.position, OverlayPosition.bottomRight);
+        expect(overlays.last.periodLabel, '');
+        c.dispose();
+
+        final again = controller()..overlayEnabled = true;
+        expect((again.current.position, again.current.showPeriod), (ScoreboardPosition.bottomRight, false));
+        expect(overlays.last.position, OverlayPosition.bottomRight);
+      });
+
+      test('a hidden period sends an empty label', () {
+        final c = controller()..overlayEnabled = true;
+        expect(overlays.last.periodLabel, '1H');
+        c.apply(SettingsCommand(ScoreboardSettings(
+          homeName: 'a',
+          awayName: 'b',
+          homeColor: 1,
+          awayColor: 2,
+          periods: 2,
+          periodMs: 60000,
+          countDown: false,
+          showPeriod: false,
+        )));
+        expect(overlays.last.periodLabel, '');
+        c.apply(const PeriodCommand(delta: 1));
+        expect(overlays.last.periodLabel, '', reason: 'stays hidden when the period changes');
       });
 
       test('the style survives a restart', () {

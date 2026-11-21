@@ -97,11 +97,14 @@ class ScoreboardTest {
         val bar = Scoreboard.text(long, 0)
         assertEquals("HALCO", bar.homeName)
         assertEquals("LEONE", bar.awayName)
-        assertEquals(false, bar.plate)
-        val plate = Scoreboard.text(long.copy(plate = true), 0)
+        assertEquals(BoardStyle.CLASSIC, bar.style)
+        val plate = Scoreboard.text(long.copy(style = BoardStyle.PLATE), 0)
         assertEquals("HALCONES", plate.homeName)
         assertEquals("LEONES DE MADRID", plate.awayName)
-        assertTrue(plate.plate)
+        assertEquals(BoardStyle.PLATE, plate.style)
+        val banner = Scoreboard.text(long.copy(style = BoardStyle.BANNER), 0)
+        assertEquals("HAL", banner.homeName)
+        assertEquals("LEO", banner.awayName)
         assertTrue(bar != plate, "a style change redraws the texture")
     }
 
@@ -115,7 +118,7 @@ class ScoreboardTest {
 
     @Test
     fun plateFitsTheLongerNameAndSpansTheClockOverBothRows() {
-        val text = Scoreboard.text(state.copy(plate = true, homeName = "Halcones"), 0)
+        val text = Scoreboard.text(state.copy(style = BoardStyle.PLATE, homeName = "Halcones"), 0)
         val row = 44f
         val l = Scoreboard.plateLayout(text, row, plateMeasure)
         assertEquals(88, l.height)
@@ -131,14 +134,14 @@ class ScoreboardTest {
         assertEquals(row * 0.07f, l.radius, 0.001f)
 
         val longer = Scoreboard.plateLayout(
-            Scoreboard.text(state.copy(plate = true, awayName = "Leones de Madrid"), 0), row, plateMeasure,
+            Scoreboard.text(state.copy(style = BoardStyle.PLATE, awayName = "Leones de Madrid"), 0), row, plateMeasure,
         )
         assertEquals(l.scoreX + 80f, longer.scoreX, 0.001f, "the plate widens with the longest name")
     }
 
     @Test
     fun plateWidthIsStableAsTheScoreAndClockTick() {
-        val base = state.copy(plate = true)
+        val base = state.copy(style = BoardStyle.PLATE)
         val a = Scoreboard.plateLayout(Scoreboard.text(base, 0), 44f, plateMeasure)
         val b = Scoreboard.plateLayout(Scoreboard.text(base.copy(homeScore = 19), 7_000), 44f, plateMeasure)
         assertEquals(a.width, b.width)
@@ -146,11 +149,76 @@ class ScoreboardTest {
         assertEquals(a.width, noPeriod.width, "the clock is wider than a short period label")
     }
 
+    private val bannerMeasure = { font: BannerFont, s: String ->
+        s.length * when (font) {
+            BannerFont.NAME -> 10f
+            BannerFont.SCORE -> 14f
+            BannerFont.TAB -> 6f
+        }
+    }
+
+    @Test
+    fun bannerCentresTheScoreAndHangsTheTabBelow() {
+        val bar = 64f
+        val l = Scoreboard.bannerLayout(Scoreboard.text(state.copy(style = BoardStyle.BANNER), 0), bar, bannerMeasure)
+        assertEquals(kotlin.math.ceil(bar + bar * 0.52f).toInt(), l.height)
+        // Symmetric bar: the separator is in the middle, names mirror each other around it.
+        assertEquals(l.barX + l.barWidth / 2, l.separatorX, 0.001f)
+        assertEquals(l.separatorX - l.homeNameX, l.awayNameX - l.separatorX, 0.001f)
+        assertTrue(l.homeNameX < l.homeScoreX && l.homeScoreX < l.separatorX && l.separatorX < l.awayScoreX)
+        assertTrue(l.awayScoreX < l.awayNameX)
+        // The tab is centred, period first then the clock.
+        assertEquals(l.width / 2f, l.tabX + l.tabWidth / 2, 0.5f)
+        assertTrue(l.periodX < l.clockX)
+        assertEquals(0f, l.barX, 0.001f)
+    }
+
+    @Test
+    fun bannerWidthIsStableAsTheScoreAndClockTick() {
+        val base = state.copy(style = BoardStyle.BANNER)
+        val a = Scoreboard.bannerLayout(Scoreboard.text(base, 0), 64f, bannerMeasure)
+        val b = Scoreboard.bannerLayout(Scoreboard.text(base.copy(awayScore = 21), 7_000), 64f, bannerMeasure)
+        assertEquals(a.width, b.width)
+        val noPeriod = Scoreboard.bannerLayout(Scoreboard.text(base.copy(periodLabel = ""), 0), 64f, bannerMeasure)
+        assertTrue(noPeriod.tabWidth < a.tabWidth, "no period, a narrower tab")
+        assertEquals(64f * Scoreboard.BANNER_BAR, Scoreboard.bannerBar(1080, 114), 0.001f)
+    }
+
+    @Test
+    fun placesTheBoardInsideTheSafeMargins() {
+        val (w, h) = 1920 to 1080
+        fun at(p: BoardPosition) = Scoreboard.placeX(p, w, 400) to Scoreboard.placeY(p, h, 100)
+        assertEquals(58 to 1080 - 32 - 100, at(BoardPosition.TOP_LEFT))
+        assertEquals(760 to 1080 - 32 - 100, at(BoardPosition.TOP_CENTER))
+        assertEquals(1920 - 58 - 400 to 1080 - 32 - 100, at(BoardPosition.TOP_RIGHT))
+        // The bottom keeps a larger margin, above the player controls.
+        assertEquals(58 to 65, at(BoardPosition.BOTTOM_LEFT))
+        assertEquals(760 to 65, at(BoardPosition.BOTTOM_CENTER))
+        assertEquals(1920 - 58 - 400 to 65, at(BoardPosition.BOTTOM_RIGHT))
+    }
+
+    @Test
+    fun theBadgeMovesLeftOnlyWhenABoardOnScreenTakesTheTopRight() {
+        assertTrue(Scoreboard.badgeOnLeft(BoardPosition.TOP_RIGHT, boardShown = true))
+        assertTrue(!Scoreboard.badgeOnLeft(BoardPosition.TOP_RIGHT, boardShown = false))
+        BoardPosition.entries.filter { it != BoardPosition.TOP_RIGHT }.forEach {
+            assertTrue(!Scoreboard.badgeOnLeft(it, boardShown = true))
+        }
+    }
+
+    @Test
+    fun namesAreNeverCutInsideAnEmoji() {
+        assertEquals("AB\uD83E\uDD81", Scoreboard.cut("AB\uD83E\uDD81X", 3))
+        assertEquals("ABC", Scoreboard.cut("ABCDE", 3))
+        assertEquals("AB", Scoreboard.cut("AB", 3))
+        assertEquals("AB\uD83E\uDD81", Scoreboard.text(state.copy(style = BoardStyle.BANNER, homeName = "AB\uD83E\uDD81X"), 0).homeName)
+    }
+
     @Test
     fun plateScalesLikeTheBar() {
         assertEquals(56 * Scoreboard.PLATE_ROW, Scoreboard.plateRow(1080), 0.001f)
         assertEquals(84 * Scoreboard.PLATE_ROW, Scoreboard.plateRow(1080, 150), 0.001f)
-        assertEquals(2f, Scoreboard.plateLayout(Scoreboard.text(state.copy(plate = true), 0), 88f, plateMeasure).border)
+        assertEquals(2f, Scoreboard.plateLayout(Scoreboard.text(state.copy(style = BoardStyle.PLATE), 0), 88f, plateMeasure).border)
     }
 
     @Test

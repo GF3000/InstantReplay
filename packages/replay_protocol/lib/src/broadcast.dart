@@ -2,6 +2,8 @@
 /// commands viewers send to change it, and the state of the stream itself.
 library;
 
+import 'package:characters/characters.dart';
+
 import 'models.dart';
 
 enum Team { home, away }
@@ -35,13 +37,45 @@ class TeamState {
   int get hashCode => Object.hash(name, score, color);
 }
 
-/// How the overlay draws the board. [classic] is the thin bar with names cut to
-/// [ScoreboardState.classicNameLength] letters; [plate] is a two-row plate with full names.
+/// How the overlay draws the board: [classic] is the thin bar, [plate] a two-row plate with full
+/// names, [banner] a wide bar with big scores and a tab below with the period and the clock.
+/// [nameLength] is how many letters of a team name each one shows.
 enum ScoreboardStyle {
-  classic,
-  plate;
+  classic(nameLength: 5),
+  plate(nameLength: ScoreboardState.maxNameLength),
+  banner(nameLength: 3);
+
+  const ScoreboardStyle({required this.nameLength});
+
+  final int nameLength;
+
+  /// Whether names longer than [nameLength] are cut on air.
+  bool get cutsNames => nameLength < ScoreboardState.maxNameLength;
 
   static ScoreboardStyle parse(Object? v) => ScoreboardStyle.values.firstWhere((s) => s.name == v, orElse: () => classic);
+}
+
+/// Where the overlay sits on the picture (SPEC §12.5). The same default for every style.
+enum ScoreboardPosition {
+  topLeft(top: true, column: 0),
+  topCenter(top: true, column: 1),
+  topRight(top: true, column: 2),
+  bottomLeft(top: false, column: 0),
+  bottomCenter(top: false, column: 1),
+  bottomRight(top: false, column: 2);
+
+  const ScoreboardPosition({required this.top, required this.column});
+
+  static const defaultPosition = topLeft;
+
+  /// Top row (else bottom row).
+  final bool top;
+
+  /// 0 left, 1 centre, 2 right.
+  final int column;
+
+  static ScoreboardPosition parse(Object? v) =>
+      ScoreboardPosition.values.firstWhere((p) => p.name == v, orElse: () => defaultPosition);
 }
 
 /// What a viewer can configure; scores, period and clock are changed by commands.
@@ -56,6 +90,8 @@ class ScoreboardSettings {
     required this.countDown,
     this.scale = ScoreboardState.defaultScale,
     this.style,
+    this.position,
+    this.showPeriod,
   });
 
   factory ScoreboardSettings.fromJson(Json j) => ScoreboardSettings(
@@ -69,6 +105,8 @@ class ScoreboardSettings {
         scale: j['scale'] as int? ?? ScoreboardState.defaultScale,
         // Absent (a viewer older than the style): keep the board's current style.
         style: j['style'] == null ? null : ScoreboardStyle.parse(j['style']),
+        position: j['position'] == null ? null : ScoreboardPosition.parse(j['position']),
+        showPeriod: j['showPeriod'] as bool?,
       );
 
   final String homeName;
@@ -87,6 +125,12 @@ class ScoreboardSettings {
   /// Null keeps the board's current style.
   final ScoreboardStyle? style;
 
+  /// Null keeps the board's current position.
+  final ScoreboardPosition? position;
+
+  /// Null keeps whether the board shows the period.
+  final bool? showPeriod;
+
   Json toJson() => {
         'homeName': homeName,
         'awayName': awayName,
@@ -97,6 +141,8 @@ class ScoreboardSettings {
         'countDown': countDown,
         'scale': scale,
         if (style != null) 'style': style!.name,
+        if (position != null) 'position': position!.name,
+        if (showPeriod != null) 'showPeriod': showPeriod,
       };
 }
 
@@ -115,6 +161,8 @@ class ScoreboardState {
     this.visible = true,
     this.scale = defaultScale,
     this.style = ScoreboardStyle.classic,
+    this.position = ScoreboardPosition.defaultPosition,
+    this.showPeriod = true,
   });
 
   factory ScoreboardState.fromJson(Json j) {
@@ -131,6 +179,8 @@ class ScoreboardState {
       visible: j['visible'] as bool? ?? true,
       scale: j['scale'] as int? ?? defaultScale,
       style: ScoreboardStyle.parse(j['style']),
+      position: ScoreboardPosition.parse(j['position']),
+      showPeriod: j['showPeriod'] as bool? ?? true,
     );
   }
 
@@ -140,10 +190,14 @@ class ScoreboardState {
     away: TeamState(name: 'VIS', color: 0xFFE53935),
   );
 
-  /// Names are stored up to [maxNameLength]; the classic bar shows the first
-  /// [classicNameLength] letters (see [displayName]).
+  /// Names are stored up to [maxNameLength] letters; each style shows its
+  /// [ScoreboardStyle.nameLength] (see [displayName]).
   static const maxNameLength = 16;
   static const classicNameLength = 5;
+  static const bannerNameLength = 3;
+
+  /// The base bar (scale 100) is this share of the frame height: 56 px at 1080p.
+  static const baseBarFraction = 56 / 1080;
   static const maxPeriods = 4;
 
   /// Overlay sizes offered to viewers, in percent of the base bar (56 px high at 1080p).
@@ -165,10 +219,24 @@ class ScoreboardState {
   /// Overlay size in percent of the base bar.
   final int scale;
   final ScoreboardStyle style;
+  final ScoreboardPosition position;
 
-  /// [name] as the overlay draws it in [style].
-  static String displayName(String name, ScoreboardStyle style) =>
-      style == ScoreboardStyle.classic && name.length > classicNameLength ? name.substring(0, classicNameLength) : name;
+  /// The period label (1T, Q2…) on air; off, the board shows only the clock.
+  final bool showPeriod;
+
+  /// [name] as the overlay draws it in [style]: its first [ScoreboardStyle.nameLength] letters,
+  /// counted as characters people see, so an emoji or a flag is never cut in half.
+  static String displayName(String name, ScoreboardStyle style) => cut(name, style.nameLength);
+
+  /// The first [max] user-perceived characters of [s].
+  static String cut(String s, int max) {
+    final chars = s.characters;
+    return chars.length > max ? chars.take(max).toString() : s;
+  }
+
+  /// This board with the clock at [clockMs], [running] or not; every other field kept.
+  ScoreboardState withClock({required int clockMs, required bool running}) =>
+      _copy(clockMs: clockMs, clockRunning: running);
 
   TeamState team(Team t) => t == Team.home ? home : away;
 
@@ -224,17 +292,28 @@ class ScoreboardState {
       periodMs: periodMs,
       countDown: s.countDown,
       scale: s.scale.clamp(50, 250),
-      style: s.style ?? base.style,
+      style: _styleFrom(s, base.style),
+      position: s.position ?? base.position,
+      showPeriod: s.showPeriod ?? base.showPeriod,
     );
     // A new clock mode or length restarts the period clock, paused.
     return clockChanged ? next._copy(clockMs: next.periodStartMs, clockRunning: false) : next;
+  }
+
+  /// The style [s] asks for. Viewers up to 0.5.0 don't know `banner` and send it back as
+  /// `classic` with every save; they are the only ones sending settings without `position`, so
+  /// such a `classic` keeps a banner board as it is.
+  static ScoreboardStyle _styleFrom(ScoreboardSettings s, ScoreboardStyle current) {
+    final style = s.style ?? current;
+    final olderViewer = s.position == null;
+    return olderViewer && style == ScoreboardStyle.classic && current == ScoreboardStyle.banner ? current : style;
   }
 
   /// Upper-case, trimmed, at most [maxNameLength] characters; [fallback] when empty.
   static String normalizeName(String name, String fallback) {
     final n = name.trim().toUpperCase();
     if (n.isEmpty) return fallback;
-    return n.length > maxNameLength ? n.substring(0, maxNameLength) : n;
+    return cut(n, maxNameLength);
   }
 
   ScoreboardSettings get settings => ScoreboardSettings(
@@ -247,6 +326,8 @@ class ScoreboardState {
         countDown: countDown,
         scale: scale,
         style: style,
+        position: position,
+        showPeriod: showPeriod,
       );
 
   ScoreboardState _copy({
@@ -261,6 +342,8 @@ class ScoreboardState {
     bool? visible,
     int? scale,
     ScoreboardStyle? style,
+    ScoreboardPosition? position,
+    bool? showPeriod,
   }) =>
       ScoreboardState(
         home: home ?? this.home,
@@ -274,6 +357,8 @@ class ScoreboardState {
         visible: visible ?? this.visible,
         scale: scale ?? this.scale,
         style: style ?? this.style,
+        position: position ?? this.position,
+        showPeriod: showPeriod ?? this.showPeriod,
       );
 
   Json toJson() => {
@@ -287,6 +372,8 @@ class ScoreboardState {
         'visible': visible,
         'scale': scale,
         'style': style.name,
+        'position': position.name,
+        'showPeriod': showPeriod,
       };
 
   @override
@@ -302,11 +389,14 @@ class ScoreboardState {
       other.clockRunning == clockRunning &&
       other.visible == visible &&
       other.scale == scale &&
-      other.style == style;
+      other.style == style &&
+      other.position == position &&
+      other.showPeriod == showPeriod;
 
   @override
   int get hashCode =>
-      Object.hash(home, away, period, periods, periodMs, countDown, clockMs, clockRunning, visible, scale, style);
+      Object.hash(home, away, period, periods, periodMs, countDown, clockMs, clockRunning, visible, scale, style,
+          position, showPeriod);
 }
 
 /// `mm:ss`, minutes not capped (e.g. `93:12` in added time).
